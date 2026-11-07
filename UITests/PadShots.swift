@@ -39,9 +39,10 @@ final class PadShots: XCTestCase {
             app.buttons["iikb.tool.clipboard"].tap()
         }
         if wanted("more"), app.buttons["iikb.more"].exists {
+            let spot = space.frame
             app.buttons["iikb.more"].tap()
             try shot("more")
-            app.buttons["iikb.more"].tap()
+            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: spot.midX, dy: spot.midY)).tap()
             Thread.sleep(forTimeInterval: 0.5)
             if !space.isHittable { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap() }
         }
@@ -59,11 +60,37 @@ final class PadShots: XCTestCase {
             try shot("clipboard")
             app.buttons["iikb.panel.back"].tap()
         }
+        if wanted("window"), let size = ProcessInfo.processInfo.environment["IIKB_WINDOW"].flatMap(Self.size) {
+            resize(app.windows.firstMatch, to: size)
+            Thread.sleep(forTimeInterval: 2)
+            try shot("window")
+            print("WINDOW \(app.windows.firstMatch.frame.debugDescription) space \(space.exists ? space.frame.debugDescription : "gone") keyboard \(app.keyboards.firstMatch.exists ? app.keyboards.firstMatch.frame.debugDescription : "none")")
+        }
         if wanted("floating"), key("g", in: app).exists {
-            key("g", in: app).pinch(withScale: 0.4, velocity: -2)
+            let keyboard = app.keyboards.firstMatch
+            (keyboard.exists ? keyboard : key("g", in: app)).pinch(withScale: 0.3, velocity: -0.6)
             Thread.sleep(forTimeInterval: 2)
             try shot("floating")
             print("FLOATING space \(space.exists ? space.frame.debugDescription : "gone")")
+        }
+    }
+
+    private static func size(_ spec: String) -> CGSize? {
+        let parts = spec.split(separator: "x").compactMap { Double($0) }
+        return parts.count == 2 ? CGSize(width: parts[0], height: parts[1]) : nil
+    }
+
+    /// Drags the window's bottom right corner toward `size`, as AppShots does, the way a person makes a Split View or
+    /// Stage Manager window.
+    private func resize(_ window: XCUIElement, to size: CGSize) {
+        let screen = XCUIApplication(bundleIdentifier: "com.apple.springboard").coordinate(withNormalizedOffset: .zero)
+        for _ in 0 ..< 6 {
+            let frame = window.frame
+            let change = CGVector(dx: size.width - frame.width, dy: size.height - frame.height)
+            guard abs(change.dx) > 2 || abs(change.dy) > 2 else { return }
+            let corner = screen.withOffset(CGVector(dx: frame.maxX - 6, dy: frame.maxY - 6))
+            corner.press(forDuration: 0.5, thenDragTo: corner.withOffset(change), withVelocity: .slow, thenHoldForDuration: 0.5)
+            Thread.sleep(forTimeInterval: 1)
         }
     }
 

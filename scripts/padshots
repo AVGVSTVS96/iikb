@@ -2,7 +2,8 @@
 # Runs on the Mac. Every state of the keyboard (UITests/PadShots: typing, layers, the tray, the More menu, each panel, floating)
 # through the real extension on each iPad, portrait and landscape, light and dark, into shots/raw/pad/<tag>/:
 # scripts/padshots <tag>. DEVICES ("iPad Pro 11:iPad-Pro-11-inch-M5-12GB" …), ORIENTATIONS, APPEARANCES and STATES
-# (layers tray more emoji gif clipboard floating) narrow it; KEYBOARDS="system iikb" shoots Apple's beside it.
+# (layers tray more emoji gif clipboard window floating) narrow it; KEYBOARDS="system iikb" shoots Apple's beside it;
+# WINDOW (600x834) drags the app's window to that size for the window state, as Split View and Stage Manager make it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 tag=${1:?tag}
@@ -30,9 +31,9 @@ for spec in "${specs[@]}"; do
       xcrun simctl ui "$ID" appearance "$appearance"
       sleep 2
       TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/pad/$tag/$slug-$orientation-$keyboard-$appearance" TEST_RUNNER_IIKB_ORIENTATION=$orientation \
-        TEST_RUNNER_IIKB_STATES="${STATES:-}" xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj \
+        TEST_RUNNER_IIKB_STATES="${STATES:-}" TEST_RUNNER_IIKB_WINDOW="${WINDOW:-}" xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj \
         -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest -only-testing:AppUITests/PadShots > build/uitest/pad.log 2>&1 || failed=1
-      grep -E "error:|XCTAssert|FLOATING|Test Case .*(passed|failed)" build/uitest/pad.log || true
+      grep -E "error:|XCTAssert|FLOATING|WINDOW|Test Case .*(passed|failed)" build/uitest/pad.log || true
     done
   done
   done
