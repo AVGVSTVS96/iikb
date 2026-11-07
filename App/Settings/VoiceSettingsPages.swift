@@ -184,17 +184,13 @@ private struct MicSettings: View {
 /// Which microphone iikb dictates with when there are several.
 private struct MicrophoneSettings: View {
     private let choices = MicrophoneChoices.shared
-    @AppStorage("compareMicrophones") private var comparing = true
 
     var body: some View {
-        Box(header: "Microphone", footer: "Automatic hears from the \(ThisDevice.name), or a wired headset when one is plugged in, never from Bluetooth, so music on AirPods and speakers keeps its full quality while you dictate. A Bluetooth microphone puts its device on a call, at call quality, while the mic is on. A pick is used whenever it’s connected; when it isn’t, the \(ThisDevice.name)’s hears.") {
+        Box(header: "Microphone", footer: "Automatic hears from the \(ThisDevice.name), or a wired headset when one is plugged in, never from Bluetooth, so music on AirPods and speakers keeps its full quality while you dictate. A Bluetooth microphone records at full quality on AirPods that can, and otherwise puts its device on a call while the mic is on. A pick is used whenever it’s connected; when it isn’t, the \(ThisDevice.name)’s hears.") {
             ChoiceRow(title: "Automatic", picked: choices.picked == nil) { choices.pick(nil) }
             ForEach(choices.all, id: \.uid) { microphone in
                 ChoiceRow(title: microphone.title, detail: detail(microphone), picked: choices.isPicked(microphone)) { choices.pick(microphone) }
             }
-        }
-        Box(footer: "Each dictation is heard one of two ways, at random: through Apple’s voice processing, as a call is, or as the front microphones hear it, aimed at you, with nothing taken away. Each transcript keeps which, so what you edit shows which writes your words best. Only on an iPhone that can aim its microphones, with Automatic picked, while its own microphone hears and nothing plays on its speaker.") {
-            ToggleRow(title: "Compare Microphones", isOn: $comparing)
         }
         .onAppear { choices.reload() }
     }
@@ -202,8 +198,8 @@ private struct MicrophoneSettings: View {
     private func detail(_ microphone: PickedMicrophone) -> String? {
         switch (microphone.kind, choices.isAway(microphone)) {
         case (.iPhone, _): "Its microphones together, so your voice isn’t lost when one is covered."
-        case (.bluetooth, true): "Not connected. Used when it is, at call quality."
-        case (.bluetooth, false): "Call-quality sound on it while the mic is on."
+        case (.bluetooth, true): "Not connected. Used when it is."
+        case (.bluetooth, false): "Full quality on AirPods that record so, else call quality while the mic is on."
         case (.other, true): "Not connected. Used when it is."
         case (.other, false): nil
         }

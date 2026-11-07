@@ -11,23 +11,27 @@ import WidgetKit
     private var engine = AVAudioEngine()
     private let feed = Feed()
     private var lock: Int32?
-    /// The way the engine hears between dictations when it may compare them (`Capture`), drawn as the microphone opens
-    /// and by `next`; nil where it can't.
-    private var planned: Capture?
-    /// The way the recording being made is heard, nil when it isn't compared or a restart changed the way mid-recording.
+    /// How the iPhone's microphones are aimed now, nil when another microphone hears.
+    private var aimed: Capture?
+    /// How the recording being made is heard, nil when a restart changed it mid-recording.
     private var recordingAs: Capture?
-    /// Another app took the microphone (a call), or the engine couldn't be started again after a change under it.
+    /// The engine couldn't be started again after a change under it.
     var onLost: () -> Void = {}
-    /// A speaker or headphones connected while voice processing holds the sound on the iPhone, which can't hand it over
-    /// while the microphone is on.
-    var onSpeaker: () -> Void = {}
+    /// Another app took the microphone: a call answered, a voice message, Siri.
+    var onInterrupted: () -> Void = {}
+    /// iOS says the app that took the microphone is done with it.
+    var onFreed: () -> Void = {}
     var onLevel: (_ loudness: Float, _ recorded: Double) -> Void = { _, _ in }
 
     init() {
         let center = NotificationCenter.default
         center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
-            guard note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt == AVAudioSession.InterruptionType.began.rawValue else { return }
-            Task { @MainActor in self?.onLost() }
+            let info = note.userInfo
+            let began = info?[AVAudioSessionInterruptionTypeKey] as? UInt == AVAudioSession.InterruptionType.began.rawValue
+            let resume = (info?[AVAudioSessionInterruptionOptionKey] as? UInt).map { AVAudioSession.InterruptionOptions(rawValue: $0).contains(.shouldResume) } ?? false
+            Task { @MainActor in
+                if began { self?.onInterrupted() } else if resume { self?.onFreed() }
+            }
         }
         center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
             let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt).flatMap(AVAudioSession.RouteChangeReason.init)
@@ -36,7 +40,6 @@ import WidgetKit
                 if let picked = SettingsStore.microphone, picked.kind != .iPhone, reason == .newDeviceAvailable || reason == .oldDeviceUnavailable {
                     self.restart() // restart: a picked microphone came or went
                 }
-                if reason == .newDeviceAvailable, self.engine.inputNode.isVoiceProcessingEnabled { self.onSpeaker() }
             }
         }
         center.addObserver(forName: .AVAudioEngineConfigurationChange, object: nil, queue: .main) { [weak self] _ in
@@ -55,50 +58,27 @@ import WidgetKit
     /// The input recording now, as iOS names it.
     var input: String? { AVAudioSession.sharedInstance().currentRoute.inputs.first?.portName }
 
-    /// Whether it hears through Apple's voice processing now, all of the iPhone's microphones together as a call does.
-    var voiceProcessing: Bool { engine.inputNode.isVoiceProcessingEnabled }
-
-    /// The way the engine hears now, as `begin` set it up.
-    private var way: Capture.Way?
-
-    /// Voice processing passed a dictation's sound as near digital silence while the iPhone's microphone heard speech
-    /// (Bassim's Duo, Nov 5: the hardware heard -38 to -53 dB and voice processing passed -78 dB, five openings in a
-    /// row, with nothing logged), so it hears without it, on the iPhone's own microphone, until a dictation heard so has
-    /// sound. iOS says nothing of it as it happens, and a quiet room comes out of voice processing about as low.
-    var skipsVoiceProcessing = false {
-        didSet {
-            guard skipsVoiceProcessing != oldValue else { return }
-            if skipsVoiceProcessing {
-                HostApp.log.notice("voice processing gave no sound: hearing without it until a dictation has sound (its input muted \(self.engine.inputNode.isVoiceProcessingInputMuted, privacy: .public), the app's \(AVAudioApplication.shared.isInputMuted, privacy: .public))")
-            } else {
-                HostApp.log.notice("a dictation had sound: hearing through voice processing again")
-                settle()
-            }
-        }
-    }
+    /// How the last recording was heard: the front cardioid, or nil for iOS's own pick, another microphone, or a restart
+    /// that changed it mid-recording.
+    var heard: Capture? { recordingAs }
 
     /// By default it hears from the iPhone and never from a Bluetooth microphone, which would put a speaker or AirPods on
     /// a call (`.allowBluetoothHFP`), and music would drop to call quality or stop. A microphone picked in Settings is
     /// asked for by `PickedMicrophone.matches` and heard from instead: a Bluetooth one is the only pick that allows
-    /// HFP, and only while it's connected; away, the iPhone's hears and the category goes back, and a device coming or
-    /// going (`routeChangeNotification`) starts the engine again onto the pick, or, when voice processing still holds
-    /// the sound after that, hands it over as without a pick. Mixes with whatever else
-    /// is playing, so music keeps going while you talk, wherever it plays. While any app records, iOS mutes every
-    /// app's haptics, the keyboard's included, unless the recording session allows them. While the iPhone plays the
-    /// sound itself and its own microphones hear, it hears through Apple's voice processing, which picks up your voice
-    /// from all of them as a call does: from one microphone, the folded iPhone Duo in portrait lost his voice for
-    /// seconds at a time, 12% of the time, leaving a low rumble that Parakeet writes as nothing. Voice processing takes
-    /// the sound from a Bluetooth speaker or AirPlay to the iPhone, and music apps pause, so while one plays it hears
-    /// from one; a picked outside microphone hears without it. Voice processing's I/O unit renders its output every
-    /// cycle, the reference its echo canceling takes away, and with nothing connected there every render failed
-    /// (`render err: -1`, 43 a second), so while it's on the output plays the main mixer's silence.
+    /// Bluetooth's microphone, at full quality where it records so (`.bluetoothHighQualityRecording`, recent AirPods),
+    /// else on a call, and only while it's connected; away, the iPhone's hears and the category goes back, and a device
+    /// coming or going (`routeChangeNotification`) starts the engine again onto the pick.
+    ///
+    /// It never runs Apple's voice processing, which takes sound from a Bluetooth speaker or AirPlay to the iPhone, pauses
+    /// music apps and ducks the rest, and gave a dictation no sound at all on 19 of 436 (Nov 4 to 7, 3 of 381 without
+    /// it). So it mixes with whatever else plays, wherever it plays, and nothing else hears a difference. iOS mutes
+    /// every app's haptics while any app records unless the recording session allows them, and an incoming call that
+    /// rings doesn't stop it, only one that's answered.
     func open() throws {
         guard lock == nil else { return }
-        planned = nil
         do {
             try beginOnAnyEngine()
         } catch {
-            try? engine.inputNode.setVoiceProcessingEnabled(false)
             try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
             throw error
         }
@@ -113,7 +93,6 @@ import WidgetKit
         do {
             try begin()
         } catch {
-            try? engine.inputNode.setVoiceProcessingEnabled(false)
             engine = AVAudioEngine()
             try begin()
         }
@@ -124,35 +103,22 @@ import WidgetKit
     private func begin() throws {
         let session = AVAudioSession.sharedInstance()
         let picked = SettingsStore.microphone
-        try session.setCategory(.playAndRecord, options: picked?.kind == .bluetooth ? Self.options.union(.allowBluetoothHFP) : Self.options)
+        let bluetooth: AVAudioSession.CategoryOptions = [.allowBluetoothHFP, .bluetoothHighQualityRecording]
+        try session.setCategory(.playAndRecord, mode: .default, options: picked?.kind == .bluetooth ? Self.options.union(bluetooth) : Self.options)
+        try? session.setPrefersNoInterruptionsFromSystemAlerts(true)
         try session.setActive(true)
         var input = picked.flatMap { picked in session.availableInputs?.first(where: picked.matches) }
-        if picked?.kind == .bluetooth, input == nil { try session.setCategory(.playAndRecord, options: Self.options) }
+        if picked?.kind == .bluetooth, input == nil { try session.setCategory(.playAndRecord, mode: .default, options: Self.options) }
         if picked != nil, input == nil { input = session.availableInputs?.first { $0.portType == .builtInMic } }
         try? session.setPreferredInput(input)
-        let node = engine.inputNode
-        let recording = feed.isRecording
-        if !recording, planned == nil { planned = Capture.draw(session) }
-        var way = chosen(session, keeping: recording)
         do {
-            try way.pointed.point(session)
+            aimed = try Capture.aim(session)
         } catch {
-            HostApp.log.error("couldn't point at \(way.pointed.rawValue, privacy: .public): \(error.localizedDescription, privacy: .public)")
-            try? Capture.voiceProcessing.point(session)
-            way = Capture.Way(capture: nil, pointed: .voiceProcessing, processing: way.processing || way.capture == .cardioid)
+            HostApp.log.error("couldn't aim the microphone: \(error.localizedDescription, privacy: .public)")
+            aimed = nil
         }
-        if node.isVoiceProcessingEnabled != way.processing, (try? node.setVoiceProcessingEnabled(way.processing)) != nil, way.processing {
-            node.voiceProcessingOtherAudioDuckingConfiguration = .init(enableAdvancedDucking: false, duckingLevel: .min)
-        }
-        if node.isVoiceProcessingEnabled != way.processing { way = Capture.Way(capture: nil, pointed: way.pointed, processing: node.isVoiceProcessingEnabled) }
-        if recording, way.capture != recordingAs { recordingAs = nil }
-        self.way = way
-        if node.isVoiceProcessingEnabled {
-            engine.connect(engine.mainMixerNode, to: engine.outputNode, format: nil)
-        } else {
-            engine.disconnectNodeInput(engine.outputNode)
-        }
-        feed.hear(voiceProcessing: node.isVoiceProcessingEnabled)
+        if feed.isRecording, aimed != recordingAs { recordingAs = nil }
+        let node = engine.inputNode
         try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
         let heard = node.outputFormat(forBus: 0)
         guard heard.sampleRate > 0, heard.channelCount > 0 else { throw Unrecordable(format: heard.description) }
@@ -169,7 +135,7 @@ import WidgetKit
         }
         let route = session.currentRoute.inputs.first
         let source = route?.selectedDataSource
-        HostApp.log.notice("hearing \(way.capture?.rawValue ?? "uncompared", privacy: .public), pointed at \(way.pointed.rawValue, privacy: .public), voice processing \(way.processing ? "on" : "off", privacy: .public), from \(route?.portType.rawValue ?? "nothing", privacy: .public) \(source?.dataSourceName ?? "", privacy: .public) \(source?.selectedPolarPattern?.rawValue ?? "", privacy: .public), other audio \(session.isOtherAudioPlaying ? "playing" : "silent", privacy: .public)")
+        HostApp.log.notice("hearing \(self.aimed?.rawValue ?? "as iOS picks", privacy: .public), from \(route?.portType.rawValue ?? "nothing", privacy: .public) \(source?.dataSourceName ?? "", privacy: .public) \(source?.selectedPolarPattern?.rawValue ?? "", privacy: .public), other audio \(session.isOtherAudioPlaying ? "playing" : "silent", privacy: .public)")
     }
 
     /// iOS stops the engine when the hardware's format or route changes under it, and every audio object is dead after
@@ -202,62 +168,26 @@ import WidgetKit
         ControlCenter.shared.reloadControls(ofKind: Dictation.micControl)
     }
 
-    /// Records from the next sound on into `url`, back in voice processing first when the iPhone's speaker started
-    /// playing since the engine started.
+    /// Records from the next sound on into `url`.
     func record(to url: URL) {
-        settle()
-        recordingAs = way?.capture
+        recordingAs = aimed
         feed.start(file: url)
         Dictation.publish(level: 0, recorded: 0)
     }
 
-    /// Everything recorded since `record`, through your last word (`Feed.stopOnceQuiet`), and the way it was heard.
-    func stop() async -> (sound: [Float], heardAs: Capture?) {
-        let sound = engine.isRunning ? await feed.stopOnceQuiet() : feed.stop()
-        return (sound, heardAs())
+    /// Everything recorded since `record`, through your last word (`Feed.stopOnceQuiet`).
+    func stop() async -> [Float] {
+        engine.isRunning ? await feed.stopOnceQuiet() : feed.stop()
     }
 
-    /// Everything recorded since `record`, up to now, and the way it was heard.
-    func cut() -> (sound: [Float], heardAs: Capture?) {
-        (feed.stop(), heardAs())
-    }
-
-    /// The way the recording just stopped was heard, nil when the iPhone's speaker played into one voice processing
-    /// didn't hear.
-    private func heardAs() -> Capture? {
-        defer { recordingAs = nil }
-        return recordingAs != .voiceProcessing && Capture.speakerPlays(.sharedInstance()) ? nil : recordingAs
-    }
-
-    /// Draws the way the next dictation is heard, and starts the engine again in it when that's another, for a
-    /// microphone that stays on between dictations; the restart is done before the next dictation can start.
-    func next() {
-        guard isOn, !feed.isRecording else { return }
-        planned = Capture.draw(.sharedInstance())
-        settle()
-    }
-
-    /// Starts the engine again, while nothing's recorded and iikb is in front, when it hears another way than it would
-    /// start in now. In the background it keeps hearing as it does until the next opening.
-    private func settle() {
-        guard isOn, !feed.isRecording, Self.inFront, chosen(.sharedInstance(), keeping: false) != way else { return }
-        restart() // restart: in front
+    /// Everything recorded since `record`, up to now.
+    func cut() -> [Float] {
+        feed.stop()
     }
 
     /// Whether iikb is in front, the only time it stops and starts the microphone by choice: from the background iOS
-    /// refuses the new start, and the microphone went off after every dictation that switched the way it hears
-    /// (Bassim's Duo, Nov 6: OSStatus 560557684 pointing it, then the engine's start failing twice).
+    /// refuses the new start (Bassim's Duo, Nov 6: OSStatus 560557684 pointing it, then the engine's start failing twice).
     static var inFront: Bool { UIApplication.shared.applicationState == .active }
-
-    /// The way the engine would start in now: the recording's own while one runs, else the next one drawn.
-    private func chosen(_ session: AVAudioSession, keeping recording: Bool) -> Capture.Way {
-        Capture.Way.choose(
-            onIPhone: Capture.onIPhone(session), skipping: skipsVoiceProcessing, speakerPlays: Capture.speakerPlays(session),
-            mayCompare: Capture.mayCompare(session), offersCardioid: Capture.offersCardioid(session), arm: recording ? way?.capture : planned)
-    }
-
-    /// Whether the iPhone's own microphone is the input now.
-    var hearsIPhone: Bool { AVAudioSession.sharedInstance().currentRoute.inputs.allSatisfy { $0.portType == .builtInMic } }
 
     /// Runs on the audio thread: hands each buffer to the recording, if there is one, and says how loud it was and how
     /// long the recording is now.
@@ -287,7 +217,6 @@ nonisolated private final class Feed: @unchecked Sendable {
     private var heard: AVAudioFormat?
     /// Channel 0 of a multichannel buffer, the one signal the level meter and the recording share.
     private var mono: AVAudioPCMBuffer?
-    private var voiceProcessing = false
     /// What's been heard since `start`, nil while nothing is being recorded; kept even when its file can't be written.
     private var recording: [Float]?
     private var file: Recording.File?
@@ -296,10 +225,6 @@ nonisolated private final class Feed: @unchecked Sendable {
     private var ended: CheckedContinuation<[Float], Never>?
 
     var isRecording: Bool { lock.withLock { recording != nil } }
-
-    func hear(voiceProcessing on: Bool) {
-        lock.withLock { voiceProcessing = on }
-    }
 
     func start(file url: URL) {
         lock.withLock {
@@ -341,7 +266,7 @@ nonisolated private final class Feed: @unchecked Sendable {
             if heard != buffer.format {
                 heard = buffer.format
                 recorder = nil
-                HostApp.log.notice("recording from \(buffer.format.channelCount) channels at \(buffer.format.sampleRate, format: .fixed(precision: 0)) Hz, voice processing \(self.voiceProcessing ? "on" : "off", privacy: .public)")
+                HostApp.log.notice("recording from \(buffer.format.channelCount) channels at \(buffer.format.sampleRate, format: .fixed(precision: 0)) Hz")
             }
             let source = channelZero(of: buffer)
             if recorder == nil, let source { recorder = AVAudioConverter(from: source.format, to: Recording.format) }

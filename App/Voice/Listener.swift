@@ -27,6 +27,9 @@ import UIKit
     private var micOffOnceWritten = false
     /// Home's switch turned the microphone on: it stays on until the switch turns it off, whatever Keep Mic On says.
     private var held = false
+    /// Another app took the microphone while it was on (an answered call): it comes back on by itself once iOS says
+    /// that app is done, held by Home's switch if it was then. Nil when it doesn't come back.
+    private var heldWhenTaken: Bool?
     /// The last recording held no sound at all, so the microphone's input is taken to be dead: it goes off once nothing
     /// is being recorded or written, and the next dictation opens it fresh.
     private var deaf = false
@@ -46,7 +49,8 @@ import UIKit
 
     private init() {
         microphone.onLost = { Task { await Listener.shared.lose() } }
-        microphone.onSpeaker = { Listener.shared.yieldSound() }
+        microphone.onInterrupted = { Task { await Listener.shared.lose(comingBack: true) } }
+        microphone.onFreed = { Listener.shared.comeBack() }
         microphone.onLevel = { level, recorded in
             Listener.shared.recording?.recorded = recorded
             Listener.shared.onLevel?(level)
@@ -84,8 +88,6 @@ import UIKit
             VoiceModel.shared.micIsOn = true
             take.mic = microphone.input
             microphone.record(to: Transcripts.shared.recording(of: take.id))
-            take.voiceProcessing = microphone.voiceProcessing
-            take.onIPhone = microphone.hearsIPhone
         } catch {
             recording = nil
             closeMic()
@@ -94,17 +96,15 @@ import UIKit
     }
 
     /// Has the dictation written down and typed in `keyboard`, the keyboard you stopped it in (nil from the app's
-    /// screen, for the next keyboard to show), and returns once your last word is in. `closing` when the microphone
-    /// goes off right after.
-    func finish(in keyboard: UInt64? = nil, closing: Bool = false) async {
+    /// screen, for the next keyboard to show), and returns once your last word is in.
+    func finish(in keyboard: UInt64? = nil) async {
         if let take = recording, tail == nil {
             take.keyboard = keyboard
             if keyboard != nil { take.app = Dictation.host }
             let tail = Task {
-                let (sound, heardAs) = await microphone.stop()
-                take.capture = heardAs
+                let sound = await microphone.stop()
+                take.capture = microphone.heard
                 (recording, self.tail) = (nil, nil)
-                if !closing, staysOn(after: sound) { microphone.next() }
                 return sound
             }
             self.tail = tail
@@ -116,10 +116,9 @@ import UIKit
     /// Types nothing of the dictation being recorded: it's kept in Transcripts only.
     func cancel() {
         guard let take = recording, tail == nil else { return }
-        let (sound, heardAs) = microphone.cut()
-        take.capture = heardAs
+        let sound = microphone.cut()
+        take.capture = microphone.heard
         recording = nil
-        if staysOn(after: sound) { microphone.next() }
         take.typed = false
         write(take, Task { sound })
     }
@@ -155,12 +154,10 @@ import UIKit
         let sounded = samples.contains { abs($0) > Self.silence }
         let silent = take.stopped.timeIntervalSince(take.started) >= 1 && !sounded
         deaf = silent
-        if silent, take.voiceProcessing == true { microphone.skipsVoiceProcessing = true }
-        if sounded, take.voiceProcessing == true || take.onIPhone { microphone.skipsVoiceProcessing = false }
         do {
             let written = try await VoiceModel.shared.write(samples, for: take.app)
             writing.removeAll { $0 === take }
-            Transcripts.shared.add(written.text, heard: written.heard, id: take.id, at: take.started, seconds: seconds, typed: take.typed, model: written.model, mic: take.mic, voiceProcessing: take.voiceProcessing, capture: take.capture, levels: Recording.levels(samples), app: take.app)
+            Transcripts.shared.add(written.text, heard: written.heard, id: take.id, at: take.started, seconds: seconds, typed: take.typed, model: written.model, mic: take.mic, voiceProcessing: false, capture: take.capture, levels: Recording.levels(samples), app: take.app)
             if take.typed, silent {
                 Dictation.leave(.notice("The microphone gave no sound: tap the mic again"))
             } else if take.typed, written.text.isEmpty {
@@ -218,33 +215,38 @@ import UIKit
     /// off once every dictation is written down, so the next one opens the app and starts it afresh.
     func turnMicOff() async {
         held = false
+        heldWhenTaken = nil
         guard microphone.isOn else { return }
         micOffOnceWritten = true
         await finish()
         keepMicOn()
     }
 
-    /// A speaker or headphones connected while the microphone holds the sound on the iPhone: it goes off once what
-    /// you're saying is written down, so music plays there, and the next dictation opens the app to hear without
-    /// holding it.
-    private func yieldSound() {
-        held = false
-        micOffOnceWritten = true
-        keepMicOn()
-    }
-
-    /// Another app took the microphone (a call), or the route changed under the engine: keep what was heard, and turn
-    /// the microphone off now, since it hears nothing more.
-    private func lose() async {
+    /// The engine couldn't start again after a change under it, or another app took the microphone: keep what was
+    /// heard, and turn the microphone off now, since it hears nothing more. Taken by another app, it comes back on once
+    /// that app is done (`comeBack`).
+    private func lose(comingBack: Bool = false) async {
         guard microphone.isOn else { return }
-        await finish(closing: true)
+        let wasHeld = held
+        await finish()
         closeMic()
+        if comingBack { heldWhenTaken = wasHeld }
     }
 
-    /// Whether the microphone stays on after a dictation of `sound`, to hear the next one another way (`Capture`): not
-    /// when it's turning off, Keep Mic On is Off, or the sound says it went deaf.
-    private func staysOn(after sound: [Float]) -> Bool {
-        !micOffOnceWritten && (held || SettingsStore.keepMicOn > 0) && sound.contains { abs($0) > Self.silence }
+    /// The app that took the microphone is done with it: on again as it was, from the background, where iOS lets an
+    /// interrupted recording go on. If it doesn't, the next dictation opens the app as when the microphone is off.
+    private func comeBack() {
+        guard let wasHeld = heldWhenTaken, !microphone.isOn else { return }
+        heldWhenTaken = nil
+        do {
+            try microphone.open()
+            VoiceModel.shared.micIsOn = true
+            held = wasHeld
+            HostApp.log.notice("the microphone came back on after another app had it")
+            keepMicOn()
+        } catch {
+            HostApp.log.error("the microphone couldn't come back on after another app had it: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     private func closeMic() {
@@ -289,9 +291,6 @@ private final class Take {
     let started = Date.now
     var stopped = Date.now
     var mic: String?
-    var voiceProcessing: Bool?
-    /// Heard on the iPhone's own microphone, not a headset or a picked one.
-    var onIPhone = false
     var capture: Capture?
     /// Seconds recorded, as the microphone counts them.
     var recorded: Double = 0
