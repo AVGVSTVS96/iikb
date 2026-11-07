@@ -19,10 +19,10 @@ const blurbs = {
 };
 const picks = document.querySelector(".theme-pick");
 const cards = document.querySelector(".theme-cards");
-const mini = `<div class="row"><span class="k"><i class="face">i</i></span><span class="k"><i class="face">i</i></span><span class="k"><i class="face">k</i></span><span class="k"><i class="face">b</i></span></div><div class="row"><span class="k fn k-123"><i class="face">123</i></span><span class="k fn k-space"><i class="face"><small>iikb</small></i></span><span class="k fn k-return"><i class="face"><svg viewBox="0 0 24 24"><path d="M19 5v6a3 3 0 0 1-3 3H6m0 0 4-4m-4 4 4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></i></span></div>`;
+const mini = `<div class="row"><span class="k"><i class="face">i</i></span><span class="k"><i class="face">i</i></span><span class="k"><i class="face">k</i></span><span class="k"><i class="face">b</i></span></div><div class="row"><span class="k fn k-123"><i class="face">123</i></span><span class="k k-space"><i class="face"></i></span><span class="k fn k-return"><i class="face"><svg viewBox="0 0 24 24"><path d="M19 5v6a3 3 0 0 1-3 3H6m0 0 4-4m-4 4 4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></i></span></div>`;
 for (const name of themeNames) {
   picks.append(html(`<button type="button" role="radio" data-theme="${name}">${themes[name].title}</button>`));
-  cards.append(html(`<button type="button" class="theme-card" role="radio" data-theme="${name}"><div class="mini kb-like">${mini}</div><div><b>${themes[name].title}</b><span>${blurbs[name]}</span></div></button>`));
+  cards.append(html(`<button type="button" class="theme-card" role="radio" data-theme="${name}"><div class="mini kb-like">${mini}</div><div class="about"><b>${themes[name].title}</b><span>${blurbs[name]}</span></div></button>`));
 }
 const wordmark = mountWordmark(document.querySelector(".keycaps"), () => theme);
 const applyTheme = (name, fromUser) => {
@@ -52,10 +52,15 @@ const stage = document.querySelector("[data-pose-stage]");
 const cap = document.querySelector("[data-pose-cap]");
 const showPose = (pose) => {
   for (const b of posePick.children) b.setAttribute("aria-selected", String(b.dataset.pose === pose.id));
-  const shot = (s) => `shots/duo-${pose.id}-${s}.webp`;
-  stage.replaceChildren(html(`<div class="device${pose.fold ? ` fold ${pose.fold}` : ""}" style="--from:${pose.from ?? "0deg"}"><picture><source media="(prefers-color-scheme: dark)" srcset="${shot("dark")}"><img src="${shot("light")}" alt="iikb on the iPhone Duo, ${pose.title.toLowerCase()}"></picture></div>`));
+  const [w, h] = pose.size.split(" × ").map(parseFloat);
+  stage.replaceChildren(html(`<div class="device${pose.fold ? ` fold ${pose.fold}` : ""}" style="--from:${pose.from ?? "0deg"};--w:${w};--h:${h}"><img src="shots/duo-${pose.id}.webp" width="${w * 3}" height="${h * 3}" alt="iikb on the iPhone Duo, ${pose.title.toLowerCase()}"></div>`));
   cap.textContent = `iPhone Duo simulator · ${pose.title.toLowerCase()} · ${pose.size}`;
 };
+// One scale for every pose, so each screen keeps its real size against the others.
+new ResizeObserver(() => {
+  const room = stage.clientWidth - 48;
+  stage.style.setProperty("--u", `${Math.min(room < 600 ? room / 700 : room / 960, 560 / 960, (innerHeight * 0.7) / 960)}px`);
+}).observe(stage);
 for (const pose of poses) {
   const b = html(`<button type="button" role="tab" data-pose="${pose.id}">${pose.title}</button>`);
   b.addEventListener("click", () => showPose(pose));
@@ -154,7 +159,7 @@ if (facts && chart) {
     const dots = (c, n) => c.map((v, i) => `<circle class="fade dot-${n}" cx="${x(i)}" cy="${y(v)}" r="3"/>`).join("");
     const last = iikbCurve.length - 1;
     const ends = narrow
-      ? `<text class="end end-ours fade" x="${left + 4}" y="${y(iikbCurve[0]) + 20}">iikb</text><text class="end end-theirs fade" x="${left + 4}" y="${y(baselineCurve[0]) + 22}">nearest key + spell checker</text>`
+      ? `<text class="end end-ours fade" x="${left + 4}" y="${y(iikbCurve[0]) - 10}">iikb</text><text class="end end-theirs fade" x="${left + 4}" y="${y(baselineCurve[0]) + 22}">nearest key + spell checker</text>`
       : `<text class="end end-ours fade" x="${x(last) + 12}" y="${y(iikbCurve[last]) + 4}">iikb</text><text class="end end-theirs fade" x="${x(last) + 12}" y="${y(baselineCurve[last]) - 4}">nearest key +</text><text class="end end-theirs fade" x="${x(last) + 12}" y="${y(baselineCurve[last]) + 12}">spell checker</text>`;
     chart.innerHTML = `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">${ticks}${labels}<path class="series theirs draw" d="${path(baselineCurve)}"/><path class="series ours draw" d="${path(iikbCurve)}"/>${dots(baselineCurve, "theirs")}${dots(iikbCurve, "ours")}${ends}</svg>`;
     for (const line of chart.querySelectorAll(".ours.draw")) line.style.setProperty("--length", line.getTotalLength());

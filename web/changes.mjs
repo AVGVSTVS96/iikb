@@ -8,7 +8,7 @@ const log = git("log", "--format=%h%x1f%cI%x1f%(trailers:key=Changelog,valueonly
   .filter(([sha]) => sha);
 
 const changes = log
-  .flatMap(([sha, at, trailers]) => (trailers ?? "").split("\x1e").map((text) => ({ sha, at, text: text.trim().replace(/\.$/, "") })))
+  .flatMap(([sha, at, trailers]) => (trailers ?? "").split("\x1e").map((text) => ({ sha, at, text: text.trim().replace(/\.$/, "").replace(/'/g, "’") })))
   .filter((change) => change.text)
   .slice(0, 24);
 

@@ -5,7 +5,9 @@ import { paint } from "./themes.js";
 
 const PATH = document.querySelector("#wordmark path").getAttribute("d");
 const VIEW = { w: 147.2, h: 72.7 };
-const columns = () => (innerWidth < 640 ? 36 : 62);
+// A stem is six cells (four on a phone): the second i starts a stem and a half in, so both land on whole cells.
+const STEM = 14.2;
+const columns = () => VIEW.w / (STEM / (innerWidth < 640 ? 4 : 6));
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Each cell's share of ink, from the wordmark drawn large and read back.
@@ -21,7 +23,7 @@ function cells(COLS) {
   const data = g.getImageData(0, 0, canvas.width, canvas.height).data;
   const out = [];
   for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < COLS; c++) {
+    for (let c = 0; c < Math.floor(COLS); c++) {
       let ink = 0;
       const n = 6;
       for (let i = 0; i < n; i++) {
@@ -32,7 +34,7 @@ function cells(COLS) {
         }
       }
       ink /= n * n;
-      if (ink > 0.3) out.push({ c, r, size: ink > 0.62 ? 1 : 0.5, ox: 0, oy: 0, vx: 0, vy: 0, press: 0, glow: 0 });
+      if (ink > 0.5) out.push({ c, r, size: 1, ox: 0, oy: 0, vx: 0, vy: 0, press: 0, glow: 0 });
     }
   }
   return { list: out, rows, COLS };
@@ -63,7 +65,7 @@ function keycap(key, size, pressed, dark) {
     const face = g.createLinearGradient(0, 0, 0, s);
     face.addColorStop(0, top); face.addColorStop(1, bottom);
     g.fillStyle = face; shape(0, 0, s, s, r); g.fill();
-    if (!dark) { g.strokeStyle = "rgb(0 0 0 / .14)"; g.lineWidth = 1; shape(0.5, 0.5, s - 1, s - 1, r); g.stroke(); }
+    if (!dark) { g.strokeStyle = "rgb(0 0 0 / .22)"; g.lineWidth = 1; shape(0.5, 0.5, s - 1, s - 1, r); g.stroke(); }
     if (key.rim) {
       g.save(); shape(0, 0, s, s, r); g.clip();
       const rim = g.createLinearGradient(0, 0, 0, s * Math.max(key.rim[2], 0.2));

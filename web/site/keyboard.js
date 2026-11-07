@@ -37,6 +37,11 @@ export const LINES = [
   "bring your own integration. no more keyboard switching",
 ];
 
+const LETTERS = "qwertyuiopasdfghjklzxcvbnm";
+const NUMBERS = [..."1234567890", "-", "/", ":", ";", "(", ")", "$", "&", "@", ".", ",", "?", "!", "’", "\"", "+"];
+const NUMBER = Object.fromEntries([...LETTERS].map((k, i) => [k, NUMBERS[i]]));
+const EMOJI = ["🔥", "⚡", "🎯", "🧠", "🤌", "🚀", "✨", "🫡"];
+
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -47,6 +52,7 @@ export function mountKeyboard(root) {
   const keys = new Map();
   let text = "";
   let shift = false;
+  let numbers = false;
   let auto = !reduced;
   let generation = 0;
 
@@ -54,7 +60,7 @@ export function mountKeyboard(root) {
     + ROWS.map((row, r) => `<div class="row r${r}">${row.map((k) => {
       const fn = k.length > 1;
       const label = fn ? (k === "123" ? "123" : k === "space" ? "<small>iikb</small>" : ICONS[k] ?? "") : k;
-      return `<span class="k${fn ? " fn" : ""} k-${k}" data-k="${k}"><i class="face">${label}</i></span>`;
+      return `<span class="k${fn && k !== "space" ? " fn" : ""} k-${k}" data-k="${k}"><i class="face">${label}</i></span>`;
     }).join("")}</div>`).join("")
     + `<div class="pop" aria-hidden="true"><i></i></div>`;
 
@@ -73,8 +79,17 @@ export function mountKeyboard(root) {
   };
   new ResizeObserver(fit).observe(kb);
 
+  const out = (k) => (numbers ? NUMBER[k] : shift ? k.toUpperCase() : k);
+  const setNumbers = (on) => {
+    numbers = on;
+    kb.classList.toggle("numbers", on);
+    for (const k of LETTERS) keys.get(k).firstChild.textContent = on ? NUMBER[k] : k;
+    keys.get("123").firstChild.textContent = on ? "ABC" : "123";
+  };
+
   const render = () => {
     field.querySelector("span").textContent = text;
+    field.scrollTop = field.scrollHeight;
     field.classList.toggle("empty", !text);
     const word = text.match(/[\w'+-]*$/)[0].toLowerCase();
     let list;
@@ -96,7 +111,7 @@ export function mountKeyboard(root) {
     if (!el) return;
     el.classList.add("down");
     if (k.length === 1) {
-      pop.firstChild.textContent = shift ? k.toUpperCase() : k;
+      pop.firstChild.textContent = out(k);
       const kr = el.getBoundingClientRect();
       const br = kb.getBoundingClientRect();
       pop.style.left = `${kr.left - br.left + kr.width / 2}px`;
@@ -125,7 +140,9 @@ export function mountKeyboard(root) {
     else if (k === "space") text += " ";
     else if (k === "return") send();
     else if (k === "shift") { shift = !shift; render(); return; }
-    else if (k.length === 1) { text += shift ? k.toUpperCase() : k; shift = false; }
+    else if (k === "123") { setNumbers(!numbers); return; }
+    else if (k === "emoji") text += EMOJI[Math.floor(Math.random() * EMOJI.length)];
+    else if (k.length === 1) { text += out(k); shift = false; }
     render();
   };
 
@@ -169,8 +186,10 @@ export function mountKeyboard(root) {
   };
 
   // The mic key: the bar fills with the recording, then the words come in as the dictation style writes them.
-  const dictate = async (words = "Running late, but I'll be there by 3:30pm. Save me a seat") => {
+  const dictate = async (words = "Running late, but I’ll be there by 3:30pm. Save me a seat") => {
     takeOver();
+    send();
+    setNumbers(false);
     kb.classList.add("listening");
     mic.setAttribute("aria-pressed", "true");
     await sleep(reduced ? 300 : 1900);
@@ -179,7 +198,8 @@ export function mountKeyboard(root) {
     await sleep(reduced ? 100 : 450);
     kb.classList.remove("writing");
     mic.setAttribute("aria-pressed", "false");
-    text = (text && !text.endsWith(" ") ? text + " " : text) + words;
+    text = words;
+    shift = false;
     render();
   };
 
@@ -214,6 +234,7 @@ export function mountKeyboard(root) {
     if (k.length === 1 && !/[a-z]/i.test(k) && !/[.,'!?+:-]/.test(k)) return;
     event.preventDefault();
     takeOver();
+    if (numbers) setNumbers(false);
     if (keys.has(lower)) press(lower);
     if (k.length === 1) { text += k; shift = false; render(); } else type(k);
   });
