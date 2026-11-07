@@ -84,6 +84,7 @@ struct HomeView: View {
     let field: UITextView
     private let status = AppStatus.shared
     @Environment(\.arrangement) private var arrangement
+    @Environment(\.window) private var window
 
     var body: some View {
         Group {
@@ -91,7 +92,7 @@ struct HomeView: View {
             case .side:
                 ViewThatFits(in: .vertical) {
                     VStack(alignment: .leading, spacing: 28) {
-                        tryIt.frame(height: 200)
+                        tryIt.frame(height: min(max(window.height * 0.28, 200), 340))
                         if !status.isSetUp { setUp }
                         VStack(spacing: 12) {
                             stats

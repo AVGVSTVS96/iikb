@@ -111,16 +111,7 @@ struct StatsPage: View {
             }
         } label: {
             if inRow {
-                HStack(spacing: 6) {
-                    Image(systemName: device.symbol)
-                    Text(device.title).lineLimit(1)
-                    Image(systemName: "chevron.up.chevron.down").font(.caption.weight(.semibold))
-                }
-                .font(.body.weight(.medium))
-                .foregroundStyle(Color.appSecondary)
-                .padding(.horizontal, 13)
-                .frame(height: 36)
-                .contentShape(.capsule)
+                PillMenuLabel(symbol: device.symbol, title: device.title)
             } else {
                 Label(device.title, systemImage: device.symbol)
                     .labelStyle(.titleAndIcon)
@@ -149,6 +140,25 @@ struct StatsPage: View {
         Task {
             hours = await Task.detached(priority: .userInitiated) { TypingStats.shared() }.value
         }
+    }
+}
+
+/// A menu at the end of a row of pills, in their unpicked look: its glyph, what it's set to, and the up-down chevron.
+struct PillMenuLabel: View {
+    let symbol: String
+    var title: String?
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol)
+            if let title { Text(title).lineLimit(1) }
+            Image(systemName: "chevron.up.chevron.down").font(.caption.weight(.semibold))
+        }
+        .font(.body.weight(.medium))
+        .foregroundStyle(Color.appSecondary)
+        .padding(.horizontal, 13)
+        .frame(height: 36)
+        .contentShape(.capsule)
     }
 }
 

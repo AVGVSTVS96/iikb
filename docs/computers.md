@@ -1,6 +1,6 @@
 # Computers
 
-Stats shows your iPhone and each computer you add, each apart, picked in the menu beside the title. A computer is an
+Stats shows your iPhone and each computer you add, each apart, picked in the menu at the end of its pills (beside the title where they leave it no room). A computer is an
 address that answers `GET typing-stats.json` with its typing and dictation counts, to whoever sends its token, and the
 app reads it straight from there: over Tailscale when the iPhone and the computer are both on your tailnet, or else your
 home network.

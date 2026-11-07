@@ -22,11 +22,6 @@ struct TapsPage: View {
                 empty
             }
         }
-        .toolbar {
-            if model.layouts.count > 1 {
-                ToolbarItem(placement: .topBarTrailing) { screens }
-            }
-        }
         .onAppear {
             model.screen = window
             model.reload()
@@ -71,7 +66,15 @@ struct TapsPage: View {
 
     private func map(_ board: TapBoard, reader: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionPills(sections: TapMapView.Mode.allCases, selection: $mode, title: \.title)
+            let pills = SectionPills(sections: TapMapView.Mode.allCases, selection: $mode, title: \.title)
+            if model.layouts.count > 1 {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { pills; Spacer(minLength: 0); screens(named: true) }
+                    HStack(spacing: 8) { pills; Spacer(minLength: 0); screens(named: false) }
+                }
+            } else {
+                pills
+            }
             MapView(board: board, revision: model.revision, mode: mode, selected: model.selected) { key in
                 withAnimation(.snappy(duration: 0.25)) { model.selected = key }
             }
@@ -106,7 +109,8 @@ struct TapsPage: View {
         }
     }
 
-    private var screens: some View {
+    /// The screen whose taps show, at the end of the map's pills, by name where it fits.
+    private func screens(named: Bool) -> some View {
         Menu {
             Picker("Screen", selection: $model.signature) {
                 ForEach(model.layouts, id: \.signature) { layout in
@@ -118,9 +122,9 @@ struct TapsPage: View {
                 }
             }
         } label: {
-            Label(model.signature.map(model.title(of:)) ?? "Screen", systemImage: "rectangle.on.rectangle")
-                .labelStyle(.titleAndIcon)
+            PillMenuLabel(symbol: "rectangle.on.rectangle", title: named ? model.signature.map(model.title(of:)) ?? "Screen" : nil)
         }
+        .accessibilityLabel(model.signature.map(model.title(of:)) ?? "Screen")
     }
 
     private var empty: some View {
