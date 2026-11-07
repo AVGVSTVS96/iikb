@@ -5,9 +5,10 @@
 /// spacing on every screen and the mic sits evenly in its corner. Between them the three suggestions share the bar, or
 /// on a phone's bar wide enough take what they need and leave the rest to the word's emoji, beside them rather than in
 /// the third one's place. Neither depends on the emoji, so the suggestions never move as you type, as Apple's don't.
-/// While you dictate, the cancel button takes the next cell after the tools, and the recording, a capsule the mic grows
-/// into, runs from where the next button would be to the mic's right edge, or to the last key's where the mic sits in
-/// the bottom row.
+/// While you dictate, the recording, a capsule the mic grows into, ends at the mic's right edge, or the last key's where
+/// the mic sits in the bottom row, and runs back to where the button after the tools and cancel's would be, but no
+/// further than `recordingWidth`, so a wide bar leaves the rest empty and a narrow one shortens the recording first.
+/// The cancel button sits a pitch before it.
 public struct BarLayout: Hashable, Sendable {
     public var mic: Rect?
     public var tools: [Rect]
@@ -28,6 +29,8 @@ public struct BarLayout: Hashable, Sendable {
     /// A suggestion never needs more width than a third of an iPhone's bar in portrait.
     public static let slotWidth = 130.0
     public static let emojiPitch = 36.0
+    /// The recording's longest, a little under what an iPhone's bar in portrait gives it.
+    public static let recordingWidth = 220.0
 
     /// `keys` are the top row's keys, left to right, as their edges. Where a suggestion is at most `maximumSlot` wide
     /// (Apple's iPad), the three are centered in their span.
@@ -51,9 +54,10 @@ public struct BarLayout: Hashable, Sendable {
         self.mic = mic ? button(at: right - cell) : nil
         minX = leading.last.map { $0.x + $0.width + inset + Self.gap } ?? left
         maxX = self.mic.map { $0.x - inset - Self.gap } ?? right
-        cancel = button(at: left + Double(leading.count) * pitch)
-        let start = cancel.x + pitch
-        recording = Rect(x: start, y: cancel.y, width: (self.mic.map { $0.x + $0.width } ?? right) - start, height: side)
+        let end = self.mic.map { $0.x + $0.width } ?? right
+        let start = max(left + Double(leading.count + 1) * pitch + inset, end - Self.recordingWidth)
+        cancel = Rect(x: start - pitch, y: row.y + (row.height - side) / 2, width: side, height: side)
+        recording = Rect(x: start, y: cancel.y, width: end - start, height: side)
         let span = maxX - minX
         emojiBeside = maximumSlot == .infinity && span - 3 * Self.slotWidth >= 2 * Self.emojiPitch
         let slot = emojiBeside ? Self.slotWidth : min(span / 3, maximumSlot)

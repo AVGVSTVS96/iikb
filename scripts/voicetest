@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. The bar's mic through the real keyboard, with scripts/voiceapp.py standing in for the app, light and
+# Runs on the Mac. OPEN=1 unfolds the iPhone Duo first. The bar's mic through the real keyboard, with scripts/voiceapp.py standing in for the app, light and
 # dark: scripts/voicetest ["iPhone Duo"] [iPhone-Duo]
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -14,13 +14,14 @@ xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "
   -derivedDataPath build/uitest -quiet
 scripts/sim boot "$ID"
 scripts/sim use "$ID" iikb
+[ -n "${OPEN:-}" ] && scripts/sim unfold "$ID"
 scripts/sim allow "$ID"
 group=$(xcrun simctl get_app_container "$ID" com.shahidy.iikb group.com.shahidy.iikb)
 for appearance in light dark; do
   xcrun simctl ui "$ID" appearance "$appearance"
   /usr/bin/python3 scripts/voiceapp.py "$ID" "$group" &
   app=$!
-  TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/voice/$slug-$appearance" \
+  TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/voice/$slug${OPEN:+-open}-$appearance" \
     xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
     -derivedDataPath build/uitest -only-testing:AppUITests/VoiceTests > build/uitest/voice.log 2>&1 || failed=1
   grep -E "error:|XCTAssert|Test Case .*(passed|failed)|Executed" build/uitest/voice.log || true

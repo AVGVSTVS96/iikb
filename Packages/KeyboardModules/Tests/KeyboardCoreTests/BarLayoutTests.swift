@@ -48,13 +48,13 @@ struct BarLayoutTests {
 
     /// Every button is the same circle, centered in the bar and in proportion with it, with as much room on its sides as
     /// above and below where the keys are wider than the bar is tall: the More button and the tools from the first key's
-    /// left edge, then cancel's place, one pitch apart, and the mic as far in from the last key's right edge.
+    /// left edge, one pitch apart, and the mic as far in from the last key's right edge.
     @Test func theButtonsAreOneSizeEvenlySpaced() {
         for screen in Self.screens {
             for (metrics, layout, keys, label) in layouts(screen) {
                 let toolbar = metrics.toolbar
-                let leading = (layout.more.map { [$0] } ?? []) + layout.tools + [layout.cancel]
-                for button in leading + (layout.mic.map { [$0] } ?? []) {
+                let leading = (layout.more.map { [$0] } ?? []) + layout.tools
+                for button in leading + [layout.cancel] + (layout.mic.map { [$0] } ?? []) {
                     #expect(button.width == toolbar.button && button.height == toolbar.button, "\(label): one size")
                     #expect(near(button.midY, toolbar.top + toolbar.bar / 2), "\(label): centered in the bar")
                 }
@@ -62,7 +62,7 @@ struct BarLayoutTests {
                 #expect(toolbar.button / toolbar.bar > 0.65 && toolbar.button / toolbar.bar < 0.8, "\(label): the buttons in proportion with the bar")
                 let key = keys[0].maxX - keys[0].minX
                 let side = (min(max(key, toolbar.button), toolbar.bar) - toolbar.button) / 2
-                #expect(side >= 0 && near(leading[0].x - keys[0].minX, side), "\(label): the first button as far from the first key's edge as from the bar's (\(side))")
+                #expect(side >= 0 && leading.first.map { near($0.x - keys[0].minX, side) } != false, "\(label): the first button as far from the first key's edge as from the bar's (\(side))")
                 for (before, after) in zip(leading, leading.dropFirst()) {
                     #expect(near(after.midX - before.midX, layout.pitch), "\(label): one pitch apart")
                 }
@@ -114,7 +114,8 @@ struct BarLayoutTests {
                 #expect(layout.maxX + BarLayout.gap <= mic.x && mic.x + mic.width <= screen.window + 0.001, "\(label)")
                 #expect(near(layout.recording.x - layout.cancel.x, layout.pitch) && near(layout.recording.x + layout.recording.width, mic.x + mic.width), "\(label): cancel, then the recording to the mic's edge")
                 #expect(layout.recording.height == mic.height && near(layout.recording.midY, mic.midY), "\(label): the recording is the mic grown")
-                #expect(layout.recording.width >= 150, "\(label): the recording has room (\(layout.recording.width))")
+                #expect(layout.recording.width >= 150 && layout.recording.width <= BarLayout.recordingWidth + 0.001, "\(label): the recording has room, and no more (\(layout.recording.width))")
+                #expect(layout.cancel.x >= edge + layout.pitch - layout.cancel.width - 0.001, "\(label): cancel after the tools")
             }
         }
     }
