@@ -25,7 +25,7 @@ One family, as the International Style used it.
 - **Display** (titles, headlines, big numbers): Helvetica Neue Bold, tracked -0.02em at 34px and up to -0.035em at 96px and above; line-height 0.95 to 1.05. Big numbers in Bold or Medium.
 - **Text** on the site: Helvetica Neue Regular 17/1.45, small 14/1.4, labels 12/1.3 Medium. Sentence case. No tracked all-caps.
 - **In the app** only titles (large and inline nav titles), the stat tiles' numbers, the About mark and the space bar's corner label use Helvetica Neue (`AppStyle.display`, `Font.display`). Rows, labels and controls stay the system font, so the app keeps reading as iOS.
-- **On the web:** `"Helvetica Neue", Helvetica` from the visitor's system first (every Apple device has it), then TeX Gyre Heros (GUST Font License, a free Helvetica clone) shipped in `fonts/` for everyone else. Helvetica Neue is Apple's system font and isn't redistributed: `logo/gen.mjs` reads it from `.scratch/fonts` (extracted from the Mac's `/System/Library/Fonts/HelveticaNeue.ttc`), and only the outlines are committed.
+- **On the web:** `"Helvetica Neue", Helvetica` from the visitor's system first (every Apple device has it), then TeX Gyre Heros (GUST Font License, a free Helvetica clone) shipped in `fonts/` for everyone else. Helvetica Neue is Apple's system font and isn't redistributed: `logo/gen.mjs` reads it from `.scratch/fonts` (extracted from the Mac's `/System/Library/Fonts/HelveticaNeue.ttc`), and only the outlines are committed. Labels, the spec list and code on the site are Commit Mono (OFL), as on bassim.im and autofork.
 
 ## Color: the app's own
 

@@ -17,14 +17,12 @@ Apple and Raycast are the bar to beat. Lead with iikb's ambition and the concret
 
 ## Website
 
-- Hero: “The best iOS keyboard. In the world.” Supporting line above, with **Build iikb** linking to the README's Install section.
-- Challenge: “Apple, Raycast: we're coming for the space bar.”
-- Screens: iPhone, iPad and Duo keyboard layout captures, switchable with plain buttons; all layouts remain available without JavaScript. Existing simulator captures illustrate layouts, not a claim of the latest build.
-- Typing: adaptive touch targets, on-device next-word model, personal vocabulary, space corrections and Your Taps.
-- Benchmark: subordinate to the product story, explicitly a recorded biased-tap test against nearest key plus Apple's spell checker. Numbers come from `copy/facts.json`, regenerated with `bun copy/facts.mjs`.
-- Voice: on-device recognition, writing styles, cancel, microphone switch, transcript review and available recordings.
-- Tools: clipboard with large-text retention, emoji, GIFs, theme and layout controls, user-configured sources.
-- Availability: MIT, iOS 26+, build from source; no App Store download implied. English today; swipe typing in development and further languages not yet available.
+The site is in Bassim's voice on X: direct, a little cocky, lowercase where he'd type it (the spec list, labels), plain sentences everywhere else. The ambition is the bar, never a measured ranking.
+
+- Hero: “The best iOS keyboard. In the world.” with “That's the bar.” and what iikb does, the TestFlight button, and the challenge “Apple, Raycast: we're coming for the space bar.” Beside it, the keyboard drawn live from `KeyboardCore`'s theme colors, typing lines from his launch post until the visitor types, with the five themes to pick; the pick themes the whole page.
+- What's in the box: the launch post's `>` list, only what the current code does.
+- Themes, Duo (simulator captures of each pose, labeled as captures), Typing (the benchmark, scope beside the number), Voice (the four writing styles, one dictation in each), Extend (the sources API as it is in docs/sources.md), Changelog (commits from git and each build's `Changelog:` trailer, by `web/changes.mjs`), Install.
+- Availability: MIT, iOS 26+, TestFlight or build from source; no App Store download implied. English and swipe typing today; further languages not yet available.
 
 ## Metadata
 
