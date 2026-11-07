@@ -42,24 +42,24 @@ const keyboard = mountKeyboard(demo);
 
 // Duo poses: the simulator's captures of iikb on each of the Duo's screens.
 const poses = [
-  { id: "folded-portrait", title: "Folded", fold: "", size: "466 × 678 pt" },
-  { id: "folded-landscape", title: "Sideways", fold: "", from: "-90deg", size: "678 × 466 pt" },
-  { id: "open-landscape", title: "Open", fold: "v", size: "951 × 669 pt" },
-  { id: "open-portrait", title: "Open, turned", fold: "h", from: "90deg", size: "669 × 951 pt" },
+  { id: "folded-portrait", title: "Folded", fold: "", size: "466 × 678 pt" },
+  { id: "folded-landscape", title: "Sideways", fold: "", from: "-90deg", size: "678 × 466 pt" },
+  { id: "open-landscape", title: "Open", fold: "v", size: "951 × 669 pt" },
+  { id: "open-portrait", title: "Open, turned", fold: "h", from: "90deg", size: "669 × 951 pt" },
 ];
 const posePick = document.querySelector(".pose-pick");
 const stage = document.querySelector("[data-pose-stage]");
 const cap = document.querySelector("[data-pose-cap]");
 const showPose = (pose) => {
   for (const b of posePick.children) b.setAttribute("aria-selected", String(b.dataset.pose === pose.id));
-  const [w, h] = pose.size.split(" × ").map(parseFloat);
+  const [w, h] = pose.size.split(" × ").map(parseFloat);
   stage.replaceChildren(html(`<div class="device${pose.fold ? ` fold ${pose.fold}` : ""}" style="--from:${pose.from ?? "0deg"};--w:${w};--h:${h}"><img src="shots/duo-${pose.id}.webp" width="${w * 3}" height="${h * 3}" alt="iikb on the iPhone Duo, ${pose.title.toLowerCase()}"></div>`));
   cap.textContent = `iPhone Duo simulator · ${pose.title.toLowerCase()} · ${pose.size}`;
 };
 // One scale for every pose, so each screen keeps its real size against the others.
 new ResizeObserver(() => {
   const room = stage.clientWidth - 48;
-  stage.style.setProperty("--u", `${Math.min(room < 600 ? room / 700 : room / 960, 560 / 960, (innerHeight * 0.7) / 960)}px`);
+  stage.style.setProperty("--u", `${Math.min(room < 600 ? room / 600 : room / 960, 700 / 960, (innerHeight * 0.8) / 960)}px`);
 }).observe(stage);
 for (const pose of poses) {
   const b = html(`<button type="button" role="tab" data-pose="${pose.id}">${pose.title}</button>`);

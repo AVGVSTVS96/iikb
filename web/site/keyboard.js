@@ -85,6 +85,7 @@ export function mountKeyboard(root) {
     kb.classList.toggle("numbers", on);
     for (const k of LETTERS) keys.get(k).firstChild.textContent = on ? NUMBER[k] : k;
     keys.get("123").firstChild.textContent = on ? "ABC" : "123";
+    keys.get("shift").firstChild.innerHTML = on ? "#+=" : ICONS.shift;
   };
 
   const render = () => {
@@ -132,6 +133,7 @@ export function mountKeyboard(root) {
     while (thread.children.length > 3) thread.firstElementChild.remove();
     text = "";
     shift = true;
+    if (numbers) setNumbers(false);
     render();
   };
 

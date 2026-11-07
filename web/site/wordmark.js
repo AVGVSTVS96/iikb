@@ -10,20 +10,34 @@ const STEM = 14.2;
 const columns = () => VIEW.w / (STEM / (innerWidth < 640 ? 4 : 6));
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Each cell's share of ink, from the wordmark drawn large and read back.
+// Each cell's share of ink, from the wordmark drawn large and read back. The b moves a cell right so its stem doesn't
+// run into the k's leg, and nothing below the baseline is drawn, so the b's bowl ends on it.
+const B_STARTS = 100.65 - 5.8;
 function cells(COLS) {
   const scale = 8;
-  const cell = (VIEW.w / COLS) * scale;
-  const rows = Math.ceil((VIEW.h * scale) / cell);
-  const canvas = new OffscreenCanvas(Math.ceil(VIEW.w * scale), Math.ceil(rows * cell));
+  const unit = VIEW.w / COLS;
+  const cell = unit * scale;
+  const cols = Math.ceil(COLS) + 1;
+  const rows = Math.ceil((71.4 * scale) / cell);
+  const canvas = new OffscreenCanvas(Math.ceil(cols * cell), Math.ceil(rows * cell));
   const g = canvas.getContext("2d", { willReadFrequently: true });
-  g.scale(scale, scale);
-  g.translate(-5.8, 71.4);
-  g.fill(new Path2D(PATH));
+  const path = new Path2D(PATH);
+  const part = (from, to, shift) => {
+    g.save();
+    g.scale(scale, scale);
+    g.beginPath();
+    g.rect(from + shift, 0, to - from, 71.4);
+    g.clip();
+    g.translate(-5.8 + shift, 71.4);
+    g.fill(path);
+    g.restore();
+  };
+  part(0, B_STARTS, 0);
+  part(B_STARTS, VIEW.w, unit);
   const data = g.getImageData(0, 0, canvas.width, canvas.height).data;
   const out = [];
   for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < Math.floor(COLS); c++) {
+    for (let c = 0; c < cols; c++) {
       let ink = 0;
       const n = 6;
       for (let i = 0; i < n; i++) {
@@ -37,7 +51,7 @@ function cells(COLS) {
       if (ink > 0.5) out.push({ c, r, size: 1, ox: 0, oy: 0, vx: 0, vy: 0, press: 0, glow: 0 });
     }
   }
-  return { list: out, rows, COLS };
+  return { list: out, rows, COLS: cols };
 }
 
 // A keycap drawn once per theme, pressed or not, at the size the canvas draws it.
@@ -65,7 +79,7 @@ function keycap(key, size, pressed, dark) {
     const face = g.createLinearGradient(0, 0, 0, s);
     face.addColorStop(0, top); face.addColorStop(1, bottom);
     g.fillStyle = face; shape(0, 0, s, s, r); g.fill();
-    if (!dark) { g.strokeStyle = "rgb(0 0 0 / .22)"; g.lineWidth = 1; shape(0.5, 0.5, s - 1, s - 1, r); g.stroke(); }
+    if (!dark) { g.strokeStyle = "rgb(0 0 0 / .3)"; g.lineWidth = 1; shape(0.5, 0.5, s - 1, s - 1, r); g.stroke(); }
     if (key.rim) {
       g.save(); shape(0, 0, s, s, r); g.clip();
       const rim = g.createLinearGradient(0, 0, 0, s * Math.max(key.rim[2], 0.2));
@@ -97,7 +111,7 @@ export function mountWordmark(canvas, getTheme) {
   };
 
   const resize = () => {
-    if (columns() !== COLS) ({ list, rows, COLS } = cells(columns()));
+    if (Math.ceil(columns()) + 1 !== COLS) ({ list, rows, COLS } = cells(columns()));
     const rect = canvas.getBoundingClientRect();
     ratio = Math.min(devicePixelRatio || 1, 2);
     width = rect.width;
