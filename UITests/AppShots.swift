@@ -30,11 +30,12 @@ final class AppShots: XCTestCase {
         }
     }
 
-    /// The screen inside `frame`, turned upright as it shows: a screenshot of a turned iPad keeps the screen's own
-    /// orientation in its pixels.
+    /// The screen inside `frame`. The screenshot comes upright, as the screen shows, while SpringBoard's frame may
+    /// keep the portrait size, so the screen's size in points is SpringBoard's turned to the screenshot's shape.
     private func png(of frame: CGRect) -> Data {
         let image = XCUIScreen.main.screenshot().image
-        let screen = XCUIApplication(bundleIdentifier: "com.apple.springboard").frame.size
+        let board = XCUIApplication(bundleIdentifier: "com.apple.springboard").frame.size
+        let screen = (image.size.width > image.size.height) == (board.width > board.height) ? board : CGSize(width: board.height, height: board.width)
         let format = UIGraphicsImageRendererFormat()
         format.scale = image.size.width * image.scale / screen.width
         return UIGraphicsImageRenderer(size: frame.size, format: format).pngData { _ in
@@ -42,14 +43,14 @@ final class AppShots: XCTestCase {
         }
     }
 
-    /// Drags the window's bottom right corner, where iPadOS keeps its resize handle, by what the window is short of
-    /// `size` or over it, again until it's within a point or two, since iPadOS may move the window as it resizes.
+    /// Drags the window's bottom right corner, where iPadOS keeps its resize handle, by half what the window is short
+    /// of `size` or over it, again until it's within a few points: a drag sideways resizes it by about twice the drag.
     private func resize(_ window: XCUIElement, to size: CGSize) {
         let screen = XCUIApplication(bundleIdentifier: "com.apple.springboard").coordinate(withNormalizedOffset: .zero)
-        for _ in 0 ..< 6 {
+        for _ in 0 ..< 10 {
             let frame = window.frame
-            let change = CGVector(dx: size.width - frame.width, dy: size.height - frame.height)
-            guard abs(change.dx) > 2 || abs(change.dy) > 2 else { return }
+            let change = CGVector(dx: (size.width - frame.width) / 2, dy: (size.height - frame.height) / 2)
+            guard abs(change.dx) > 3 || abs(change.dy) > 3 else { return }
             let corner = screen.withOffset(CGVector(dx: frame.maxX - 6, dy: frame.maxY - 6))
             corner.press(forDuration: 0.5, thenDragTo: corner.withOffset(change), withVelocity: .slow, thenHoldForDuration: 0.5)
             Thread.sleep(forTimeInterval: 1)

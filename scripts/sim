@@ -311,7 +311,7 @@ ipadapp() {
     [ -n "${WINDOWS:-}" ] && [[ " $WINDOWS " != *" $window "* ]] && continue
     if [ "$device" != "$last" ]; then
       id=$(ensure "$device" "$device")
-      [ -d "$APP" ] || { xcodegen generate -q
+      [ -n "$last" ] || { xcodegen generate -q
         xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$id" -derivedDataPath build/uitest -quiet; }
       boot "$id"
       allow "$id" paste
@@ -328,7 +328,7 @@ ipadapp() {
           echo "$page $args"
         done <<<"$APP_PAGES") \
         xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$id" \
-        -derivedDataPath build/uitest -only-testing:AppUITests/AppShots > build/uitest/app.log 2>&1 || failed=1
+        -derivedDataPath build/uitest -only-testing:AppUITests/AppShots > build/uitest/app.log 2>&1 || { failed=1; tail -20 build/uitest/app.log; }
       grep -E "error:|SHOT|Test Case .*(passed|failed)" build/uitest/app.log || true
     done
   done 3<<<"$IPAD_WINDOWS"
