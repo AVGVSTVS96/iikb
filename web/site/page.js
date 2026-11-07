@@ -78,13 +78,13 @@ const frame = () => {
   const folded = Math.min(s.width / W, s.height / H);
   const opened = Math.min(room.w / (2 * W), room.h / H);
   const turned = Math.min(room.w / H, room.h / (2 * W));
-  const scale = mix(mix(folded, opened, open), turned, turn);
+  const scale = mix(mix(folded, opened, open), turned, turn) * (1 - 0.2 * Math.sin(Math.PI * open));
   const x = mix(s.left - box.left + s.width / 2, box.width / 2, open);
   const y = mix(s.top - box.top + s.height / 2, pad + room.h / 2, open);
   duo.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
   const narrow = innerWidth < 760;
   const rx = mix(narrow ? 6 : 9, 5, open) - lean.y * 8, ry = mix(narrow ? -14 : -22, -8, open) * (1 - turn * 0.6) + lean.x * 10;
-  rig.style.transform = `perspective(2600px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${90 * turn}deg) translateX(${(W / 2) * (1 - open)}px)`;
+  rig.style.transform = `perspective(3600px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${90 * turn}deg) translateX(${(W / 2) * (1 - open)}px)`;
   lid.style.transform = `rotateY(${-180 * (1 - open)}deg)`;
   duo.style.setProperty("--turn", clamp((turn - 0.35) / 0.3));
   hero.style.opacity = 1 - span(p, 0.03, 0.22);

@@ -9,3 +9,5 @@ Crops of existing simulator screenshots, rather than new captures of the latest 
 | `duo-dark.webp` | `duo/k1-open-side-iikb-dark.png` | Bottom 40%, scaled to 1600px wide, then 45px removed from the top to exclude the app |
 
 The five `theme-*.webp` files are the project's existing theme captures. Replace layouts with new simulator shots when device access is available; preserve filenames so website and README references stay together.
+
+`duo-open-portrait-taps.webp` is `duo/app/site-heat-open-side-taps-dark.png` (the simulator's Your Taps page on the open Duo, turned), scaled to 985 × 1400. The hero's Duo shows it once it turns.
