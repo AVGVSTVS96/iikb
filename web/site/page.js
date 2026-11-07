@@ -75,10 +75,10 @@ const frame = () => {
   lean.y += (aim.y - lean.y) * 0.08;
   const box = pin.getBoundingClientRect(), s = slot.getBoundingClientRect();
   const pad = innerWidth < 640 ? 16 : 40, room = { w: box.width - pad * 2, h: box.height - dial.offsetHeight - pad * 2 };
-  const folded = Math.min(s.width / W, s.height / H);
-  const opened = Math.min(room.w / (2 * W), room.h / H);
-  const turned = Math.min(room.w / H, room.h / (2 * W));
-  const scale = mix(mix(folded, opened, open), turned, turn) * (1 - 0.2 * Math.sin(Math.PI * open));
+  // Fit what the Duo covers at this angle: one screen folded, two open, turned by the turn.
+  const fit = { w: mix(s.width, room.w, open), h: mix(s.height, room.h, open) };
+  const wide = mix(W, 2 * W, open), a = (Math.PI / 2) * turn, cos = Math.cos(a), sin = Math.sin(a);
+  const scale = 0.94 * Math.min(fit.w / (wide * cos + H * sin), fit.h / (wide * sin + H * cos)) * (1 - 0.22 * Math.sin(Math.PI * open));
   const x = mix(s.left - box.left + s.width / 2, box.width / 2, open);
   const y = mix(s.top - box.top + s.height / 2, pad + room.h / 2, open);
   duo.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
@@ -86,7 +86,7 @@ const frame = () => {
   const rx = mix(narrow ? 6 : 9, 5, open) - lean.y * 8, ry = mix(narrow ? -14 : -22, -8, open) * (1 - turn * 0.6) + lean.x * 10;
   rig.style.transform = `perspective(3600px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${90 * turn}deg) translateX(${(W / 2) * (1 - open)}px)`;
   lid.style.transform = `rotateY(${-180 * (1 - open)}deg)`;
-  duo.style.setProperty("--turn", clamp((turn - 0.35) / 0.3));
+  duo.style.setProperty("--turn", clamp((turn - 0.47) / 0.06));
   hero.style.opacity = 1 - span(p, 0.03, 0.22);
   hero.style.transform = `translateY(${-40 * span(p, 0.03, 0.22)}px)`;
   hero.inert = p > 0.15;
