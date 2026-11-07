@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// How a page uses the window it's given, by its width alone, never the device or the fold: two panes once each gets
-/// at least an iPhone's width (the open iPhone Duo in landscape, an iPad upright or sideways, a wide Split View or
-/// Stage Manager window), else one column that scrolls as one, as iOS lays out a compact width (the Duo folded or
-/// open upright, an iPad mini upright, a narrow window).
+/// How a page uses the window it's given, by its width alone, never the device or the fold: two panes from 700
+/// points (the open iPhone Duo in landscape, any iPad upright or sideways, a wide Split View or Stage Manager window),
+/// else one column that scrolls as one, as iOS lays out a compact width (the Duo folded or open upright, at 669 its
+/// widest, a narrow window).
 enum Arrangement {
     case side, single
 
-    static let wide: CGFloat = 750
+    static let wide: CGFloat = 700
 
     init(window: CGSize) {
         self = window.width >= Self.wide ? .side : .single
@@ -272,10 +272,11 @@ struct Tile: View {
     }
 }
 
-/// A press that dims a card the way Raycast's do.
+/// A press that dims a card the way Raycast's do; under an iPad's pointer the card lifts.
 struct CardPress: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .hoverEffect(.lift)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .opacity(configuration.isPressed ? 0.7 : 1)
             .animation(.snappy(duration: 0.18), value: configuration.isPressed)

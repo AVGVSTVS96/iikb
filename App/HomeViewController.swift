@@ -75,8 +75,10 @@ final class HomeViewController: UIHostingController<AnyView> {
     }
 }
 
-/// Wide, the field and what iikb has gathered take the first half and the settings' cards the second, so the field
-/// stays above the keys while you try them; elsewhere, one column.
+/// Wide, one dashboard when it fits the window's height (an iPad upright): the field across the top, what iikb has
+/// gathered, then the settings' cards three across, voice typing's over the keyboard's; when it doesn't, the field and
+/// what iikb has gathered take the first half and the cards the second, so the field stays above the keys while you
+/// try them. Elsewhere, one column.
 struct HomeView: View {
     let state: HomeState
     let field: UITextView
@@ -87,27 +89,42 @@ struct HomeView: View {
         Group {
             switch arrangement {
             case .side:
-                Panes {
-                    VStack(alignment: .leading, spacing: 12) {
-                        tryIt.frame(maxHeight: 300)
-                        stats
-                        Spacer(minLength: 0)
+                ViewThatFits(in: .vertical) {
+                    VStack(alignment: .leading, spacing: 28) {
+                        tryIt.frame(height: 200)
+                        if !status.isSetUp { setUp }
+                        VStack(spacing: 12) {
+                            stats
+                            shortcutCards(across: 3)
+                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                } second: {
-                    Column(top: 12) {
-                        if !status.isSetUp { setUp }
-                        shortcutCards
+                    .padding(.bottom, 40)
+                    Panes {
+                        VStack(alignment: .leading, spacing: 12) {
+                            tryIt.frame(maxHeight: 300)
+                            stats
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                    } second: {
+                        Column(top: 12) {
+                            if !status.isSetUp { setUp }
+                            shortcutCards(across: 2)
+                        }
                     }
                 }
+                .frame(maxHeight: .infinity, alignment: .top)
+                .ignoresSafeArea(.keyboard)
             case .single:
                 Column(top: 4) {
                     tryIt.frame(height: 150)
                     if !status.isSetUp { setUp }
                     VStack(spacing: 12) {
                         stats
-                        shortcutCards
+                        shortcutCards(across: 2)
                     }
                 }
             }
@@ -142,8 +159,6 @@ struct HomeView: View {
     /// The settings pages Home links straight to, each showing what it's set to.
     private static let shortcuts: [SettingsPage.Page] = [.dictionary, .writing, .voice, .appearance, .typing, .feedback]
 
-    private static let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
-
     /// What iikb has gathered, in one card inset as the tiles under it are: a count for each tab that keeps it, opening
     /// that tab. Three across while every count fits at full size, then smaller, then a row each, so a count never runs
     /// out of its card.
@@ -165,8 +180,8 @@ struct HomeView: View {
         }
     }
 
-    private var shortcutCards: some View {
-        LazyVGrid(columns: Self.columns, spacing: 12) {
+    private func shortcutCards(across: Int) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: across), spacing: 12) {
             ForEach(Self.shortcuts, id: \.self) { page in
                 Button { Router.shared.show(.settings, settings: page) } label: {
                     Tile(symbol: page.glyph.0, color: page.glyph.1, title: page.title, detail: page.value)
