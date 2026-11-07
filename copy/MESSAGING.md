@@ -17,7 +17,7 @@ Apple and Raycast are the bar to beat. Lead with iikb's ambition and the concret
 
 ## Website
 
-The site is in Bassim's voice on X: direct, a little cocky, lowercase where he'd type it (the spec list, labels), plain sentences everywhere else. The ambition is the bar, never a measured ranking.
+Few words: a heading per section and the live keyboard, themes, Duo, chart and changelog say the rest. Bassim on the first version: "why the fuck are there so many words on pages". Copy is his voice on X; the ambition is the bar, never a measured ranking.
 
 - Hero: “The best iOS keyboard. In the world.” with “That's the bar.” and what iikb does, the TestFlight button, and the challenge “Apple, Raycast: we're coming for the space bar.” Beside it, the keyboard drawn live from `KeyboardCore`'s theme colors, typing lines from his launch post until the visitor types, with the five themes to pick; the pick themes the whole page.
 - What's in the box: the launch post's `>` list, only what the current code does.

@@ -10,19 +10,12 @@ const html = (s) => { const t = document.createElement("template"); t.innerHTML 
 
 // Theme: one for the whole page, kept between visits.
 let theme = themeNames.includes(root.dataset.theme) ? root.dataset.theme : "standard";
-const blurbs = {
-  standard: "Flat, quiet keys. The everyday one.",
-  clear: "No keys, just letters on glass.",
-  physical: "A lit edge, like real plastic.",
-  mechanical: "Keycaps with sides you can feel.",
-  classic: "2011 called. We picked up.",
-};
 const picks = document.querySelector(".theme-pick");
 const cards = document.querySelector(".theme-cards");
 const mini = `<div class="row"><span class="k"><i class="face">i</i></span><span class="k"><i class="face">i</i></span><span class="k"><i class="face">k</i></span><span class="k"><i class="face">b</i></span></div><div class="row"><span class="k fn k-123"><i class="face">123</i></span><span class="k k-space"><i class="face"></i></span><span class="k fn k-return"><i class="face"><svg viewBox="0 0 24 24"><path d="M19 5v6a3 3 0 0 1-3 3H6m0 0 4-4m-4 4 4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></i></span></div>`;
 for (const name of themeNames) {
   picks.append(html(`<button type="button" role="radio" data-theme="${name}">${themes[name].title}</button>`));
-  cards.append(html(`<button type="button" class="theme-card" role="radio" data-theme="${name}"><div class="mini kb-like">${mini}</div><div class="about"><b>${themes[name].title}</b><span>${blurbs[name]}</span></div></button>`));
+  cards.append(html(`<button type="button" class="theme-card" role="radio" data-theme="${name}"><div class="mini kb-like">${mini}</div><div class="about"><b>${themes[name].title}</b></div></button>`));
 }
 const wordmark = mountWordmark(document.querySelector(".keycaps"), () => theme);
 const applyTheme = (name, fromUser) => {
@@ -49,12 +42,10 @@ const poses = [
 ];
 const posePick = document.querySelector(".pose-pick");
 const stage = document.querySelector("[data-pose-stage]");
-const cap = document.querySelector("[data-pose-cap]");
 const showPose = (pose) => {
   for (const b of posePick.children) b.setAttribute("aria-selected", String(b.dataset.pose === pose.id));
   const [w, h] = pose.size.split(" × ").map(parseFloat);
   stage.replaceChildren(html(`<div class="device${pose.fold ? ` fold ${pose.fold}` : ""}" style="--from:${pose.from ?? "0deg"};--w:${w};--h:${h}"><img src="shots/duo-${pose.id}.webp" width="${w * 3}" height="${h * 3}" alt="iikb on the iPhone Duo, ${pose.title.toLowerCase()}"></div>`));
-  cap.textContent = `iPhone Duo simulator · ${pose.title.toLowerCase()} · ${pose.size}`;
 };
 // One scale for every pose, so each screen keeps its real size against the others.
 new ResizeObserver(() => {
