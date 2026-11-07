@@ -330,12 +330,21 @@ open class FullKeyboardViewController: UIInputViewController {
         typingLog.note(engine.tally, at: ProcessInfo.processInfo.systemUptime, day: day, hour: parts.hour ?? 0, app: hostApp ?? "")
     }
 
+    /// The screen the keys are laid out for, by the room iOS gives the keyboard, never the device alone: the iPad's
+    /// screen, or, in the iPad's floating keyboard (a window about 320 wide), an iPhone that wide held upright, which is
+    /// what Apple's floating keyboard is.
     private var screenSize: CGSize {
-        view.window?.windowScene?.screen.bounds.size ?? view.bounds.size
+        let screen = view.window?.windowScene?.screen.bounds.size ?? view.bounds.size
+        guard isFloating else { return screen }
+        return CGSize(width: view.bounds.width, height: max(screen.width, screen.height))
+    }
+
+    private var isFloating: Bool {
+        traitCollection.userInterfaceIdiom == .pad && view.bounds.width > 0 && view.bounds.width < 500
     }
 
     private var device: DeviceClass {
-        DeviceClass(isPad: traitCollection.userInterfaceIdiom == .pad, shortSide: min(screenSize.width, screenSize.height))
+        DeviceClass(isPad: traitCollection.userInterfaceIdiom == .pad && !isFloating, shortSide: min(screenSize.width, screenSize.height))
     }
 
     /// The iPhone Duo draws no globe under a third-party keyboard, yet its iOS 27.1 simulator says none is needed, so
