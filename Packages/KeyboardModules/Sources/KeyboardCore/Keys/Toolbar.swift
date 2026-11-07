@@ -7,6 +7,8 @@ public struct Toolbar: Hashable, Sendable {
     public var bar: Double
     public var results: Double
     public var field: Double
+    /// The widest a suggestion gets: an iPad's are Apple's width, centered, where an iPhone's share the bar.
+    public var slot = Double.infinity
 
     public static let fieldGap = 6.0
     /// The space above the bar, to the top of the keyboard's backdrop, and below it, to the keys. With it, the keyboard is
@@ -20,11 +22,12 @@ public struct Toolbar: Hashable, Sendable {
     /// reach of 17 above the keys types the key reached for, never a suggestion, a tool or a panel's button.
     public static let topRowReach = 10.0
 
-    public init(top: Double, bar: Double, results: Double, field: Double) {
+    public init(top: Double, bar: Double, results: Double, field: Double, slot: Double = .infinity) {
         self.top = top
         self.bar = bar
         self.results = results
         self.field = field
+        self.slot = slot
     }
 
     public var height: Double { top + bar }
@@ -72,5 +75,5 @@ public struct Toolbar: Hashable, Sendable {
     }
 
     /// iPad, where iOS draws its own bar above the keyboard.
-    static let pad = Toolbar(top: 0, bar: 36, results: compactResults, field: compactField)
+    static let pad = Toolbar(top: 0, bar: 36, results: compactResults, field: compactField, slot: 154.5)
 }

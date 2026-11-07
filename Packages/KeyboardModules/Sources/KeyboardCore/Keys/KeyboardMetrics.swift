@@ -219,6 +219,7 @@ extension KeyboardMetrics {
         guard landscape else { return metrics }
         var sideways = metrics.sideways(keyHeight: 74.75, numberRowHeight: 0, rowGap: 11, labelSize: 24.5, symbolSize: 25)
         sideways.pairBaselineRatio = 0.202
+        sideways.toolbar.slot = 259.5
         sideways.sideInset = 7
         sideways.keyGap = 14
         sideways.bottomInset = 10
@@ -245,6 +246,7 @@ extension KeyboardMetrics {
         sideways.textBaselineInset = 13
         sideways.pairCapTopRatio = 0.236
         sideways.pairBaselineRatio = 0.196
+        sideways.toolbar.slot = 255
         return sideways
     }
 
@@ -266,6 +268,7 @@ extension KeyboardMetrics {
         sideways.edgeInset = Size(width: 14.5, height: 9)
         sideways.textInset = 16
         sideways.textBaselineInset = 14.5
+        sideways.toolbar.slot = 224.5
         return sideways
     }
 

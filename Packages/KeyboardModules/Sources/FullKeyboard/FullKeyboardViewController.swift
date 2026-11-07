@@ -421,7 +421,7 @@ open class FullKeyboardViewController: UIInputViewController {
         suggestionBar.isHidden = panel != nil
         panelView.block = block
         suggestionBar.toolbar = toolbar
-        suggestionBar.maximumSlotWidth = device == .phone ? .infinity : 154.5
+        suggestionBar.maximumSlotWidth = metrics.toolbar.slot
         suggestionBar.update(tools: tools, theme: theme)
         suggestionBar.update(edits: trayOut && panel == nil ? edits : nil, theme: theme)
         suggestionBar.update(mic: mic, recorded: recorded, saved: dictation.writing, waitingFor: dictation.waiting, notice: notice ?? hint, theme: theme)
