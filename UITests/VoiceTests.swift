@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 /// The bar's mic against a stand-in for the app (`scripts/voicetest` holds the microphone lock and answers the
 /// keyboard's signals the way `Listener` does), since a simulator can't record for the real one.
@@ -98,6 +99,7 @@ final class VoiceTests: XCTestCase {
     func testTheRecordKeySitsLeftOf123() throws {
         let environment = ProcessInfo.processInfo.environment
         guard let shots = environment["IIKB_SHOTS"] else { throw XCTSkip("Run through scripts/voicetest") }
+        guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("Record Key is the iPhone's") }
         continueAfterFailure = false
 
         let app = XCUIApplication()
