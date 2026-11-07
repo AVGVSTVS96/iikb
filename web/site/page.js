@@ -23,6 +23,7 @@ const applyTheme = (name, fromUser) => {
   root.dataset.theme = name;
   setVars(root, cssVars(name, scheme()));
   for (const card of cards.children) setVars(card.querySelector(".mini"), cssVars(card.dataset.theme, scheme()));
+  setVars(document.querySelector("[data-duo]"), cssVars(name, "dark"));
   for (const b of document.querySelectorAll("[data-theme][role=radio]")) b.setAttribute("aria-checked", String(b.dataset.theme === name));
   if (fromUser) { try { localStorage.setItem("iikb-theme", name); } catch {} wordmark.retheme(); }
 };
@@ -33,31 +34,72 @@ applyTheme(theme);
 const demo = document.querySelector("[data-demo]");
 const keyboard = mountKeyboard(demo);
 
-// Duo poses: the simulator's captures of iikb on each of the Duo's screens.
+// The Duo: folded, typing on its cover screen, it opens on its hinge and then turns as the page scrolls past it.
+const stage = document.querySelector("[data-stage]");
+const pin = stage.querySelector(".pin");
+const hero = stage.querySelector(".hero-copy");
+const slot = stage.querySelector("[data-slot]");
+const duo = stage.querySelector("[data-duo]");
+const rig = duo.querySelector("[data-rig]");
+const lid = duo.querySelector("[data-lid]");
+const dial = stage.querySelector("[data-dial]");
+const W = 490, H = 702;
 const poses = [
-  { id: "folded-portrait", title: "Folded", fold: "", size: "466 × 678 pt" },
-  { id: "folded-landscape", title: "Sideways", fold: "", from: "-90deg", size: "678 × 466 pt" },
-  { id: "open-landscape", title: "Open", fold: "v", size: "951 × 669 pt" },
-  { id: "open-portrait", title: "Open, turned", fold: "h", from: "90deg", size: "669 × 951 pt" },
+  { id: "folded", title: "folded", size: "466 × 678", at: 0 },
+  { id: "open", title: "open", size: "951 × 669", at: 0.5 },
+  { id: "turned", title: "turned", size: "669 × 951", at: 1 },
 ];
-const posePick = document.querySelector(".pose-pick");
-const stage = document.querySelector("[data-pose-stage]");
-const showPose = (pose) => {
-  for (const b of posePick.children) b.setAttribute("aria-selected", String(b.dataset.pose === pose.id));
-  const [w, h] = pose.size.split(" × ").map(parseFloat);
-  stage.replaceChildren(html(`<div class="device${pose.fold ? ` fold ${pose.fold}` : ""}" style="--from:${pose.from ?? "0deg"};--w:${w};--h:${h}"><img src="shots/duo-${pose.id}.webp" width="${w * 3}" height="${h * 3}" alt="iikb on the iPhone Duo, ${pose.title.toLowerCase()}"></div>`));
+const clamp = (v) => Math.min(1, Math.max(0, v));
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+const span = (p, a, b) => ease(clamp((p - a) / (b - a)));
+const mix = (a, b, t) => a + (b - a) * t;
+const progress = () => {
+  const r = stage.getBoundingClientRect();
+  return clamp(-r.top / Math.max(1, r.height - innerHeight));
 };
-// One scale for every pose, so each screen keeps its real size against the others.
-new ResizeObserver(() => {
-  const room = stage.clientWidth - 48;
-  stage.style.setProperty("--u", `${Math.min(room < 600 ? room / 600 : room / 960, 700 / 960, (innerHeight * 0.8) / 960)}px`);
-}).observe(stage);
 for (const pose of poses) {
-  const b = html(`<button type="button" role="tab" data-pose="${pose.id}">${pose.title}</button>`);
-  b.addEventListener("click", () => showPose(pose));
-  posePick.append(b);
+  const b = html(`<button type="button" role="tab" data-pose="${pose.id}"><b>${pose.title}</b><span>${pose.size}</span></button>`);
+  b.addEventListener("click", () => {
+    const top = stage.offsetTop + pose.at * (stage.offsetHeight - innerHeight);
+    scrollTo({ top: pose.at ? top + 2 : 0 });
+  });
+  dial.append(b);
 }
-showPose(poses[0]);
+let aim = { x: 0, y: 0 }, lean = { x: 0, y: 0 }, live = false, raf = 0, shown = "";
+addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") aim = { x: e.clientX / innerWidth - 0.5, y: e.clientY / innerHeight - 0.5 }; }, { passive: true });
+const frame = () => {
+  raf = 0;
+  const p = progress();
+  const open = span(p, 0.1, 0.46), turn = span(p, 0.6, 0.9);
+  lean.x += (aim.x - lean.x) * 0.08;
+  lean.y += (aim.y - lean.y) * 0.08;
+  const box = pin.getBoundingClientRect(), s = slot.getBoundingClientRect();
+  const pad = innerWidth < 640 ? 16 : 40, room = { w: box.width - pad * 2, h: box.height - dial.offsetHeight - pad * 2 };
+  const folded = Math.min(s.width / W, s.height / H);
+  const opened = Math.min(room.w / (2 * W), room.h / H);
+  const turned = Math.min(room.w / H, room.h / (2 * W));
+  const scale = mix(mix(folded, opened, open), turned, turn);
+  const x = mix(s.left - box.left + s.width / 2, box.width / 2, open);
+  const y = mix(s.top - box.top + s.height / 2, pad + room.h / 2, open);
+  duo.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+  const narrow = innerWidth < 760;
+  const rx = mix(narrow ? 6 : 9, 5, open) - lean.y * 8, ry = mix(narrow ? -14 : -22, -8, open) * (1 - turn * 0.6) + lean.x * 10;
+  rig.style.transform = `perspective(2600px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${90 * turn}deg) translateX(${(W / 2) * (1 - open)}px)`;
+  lid.style.transform = `rotateY(${-180 * (1 - open)}deg)`;
+  duo.style.setProperty("--turn", clamp((turn - 0.35) / 0.3));
+  hero.style.opacity = 1 - span(p, 0.03, 0.22);
+  hero.style.transform = `translateY(${-40 * span(p, 0.03, 0.22)}px)`;
+  hero.inert = p > 0.15;
+  const now = p < 0.28 ? "folded" : p < 0.75 ? "open" : "turned";
+  if (now !== shown) { shown = now; for (const b of dial.children) b.setAttribute("aria-selected", String(b.dataset.pose === now)); }
+  if (live && (Math.abs(aim.x - lean.x) > 0.001 || Math.abs(aim.y - lean.y) > 0.001)) raf = requestAnimationFrame(frame);
+};
+const wake = () => { if (!raf) raf = requestAnimationFrame(frame); };
+new IntersectionObserver(([e]) => { live = e.isIntersecting; wake(); }).observe(stage);
+addEventListener("scroll", wake, { passive: true });
+addEventListener("resize", wake);
+addEventListener("pointermove", wake, { passive: true });
+wake();
 
 // Writing styles: what one dictation becomes in each, by DictationStyle's rules.
 const styles = [
@@ -81,7 +123,7 @@ for (const s of styles) {
 }
 showStyle(style);
 document.querySelector("[data-try]").addEventListener("click", () => {
-  demo.scrollIntoView({ behavior: "smooth", block: "center" });
+  scrollTo({ top: stage.offsetTop, behavior: "smooth" });
   setTimeout(() => keyboard.dictate(style.text), 500);
 });
 

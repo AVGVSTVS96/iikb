@@ -47,59 +47,53 @@
 
 <header class="top wrap">
 <a class="mark" href="/" aria-label="iikb home"><svg viewBox="0 0 147.2 72.7"><use href="#wordmark"/></svg></a>
-<nav class="nav" aria-label="Main"><a href="#themes">Themes</a><a href="#duo">Duo</a><a href="#voice">Voice</a><a href="#extend">Extend</a><a href="#changelog">Changelog</a></nav>
-<a class="gh-link" href="https://github.com/AVGVSTVS96/iikb" aria-label="iikb on GitHub"><svg><use href="#gh"/></svg><span>GitHub</span></a>
+<nav class="nav" aria-label="Main"><a href="#duo">duo</a><a href="#themes">themes</a><a href="#voice">voice</a><a href="#extend">extend</a><a href="#changelog">changelog</a></nav>
+<a class="kc sm" href="https://github.com/AVGVSTVS96/iikb" aria-label="iikb on GitHub"><i class="face"><svg><use href="#gh"/></svg><span>github</span></i></a>
 </header>
 
 <main>
-<section class="hero wrap">
+<section class="stage" id="duo" data-stage aria-label="iikb on the iPhone Duo">
+<div class="pin">
 <div class="hero-copy">
-<h1>The best iOS keyboard. <span>In the world.</span></h1>
+<h1>the best iOS keyboard <span>in the world.</span></h1>
 <div class="ctas">
-<a class="pill" href="https://testflight.apple.com/join/xSQ2sdYZ"><span class="knob"><svg><use href="#tf"/></svg></span><span class="label">Get iikb on TestFlight</span></a>
-<a class="ghost" href="https://github.com/AVGVSTVS96/iikb"><svg><use href="#gh"/></svg>Source</a>
+<a class="kc go" href="https://testflight.apple.com/join/xSQ2sdYZ"><i class="face"><svg><use href="#tf"/></svg><span>get iikb</span></i></a>
+<a class="kc" href="https://github.com/AVGVSTVS96/iikb"><i class="face"><svg><use href="#gh"/></svg><span>source</span></i></a>
 </div>
+<div class="theme-pick" role="radiogroup" aria-label="Keyboard theme"></div>
 </div>
-<div class="hero-demo">
+<div class="slot" data-slot></div>
+<div class="duo" data-duo>
+<div class="rig" data-rig>
+<div class="slab base">
+<i class="body"></i><i class="body"></i><i class="body"></i><i class="body"></i><i class="body"></i>
+<div class="glass inner"><div class="full"><img class="land" src="shots/duo-open-landscape.webp" alt="" draggable="false"><img class="turn" src="shots/duo-open-portrait.webp" alt="" draggable="false"></div></div>
+</div>
+<div class="slab lid" data-lid>
+<i class="body"></i><i class="body"></i><i class="body"></i><i class="body"></i><i class="body"></i>
+<div class="glass inner"><div class="full"><img class="land" src="shots/duo-open-landscape.webp" alt="" draggable="false"><img class="turn" src="shots/duo-open-portrait.webp" alt="" draggable="false"></div></div>
+<div class="glass cover">
+<div class="status"><b>9:41</b><i></i></div>
 <div class="demo" data-demo>
 <div class="thread" data-thread aria-live="off"></div>
 <div class="field empty" data-field><span></span><i class="caret"></i></div>
 <div class="kb" aria-hidden="true"></div>
 </div>
-<div class="theme-pick" role="radiogroup" aria-label="Keyboard theme"></div>
 </div>
-</section>
-
-<section class="box wrap" aria-label="Features">
-<ul class="spec">
-<li><a href="#voice"><b>⚡ on-device dictation</b></a></li>
-<li><a href="#voice"><b>📻 transcription styles</b></a></li>
-<li><a href="#voice"><b>📝 transcript + clipboard history</b></a></li>
-<li><b>👋🏼 GIF + emoji search</b></li>
-<li><a href="#themes"><b>🎨 themes</b></a></li>
-<li><a href="#themes"><b>🛠️ customize everything</b></a></li>
-<li><a href="#typing"><b>🎯 tap drift + aim correction</b></a></li>
-<li><a href="#typing"><b>🧠 smart suggestions</b></a></li>
-<li><a href="#extend"><b>🔌 bring your own integration</b></a></li>
-<li><a href="#duo"><b>📱 iPhone, iPad, Duo</b></a></li>
-</ul>
+</div>
+</div>
+</div>
+<div class="dial mono" role="tablist" aria-label="Duo pose" data-dial></div>
+</div>
 </section>
 
 <section class="themes wrap" id="themes" aria-labelledby="themes-title">
-<h2 id="themes-title">Themeable to the keycap.</h2>
+<h2 id="themes-title">themeable to the keycap.</h2>
 <div class="theme-cards" role="radiogroup" aria-label="Theme"></div>
 </section>
 
-<section class="duo wrap" id="duo" aria-labelledby="duo-title">
-<h2 id="duo-title">One keyboard. Every fold.</h2>
-<div class="poses">
-<div class="pose-pick" role="tablist" aria-label="Duo pose"></div>
-<div class="pose-stage" data-pose-stage></div>
-</div>
-</section>
-
 <section class="typing wrap" id="typing" aria-labelledby="typing-title">
-<h2 id="typing-title">It learns your thumbs.</h2>
+<h2 id="typing-title">it learns your thumbs.</h2>
 <div class="bench">
 <div class="bignum"><b><span data-fact="accuracy.iikb">97.7</span><small>%</small></b><span>words right, off-target thumbs</span><span class="vs"><span data-fact="accuracy.baseline">85.2</span>% nearest key + Apple’s spell checker</span></div>
 <figure class="chart" id="chart" aria-label="Word accuracy per 500 words: iikb against the nearest key plus Apple’s spell checker."></figure>
@@ -108,7 +102,7 @@
 </section>
 
 <section class="voice wrap" id="voice" aria-labelledby="voice-title">
-<h2 id="voice-title">Say it. It writes like you.</h2>
+<h2 id="voice-title">say it. it writes like you.</h2>
 <div class="styles">
 <div class="style-pick" role="tablist" aria-label="Writing style"></div>
 <div class="style-card">
@@ -120,7 +114,7 @@
 </section>
 
 <section class="extend wrap" id="extend" aria-labelledby="extend-title">
-<h2 id="extend-title">Bring your own integration.</h2>
+<h2 id="extend-title">bring your own integration.</h2>
 <div class="code-grid">
 <figure class="code"><figcaption class="mono">POST</figcaption><pre><code>{
   <i>"app"</i>: <s>"com.apple.MobileSMS"</s>,
@@ -138,7 +132,7 @@
 </section>
 
 <section class="log wrap" id="changelog" aria-labelledby="log-title">
-<h2 id="log-title">Shipping daily.</h2>
+<h2 id="log-title">shipping daily.</h2>
 <dl class="stats">
 <div><dt class="mono">commits</dt><dd data-change="commits">567</dd></div>
 <div><dt class="mono">since</dt><dd data-change="since">Oct 8</dd></div>
@@ -149,11 +143,11 @@
 </section>
 
 <section class="install wrap" id="install" aria-labelledby="install-title">
-<h2 id="install-title">Make room for iikb.</h2>
+<h2 id="install-title">make room for iikb.</h2>
 <div>
 <div class="ctas">
-<a class="pill" href="https://testflight.apple.com/join/xSQ2sdYZ"><span class="knob"><svg><use href="#tf"/></svg></span><span class="label">Get iikb on TestFlight</span></a>
-<a class="ghost" href="https://github.com/AVGVSTVS96/iikb#build-it-yourself">Build from source</a>
+<a class="kc go lg" href="https://testflight.apple.com/join/xSQ2sdYZ"><i class="face"><svg><use href="#tf"/></svg><span>get iikb on testflight</span></i></a>
+<a class="kc lg" href="https://github.com/AVGVSTVS96/iikb#build-it-yourself"><i class="face"><span>build it</span></i></a>
 </div>
 <p class="note">MIT · iOS 26+ · English for now</p>
 </div>
@@ -168,8 +162,8 @@
 <nav aria-label="Credits"><h3 class="mono">thanks</h3><a href="https://www.raycast.com/">Raycast</a><a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3">NVIDIA Parakeet</a><a href="https://github.com/FluidInference/FluidAudio">FluidAudio</a></nav>
 </div>
 <div class="foot-pills wrap">
-<a class="pill" href="https://github.com/AVGVSTVS96/iikb"><span class="knob"><svg><use href="#gh"/></svg></span><span class="label">GitHub</span></a>
-<a class="pill" href="https://testflight.apple.com/join/xSQ2sdYZ"><span class="knob"><svg><use href="#tf"/></svg></span><span class="label">TestFlight</span></a>
+<a class="kc" href="https://github.com/AVGVSTVS96/iikb"><i class="face"><svg><use href="#gh"/></svg><span>github</span></i></a>
+<a class="kc" href="https://testflight.apple.com/join/xSQ2sdYZ"><i class="face"><svg><use href="#tf"/></svg><span>testflight</span></i></a>
 </div>
 <div class="foot-word wrap"><canvas class="keycaps" role="img" aria-label="iikb, in keycaps"></canvas><svg class="keycaps-fallback" viewBox="0 0 147.2 72.7" aria-hidden="true"><use href="#wordmark"/></svg></div>
 <div class="foot-base wrap mono"><span>made on an iPhone Duo</span><a data-change="head" href="https://github.com/AVGVSTVS96/iikb/commits/main">main</a></div>
