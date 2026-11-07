@@ -268,6 +268,7 @@ private struct AlignedLabel: LabelStyle {
             configuration.icon.frame(width: 24)
             configuration.title
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

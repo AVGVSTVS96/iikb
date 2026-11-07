@@ -166,7 +166,7 @@ private struct WordSources: View {
             SegmentedBar.Part(name: "Autocorrected", share: Double(corrected) / Double(words), color: TapColor.miss),
             SegmentedBar.Part(name: "From the bar", share: Double(picked) / Double(words), color: Color.appSecondary.opacity(0.45)),
         ]
-        Card(header: "Your typed words", footer: "Taken back: autocorrect’s fixes you undid with the bar. Deleted: the keys you tapped that were delete.") {
+        Card(header: "Your typed words", footer: "Taken back: autocorrect’s fixes you undid with the bar. Deleted: your taps on the delete key.") {
             SegmentedBar(parts: parts)
             Rectangle().fill(Color.appDivider).frame(height: 1)
             Figures {
