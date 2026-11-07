@@ -315,7 +315,7 @@ section.install { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax
   .top .kc { margin-left: auto; }
   .stage { margin-top: -64px; }
   .pin { padding-top: 64px; }
-  .split, .install, .code-grid, .bench { grid-template-columns: minmax(0, 1fr); }
+  .split, section.install, .code-grid, .bench { grid-template-columns: minmax(0, 1fr); }
   .links { grid-template-columns: minmax(0, 1fr); }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stats div:nth-child(3) { border-left: 0; padding-left: 0; }
