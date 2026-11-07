@@ -46,7 +46,8 @@ final class KeyView: UIView {
         self.key = key
         super.init(frame: .zero)
         isUserInteractionEnabled = false
-        isAccessibilityElement = true
+        isAccessibilityElement = key.action != .blank
+        if key.action == .blank { alpha = 0.45 }
         accessibilityTraits = .keyboardKey
         let still: [String: CAAction] = ["bounds": NSNull(), "position": NSNull(), "colors": NSNull(), "locations": NSNull(), "frame": NSNull(), "path": NSNull()]
         for shape in [sides, glow, face, rim, rimShape] {
@@ -81,7 +82,7 @@ final class KeyView: UIView {
     private func applyFace() {
         guard let metrics else { return }
         let shape = theme.keyShape
-        let labelScale = shape?.labelScale ?? 1
+        let labelScale = (metrics.wordsAsGlyphs ? shape?.symbolScale : shape?.labelScale) ?? 1
         switch shown.content {
         case .letter(let text):
             label.text = text
@@ -107,7 +108,7 @@ final class KeyView: UIView {
         accessibilityIdentifier = if case .character(let value) = key.action { "iikb.\(value)" } else { "iikb.\(accessibilityName)" }
         secondaryLabel.text = shown.secondary
         cornerLabel.text = shown.corner
-        let corner = (metrics.secondarySize + 3) * labelScale
+        let corner = (metrics.secondarySize + 3) * (shape?.labelScale ?? 1)
         cornerLabel.font = UIFont(name: "HelveticaNeue-Bold", size: corner) ?? .systemFont(ofSize: corner, weight: .bold)
         if shown.secondary != nil, !shown.secondaryIsDimmed {
             label.font = .systemFont(ofSize: metrics.pairSize, weight: .regular)
@@ -136,7 +137,7 @@ final class KeyView: UIView {
             let leading = shown.alignment == .bottomLeading
             let inset = metrics.edgeInset
             label.frame.origin = CGPoint(
-                x: leading ? inset.width : bounds.width - inset.width - label.bounds.width,
+                x: leading ? metrics.textInset : bounds.width - metrics.textInset - label.bounds.width,
                 y: bounds.height - metrics.textBaselineInset - (label.font?.ascender ?? 0)
             )
             icon.frame.origin = CGPoint(
@@ -145,16 +146,22 @@ final class KeyView: UIView {
             )
         }
 
+        let isPair = shown.secondary != nil && !shown.secondaryIsDimmed
+        if isPair {
+            let numberRow = metrics.numberRowHeight > 0 && bounds.height < metrics.keyHeight - 0.5
+            let size = numberRow ? metrics.numberRowPairSize : metrics.pairSize
+            if label.font.map({ Double($0.pointSize) }) != size {
+                label.font = .systemFont(ofSize: size, weight: .regular)
+                secondaryLabel.font = label.font
+                label.sizeToFit()
+            }
+        }
         guard shown.secondary != nil, let font = label.font, let secondaryFont = secondaryLabel.font else {
             return secondaryLabel.frame = .zero
         }
         secondaryLabel.sizeToFit()
-        var capTop = metrics.secondaryCapTop
-        var baseline = bounds.height - metrics.letterBaselineInset
-        if !shown.secondaryIsDimmed {
-            capTop = metrics.pairCapTop
-            baseline = bounds.height * (1 - metrics.pairBaselineRatio)
-        }
+        let capTop = isPair ? bounds.height * metrics.pairCapTopRatio : metrics.secondaryCapTop
+        let baseline = isPair ? bounds.height * (1 - metrics.pairBaselineRatio) : bounds.height - metrics.letterBaselineInset
         secondaryLabel.frame.origin = CGPoint(
             x: bounds.midX - secondaryLabel.bounds.width / 2,
             y: capTop - (secondaryFont.ascender - secondaryFont.capHeight)
@@ -226,6 +233,7 @@ final class KeyView: UIView {
         case .globeSpacer: "spacer"
         case .dictate: "dictate"
         case .dismiss: "dismiss keyboard"
+        case .blank: "unused"
         case .emoji: "emoji"
         }
     }

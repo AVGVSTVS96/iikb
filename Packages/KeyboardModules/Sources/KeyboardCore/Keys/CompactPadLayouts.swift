@@ -11,15 +11,15 @@ enum CompactPadLayouts {
         case .numbers:
             KeyboardLayout(rows: [
                 RowItem.keys("1234567890") + [delete],
-                [.spacer(.pitch(0.4))] + RowItem.keys("-/:;()$&@") + [returnKey],
-                [.key(Key(.layer(.symbols)))] + RowItem.keys("…,?!'\"") + [.spacer(.fill), .key(Key(.layer(.symbols), width: .pitch(1.5)))],
+                [.spacer(.pitch(0.4))] + RowItem.keys("@#$&*()'\"", secondaries: "€£¥_^[]{}") + [returnKey],
+                [.key(Key(.layer(.symbols)))] + RowItem.keys("%-+=/;:", secondaries: "§|~…\\<>") + RowItem.keys(",.", secondaries: "!?", pairs: true) + [.key(Key(.layer(.symbols), width: .fill))],
                 bottomRow(context, layerKey: .letters),
             ])
         case .symbols:
             KeyboardLayout(rows: [
-                RowItem.keys("[]{}#%^*+=") + [delete],
-                [.spacer(.pitch(0.4))] + RowItem.keys("_\\|~<>€£¥") + [returnKey],
-                [.key(Key(.layer(.numbers)))] + RowItem.keys("•.,?!'\"") + [.spacer(.fill), .key(Key(.layer(.numbers), width: .pitch(1.5)))],
+                RowItem.keys("1234567890") + [delete],
+                [.spacer(.pitch(0.4))] + RowItem.keys("€£¥_^[]{}") + [returnKey],
+                [.key(Key(.layer(.numbers)))] + RowItem.keys("§|~…\\<>!?") + [.key(Key(.layer(.numbers), width: .fill))],
                 bottomRow(context, layerKey: .letters),
             ])
         }
@@ -29,12 +29,13 @@ enum CompactPadLayouts {
     private static let returnKey = RowItem.key(Key(.return, width: .fill))
 
     private static func bottomRow(_ context: LayoutContext, layerKey: KeyboardLayer) -> [RowItem] {
-        let leading: [RowItem] = context.showsGlobe ? [.key(Key(.nextKeyboard, width: .pitch(1.04)))] : []
+        let (left, right) = context.isLandscape ? (1.02, 1.52) : (1.04, 1.56)
+        let leading: [RowItem] = context.showsGlobe ? [.key(Key(.nextKeyboard, width: .pitch(left)))] : []
         return leading + [
-            .key(Key(.layer(layerKey), width: .pitch(1.04))),
+            .key(Key(.layer(layerKey), width: .pitch(left))),
             .key(Key(.space, width: .fill)),
-            .key(Key(.layer(layerKey), width: .pitch(1.56))),
-            .key(Key(.dismiss, width: .pitch(1.56))),
+            .key(Key(.layer(layerKey), width: .pitch(right))),
+            .key(Key(.dismiss, width: .pitch(right))),
         ]
     }
 }

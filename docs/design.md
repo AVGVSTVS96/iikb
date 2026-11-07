@@ -129,14 +129,34 @@ Physical and Mechanical come Automatic (following the app), Dark or Light.
 | Duo folded, landscape, 678 × 466 (compact) | 4.5 in, keys 7 apart | 33.33 | 9 | 3 | 32 | 7 | 20 | |
 | iPhone portrait (Face ID), 375–440 wide | full width | 43, or 45 from 415 wide | 11 | 3 | 38 | 7 | today's `bottomInset` | |
 | iPhone landscape (compact) | today's | today's 27.33 | today's 8 | 3 | 34 | 7 | today's | |
-| iPad (all) | today's | today's | today's | today's | today's 36pt row, compact bar | today's | today's | today's |
+| iPad | below | | | | 36, compact | 8 | below | |
 
 - Every Duo row is Apple's keyboard measured in the iOS 27.1 simulator (`scripts/sim duo`, which unfolds it with Device Hub's hinge event). "Keys block" is the side inset inside the keyboard's own width, which iOS narrows on the side layouts; "Bottom" is how far above the screen's bottom Apple's last row ends.
 - The Duo's screens go by Bassim's words, as `Duo.Screen` names them: folded (the cover) or open (the inner screen), in portrait (taller than wide) or landscape (wider than tall). Slightly folding the open screen keeps its screen and changes only the height iOS gives the keyboard; nothing reads the hinge. The open screen's own upright is landscape, which is why the simulator's portrait shows it 951 wide.
 - Apple's letters on the Duo are bigger than on other iPhones: 25.5 folded in portrait, 23.5 folded in landscape, 28.5 open in landscape, 28 open in portrait. iikb's `123`, return and symbols grow by the same share; Apple's own `123` is bigger still, but its key is three times as wide, since its row has no globe.
 - The Duo's keys span the keyboard's whole width on every screen, at Apple's insets folded. Open, Apple's keys leave wide margins and gaps (in portrait 18 in, 9 apart, 45.67 tall, rows 14 apart; in landscape 9 in, 10 apart, 38.67 tall, rows 13 apart), and Bassim asked for keys "taller and wider as much as possible using as much available space as possible" (Nov 3), every key alike, so open the keys take the folded landscape's margins and gaps (4.5 in, 6 apart, rows 9 apart) in Apple's keyboard height: in portrait about 10% wider and 8% taller, in landscape about 6% wider and 8% taller.
 - Split Keyboard (open in landscape; Settings › Keyboard › Appearance, holding `123` or emoji, or the bar's menu button) puts half of each row under each thumb, as Apple's does: each half five keys from the keyboard's edge, with two keys' room between the hands (12 columns of the same margins and gaps), G and V on both halves, the layer and emoji keys and a space bar on the left, a space bar, the field's own keys and return on the right. Apple's split keys are a fifth narrower, with about four keys' room between the halves, which Bassim found used "barely any" of the screen (Nov 2).
-- Regular iPhones and iPads keep their key geometry, which is measured against Apple's.
+- Regular iPhones keep their key geometry, which is measured against Apple's.
+
+#### iPad
+
+Apple's keyboard on each iPad, upright and sideways, measured in the iOS 27.1 simulator against iikb's (`scripts/padshots`, which shoots every state of both on the mini, the 11-inch and the 13-inch), keys read off the pixels, Nov 7. Pitch = (width − 2 × side + gap) / columns, as on iPhone. "Bottom" is iikb's inset; iPadOS adds 20 under it.
+
+| | Columns | Side | Key gap | Key h | Row gap | Bottom | Letters | `.?123` | Glyphs |
+|---|---|---|---|---|---|---|---|---|---|
+| mini upright, 744 | 11.2 | 6 | 12 | 55.5 | 9 | 8 | 22 | 18.5, centered | 23, centered |
+| mini sideways, 1133 | 11.2 | 7 | 14 | 74.75 | 11 | 10 | 27.3 | 24.5, centered | 25, centered |
+| 11-inch upright, 834 | 12.5 | 9 | 10 | 55.5 | 9 | 8 | 22 | 15, in the corner | 23, in the corner |
+| 11-inch sideways, 1210 | 12.5 | 15 | 14 | 73.75 | 12 | 11 | 27.3 | 18.5, in the corner | 24.5, in the corner |
+| 13-inch upright, 1032 | 14.54 | 3.5 | 7 | 61 (digits 45.5) | 7 | 4 | 22 | 17, in the corner | 21, in the corner |
+| 13-inch sideways, 1376 | 14.54 | 5 | 10 | 79 (digits 59) | 9 | 4 | 27.3 | 18.5, in the corner | 25, in the corner |
+
+- Sideways, Apple's keys grow by about a third and their letters, digits and punctuation by a quarter, set further in from the key's edges; iikb's did neither until Nov 7 (55.5 tall on the mini, where Apple's are 74.75).
+- The mini centers every label and glyph, as an iPhone does, and its layer key reads `.?123`; the 11- and 13-inch put function keys' glyphs and words in their corners. Sizes are Apple's; the theme draws them at its own share (`KeyShape`).
+- The bottom row's keys are Apple's widths: `.?123` 1.04 pitches upright on the mini and 1.02 sideways, the right one and dismiss 1.56 and 1.52; on the 11-inch 1.05 and 1.5 upright, 1.0 and 1.42 sideways. iikb's globe takes the place of Apple's `.?123`, and its `.?123` that of Apple's dictation key, since the mic is in the bar.
+- The number and symbol layers are iPadOS 27's: digits on top in both, Apple's two rows of punctuation under them, `#+=` and `123` between the two layers on the mini and 11-inch; the 13-inch has one layer of all of them under `` ` `` and the digits. Apple's undo and redo keys there are left out, as iPadOS's own bar above the keyboard has both; the dropped bullet and curly quotes are on their keys' holds.
+- iPadOS draws its shortcut bar (undo, redo, paste) above any keyboard, Apple's or not, so iikb's bar sits under it and the keyboard is a row taller than Apple's, whose suggestions share that bar. Settings › General › Keyboards › Shortcuts turns it off.
+- A layout follows the room iPadOS gives the keyboard, never the device alone: sideways is its own layout, and in a window under 500 wide (the floating keyboard, about 320) iikb lays out as an iPhone that wide, as Apple's floating keyboard does.
 
 #### What Apple's keyboard does on the Duo, and iikb
 

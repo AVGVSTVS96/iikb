@@ -11,10 +11,10 @@ enum LargePadLayouts {
             ], hasNumberRow: true)
         case .numbers, .symbols:
             KeyboardLayout(rows: [
-                numberRow,
+                RowItem.keys("`1234567890<>") + [.key(Key(.delete, width: .fill))],
                 [tab] + RowItem.keys("[]{}#%^*+=\\|~"),
-                [capsLock] + RowItem.keys("-/:;()$&@\"…") + [returnKey],
-                [shift] + RowItem.keys("_€£¥•.,?!'") + [trailingShift],
+                [.key(Key(.blank, width: .pitch(1.77)))] + RowItem.keys("-/:;()$&@£¥") + [returnKey],
+                [.key(Key(.blank, width: .pitch(2.27))), .spacer(.input)] + RowItem.keys("….,?!'\"_€") + [.spacer(.fill)],
                 bottomRow(context, layerKey: .letters),
             ], hasNumberRow: true)
         }

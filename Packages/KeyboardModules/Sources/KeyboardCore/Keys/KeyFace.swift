@@ -47,13 +47,13 @@ public struct KeyFaceContext: Hashable, Sendable {
 
 extension KeyFace {
     public init(_ key: Key, trailing: Bool, context: KeyFaceContext) {
-        let isPad = context.device != .phone
-        let edge: Alignment = isPad ? (trailing ? .bottomTrailing : .bottomLeading) : .center
+        let corners = context.device == .pad || context.device == .largePad
+        let edge: Alignment = corners ? (trailing ? .bottomTrailing : .bottomLeading) : .center
         switch key.action {
         case .character(let value):
             let shown = context.shift.isUppercase && value.count == 1 ? value.uppercased() : Self.glyphs[value, default: value]
             self.init(content: value.count == 1 ? .letter(shown) : .text(shown))
-            secondary = key.secondary
+            secondary = key.secondary.map { Self.glyphs[$0, default: $0] }
             secondaryIsDimmed = !key.isPair
         case .space:
             self.init(content: .none)
@@ -79,7 +79,7 @@ extension KeyFace {
         case .tab:
             self.init(content: .symbol("arrow.right.to.line"), alignment: edge)
         case .layer(let layer):
-            let title = context.kind == .url && layer == .numbers && context.device == .phone ? ".?123" : Self.title(for: layer, device: context.device)
+            let title = context.kind == .url && layer == .numbers && context.device == .phone ? ".?123" : Self.title(for: layer, from: context.layer, device: context.device)
             let small = context.device == .phone && context.layer != .letters && layer != .letters
             self.init(content: small ? .smallText(title) : .text(title), alignment: edge)
         case .nextKeyboard, .globeSpacer:
@@ -90,16 +90,19 @@ extension KeyFace {
             self.init(content: .symbol("keyboard.chevron.compact.down"), alignment: edge)
         case .emoji:
             self.init(content: .symbol("face.smiling"), alignment: edge)
+        case .blank:
+            self.init(content: .none)
         }
     }
 
     private static let glyphs = ["\"": "”", "'": "’"]
 
-    private static func title(for layer: KeyboardLayer, device: DeviceClass) -> String {
+    /// An iPad's letters go to `.?123`, its symbols back to `123`, as Apple's do.
+    private static func title(for layer: KeyboardLayer, from current: KeyboardLayer, device: DeviceClass) -> String {
         switch (layer, device) {
         case (.letters, _): "ABC"
-        case (.numbers, .phone), (.numbers, .compactPad): "123"
-        case (.numbers, _): ".?123"
+        case (.numbers, .phone): "123"
+        case (.numbers, _): current == .symbols ? "123" : ".?123"
         case (.symbols, _): "#+="
         }
     }

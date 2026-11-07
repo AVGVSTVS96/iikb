@@ -24,13 +24,22 @@ public struct KeyboardMetrics: Hashable, Sendable {
     public var symbolSize: Double
     public var letterOffset: Double = 0
     public var edgeInset = Size(width: 4, height: 3)
+    /// How far in from the key's side a word in its corner (`.?123`) starts, a little further than a glyph.
+    public var textInset: Double = 7
     public var textBaselineInset: Double = 8
     public var letterBaselineInset: Double = 9
     public var secondaryCapTop: Double = 10.5
+    /// An iPad's keys with two characters (`!` over `,`): their size, and the top of the upper one's capitals and the
+    /// lower one's baseline as shares of the key's height, as Apple's grow with the key. The 13-inch's row of digits
+    /// draws them smaller than its letter rows do.
     public var pairSize: Double = 20
-    public var pairCapTop: Double = 12.5
-    public var pairBaselineRatio: Double = 0.216
+    public var numberRowPairSize: Double = 20
+    public var pairCapTopRatio: Double = 0.25
+    public var pairBaselineRatio: Double = 0.19
     public var margin = Margin.none
+    /// Words on keys (`.?123`, `ABC`, `go`) drawn at the theme's share for glyphs rather than its smaller one for words:
+    /// on an iPad they sit in the same rows as tab, shift and return, and smaller they read as a size off.
+    public var wordsAsGlyphs = false
     public var toolbar = Toolbar.phone
 
     public var grid: GridMetrics {
@@ -62,9 +71,9 @@ extension KeyboardMetrics {
         case (.phone, let duo?): Self.duo(duo, style: style, oneHanded: oneHanded, split: split)
         case (.phone, nil) where landscape: phoneLandscape(width: width)
         case (.phone, nil): phone(width: width, style: style).oneHanded(oneHanded, width: width)
-        case (.compactPad, _): compactPad
-        case (.pad, _): pad(shortSide: min(width, height))
-        case (.largePad, _): largePad
+        case (.compactPad, _): compactPad(landscape: landscape)
+        case (.pad, _): pad(shortSide: min(width, height), landscape: landscape)
+        case (.largePad, _): largePad(landscape: landscape)
         }
         if device == .phone { metrics.numberRowHeight = (metrics.keyHeight * 0.8).rounded() }
         return metrics
@@ -198,32 +207,84 @@ extension KeyboardMetrics {
     /// used "barely any" of the screen.
     static let splitColumns = 12.0
 
-    static let compactPad = KeyboardMetrics(
-        columns: 11.2, sideInset: 6, keyGap: 12, rowGap: 9,
-        keyHeight: 55.5, numberRowHeight: 0,
-        topInset: 8, bottomInset: 8, cornerRadius: 9.5,
-        letterSize: 22, labelSize: 15, secondarySize: 12.5, symbolSize: 23,
-        toolbar: .pad
-    )
+    /// The iPad mini's keys, Apple's measured in the iOS 27.1 simulator upright and sideways (docs/design.md, "iPad").
+    static func compactPad(landscape: Bool) -> KeyboardMetrics {
+        let metrics = KeyboardMetrics(
+            columns: 11.2, sideInset: 6, keyGap: 12, rowGap: 9,
+            keyHeight: 55.5, numberRowHeight: 0,
+            topInset: 8, bottomInset: 8, cornerRadius: 9.5,
+            letterSize: 22, labelSize: 18.5, secondarySize: 12.5, symbolSize: 23,
+            pairBaselineRatio: 0.243, wordsAsGlyphs: true, toolbar: .pad
+        )
+        guard landscape else { return metrics }
+        var sideways = metrics.sideways(keyHeight: 74.75, numberRowHeight: 0, rowGap: 11, labelSize: 24.5, symbolSize: 25)
+        sideways.pairBaselineRatio = 0.202
+        sideways.sideInset = 7
+        sideways.keyGap = 14
+        sideways.bottomInset = 10
+        return sideways
+    }
 
-    static func pad(shortSide: Double) -> KeyboardMetrics {
+    /// The 11-inch iPads' keys (and the 10.9-inch ones', a little shorter upright).
+    static func pad(shortSide: Double, landscape: Bool) -> KeyboardMetrics {
         let large = shortSide >= 830
-        return KeyboardMetrics(
+        let metrics = KeyboardMetrics(
             columns: 12.5, sideInset: 9, keyGap: 10, rowGap: large ? 9 : 8.75,
             keyHeight: large ? 55.5 : 55, numberRowHeight: 0,
             topInset: 8, bottomInset: 8, cornerRadius: 9.5,
             letterSize: 22, labelSize: 15, secondarySize: 12.5, symbolSize: 23,
-            toolbar: .pad
+            wordsAsGlyphs: true, toolbar: .pad
         )
+        guard landscape else { return metrics }
+        var sideways = metrics.sideways(keyHeight: 73.75, numberRowHeight: 0, rowGap: 12, labelSize: 18.5, symbolSize: 24.5)
+        sideways.sideInset = 15
+        sideways.keyGap = 14
+        sideways.bottomInset = 11
+        sideways.edgeInset = Size(width: 7, height: 7)
+        sideways.textInset = 10.5
+        sideways.textBaselineInset = 13
+        sideways.pairCapTopRatio = 0.236
+        sideways.pairBaselineRatio = 0.196
+        return sideways
     }
 
-    static let largePad = KeyboardMetrics(
-        columns: 14.54, sideInset: 3.5, keyGap: 7, rowGap: 7,
-        keyHeight: 61, numberRowHeight: 45.5,
-        topInset: 6, bottomInset: 4, cornerRadius: 11.5,
-        letterSize: 22, labelSize: 17, secondarySize: 16, symbolSize: 21,
-        edgeInset: Size(width: 11.5, height: 8), textBaselineInset: 13.5,
-        pairSize: 16, pairCapTop: 10, pairBaselineRatio: 0.175,
-        toolbar: .pad
-    )
+    /// The 13-inch iPads' keys, with Apple's row of digits and the full keyboard's punctuation.
+    static func largePad(landscape: Bool) -> KeyboardMetrics {
+        let metrics = KeyboardMetrics(
+            columns: 14.54, sideInset: 3.5, keyGap: 7, rowGap: 7,
+            keyHeight: 61, numberRowHeight: 45.5,
+            topInset: 6, bottomInset: 4, cornerRadius: 11.5,
+            letterSize: 22, labelSize: 17, secondarySize: 16, symbolSize: 21,
+            edgeInset: Size(width: 11.5, height: 8), textInset: 14, textBaselineInset: 13.5,
+            pairSize: 19, numberRowPairSize: 16, pairCapTopRatio: 0.22, pairBaselineRatio: 0.155,
+            wordsAsGlyphs: true, toolbar: .pad
+        )
+        guard landscape else { return metrics }
+        var sideways = metrics.sideways(keyHeight: 79, numberRowHeight: 59, rowGap: 9, labelSize: 18.5, symbolSize: 25)
+        sideways.sideInset = 5
+        sideways.keyGap = 10
+        sideways.edgeInset = Size(width: 14.5, height: 9)
+        sideways.textInset = 16
+        sideways.textBaselineInset = 14.5
+        return sideways
+    }
+
+    /// An iPad held sideways: Apple's keys grow by about a third, and their letters, digits and punctuation by a
+    /// quarter, further from the key's edges.
+    private func sideways(keyHeight: Double, numberRowHeight: Double, rowGap: Double, labelSize: Double, symbolSize: Double) -> KeyboardMetrics {
+        let type = 1.24
+        var metrics = self
+        metrics.keyHeight = keyHeight
+        metrics.numberRowHeight = numberRowHeight
+        metrics.rowGap = rowGap
+        metrics.labelSize = labelSize
+        metrics.symbolSize = symbolSize
+        metrics.letterSize *= type
+        metrics.secondarySize *= type
+        metrics.pairSize *= type
+        metrics.numberRowPairSize *= type
+        metrics.secondaryCapTop = 15
+        metrics.letterBaselineInset = 14
+        return metrics
+    }
 }

@@ -175,6 +175,22 @@ struct LayoutTests {
         }
     }
 
+    /// docs/design.md, "iPad": Apple's keys measured on each iPad, sideways as well as upright.
+    @Test func iPadKeysAreApplesSidewaysToo() {
+        let screens: [(DeviceClass, Size, letter: Double, height: Double, bottom: Double)] = [
+            (.compactPad, Size(width: 744, height: 1133), 54.45, 55.5, 8), (.compactPad, Size(width: 1133, height: 744), 87.16, 74.75, 10),
+            (.pad, Size(width: 834, height: 1210), 56, 55.5, 8), (.pad, Size(width: 1210, height: 834), 81.52, 73.75, 11),
+            (.largePad, Size(width: 1032, height: 1376), 64, 61, 4), (.largePad, Size(width: 1376, height: 1032), 84.6, 79, 4),
+        ]
+        for (device, screen, letter, height, bottom) in screens {
+            let context = LayoutContext(device: device, layer: .letters, showsGlobe: true, isLandscape: screen.width > screen.height)
+            let keys = KeyboardGeometry(context, screen: screen, style: .ios26)
+            let q = keys.grid.frame(of: "q")
+            #expect(abs((q?.width ?? 0) - letter) < 0.1, "\(device) \(screen): q is \(q?.width ?? 0) wide")
+            #expect(q?.height == height && keys.metrics.bottomInset == bottom, "\(device) \(screen)")
+        }
+    }
+
     private func rowsAboveBottom(width: Double, style: KeyboardStyle) -> Double {
         let metrics = KeyboardMetrics.phone(width: width, style: style)
         let grid = KeyGrid(Layouts.layout(for: LayoutContext(device: .phone, layer: .letters)), width: width, metrics: metrics.grid)
