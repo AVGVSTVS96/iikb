@@ -57,6 +57,7 @@ scripts/keystroke                               # the Mac `ssh mac` reaches shar
 scripts/mac scripts/sourcetest                  # a source through the real keyboard, scripts/source.py standing in for it; prints every update it was sent
 scripts/mac scripts/voicetest                   # the bar's mic through the real keyboard, scripts/voiceapp.py standing in for the app; screenshots light and dark
 scripts/mac scripts/sharetest                   # a transcript's recording sent from its menu and its page (made-up words), light and dark, shots in shots/raw/share/
+scripts/mac scripts/controltest                 # Control Center's iikb Mic end to end: the app's microphone on, the control added and tapped, the app's switch off, light and dark, shots in shots/raw/control/
 scripts/mac scripts/edittest                    # what dictations become: a long one edited in the middle and a short one edited at its end, each sent, checked in its transcript (made-up text)
 scripts/voiceprobe v3 clip.wav                  # on the iPhone: a Parakeet's load and write times in the installed iikb (scripts/phone)
 scripts/judgeprobe questions.jsonl             # on the iPhone: Apple's on-device model choosing among written forms or answering in its own words, cold, warm and prewarmed, in the installed iikb

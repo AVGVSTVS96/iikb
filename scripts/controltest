@@ -1,0 +1,26 @@
+#!/bin/bash
+# Runs on the Mac. Control Center's iikb Mic through the real Control Center: the app's microphone turned on, the control
+# added, shown on, tapped, and the app's switch off after, light and dark, screenshotting each step into
+# shots/raw/control/, on a fresh boot with the widget service controls need (SIM_WIDGETS, ~/.local/bin/turn): scripts/controltest ["iPhone Duo"] [iPhone-Duo]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export SIM_WIDGETS=1
+NAME=${1:-iPhone Duo}
+TYPE=${2:-iPhone-Duo}
+ID=$(scripts/sim ensure "$NAME" "$TYPE")
+slug=$(echo "$NAME" | tr 'A-Z ' 'a-z-')
+xcodegen generate -q
+xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest -quiet
+xcrun simctl shutdown "$ID" 2>/dev/null || true
+scripts/sim boot "$ID"
+scripts/sim allow "$ID"
+xcrun simctl privacy "$ID" grant microphone com.shahidy.iikb
+for appearance in ${APPEARANCES:-light dark}; do
+  xcrun simctl ui "$ID" appearance "$appearance"
+  TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/control/$slug-$appearance" \
+    xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
+    -derivedDataPath build/uitest -only-testing:AppUITests/MicControlTests > build/uitest/control.log 2>&1 || failed=1
+  grep -E "error:|XCTAssert|Test Case .*(passed|failed)|Executed" build/uitest/control.log | cut -c1-3000 || true
+done
+[ -n "${KEEP:-}" ] || xcrun simctl shutdown "$ID"
+exit "${failed:-0}"
