@@ -55,7 +55,6 @@ open class FullKeyboardViewController: UIInputViewController {
         panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
         panel.changed = { [unowned self] in render() }
         panel.length = { [unowned self] in engine.settings.clipboardLength }
-        panel.onTranscripts = { [unowned self] in open(.transcripts) }
         return panel
     }()
     private lazy var transcriptsPanel: TranscriptsPanel = {
@@ -66,7 +65,6 @@ open class FullKeyboardViewController: UIInputViewController {
             handle(.paste($0))
         }
         panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
-        panel.onClipboard = { [unowned self] in open(.clipboard) }
         return panel
     }()
     /// The panels this keyboard has, in the tools' order. GIFs need a KLIPY key built in.

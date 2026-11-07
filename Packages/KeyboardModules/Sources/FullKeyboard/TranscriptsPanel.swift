@@ -10,10 +10,8 @@ final class TranscriptsPanel: UIView, PanelContent, UICollectionViewDataSource, 
     var fullAccess: () -> Bool = { false }
     var onPaste: (String) -> Void = { _ in }
     var onTurnOn: () -> Void = {}
-    var onClipboard: () -> Void = {}
     let placeholder = "Search transcripts"
     var glyph: UIImage? { UIImage(systemName: "text.bubble") }
-    var accessories: [UIView] { [clipboard] }
 
     private struct Shown: Equatable {
         var query: String
@@ -28,7 +26,6 @@ final class TranscriptsPanel: UIView, PanelContent, UICollectionViewDataSource, 
     private let layout = UICollectionViewFlowLayout()
     private lazy var list = UICollectionView(frame: .zero, collectionViewLayout: layout)
     private let message = PanelNotice()
-    private let clipboard = DrawerSwitch("Clipboard History", symbol: "list.clipboard", identifier: "iikb.transcripts.clipboard")
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -43,7 +40,6 @@ final class TranscriptsPanel: UIView, PanelContent, UICollectionViewDataSource, 
         list.register(ClipRow.self, forCellWithReuseIdentifier: "transcript")
         message.accessibilityIdentifier = "iikb.transcripts.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
-        clipboard.addAction(UIAction { [unowned self] _ in onClipboard() }, for: .touchUpInside)
         list.addSubview(message)
         addSubview(list)
     }
@@ -65,7 +61,6 @@ final class TranscriptsPanel: UIView, PanelContent, UICollectionViewDataSource, 
     }
 
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
-        clipboard.tintColor = theme.candidate.ui
         let next = Shown(query: query, compact: metrics.toolbar.isCompact, theme: theme)
         guard next != shown else { return }
         let moved = query != shown?.query

@@ -156,14 +156,13 @@ final class ToolPanelTests: XCTestCase {
         XCTAssertTrue(wait { (field.value as? String)?.contains("Sightglass") == true }, "and Paste puts back what Cut copied")
     }
 
-    func testTranscriptsOpenFromClipboardHistoryAndTypeWhatYouPick() throws {
+    func testTranscriptsOpenFromTheirToolAndTypeWhatYouPick() throws {
         let app = launch()
-        let tool = app.buttons["iikb.tool.clipboard"]
+        let tool = app.buttons["iikb.tool.transcripts"]
         XCTAssertTrue(tool.waitForExistence(timeout: 3))
+        try shot("transcripts-tool")
         tool.tap()
-        app.buttons["iikb.edit.history"].tap()
-        app.buttons["iikb.clipboard.transcripts"].tap()
-        XCTAssertTrue(app.collectionViews["iikb.transcripts"].waitForExistence(timeout: 3), "Clipboard History opens Transcripts")
+        XCTAssertTrue(app.collectionViews["iikb.transcripts"].waitForExistence(timeout: 3), "the bar's Transcripts tool opens them")
         let row = app.descendants(matching: .any).matching(identifier: "iikb.transcript.0").firstMatch
         guard row.waitForExistence(timeout: 5) else {
             XCTAssertTrue(app.buttons["iikb.transcripts.message"].exists, "with nothing dictated, the drawer says so")
@@ -175,9 +174,6 @@ final class ToolPanelTests: XCTestCase {
         row.tap()
         let field = app.textViews.firstMatch
         XCTAssertTrue(wait { (field.value as? String)?.contains(text.prefix(20)) == true }, "a tap types it into the app")
-        app.buttons["iikb.transcripts.clipboard"].tap()
-        XCTAssertTrue(app.collectionViews["iikb.clipboard"].waitForExistence(timeout: 3), "the field's button switches to the clipboard")
-        try shot("transcripts-to-clipboard")
     }
 
     private func launch() -> XCUIApplication {

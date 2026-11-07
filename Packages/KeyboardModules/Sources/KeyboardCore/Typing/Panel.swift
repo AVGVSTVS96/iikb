@@ -4,9 +4,9 @@ public enum Panel: Hashable, Sendable, CaseIterable {
     case emoji
     case gif
     case clipboard
-    /// What you dictated, from the clipboard's tools, beside the clipboard's history.
+    /// What you dictated.
     case transcripts
 
-    /// The panels with a tool of their own in the bar; Transcripts opens from the clipboard's.
-    public static let tools: [Panel] = [.emoji, .gif, .clipboard]
+    /// The panels, in the order of their tools in the bar.
+    public static let tools: [Panel] = [.emoji, .gif, .transcripts, .clipboard]
 }

@@ -13,12 +13,10 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     var length: () -> ClipboardLength = { .characters }
     var onPaste: (String) -> Void = { _ in }
     var onTurnOn: () -> Void = {}
-    var onTranscripts: () -> Void = {}
     /// The search row's notice changed.
     var changed: () -> Void = {}
     let placeholder = "Search clipboard"
     var glyph: UIImage? { UIImage(systemName: "list.clipboard") }
-    var accessories: [UIView] { [transcripts] }
     private(set) var notice: String?
 
     private struct Shown: Equatable {
@@ -38,7 +36,6 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     /// In the list's content, ahead of the rows, so in one row it scrolls away with them.
     private let message = PanelNotice()
     private let thumbnails = NSCache<NSString, UIImage>()
-    private let transcripts = DrawerSwitch("Transcripts", symbol: "text.bubble", identifier: "iikb.clipboard.transcripts")
 
     init(store: ClipboardStore) {
         self.store = store
@@ -55,7 +52,6 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         list.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(hold)))
         message.accessibilityIdentifier = "iikb.clipboard.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
-        transcripts.addAction(UIAction { [unowned self] _ in onTranscripts() }, for: .touchUpInside)
         list.addSubview(message)
         addSubview(list)
         store.onChange = { [unowned self] in refresh() }
@@ -72,7 +68,6 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     }
 
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
-        transcripts.tintColor = theme.candidate.ui
         let next = Shown(query: query, compact: metrics.toolbar.isCompact, theme: theme, length: length())
         guard next != shown else { return }
         if query != shown?.query { notice = nil }
@@ -301,18 +296,6 @@ final class ClipRow: UICollectionViewCell {
         pinButton.frame = CGRect(x: bounds.width - 84, y: 0, width: 42, height: bounds.height)
         deleteButton.frame = CGRect(x: bounds.width - 42, y: 0, width: 42, height: bounds.height)
     }
-}
-
-/// The button at a drawer's search field's right end that switches to the other drawer, clipboard or Transcripts.
-final class DrawerSwitch: UIButton {
-    init(_ title: String, symbol: String, identifier: String) {
-        super.init(frame: .zero)
-        accessibilityLabel = title
-        accessibilityIdentifier = identifier
-        setImage(UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)), for: .normal)
-    }
-
-    required init?(coder: NSCoder) { fatalError() }
 }
 
 private extension ClipboardHistory.Item.Content {
