@@ -75,7 +75,7 @@ if [ "$installed" = "$number" ] && [ "${1:-}" != --reinstall ]; then
   exit 0
 fi
 read -r stamped from < "$stamp" 2>/dev/null || true
-if [ "$installed" = "${stamped:-}" ] && [ "${1:-}" != --reinstall ] && git diff --quiet "$from" "$commit" -- App Keyboard Config/xtool \
+if [ "$installed" = "${stamped:-}" ] && [ "${1:-}" != --reinstall ] && git diff --quiet "$from" "$commit" -- App Keyboard Controls Config/xtool \
   xtool.yml Package.swift Package.resolved Packages/KeyboardModules/Package.swift Packages/KeyboardModules/Sources ':(exclude)**/AGENTS.md' 2>/dev/null; then
   echo "build $installed (main $from) is on the $kind and nothing iikb is built from has changed since, so main $commit waits for a change that needs an install"
   exit 0
@@ -83,7 +83,7 @@ fi
 git -C "$build" checkout -q -f --detach "$commit"
 "$build/scripts/gate" || { echo "build $number (main $commit) fails scripts/gate, so it isn't installed" >&2; exit 1; }
 "$build/scripts/formats" || { echo "build $number (main $commit) fails scripts/formats, so it isn't installed" >&2; exit 1; }
-for plist in Config/xtool/iikb-Info.plist Config/xtool/Keyboard-Info.plist; do
+for plist in Config/xtool/iikb-Info.plist Config/xtool/Keyboard-Info.plist Config/xtool/Controls-Info.plist; do
   python3 -c "import plistlib, sys; p = plistlib.load(open(sys.argv[1], 'rb')); p['CFBundleVersion'] = sys.argv[2]; plistlib.dump(p, open(sys.argv[1], 'wb'))" "$build/$plist" "$number"
 done
 python3 - "$build" "$commit" <<'PY'
@@ -114,7 +114,7 @@ for key in "$main"/Packages/KeyboardModules/Sources/*/Resources/Keys/*.key; do
 done
 cd "$build"
 TURN=phone xtool dev build -c release --sign < /dev/null
-for binary in xtool/iikb.app/iikb xtool/iikb.app/PlugIns/Keyboard.appex/Keyboard; do
+for binary in xtool/iikb.app/iikb xtool/iikb.app/PlugIns/Keyboard.appex/Keyboard xtool/iikb.app/PlugIns/Controls.appex/Controls; do
   sdk=$(llvm-otool -l "$binary" | awk '/LC_BUILD_VERSION/ {b=1} b && $1 == "sdk" {print $2; exit}')
   [ "$(printf '%s\n27.1\n' "$sdk" | sort -V | head -1)" = 27.1 ] || {
     echo "$binary is linked against iOS SDK $sdk; below 27.1 the iPhone Duo runs iikb as an old iPhone app (AGENTS.md, scripts/phone)" >&2

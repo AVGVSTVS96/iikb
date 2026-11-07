@@ -15,3 +15,9 @@ extensions:
     entitlementsPath: Keyboard/Keyboard.entitlements
     resources:
       - Keyboard/PrivacyInfo.xcprivacy
+  - product: Controls
+    bundleID: com.shahidy.iikb.controls
+    infoPath: Config/xtool/Controls-Info.plist
+    entitlementsPath: Controls/Controls.entitlements
+    resources:
+      - Controls/Metadata.appintents

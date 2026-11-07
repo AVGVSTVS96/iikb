@@ -53,6 +53,8 @@ public enum Dictation {
         case level = "com.shahidy.iikb.dictation.level"
         /// The keyboard left what dictations became (`edits`).
         case edited = "com.shahidy.iikb.dictation.edited"
+        /// Control Center's iikb Mic was turned off: the microphone goes off as Home's switch turns it off.
+        case micOff = "com.shahidy.iikb.dictation.micoff"
     }
 
     /// How long the app may keep the microphone on after you dictate, in seconds, so the next dictation starts right
@@ -119,6 +121,9 @@ public enum Dictation {
         flock(descriptor, LOCK_UN)
         close(descriptor)
     }
+
+    /// Control Center's iikb Mic, the Controls extension's one control, which shows `micIsOn`.
+    public static let micControl = "com.shahidy.iikb.mic"
 
     /// Whether the app has the microphone on, so `start` reaches it without opening it.
     public static var micIsOn: Bool {

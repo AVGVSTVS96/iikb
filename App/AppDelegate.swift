@@ -106,6 +106,11 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
         if contexts.contains(where: { $0.url == AppLink.settings }) { return AppStatus.openPasteSetting() }
         if contexts.contains(where: { $0.url == AppLink.keyboard }) { return Router.shared.show(.settings) }
+        if contexts.contains(where: { $0.url == AppLink.mic }) {
+            Router.shared.show(.home)
+            Task { try? await Listener.shared.turnMicOn() }
+            return
+        }
         guard let request = contexts.lazy.compactMap({ Dictation.Request($0.url) }).first, let root = window?.rootViewController else { return }
         let fromSelf = request.host == Bundle.main.bundleIdentifier
         Task { await listen(thenOpen: fromSelf ? nil : request.host) }

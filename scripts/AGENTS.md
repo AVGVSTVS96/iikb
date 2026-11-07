@@ -26,6 +26,7 @@ It needs:
 
 Linker facts:
 - The keyboard target links with `-ObjC` because its principal class is only named in Info.plist.
+- The Controls target links with `-u _main`: nothing references its widget bundle's `main`, so the linker otherwise leaves the whole control out of its static library, and xtool's signer then fails on the near-empty binary ("Can't find free space of LoadCommands").
 - On Linux the Swift driver hands clang `--sysroot`, and clang reads an SDK's version only from `-isysroot`, so without that option the binaries record the deployment target (26.0) as their SDK. iOS 27.1 then runs iikb on the iPhone Duo as an old iPhone app, small and without the vertical bar, which the simulator never showed. `scripts/phone` refuses a build linked below 27.1, and `scripts/mac` runs everything on the Mac with Xcode-beta (27.1) so the simulator shows what the phone does.
 
 ## scripts/voiceloop

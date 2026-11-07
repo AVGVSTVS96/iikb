@@ -13,6 +13,7 @@ let package = Package(
     products: [
         .library(name: "iikb", targets: ["iikb"]),
         .library(name: "Keyboard", targets: ["Keyboard"]),
+        .library(name: "Controls", targets: ["Controls"]),
     ],
     dependencies: [
         .package(path: "Packages/KeyboardModules"),
@@ -39,6 +40,14 @@ let package = Package(
             swiftSettings: settings,
             // The principal class is only named in Info.plist, so without -ObjC the linker strips it out of the appex.
             linkerSettings: [.unsafeFlags(["-Xlinker", "-ObjC"])]
+        ),
+        .target(
+            name: "Controls",
+            path: "Controls",
+            exclude: ["Controls.entitlements", "Info.plist", "Metadata.appintents"],
+            swiftSettings: settings,
+            // Nothing references the widget bundle's `main`, so without -u the linker leaves the whole control out.
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-u", "-Xlinker", "_main"])]
         ),
     ]
 )

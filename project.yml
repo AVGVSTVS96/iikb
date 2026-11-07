@@ -33,6 +33,7 @@ targets:
         excludes: ["**/AGENTS.md"]
     dependencies:
       - target: Keyboard
+      - target: Controls
       - package: KeyboardModules
         product: KeyboardEnglish
       - package: KeyboardModules
@@ -99,6 +100,23 @@ targets:
             PrefersRightToLeft: false
             PrimaryLanguage: en-US
             RequestsOpenAccess: true
+  Controls:
+    type: app-extension
+    platform: iOS
+    sources: [Controls]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.iikb.controls
+        CODE_SIGN_ENTITLEMENTS: Controls/Controls.entitlements
+        PRODUCT_NAME: Controls
+    info:
+      path: Controls/Info.plist
+      properties:
+        CFBundleDisplayName: iikb
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
   AppUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -119,6 +137,7 @@ schemes:
       targets:
         iikb: all
         Keyboard: all
+        Controls: all
     run:
       config: Release
     test:

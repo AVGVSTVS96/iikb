@@ -108,6 +108,18 @@ struct ArchitectureTests {
         }
     }
 
+    /// Controls leaves KeyboardStore out, so it spells the app's names for the microphone itself.
+    @Test func controlsSpellsTheAppsMicNames() throws {
+        let control = try String(contentsOf: Self.root.appending(path: "Controls/MicControl.swift"), encoding: .utf8)
+        let store = try ["Dictation.swift", "AppLink.swift"].map {
+            try String(contentsOf: Self.root.appending(path: "Packages/KeyboardModules/Sources/KeyboardStore/\($0)"), encoding: .utf8)
+        }.joined()
+        for name in ["\"com.shahidy.iikb.dictation.micoff\"", "\"com.shahidy.iikb.mic\"", "\"mic.lock\"", "\"iikb://mic\""] {
+            #expect(store.contains(name), "KeyboardStore no longer has \(name); spell the new name the same in Controls/MicControl.swift and here.")
+            #expect(control.contains(name), "Controls/MicControl.swift doesn't spell \(name) as KeyboardStore does, so iikb Mic would miss the app.")
+        }
+    }
+
     @Test func noConflictMarkers() {
         for file in Self.files(in: ".") {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }

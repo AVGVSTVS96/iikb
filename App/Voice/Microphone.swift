@@ -2,6 +2,7 @@ import AVFoundation
 import KeyboardStore
 import Observation
 import UIKit
+import WidgetKit
 
 /// The microphone, recording a dictation as a `Recording`: 16 kHz, kept in memory and written to its file as
 /// it's heard. It knows nothing of the models that write recordings down, so nothing about them can hold up a
@@ -103,6 +104,7 @@ import UIKit
         }
         lock = Dictation.lockMic() ?? -1
         Dictation.send(.changed)
+        ControlCenter.shared.reloadControls(ofKind: Dictation.micControl)
     }
 
     /// An engine left from before a media services reset can't start (-50), and a suspended iikb may not hear of the
@@ -197,6 +199,7 @@ import UIKit
         if lock >= 0 { Dictation.unlockMic(lock) }
         self.lock = nil
         Dictation.send(.changed)
+        ControlCenter.shared.reloadControls(ofKind: Dictation.micControl)
     }
 
     /// Records from the next sound on into `url`, back in voice processing first when the iPhone's speaker started

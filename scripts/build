@@ -1,7 +1,18 @@
 #!/bin/sh
-# Runs on the Mac. Generates the project and builds for the simulator.
+# Runs on the Mac. Generates the project and builds for the simulator, then fails if the App Intents metadata Xcode
+# made for Controls differs from Controls/Metadata.appintents, the copy the iPhone build (xtool, which can't make it)
+# packs; the error names the copy to commit.
 set -e
 cd "$(dirname "$0")/.."
 xcodegen generate -q
 xcodebuild -project iikb.xcodeproj -scheme iikb -sdk iphonesimulator -configuration Debug \
   -derivedDataPath build -quiet build
+/usr/bin/python3 - build/Build/Products/Debug-iphonesimulator/iikb.app/PlugIns/Controls.appex/Metadata.appintents <<'PY'
+import json, sys
+def actions(folder):
+    data = json.load(open(f"{folder}/extract.actionsdata"))
+    data.pop("generator", None)
+    return data
+if actions(sys.argv[1]) != actions("Controls/Metadata.appintents"):
+    sys.exit(f"Controls' App Intents changed: commit Xcode's new metadata, cp {sys.argv[1]}/* Controls/Metadata.appintents/")
+PY

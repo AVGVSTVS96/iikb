@@ -62,6 +62,7 @@ import UIKit
                 Task { await Listener.shared.start() }
             },
             Dictation.observe(.cancel) { Listener.shared.cancel() },
+            Dictation.observe(.micOff) { Task { await Listener.shared.turnMicOff() } },
         ]
     }
 
@@ -213,7 +214,7 @@ import UIKit
         held = true
     }
 
-    /// Home's switch, off: what you're saying is kept, for the next keyboard to show to type, and the microphone goes
+    /// Home's switch, or Control Center's iikb Mic, off: what you're saying is kept, for the next keyboard to show to type, and the microphone goes
     /// off once every dictation is written down, so the next one opens the app and starts it afresh.
     func turnMicOff() async {
         held = false
