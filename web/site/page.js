@@ -86,7 +86,7 @@ const frame = () => {
   const rx = mix(narrow ? 6 : 9, 5, open) - lean.y * 8, ry = mix(narrow ? -14 : -22, -8, open) * (1 - turn * 0.6) + lean.x * 10;
   rig.style.transform = `perspective(3600px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${90 * turn}deg) translateX(${(W / 2) * (1 - open)}px)`;
   lid.style.transform = `rotateY(${-180 * (1 - open)}deg)`;
-  duo.style.setProperty("--turn", clamp((turn - 0.47) / 0.06));
+  duo.style.setProperty("--turn", turn < 0.5 ? 0 : 1);
   hero.style.opacity = 1 - span(p, 0.03, 0.22);
   hero.style.transform = `translateY(${-40 * span(p, 0.03, 0.22)}px)`;
   hero.inert = p > 0.15;
