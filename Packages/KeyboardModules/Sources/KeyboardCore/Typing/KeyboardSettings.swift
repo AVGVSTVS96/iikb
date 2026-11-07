@@ -40,6 +40,7 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var appDictationStyles: [String: DictationStyle] = [:]
     public var dictationEditing = DictationEditing.standard
     public var dictationLists = DictationLists.standard
+    public var dictationTextMode = DictationTextMode.standard
 
     public init() {}
 

@@ -38,6 +38,17 @@ extension DictationEditing {
     }
 }
 
+extension DictationTextMode {
+    var title: String {
+        switch self {
+        case .spelledOut: "Spelled Out"
+        case .abbreviated: "Abbreviated"
+        case .texting: "Texting"
+        case .genZ: "Gen Z"
+        }
+    }
+}
+
 extension DictationLists {
     var title: String {
         switch self {

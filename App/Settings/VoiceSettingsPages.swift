@@ -68,6 +68,7 @@ struct WritingSettings: View {
     private static let said = "Hey, are you free tonight. Let's grab dinner, and then see the show."
     private static let rambled = "Um, I think the the plan is, like, two, I mean three."
     private static let listed = "Buy one, eggs, two, milk, three, bread."
+    private static let texted = "By the way, are you free tonight? The food there is really amazing, let me know."
     private static let preview = "Um, so are you free tonight. Let's grab dinner at the the place on Main, and then see the show at two, I mean three."
     private let model = SettingsModel.shared
 
@@ -122,6 +123,13 @@ struct WritingSettings: View {
             ForEach(DictationLists.allCases, id: \.self) { lists in
                 ChoiceRow(title: lists.title, detail: typed(Self.listed) { $0.lists = lists }, picked: model.settings.dictationLists == lists) {
                     withAnimation(.snappy(duration: 0.25)) { model.update { $0.dictationLists = lists } }
+                }
+            }
+        }
+        Box(header: "Text Mode", footer: "Each step adds to the one before it. Transcripts keep what the model wrote.") {
+            ForEach(DictationTextMode.allCases, id: \.self) { mode in
+                ChoiceRow(title: mode.title, detail: quoted(Self.texted) { $0.textMode = mode }, picked: model.settings.dictationTextMode == mode) {
+                    withAnimation(.snappy(duration: 0.25)) { model.update { $0.dictationTextMode = mode } }
                 }
             }
         }

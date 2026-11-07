@@ -532,26 +532,28 @@ public struct DictationWriting: Hashable, Sendable {
     public var editing = DictationEditing.standard
     /// "one, eggs, two, milk" written as a list (`SpokenList`).
     public var lists = DictationLists.standard
+    public var textMode = DictationTextMode.standard
     /// Auto-Capitalization, which a dictation follows as typing does.
     public var capitalizes = true
 
-    public init(style: DictationStyle = .standard, editing: DictationEditing = .standard, lists: DictationLists = .standard, capitalizes: Bool = true) {
+    public init(style: DictationStyle = .standard, editing: DictationEditing = .standard, lists: DictationLists = .standard, textMode: DictationTextMode = .standard, capitalizes: Bool = true) {
         self.style = style
         self.editing = editing
         self.lists = lists
+        self.textMode = textMode
         self.capitalizes = capitalizes
     }
 
-    /// The capitals a dictation gets in a field that asks for `field`'s: none with Auto-Capitalization off or in
-    /// very casual (`TypingEngine.fitted`).
+    /// The capitals a dictation gets in a field that asks for `field`'s: none with Auto-Capitalization off, in very
+    /// casual, or in a text mode typed in lowercase (`TypingEngine.fitted`).
     public func capitals(in field: Autocapitalization) -> Autocapitalization {
-        capitalizes && style != .veryCasual ? field : .none
+        capitalizes && style != .veryCasual && !textMode.lowercases ? field : .none
     }
 
     public func written(_ heard: String) -> String {
         var text = style.punctuated(Self.withoutDoubledPeriods(editing.edited(Array(heard))))
         if lists != .off { text = SpokenList.written(text, bulleted: lists == .bulleted) }
-        return String(style.commas(text))
+        return String(textMode.swapped(style.commas(text)))
     }
 
     /// `heard` as iikb types it at the start of a field that capitalizes sentences, as a message's does.
@@ -574,7 +576,7 @@ public struct DictationWriting: Hashable, Sendable {
 extension KeyboardSettings {
     /// How a dictation is written in `app` (its bundle ID): in the style picked for it, else your default.
     public func dictation(in app: String?) -> DictationWriting {
-        DictationWriting(style: dictationStyle(in: app), editing: dictationEditing, lists: dictationLists, capitalizes: autoCapitalization)
+        DictationWriting(style: dictationStyle(in: app), editing: dictationEditing, lists: dictationLists, textMode: dictationTextMode, capitalizes: autoCapitalization)
     }
 
     public func dictationStyle(in app: String?) -> DictationStyle {

@@ -36,6 +36,7 @@ public enum SettingsStore {
     private static let dictationStyle = Choice(key: "writingStyle", path: \.dictationStyle)
     private static let dictationEditing = Choice(key: "dictationEditing", path: \.dictationEditing, switchKey: "keepsUmAndUh", on: .asSaid, off: .light)
     private static let dictationLists = Choice(key: "spokenLists", path: \.dictationLists, switchKey: "dictationLists", on: .numbered, off: .off)
+    private static let dictationTextMode = Choice(key: "textMode", path: \.dictationTextMode)
     private static let keyboardMenu = Choice(key: "keyboardMenu", path: \.keyboardMenu)
     private static let clipboardLength = Choice(key: "clipboardLength", path: \.clipboardLength)
     /// Globe Key was a switch, turned off to stop taps landing on the globe, which Spacer now does with the globe kept.
@@ -66,6 +67,7 @@ public enum SettingsStore {
         dictationStyle.load(into: &settings, sharing: sharing)
         dictationEditing.load(into: &settings, sharing: sharing)
         dictationLists.load(into: &settings, sharing: sharing)
+        dictationTextMode.load(into: &settings, sharing: sharing)
         keyboardMenu.load(into: &settings, sharing: sharing)
         clipboardLength.load(into: &settings, sharing: sharing)
         globeKey.load(into: &settings, sharing: sharing)
@@ -89,6 +91,7 @@ public enum SettingsStore {
         dictationStyle.save(settings)
         dictationEditing.save(settings)
         dictationLists.save(settings)
+        dictationTextMode.save(settings)
         keyboardMenu.save(settings)
         clipboardLength.save(settings)
         globeKey.save(settings)
