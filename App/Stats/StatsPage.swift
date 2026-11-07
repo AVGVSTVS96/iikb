@@ -6,7 +6,9 @@ import SwiftUI
 import notify
 
 /// How you type and talk, and where your taps land, on this iPhone or on a computer you added (docs/computers.md), each
-/// apart: Overview, Typing, Dictation and Taps as pills under the title, the device in a menu beside it.
+/// apart: Overview, Typing, Dictation and Taps as pills under the title, the device in a menu at the pills' end where
+/// it fits (an iPad, the open Duo), so the bar holds only the microphone's switch, which iOS folds into an overflow menu
+/// when an iPad's tab bar leaves the bar narrow; else in the bar beside the switch.
 struct StatsPage: View {
     enum Section: String, CaseIterable {
         case overview, typing, dictation, taps
@@ -31,6 +33,8 @@ struct StatsPage: View {
     @Bindable private var router = Router.shared
     @State private var phone = PhoneActivity()
     @State private var adding = LaunchOptions.addsComputer
+    @State private var pillsWidth: CGFloat = 0
+    @State private var rowWidth: CGFloat = 0
     private let computers = Computers.shared
     @Environment(\.scenePhase) private var phase
 
@@ -39,6 +43,9 @@ struct StatsPage: View {
     }
     private var sections: [Section] { device == .iPhone ? Section.allCases : [.overview, .typing, .dictation] }
     private var section: Section { sections.contains(router.stats) ? router.stats : .overview }
+    /// The device menu sits at the pills' end when it fits there beside them, else in the bar.
+    private var menuInRow: Bool { pillsWidth + Self.menuWidth <= rowWidth }
+    private static let menuWidth: CGFloat = 150
 
     var body: some View {
         NavigationStack {
@@ -53,17 +60,28 @@ struct StatsPage: View {
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
-                SectionPills(sections: sections, selection: Binding { section } set: { router.stats = $0 }, title: \.title)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.appPage)
+                let pills = SectionPills(sections: sections, selection: Binding { section } set: { router.stats = $0 }, title: \.title)
+                HStack(spacing: 8) {
+                    pills.layoutPriority(1)
+                    if menuInRow {
+                        Spacer(minLength: 0)
+                        devices(inRow: true)
+                    }
+                }
+                .background { pills.fixedSize().hidden().onGeometryChange(for: CGFloat.self, of: \.size.width) { pillsWidth = $0 } }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onGeometryChange(for: CGFloat.self, of: \.size.width) { rowWidth = $0 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+                .background(Color.appPage)
             }
             .appPage()
             .navigationTitle("Stats")
             .toolbarTitleDisplayMode(.inlineLarge)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { devices }
+                if !menuInRow {
+                    ToolbarItem(placement: .topBarTrailing) { devices(inRow: false) }
+                }
                 MicSwitchItem()
             }
         }
@@ -77,7 +95,7 @@ struct StatsPage: View {
         Task { await computers.read() }
     }
 
-    private var devices: some View {
+    private func devices(inRow: Bool) -> some View {
         Menu {
             Picker("Device", selection: Binding { device } set: { router.statsComputer = if case let .computer(name) = $0 { name } else { nil } }) {
                 ForEach([Device.iPhone] + computers.all.map { .computer($0.name) }, id: \.self) { device in
@@ -92,8 +110,21 @@ struct StatsPage: View {
                 }
             }
         } label: {
-            Label(device.title, systemImage: device.symbol)
-                .labelStyle(.titleAndIcon)
+            if inRow {
+                HStack(spacing: 6) {
+                    Image(systemName: device.symbol)
+                    Text(device.title).lineLimit(1)
+                    Image(systemName: "chevron.up.chevron.down").font(.caption.weight(.semibold))
+                }
+                .font(.body.weight(.medium))
+                .foregroundStyle(Color.appSecondary)
+                .padding(.horizontal, 13)
+                .frame(height: 36)
+                .contentShape(.capsule)
+            } else {
+                Label(device.title, systemImage: device.symbol)
+                    .labelStyle(.titleAndIcon)
+            }
         }
     }
 }

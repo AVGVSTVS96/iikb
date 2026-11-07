@@ -4,7 +4,7 @@ The app's Stats tab shows how you type and talk, and where your taps land: Overv
 pill under the title. Overview is everything at once, as Keystroke's dashboard is, typed in blue and dictated in pink:
 today, words or speed a day over 7, 30 or 90 days, records (streak, most words, fastest day, top burst), the hours you
 write in, how often you type at each speed, dictation and the apps your words went into, the past year a square a day
-(bluer for typing, pinker for dictation) and all time. The menu beside the title shows the iPhone's or a computer's you
+(bluer for typing, pinker for dictation) and all time. The menu at the end of the pills (beside the title where they leave it no room) shows the iPhone's or a computer's you
 added (docs/computers.md), kept apart.
 Everything is counted and timed, and nothing is ever written down: no letter of what you type leaves the keyboard.
 
