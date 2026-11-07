@@ -100,7 +100,8 @@ struct TranscriptsPage: View {
             }
         }
         .buttonStyle(.plain)
-        .background(picked ? Color.appPressed : .clear)
+        .hoverEffect(.highlight)
+        .background(picked ? Color.appPicked : .clear)
         .contextMenu { Actions(transcript: transcript) { copies += 1 } }
     }
 
@@ -195,7 +196,8 @@ private struct Summary: View {
         return (0 ..< 14).reversed().compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }.map { Day(date: $0, words: words[$0] ?? 0) }
     }
 
-    /// How many percent more or fewer words the last seven days hold than the seven before, once both have some.
+    /// How many percent more or fewer words the last seven days hold than the seven before, once both have some; from
+    /// ten times as many, the chip says how many times.
     private func trend(_ days: [Day]) -> Int? {
         let before = days.prefix(7).reduce(0) { $0 + $1.words }, lately = days.suffix(7).reduce(0) { $0 + $1.words }
         guard before > 0, lately > 0 else { return nil }
@@ -226,7 +228,13 @@ private struct Summary: View {
                         .font(.subheadline)
                         .foregroundStyle(Color.appSecondary)
                         .lineLimit(1)
-                    if let trend = trend(days) { TrendChip(points: trend, unit: "% this week") }
+                    if let trend = trend(days) {
+                        if trend >= 900 {
+                            TrendChip(points: trend / 100 + 1, unit: "× last week", signed: false)
+                        } else {
+                            TrendChip(points: trend, unit: "% this week")
+                        }
+                    }
                 }
                 FortnightChart(days: days.map { ($0.date, $0.words) })
                 Rectangle().fill(Color.appDivider).frame(height: 1)

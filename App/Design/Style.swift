@@ -8,6 +8,8 @@ enum AppStyle {
     static let page = UIColor { $0.isDark ? .black : rgb(0xF2, 0xF2, 0xF5) }
     static let card = UIColor { $0.isDark ? rgb(0x1C, 0x1C, 0x1E) : .white }
     static let pressed = UIColor { $0.isDark ? rgb(0x2C, 0x2C, 0x2E) : rgb(0xE5, 0xE5, 0xEA) }
+    /// The row a list beside its page has open.
+    static let picked = UIColor { $0.isDark ? rgb(0x3A, 0x3A, 0x3C) : rgb(0xDE, 0xDE, 0xE3) }
     static let edge = UIColor { $0.isDark ? UIColor(white: 1, alpha: 0.07) : UIColor(white: 0, alpha: 0.06) }
     static let divider = UIColor { $0.isDark ? rgb(0x2C, 0x2C, 0x2E) : rgb(0xE3, 0xE3, 0xE8) }
     static let secondary = UIColor { $0.isDark ? rgb(0x8E, 0x8E, 0x93) : rgb(0x6C, 0x6C, 0x70) }
@@ -63,6 +65,7 @@ extension Color {
     static let appPage = Color(AppStyle.page)
     static let appCard = Color(AppStyle.card)
     static let appPressed = Color(AppStyle.pressed)
+    static let appPicked = Color(AppStyle.picked)
     static let appEdge = Color(AppStyle.edge)
     static let appDivider = Color(AppStyle.divider)
     static let appSecondary = Color(AppStyle.secondary)

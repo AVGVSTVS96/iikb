@@ -52,7 +52,8 @@ struct SettingsPage: View {
             let model = SettingsModel.shared, settings = model.settings, words = VoiceVocabulary.shared.vocabulary.terms.count
             return switch self {
             case .appearance: settings.theme.title
-            case .typing, .privacy, .changelog: nil
+            case .typing: settings.autoCorrection ? "Auto-Correction On" : "Auto-Correction Off"
+            case .privacy, .changelog: nil
             case .feedback: ThisDevice.hasHaptics ? settings.haptics.title : settings.sound ? "On" : "Off"
             case .voice: VoiceModel.shared.model.title
             case .writing: settings.dictationStyle.title
@@ -81,7 +82,7 @@ struct SettingsPage: View {
                     Panes(list: true) {
                         SettingsList(picked: picked) { router.settingsPath = [$0] }
                     } second: {
-                        SettingsContent(page: picked, top: 12).id(picked)
+                        SettingsContent(page: picked, top: 4).id(picked)
                     }
                 } else {
                     SettingsList(picked: nil) { router.settingsPath = [$0] }
@@ -112,7 +113,8 @@ private struct SettingsList: View {
                     ForEach(section.pages, id: \.self) { page in
                         Button { open(page) } label: { row(page) }
                             .buttonStyle(.plain)
-                            .background(page == picked ? Color.appPressed : .clear)
+                            .hoverEffect(.highlight)
+                            .background(page == picked ? Color.appPicked : .clear)
                             .accessibilityIdentifier(page.rawValue)
                             .accessibilityAddTraits(page == picked ? .isSelected : [])
                     }

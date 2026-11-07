@@ -349,10 +349,12 @@ private struct Meter: View {
 struct TrendChip: View {
     let points: Int
     var unit = " lately"
+    /// A count of times (`184× last week`) carries no sign.
+    var signed = true
 
     var body: some View {
         let up = points > 0
-        Text("\(up ? "+" : "−")\(abs(points))\(unit)")
+        Text("\(signed ? up ? "+" : "−" : "")\(abs(points))\(unit)")
             .font(.footnote.weight(.semibold))
             .monospacedDigit()
             .lineLimit(1)
@@ -734,7 +736,7 @@ private struct Misses: View {
             RuleMark(y: .value("All letters", typical))
                 .foregroundStyle(Color.appSecondary.opacity(0.7))
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                .annotation(position: .top, alignment: .leading, spacing: 2) {
+                .annotation(position: .top, alignment: .trailing, spacing: 2) {
                     Text("all letters \(TapMapPalette.percent(typical))")
                         .font(.caption2.weight(.medium))
                         .foregroundStyle(Color.appSecondary)

@@ -139,7 +139,8 @@ struct ClipboardPage: View {
     private func row(_ item: ClipboardHistory.Item) -> some View {
         Button { copy(item) } label: { ClipRow(item: item, copied: item.content == copied, thumbnail: { store.thumbnail($0, side: 128) }) }
             .buttonStyle(.plain)
-            .background(beside && item.content == shownInFull?.content ? Color.appPressed : .clear)
+            .hoverEffect(.highlight)
+            .background(beside && item.content == shownInFull?.content ? Color.appPicked : .clear)
             .contextMenu {
                 Button("Copy", systemImage: "doc.on.doc") { copy(item) }
                 if case .text(let text) = item.content { ShareLink(item: text) }

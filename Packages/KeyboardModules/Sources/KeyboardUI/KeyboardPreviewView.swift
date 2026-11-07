@@ -5,7 +5,9 @@ import KeyboardCore
 /// on the device and screen the app is on (the Duo's folded or open screen, split or one-handed as set), drawn by the keyboard's
 /// own views at the width iOS gives the keyboard there and scaled to fit. Nothing in it takes a touch.
 public final class KeyboardPreviewView: UIView {
-    private static let bottom = 10.0
+    /// The card's margin around the keys, in the points the preview is drawn at, so the card's rounded corners clear
+    /// the corner keys however small a wide keyboard (an iPad's, the open Duo's) is drawn.
+    private static let margin = (side: 8.0, top: 4.0, bottom: 10.0)
 
     private let content = UIView()
     private let bar = SuggestionBar()
@@ -50,15 +52,15 @@ public final class KeyboardPreviewView: UIView {
         bar.update(more: keys.context.showsMoreButton ? UIMenu(children: []) : nil)
         bar.update(mic: .off, recorded: 0, saved: [], waitingFor: nil, notice: nil, theme: theme)
         bar.update([Suggestion("The", .candidate), Suggestion("I", .candidate), Suggestion("And", .candidate)], emoji: [], enabled: true, theme: theme)
-        let card = dark ? Self.card.dark : Self.card.light
-        content.backgroundColor = card.ui
+        backgroundColor = (dark ? Self.card.dark : Self.card.light).ui
         setNeedsLayout()
     }
 
     /// How tall the preview is at `width`, keeping the keyboard's shape on a `screen`-sized device.
     public static func height(forWidth width: CGFloat, settings: KeyboardSettings, screen: CGSize) -> CGFloat {
         let keys = keys(settings, on: Size(width: screen.width, height: screen.height))
-        return width * (keys.metrics.toolbar.height + keys.height) / keys.width
+        let scale = (width - 2 * margin.side) / keys.width
+        return margin.top + scale * (keys.metrics.toolbar.height + keys.height) + margin.bottom
     }
 
     override public func layoutSubviews() {
@@ -69,16 +71,16 @@ public final class KeyboardPreviewView: UIView {
         content.frame = CGRect(x: 0, y: 0, width: keys.width, height: top + keys.height)
         bar.frame = CGRect(x: 0, y: 0, width: keys.width, height: top)
         keyboard.frame = CGRect(x: 0, y: top, width: keys.width, height: keys.height)
-        let scale = bounds.width / keys.width
+        let scale = (bounds.width - 2 * Self.margin.side) / keys.width
         content.transform = CGAffineTransform(scaleX: scale, y: scale)
-        content.center = CGPoint(x: bounds.midX, y: bounds.midY)
+        content.center = CGPoint(x: bounds.midX, y: Self.margin.top + scale * content.bounds.height / 2)
     }
 
-    /// The keyboard's own keys on `screen`, at the width iOS gives it there, over the card's bottom.
+    /// The keyboard's own keys on `screen`, at the width iOS gives it there, down to their bottom edge.
     private static func keys(_ settings: KeyboardSettings, on screen: Size) -> KeyboardGeometry {
         let device = DeviceClass(isPad: UIDevice.current.userInterfaceIdiom == .pad, shortSide: min(screen.width, screen.height))
         var keys = KeyboardGeometry(LayoutContext(device: device, layer: .letters, showsGlobe: true, screen: screen, settings: settings), screen: screen, style: .current)
-        keys.metrics.bottomInset = bottom
+        keys.metrics.bottomInset = 0
         return keys
     }
 }

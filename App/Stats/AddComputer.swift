@@ -47,6 +47,7 @@ struct AddComputer: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .presentationSizing(.form)
         .presentationBackground(Color.appPage)
     }
 }
