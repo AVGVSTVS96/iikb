@@ -70,6 +70,7 @@ struct Panes<First: View, Second: View>: View {
                     first.frame(width: lead)
                     second.frame(width: proxy.size.width - lead)
                 }
+                .environment(\.inPane, true)
             }
         case .single:
             VStack(spacing: 28) {
@@ -298,11 +299,18 @@ extension View {
     }
 }
 
-/// A scrolling column of boxes at the width they read best, for pages and panes.
+extension EnvironmentValues {
+    /// Whether a view is one of `Panes`' two, which a window's width already bounds.
+    @Entry var inPane = false
+}
+
+/// A scrolling column of boxes: alone, at the width they read best; in a pane, the pane's width, so the panes' margins
+/// match and nothing floats in the middle of a wide pane.
 struct Column<Content: View>: View {
     var maxWidth: CGFloat = 640
     var top: CGFloat = 12
     @ViewBuilder var content: Content
+    @Environment(\.inPane) private var inPane
 
     var body: some View {
         ScrollView {
@@ -310,7 +318,7 @@ struct Column<Content: View>: View {
                 .padding(.horizontal, 16)
                 .padding(.top, top)
                 .padding(.bottom, 40)
-                .frame(maxWidth: maxWidth)
+                .frame(maxWidth: inPane ? .infinity : maxWidth)
                 .frame(maxWidth: .infinity)
         }
         .scrollDismissesKeyboard(.interactively)

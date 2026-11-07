@@ -309,7 +309,7 @@ private struct TranscriptDetail: View {
     @State private var confirmsDelete = false
 
     var body: some View {
-        Column(top: beside ? 12 : 8) {
+        Column(top: beside ? 4 : 8) {
             HStack {
                 Text(transcript.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().hour().minute()))
                     .font(.subheadline.weight(.medium))

@@ -207,7 +207,7 @@ private struct ClipDetail: View {
     }
 
     var body: some View {
-        Column(top: 12) {
+        Column(top: 4) {
             Text(detail)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Color.appSecondary)

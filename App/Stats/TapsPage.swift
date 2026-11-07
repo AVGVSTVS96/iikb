@@ -644,7 +644,7 @@ private struct Thumbs: View {
     var body: some View {
         Card(header: "How your thumbs pull", footer: "Each arrow runs from a key’s center to where you aim for it, drawn \(Int(TapPullView.magnification))× as long.") {
             Drawing(make: { TapPullView() }, update: { $0.show(board.aims, keys: board.keys, size: board.size) }) { width in
-                board.size.height * min(1, width / board.size.width)
+                board.size.height * width / board.size.width
             }
             let targets = summary.halves + (summary.space.map { [("Space bar", $0)] } ?? [])
             let reach = max(2.5, targets.map { hypot($0.drift.x, $0.drift.y) }.max() ?? 0)
