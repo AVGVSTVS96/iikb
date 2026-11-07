@@ -4,6 +4,7 @@ import SwiftUI
 struct AddComputer: View {
     @State private var link = ""
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.arrangement) private var arrangement
 
     static let command = "curl -fsSL https://raw.githubusercontent.com/AVGVSTVS96/iikb/main/mac/share | sh"
 
@@ -46,7 +47,7 @@ struct AddComputer: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents(arrangement == .side ? [.large] : [.medium, .large])
         .presentationSizing(.form)
         .presentationBackground(Color.appPage)
     }

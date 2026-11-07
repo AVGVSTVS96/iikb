@@ -94,7 +94,7 @@ struct TranscriptsPage: View {
         let picked = beside && transcript.id == (selected ?? store.all.first?.id)
         Group {
             if beside {
-                Button { selected = transcript.id } label: { Row(transcript: transcript) }
+                Button { selected = transcript.id } label: { Row(transcript: transcript, picked: picked) }
             } else {
                 NavigationLink(value: transcript.id) { Row(transcript: transcript) }
             }
@@ -125,12 +125,14 @@ struct TranscriptsPage: View {
 
 private struct Row: View {
     let transcript: Transcript
+    /// The one open beside the list reads in full contrast, typed or not.
+    var picked = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(transcript.shown)
                 .lineLimit(3)
-                .foregroundStyle(transcript.typed && !transcript.text.isEmpty ? Color.primary : Color.appSecondary)
+                .foregroundStyle(picked || transcript.typed && !transcript.text.isEmpty ? Color.primary : Color.appSecondary)
             HStack(spacing: 6) {
                 Text(transcript.date, format: .dateTime.hour().minute())
                 Text("·")
