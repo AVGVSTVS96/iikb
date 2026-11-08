@@ -371,15 +371,16 @@ private final class BadgeFlowLayout: UICollectionViewFlowLayout {
     override func prepare() {
         super.prepare()
         badges = [:]
-        guard let collectionView, collectionView.numberOfSections > 0 else { return }
         let across = scrollDirection == .vertical
+        let cells =
+            (super.layoutAttributesForElements(in: CGRect(origin: .zero, size: collectionViewContentSize)) ?? [])
+            .filter { $0.representedElementCategory == .cell && $0.indexPath.section == 0 }
+            .sorted { $0.indexPath.item < $1.indexPath.item }
         var line: CGFloat?
         var start: CGFloat?
         var next = 0.0
-        for item in 0..<collectionView.numberOfItems(inSection: 0) {
-            let path = IndexPath(item: item, section: 0)
-            guard let attributes = super.layoutAttributesForItem(at: path)?.copy() as? UICollectionViewLayoutAttributes
-            else { continue }
+        for cell in cells {
+            guard let attributes = cell.copy() as? UICollectionViewLayoutAttributes else { continue }
             let frame = attributes.frame
             if start == nil { start = across ? frame.minX : frame.minY }
             if line != (across ? frame.midY : frame.midX) {
@@ -388,7 +389,7 @@ private final class BadgeFlowLayout: UICollectionViewFlowLayout {
             }
             if across { attributes.frame.origin.x = next } else { attributes.frame.origin.y = next }
             next += (across ? frame.width : frame.height) + badgeGap
-            badges[path] = attributes
+            badges[attributes.indexPath] = attributes
         }
     }
 
