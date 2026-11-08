@@ -96,6 +96,8 @@ struct Panes<First: View, Second: View>: View {
 
 /// A card of rows under a gray header and over a gray footer, rows split by inset hairlines.
 struct Box<Content: View>: View {
+    /// The card's edge, which the dividers stop at, since the translucent edge drawn over one darkens it.
+    private static var edge: CGFloat { 1 }
     var header: String? = nil
     var footer: String? = nil
     @ViewBuilder var content: Content
@@ -114,14 +116,14 @@ struct Box<Content: View>: View {
                     ForEach(rows.indices, id: \.self) { index in
                         rows[index]
                         if index < rows.count - 1 {
-                            Rectangle().fill(Color.appDivider).frame(height: 1).padding(.leading, 20)
+                            Rectangle().fill(Color.appDivider).frame(height: 1).padding(.leading, 20).padding(.trailing, Self.edge)
                         }
                     }
                 }
             }
             .background(Color.appCard)
             .clipShape(.rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
+            .overlay(RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge, lineWidth: Self.edge))
             if let footer {
                 Text(footer)
                     .font(.footnote)
