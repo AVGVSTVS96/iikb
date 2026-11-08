@@ -18,10 +18,20 @@ private struct WindowKey: EnvironmentKey {
     static let defaultValue = CGSize(width: 400, height: 800)
 }
 
+private struct SafeTrailingKey: EnvironmentKey {
+    static let defaultValue = CGFloat.infinity
+}
+
 extension EnvironmentValues {
     var window: CGSize {
         get { self[WindowKey.self] }
         set { self[WindowKey.self] = newValue }
+    }
+
+    /// Where the safe area ends at the trailing side, in the window's points: a page's cards stop `AppStyle.margin` short of it.
+    var safeTrailing: CGFloat {
+        get { self[SafeTrailingKey.self] }
+        set { self[SafeTrailingKey.self] = newValue }
     }
 
     var arrangement: Arrangement { Arrangement(window: window) }
@@ -36,10 +46,13 @@ extension View {
 
 private struct WindowReader: ViewModifier {
     @State private var size = WindowKey.defaultValue
+    @State private var safeTrailing = SafeTrailingKey.defaultValue
 
     func body(content: Content) -> some View {
         content
             .environment(\.window, size)
+            .environment(\.safeTrailing, safeTrailing)
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { safeTrailing = $0 }
             .background {
                 GeometryReader { proxy in
                     Color.clear
@@ -408,7 +421,7 @@ struct Column<Content: View>: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) { content }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, AppStyle.margin)
                 .padding(.top, top)
                 .padding(.bottom, 40)
                 .frame(maxWidth: inPane ? .infinity : maxWidth)

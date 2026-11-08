@@ -18,6 +18,9 @@ enum AppStyle {
 
     static let cardRadius: CGFloat = 22
 
+    /// The space between a page's cards and the safe area's edges.
+    static let margin: CGFloat = 16
+
     /// Helvetica Neue, iikb's display face (brand/BRAND.md), for titles and big numbers; everything else is the system font.
     static func display(_ size: CGFloat, weight: UIFont.Weight = .bold) -> UIFont {
         let name = switch weight {

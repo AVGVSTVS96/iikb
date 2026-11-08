@@ -5,9 +5,26 @@ import SwiftUI
 /// or in Settings, since iOS moves a bar button to the Duo's side bar on some screens and not others.
 struct MicSwitchItem: ToolbarContent {
     var body: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) { MicSwitch() }
+        ToolbarItem(placement: .topBarTrailing) { MicSwitch().endsWithCards() }
             .sharedBackgroundVisibility(.hidden)
     }
+}
+
+/// Beside the Duo's side bar iOS sets a title row's last item flush with the safe area, past the cards under it; this
+/// moves it back to the cards' edge, `AppStyle.margin` in, wherever it measures closer than that.
+private struct EndsWithCards: ViewModifier {
+    @Environment(\.safeTrailing) private var safeTrailing
+    @State private var trailing = CGFloat.zero
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { trailing = $0 }
+            .offset(x: min(0, safeTrailing - AppStyle.margin - trailing))
+    }
+}
+
+private extension View {
+    func endsWithCards() -> some View { modifier(EndsWithCards()) }
 }
 
 /// The microphone, on or off, as it really is: on, the keyboard starts each dictation in place, and it stays on until
