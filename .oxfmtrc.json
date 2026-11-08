@@ -8,7 +8,6 @@
     "App/**",
     "Controls/**",
     "Packages/**",
-    "copy/facts.json",
-    "web/site/**"
+    "copy/facts.json"
   ]
 }

@@ -1,19 +1,40 @@
-// The keyboard's five themes as KeyboardCore/Keys/Themes.swift paints them, for the page's keys and the footer's.
-const flat = (fill, pressed, label) => ({ top: fill, bottom: fill, pressedTop: pressed, pressedBottom: pressed, label });
+const flat = (fill, pressed, label) => ({
+  top: fill,
+  bottom: fill,
+  pressedTop: pressed,
+  pressedBottom: pressed,
+  label,
+});
 
 const host = {
   dark: { bg: "#212121", key: flat("#2f2f2f", "#6b6b6b", "#ffffff"), bar: "#ffffff" },
-  light: { bg: "#d3d5db", key: { ...flat("#ffffff", "#abb0ba", "#000000"), drop: "0 1px 0 rgb(0 0 0 / .28)" }, bar: "#000000" },
+  light: {
+    bg: "#d3d5db",
+    key: { ...flat("#ffffff", "#abb0ba", "#000000"), drop: "0 1px 0 rgb(0 0 0 / .28)" },
+    bar: "#000000",
+  },
 };
 
 const classic = {
   letter: {
-    top: "#f5f5f5", bottom: "#c3c5c9", pressedTop: "#c4c7cd", pressedBottom: "#acb0b8", label: "#000000",
-    labelShadow: "0 1px 0 #ffffff", rim: ["rgb(255 255 255 / .3)", 0.85, 0.2], drop: "0 1px 1px rgb(0 0 0 / .3)",
+    top: "#f5f5f5",
+    bottom: "#c3c5c9",
+    pressedTop: "#c4c7cd",
+    pressedBottom: "#acb0b8",
+    label: "#000000",
+    labelShadow: "0 1px 0 #ffffff",
+    rim: ["rgb(255 255 255 / .3)", 0.85, 0.2],
+    drop: "0 1px 1px rgb(0 0 0 / .3)",
   },
   function: {
-    top: "#9ea6af", bottom: "#6d737c", pressedTop: "#80868f", pressedBottom: "#5a5f68", label: "#ffffff",
-    labelShadow: "0 -1px 0 rgb(0 0 0 / .55)", rim: ["rgb(255 255 255 / .18)", 0.85, 0.2], drop: "0 1px 1px rgb(0 0 0 / .3)",
+    top: "#9ea6af",
+    bottom: "#6d737c",
+    pressedTop: "#80868f",
+    pressedBottom: "#5a5f68",
+    label: "#ffffff",
+    labelShadow: "0 -1px 0 rgb(0 0 0 / .55)",
+    rim: ["rgb(255 255 255 / .18)", 0.85, 0.2],
+    drop: "0 1px 1px rgb(0 0 0 / .3)",
   },
 };
 
@@ -30,13 +51,48 @@ export const themes = {
   },
   physical: {
     title: "Physical",
-    dark: { letter: { top: "#0b0b0b", bottom: "#050505", pressedTop: "#3a3a3c", pressedBottom: "#343436", label: "#ffffff", rim: ["rgb(255 255 255 / .15)", 1 / 3, 0.25] } },
-    light: { letter: { ...flat("#f8f8f8", "#c4c6cc", "#2c2c2c"), rim: ["rgb(255 255 255 / .6)", 1 / 3, 0.1] } },
+    dark: {
+      letter: {
+        top: "#0b0b0b",
+        bottom: "#050505",
+        pressedTop: "#3a3a3c",
+        pressedBottom: "#343436",
+        label: "#ffffff",
+        rim: ["rgb(255 255 255 / .15)", 1 / 3, 0.25],
+      },
+    },
+    light: {
+      letter: {
+        ...flat("#f8f8f8", "#c4c6cc", "#2c2c2c"),
+        rim: ["rgb(255 255 255 / .6)", 1 / 3, 0.1],
+      },
+    },
   },
   mechanical: {
     title: "Mechanical",
-    dark: { letter: { top: "#171717", bottom: "#202020", pressedTop: "#111111", pressedBottom: "#181818", label: "#ffffff", keycap: { sides: ["#171717 0%", "#0e0e0e 80%", "#0d0d0d 100%"], glow: "rgb(255 255 255 / .12)" } } },
-    light: { letter: { top: "#fafafa", bottom: "#e5e5e5", pressedTop: "#e8e8e8", pressedBottom: "#d6d6d6", label: "#2a2a29", keycap: { sides: ["#e0e0e0 0%", "#dbdbdb 100%"], glow: "rgb(255 255 255 / .23)" } } },
+    dark: {
+      letter: {
+        top: "#171717",
+        bottom: "#202020",
+        pressedTop: "#111111",
+        pressedBottom: "#181818",
+        label: "#ffffff",
+        keycap: {
+          sides: ["#171717 0%", "#0e0e0e 80%", "#0d0d0d 100%"],
+          glow: "rgb(255 255 255 / .12)",
+        },
+      },
+    },
+    light: {
+      letter: {
+        top: "#fafafa",
+        bottom: "#e5e5e5",
+        pressedTop: "#e8e8e8",
+        pressedBottom: "#d6d6d6",
+        label: "#2a2a29",
+        keycap: { sides: ["#e0e0e0 0%", "#dbdbdb 100%"], glow: "rgb(255 255 255 / .23)" },
+      },
+    },
   },
   classic: {
     title: "iOS 5",
@@ -47,13 +103,12 @@ export const themes = {
 
 export const themeNames = Object.keys(themes);
 
-// The theme's paint for a scheme: its letter keys, its function keys (the letter keys' unless it has its own) and the
-// host's keyboard background and bar.
-export function paint(name, scheme) {
+export const paint = (name, scheme) => {
   const theme = themes[name] ?? themes.standard;
   const look = theme[scheme];
+
   return { ...host[scheme], letter: look.letter, function: look.function ?? look.letter };
-}
+};
 
 const keyVars = (prefix, key) => ({
   [`--${prefix}-top`]: key.top,
@@ -65,12 +120,19 @@ const keyVars = (prefix, key) => ({
   [`--${prefix}-drop`]: key.drop ?? "none",
   [`--${prefix}-rim`]: key.rim ? key.rim[0] : "transparent",
   [`--${prefix}-rim-fade`]: key.rim ? `${key.rim[2] * 100}%` : "0%",
-  [`--${prefix}-sides`]: key.keycap ? `radial-gradient(60% 55% at 50% 0%, ${key.keycap.glow}, transparent), linear-gradient(${key.keycap.sides.join(",")})` : "transparent",
+  [`--${prefix}-sides`]: key.keycap
+    ? `radial-gradient(60% 55% at 50% 0%, ${key.keycap.glow}, transparent), linear-gradient(${key.keycap.sides.join(",")})`
+    : "transparent",
   [`--${prefix}-cap`]: key.keycap ? "1" : "0",
 });
 
-// CSS variables for every key on the page, set on the root so the hero, the theme cards' current mark and the footer agree.
-export function cssVars(name, scheme) {
+export const cssVars = (name, scheme) => {
   const p = paint(name, scheme);
-  return { "--kb-bg": p.bg, "--kb-bar": p.bar, ...keyVars("l", p.letter), ...keyVars("f", p.function) };
-}
+
+  return {
+    "--kb-bg": p.bg,
+    "--kb-bar": p.bar,
+    ...keyVars("l", p.letter),
+    ...keyVars("f", p.function),
+  };
+};

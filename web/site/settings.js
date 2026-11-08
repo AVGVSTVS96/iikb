@@ -20,13 +20,17 @@ export const settings = (() => {
   }
 })();
 
-function save() {
+const save = () => {
   try {
     localStorage.setItem(storageKey, JSON.stringify(settings));
-  } catch {}
-}
+  } catch {
+    return false;
+  }
 
-export function settingsSheet({ root, opener, haptics, onChange, onClose }) {
+  return true;
+};
+
+export const settingsSheet = ({ root, opener, haptics, onChange, onClose }) => {
   const sections = [
     {
       footer: haptics.note,
@@ -49,15 +53,22 @@ export function settingsSheet({ root, opener, haptics, onChange, onClose }) {
       ],
     },
   ];
+
   const native = "switch" in HTMLInputElement.prototype;
   const sheet = root.querySelector(".sheet");
   sheet.querySelector(".sections").innerHTML = sections
-    .map(({ title, footer, rows }) => `
+    .map(
+      ({ title, footer, rows }) => `
       ${title ? `<h3>${title}</h3>` : ""}
-      <div class="group">${rows.map(([key, name]) => `
-        <label class="row"><span>${name}</span><input type="checkbox" ${native ? "switch" : 'class="switch"'} data-key="${key}"></label>`).join("")}
+      <div class="group">${rows
+        .map(
+          ([key, name]) => `
+        <label class="row"><span>${name}</span><input type="checkbox" ${native ? "switch" : 'class="switch"'} data-key="${key}"></label>`,
+        )
+        .join("")}
       </div>
-      ${footer ? `<p class="footer">${footer}</p>` : ""}`)
+      ${footer ? `<p class="footer">${footer}</p>` : ""}`,
+    )
     .join("");
 
   for (const toggle of sheet.querySelectorAll("input[data-key]")) {
@@ -68,6 +79,7 @@ export function settingsSheet({ root, opener, haptics, onChange, onClose }) {
       onChange();
     });
   }
+
   const haptic = sheet.querySelector('[data-key="haptic"]');
   haptic.disabled = !haptics.available;
   haptic.checked &&= haptics.available;
@@ -75,11 +87,25 @@ export function settingsSheet({ root, opener, haptics, onChange, onClose }) {
   const setOpen = (open) => {
     root.classList.toggle("open", open);
     sheet.inert = !open;
-    if (!open) onClose();
+
+    if (!open) {
+      onClose();
+    }
   };
+
   sheet.inert = true;
-  opener.addEventListener("click", () => setOpen(true));
-  root.querySelector(".scrim").addEventListener("click", () => setOpen(false));
-  sheet.querySelector(".done").addEventListener("click", () => setOpen(false));
-  addEventListener("keydown", (event) => event.key === "Escape" && root.classList.contains("open") && setOpen(false));
-}
+  opener.addEventListener("click", () => {
+    setOpen(true);
+  });
+  root.querySelector(".scrim").addEventListener("click", () => {
+    setOpen(false);
+  });
+  sheet.querySelector(".done").addEventListener("click", () => {
+    setOpen(false);
+  });
+  addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && root.classList.contains("open")) {
+      setOpen(false);
+    }
+  });
+};
