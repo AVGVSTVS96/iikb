@@ -96,8 +96,7 @@ final class KeyView: UIView {
             icon.image = nil
         case .symbol(let name):
             label.text = nil
-            let size = metrics.symbolSize * (shape?.symbolScale ?? 1)
-            icon.image = UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: size, weight: .regular))
+            icon.image = Self.symbol(name, size: metrics.symbolSize * (shape?.symbolScale ?? 1))
         case .none:
             label.text = nil
             icon.image = nil
@@ -166,6 +165,17 @@ final class KeyView: UIView {
             y: capTop - (secondaryFont.ascender - secondaryFont.capHeight)
         )
         label.frame.origin = CGPoint(x: bounds.midX - label.bounds.width / 2, y: baseline - font.ascender)
+    }
+
+    /// The symbol in its light appearance's shape, since iOS draws some filled in dark (`face.smiling`); the key tints it.
+    private static func symbol(_ name: String, size: CGFloat) -> UIImage? {
+        let light = UITraitCollection(userInterfaceStyle: .light)
+        let configuration = UIImage.SymbolConfiguration(pointSize: size, weight: .regular).withTraitCollection(light)
+        guard let image = UIImage(systemName: name, withConfiguration: configuration) else { return nil }
+        let drawn = UIGraphicsImageRenderer(size: image.size).image { _ in
+            light.performAsCurrent { image.withTintColor(.black).draw(at: .zero) }
+        }
+        return drawn.withRenderingMode(.alwaysTemplate)
     }
 
     /// Centered, a label or icon usually starts between two pixels, and the screen smears its edges across both.

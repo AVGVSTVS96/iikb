@@ -76,14 +76,19 @@ extension Panel {
         }
     }
 
-    /// A symbol scaled so its glyph, without the margins a symbol image carries, is `side` long on its longer side.
+    /// A symbol scaled so its glyph, without the margins a symbol image carries, is `side` long on its longer side, in
+    /// its light appearance's shape, since iOS draws some filled in dark (`face.smiling`).
     static func symbol(_ name: String, _ side: CGFloat) -> UIImage? {
-        guard let image = UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: side, weight: .regular)) else { return nil }
+        let light = UITraitCollection(userInterfaceStyle: .light)
+        let configuration = UIImage.SymbolConfiguration(pointSize: side, weight: .regular).withTraitCollection(light)
+        guard let image = UIImage(systemName: name, withConfiguration: configuration) else { return nil }
         let ink = CGRect(origin: .zero, size: image.size).inset(by: image.alignmentRectInsets)
         let scale = side / max(ink.width, ink.height)
         let size = CGSize(width: ink.width * scale, height: ink.height * scale)
         return UIGraphicsImageRenderer(size: size).image { _ in
-            image.withTintColor(.black).draw(in: CGRect(x: -ink.minX * scale, y: -ink.minY * scale, width: image.size.width * scale, height: image.size.height * scale))
+            light.performAsCurrent {
+                image.withTintColor(.black).draw(in: CGRect(x: -ink.minX * scale, y: -ink.minY * scale, width: image.size.width * scale, height: image.size.height * scale))
+            }
         }.withRenderingMode(.alwaysTemplate)
     }
 
