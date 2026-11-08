@@ -13,8 +13,8 @@ enum LargePadLayouts {
             KeyboardLayout(rows: [
                 RowItem.keys("`1234567890<>") + [.key(Key(.delete, width: .fill))],
                 [tab] + RowItem.keys("[]{}#%^*+=\\|~"),
-                [.key(Key(.blank, width: .pitch(1.77)))] + RowItem.keys("-/:;()$&@£¥") + [returnKey],
-                [.key(Key(.blank, width: .pitch(2.27))), .spacer(.input)] + RowItem.keys("….,?!'\"_€") + [.spacer(.fill)],
+                [.key(Key(.undo, width: .pitch(1.77)))] + RowItem.keys("-/:;()$&@£¥") + [returnKey],
+                [.key(Key(.redo, width: .pitch(2.27))), .spacer(.input)] + RowItem.keys("….,?!'\"_€") + [.spacer(.fill)],
                 bottomRow(context, layerKey: .letters),
             ], hasNumberRow: true)
         }

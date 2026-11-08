@@ -19,9 +19,8 @@ public enum KeyAction: Hashable, Sendable {
     /// handles it, so the engine never sees it.
     case dictate
     case dismiss
-    /// A key in the place of one Apple's has and iikb hasn't (an iPad's undo and redo on its number layers, which
-    /// iPadOS's own bar above the keyboard has): dimmed and empty, taking taps and doing nothing.
-    case blank
+    /// An iPad's undo and redo keys on its number layers, for what the keyboard wrote (`EditHistory`).
+    case undo, redo
     /// Opens the emoji panel, or closes it when it's open.
     case emoji
 }

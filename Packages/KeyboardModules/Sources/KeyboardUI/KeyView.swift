@@ -39,15 +39,13 @@ final class KeyView: UIView {
         didSet { [label, secondaryLabel, cornerLabel, icon].forEach { $0.alpha = contentAlpha } }
     }
 
-    /// The spacer globe is dimmed, so it reads as a key that does nothing.
-    private var restingAlpha: CGFloat { key.action == .globeSpacer ? 0.35 : 1 }
+    /// The spacer globe is dimmed, so it reads as a key that does nothing, and so is a key with nothing to do now.
+    private var restingAlpha: CGFloat { key.action == .globeSpacer || shown.isDimmed ? 0.35 : 1 }
 
     init(key: Key) {
         self.key = key
         super.init(frame: .zero)
         isUserInteractionEnabled = false
-        isAccessibilityElement = key.action != .blank
-        if key.action == .blank { alpha = 0.45 }
         accessibilityTraits = .keyboardKey
         let still: [String: CAAction] = ["bounds": NSNull(), "position": NSNull(), "colors": NSNull(), "locations": NSNull(), "frame": NSNull(), "path": NSNull()]
         for shape in [sides, glow, face, rim, rimShape] {
@@ -105,6 +103,7 @@ final class KeyView: UIView {
             icon.image = nil
         }
         accessibilityLabel = accessibilityName
+        contentAlpha = showsLabel ? restingAlpha : 0
         accessibilityIdentifier = if case .character(let value) = key.action { "iikb.\(value)" } else { "iikb.\(accessibilityName)" }
         secondaryLabel.text = shown.secondary
         cornerLabel.text = shown.corner
@@ -233,7 +232,8 @@ final class KeyView: UIView {
         case .globeSpacer: "spacer"
         case .dictate: "dictate"
         case .dismiss: "dismiss keyboard"
-        case .blank: "unused"
+        case .undo: "undo"
+        case .redo: "redo"
         case .emoji: "emoji"
         }
     }

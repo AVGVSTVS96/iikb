@@ -134,7 +134,8 @@ extension KeyAction {
         case .layer: "layer"
         case .nextKeyboard: "nextKeyboard"
         case .dismiss: "dismiss"
-        case .blank: "blank"
+        case .undo: "undo"
+        case .redo: "redo"
         case .emoji: "emoji"
         }
     }

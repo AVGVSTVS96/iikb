@@ -175,6 +175,26 @@ struct LayoutTests {
         }
     }
 
+    /// docs/design.md, "iPad": undo on the numbers and redo on the symbols where Apple's sit, and on the mini the three
+    /// right keys of the bottom row in the room of the letters' two, so space doesn't move.
+    @Test func iPadUndoAndRedoSitWhereApplesDo() {
+        let screens: [(DeviceClass, Size, undo: (row: Int, key: Int), redo: (row: Int, key: Int))] = [
+            (.compactPad, Size(width: 744, height: 1133), (3, 3), (3, 3)),
+            (.pad, Size(width: 834, height: 1210), (1, 0), (1, 0)),
+            (.largePad, Size(width: 1032, height: 1376), (2, 0), (3, 0)),
+        ]
+        for (device, screen, undo, redo) in screens {
+            func grid(_ layer: KeyboardLayer) -> KeyGrid {
+                KeyboardGeometry(LayoutContext(device: device, layer: layer, showsGlobe: true), screen: screen, style: .ios26).grid
+            }
+            #expect(grid(.numbers).rows[undo.row][undo.key].key.action == .undo, "\(device)")
+            let symbols = device == .largePad ? grid(.numbers) : grid(.symbols)
+            #expect(symbols.rows[redo.row][redo.key].key.action == .redo, "\(device)")
+            let space = { (grid: KeyGrid) in grid.rows.last?.first { $0.key.action == .space }?.frame }
+            #expect(space(grid(.numbers)) == space(grid(.letters)), "\(device)")
+        }
+    }
+
     /// docs/design.md, "iPad": Apple's keys measured on each iPad, sideways as well as upright.
     @Test func iPadKeysAreApplesSidewaysToo() {
         let screens: [(DeviceClass, Size, letter: Double, height: Double, bottom: Double)] = [

@@ -28,14 +28,16 @@ enum CompactPadLayouts {
     private static let delete = RowItem.key(Key(.delete, width: .fill))
     private static let returnKey = RowItem.key(Key(.return, width: .fill))
 
+    /// Apple's number layers put undo, or redo on the symbols, before the right layer key, and the three share the room
+    /// the letters' two take.
     private static func bottomRow(_ context: LayoutContext, layerKey: KeyboardLayer) -> [RowItem] {
         let (left, right) = context.isLandscape ? (1.02, 1.52) : (1.04, 1.56)
         let leading: [RowItem] = context.showsGlobe ? [.key(Key(.nextKeyboard, width: .pitch(left)))] : []
-        return leading + [
-            .key(Key(.layer(layerKey), width: .pitch(left))),
-            .key(Key(.space, width: .fill)),
-            .key(Key(.layer(layerKey), width: .pitch(right))),
-            .key(Key(.dismiss, width: .pitch(right))),
-        ]
+        let trailing: [Key] = switch context.layer {
+        case .letters: [Key(.layer(layerKey), width: .pitch(right)), Key(.dismiss, width: .pitch(right))]
+        case .numbers: [Key(.undo, width: .pitch(left)), Key(.layer(layerKey), width: .pitch(left)), Key(.dismiss, width: .pitch(left))]
+        case .symbols: [Key(.redo, width: .pitch(left)), Key(.layer(layerKey), width: .pitch(left)), Key(.dismiss, width: .pitch(left))]
+        }
+        return leading + [.key(Key(.layer(layerKey), width: .pitch(left))), .key(Key(.space, width: .fill))] + trailing.map(RowItem.key)
     }
 }

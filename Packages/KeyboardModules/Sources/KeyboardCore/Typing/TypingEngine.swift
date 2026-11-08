@@ -38,6 +38,10 @@ public struct TypingEngine {
     /// The one copy of the text the engine reads. The keyboard's edits reach it through `write` and `moveCursor`, the
     /// host's reports through `documentChanged`.
     public private(set) var text = TextState()
+    /// What the keyboard wrote here, for the undo and redo keys.
+    private var history = EditHistory()
+    public var canUndo: Bool { history.canUndo }
+    public var canRedo: Bool { history.canRedo }
     /// What your typing did so far, as counts, for the app's stats.
     public internal(set) var tally = TypingTally()
     /// The dictations typed into this field, followed until it's sent or left.
@@ -55,6 +59,7 @@ public struct TypingEngine {
     /// Delete went down with text in the panel's search, so holding it empties the search and stops there.
     private var deleteHeldInSearch = false
     private var sessionEnded = false
+    private var replaying = false
     var typing = WordTaps()
     var pending: PendingWord?
     var stray: StraySpace?
@@ -89,8 +94,12 @@ public struct TypingEngine {
             layer = target
             suggestionsChanged()
             return
-        case .nextKeyboard, .globeSpacer, .dictate, .dismiss, .emoji, .blank:
+        case .nextKeyboard, .globeSpacer, .dictate, .dismiss, .emoji:
             return
+        case .undo:
+            return replay(history.undo(before: text.before).map { ($0.removed, $0.inserted.count) }, in: document)
+        case .redo:
+            return replay(history.redo(before: text.before).map { ($0.inserted, $0.removed.count) }, in: document)
         case .character, .space, .return, .tab, .delete:
             break
         }
@@ -173,6 +182,18 @@ public struct TypingEngine {
         default:
             break
         }
+        if action == .space || action == .return || action == .tab { history.close() }
+        refreshShift()
+        suggestionsChanged()
+    }
+
+    /// Writes back what an undo or redo gives, as its own step, which typing next doesn't join.
+    private mutating func replay(_ edit: (string: String, replacing: Int)?, in document: some TextDocument) {
+        guard let edit, panel == nil else { return }
+        forgetWord()
+        replaying = true
+        write(edit.string, replacing: edit.replacing, in: document)
+        replaying = false
         refreshShift()
         suggestionsChanged()
     }
@@ -205,7 +226,7 @@ public struct TypingEngine {
         case .trigger(let key) where key.action == .emoji:
             show(panel == .emoji ? nil : .emoji)
         case .trigger(let key):
-            guard key.action == .return || key.action == .tab else { return false }
+            guard [.return, .tab, .undo, .redo].contains(key.action) else { return false }
             perform(key.action, in: document)
         case .cursor(let offset):
             moveCursor(by: offset, in: document)
@@ -276,7 +297,9 @@ public struct TypingEngine {
         }
         typing = WordTaps()
         tally.deletes += 1
+        history.close()
         write("", replacing: Self.wordLength(before: text.before), in: document)
+        history.close()
         refreshShift()
         suggestionsChanged()
     }
@@ -292,7 +315,9 @@ public struct TypingEngine {
         lastSpace = nil
         revert = nil
         commitWord(in: document)
+        history.close()
         write(string(text), in: document)
+        history.close()
         refreshShift()
         suggestionsChanged()
     }
@@ -315,6 +340,7 @@ public struct TypingEngine {
     }
 
     mutating func moveCaret(by offset: Int, in document: some TextDocument) {
+        history.clear()
         document.moveCursor(by: offset)
         text.moveCursor(by: offset)
         draft?.moveCursor(by: offset)
@@ -392,6 +418,7 @@ public struct TypingEngine {
         guard corrector?.app != app else { return }
         endSession()
         text = TextState()
+        history.clear()
         forgetWord()
         sessionEnded = false
         corrector?.app = app
@@ -406,6 +433,7 @@ public struct TypingEngine {
         let known = text
         let report = reconcile(document)
         if report == .changed {
+            history.clear()
             if text.isEmpty, !sessionEnded { keepWord(in: known) }
             sessionEnded = false
             forgetWord()
@@ -433,6 +461,7 @@ public struct TypingEngine {
     /// The one way text changes: deletes `count` characters before the caret, then inserts `string`, in the host and
     /// in `text` alike.
     mutating func write(_ string: String, replacing count: Int = 0, in document: some TextDocument) {
+        if !text.selected.isEmpty { history.clear() } else if !replaying { history.record(replacing: count, of: text.before, with: string) }
         sessionEnded = false
         crossing = nil
         beforeReturn = nil

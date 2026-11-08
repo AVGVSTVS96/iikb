@@ -327,7 +327,8 @@ public enum TapMapPalette {
         case .nextKeyboard, .globeSpacer: "globe"
         case .dictate: "record"
         case .dismiss: "hide"
-        case .blank: ""
+        case .undo: "undo"
+        case .redo: "redo"
         case .emoji: "emoji"
         }
     }

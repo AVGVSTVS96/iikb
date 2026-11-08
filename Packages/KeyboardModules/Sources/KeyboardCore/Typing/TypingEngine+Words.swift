@@ -101,7 +101,10 @@ extension TypingEngine {
             return KeyFaceContext(device: device, layer: layer, kind: .text, shift: shift, returnKind: .default, returnEnabled: true)
         }
         let returnEnabled = !traits.returnRequiresText || !text.before.isEmpty || !(text.after ?? "").isEmpty
-        return KeyFaceContext(device: device, layer: layer, kind: traits.kind, shift: shift, returnKind: traits.returnKind, returnEnabled: returnEnabled)
+        var faces = KeyFaceContext(device: device, layer: layer, kind: traits.kind, shift: shift, returnKind: traits.returnKind, returnEnabled: returnEnabled)
+        faces.canUndo = canUndo
+        faces.canRedo = canRedo
+        return faces
     }
 
     /// A suggestion takes the place of the word the bar is for, and the caret ends after it and one space.

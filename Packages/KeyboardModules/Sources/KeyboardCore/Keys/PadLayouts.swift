@@ -11,14 +11,14 @@ enum PadLayouts {
         case .numbers:
             KeyboardLayout(rows: [
                 [tab] + RowItem.keys("1234567890") + [delete],
-                [blank] + RowItem.keys("@#$&*()'\"", secondaries: "€£¥_^[]{}") + [returnKey],
+                [undo] + RowItem.keys("@#$&*()'\"", secondaries: "€£¥_^[]{}") + [returnKey],
                 [.key(Key(.layer(.symbols), width: .pitch(2)))] + RowItem.keys("%-+=/;:", secondaries: "§|~…\\<>") + RowItem.keys(",.", secondaries: "!?", pairs: true) + [.key(Key(.layer(.symbols), width: .fill))],
                 bottomRow(context, layerKey: .letters),
             ])
         case .symbols:
             KeyboardLayout(rows: [
                 [tab] + RowItem.keys("1234567890") + [delete],
-                [blank] + RowItem.keys("€£¥_^[]{}") + [returnKey],
+                [redo] + RowItem.keys("€£¥_^[]{}") + [returnKey],
                 [.key(Key(.layer(.numbers), width: .pitch(2)))] + RowItem.keys("§|~…\\<>!?") + [.key(Key(.layer(.numbers), width: .fill))],
                 bottomRow(context, layerKey: .letters),
             ])
@@ -28,7 +28,8 @@ enum PadLayouts {
     private static let tab = RowItem.key(Key(.tab, width: .pitch(1.25)))
     private static let delete = RowItem.key(Key(.delete, width: .fill))
     private static let capsLock = RowItem.key(Key(.capsLock, width: .pitch(1.55)))
-    private static let blank = RowItem.key(Key(.blank, width: .pitch(1.55)))
+    private static let undo = RowItem.key(Key(.undo, width: .pitch(1.55)))
+    private static let redo = RowItem.key(Key(.redo, width: .pitch(1.55)))
     private static let returnKey = RowItem.key(Key(.return, width: .fill))
 
     private static func bottomRow(_ context: LayoutContext, layerKey: KeyboardLayer) -> [RowItem] {

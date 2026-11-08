@@ -17,6 +17,8 @@ public struct KeyFace: Hashable, Sendable {
     public var secondaryIsDimmed = true
     public var alignment: Alignment = .center
     public var isProminent = false
+    /// A key with nothing to do now, as undo with nothing to undo: its glyph dimmed, as Apple's are.
+    public var isDimmed = false
 
     public init(content: Content, secondary: String? = nil, secondaryIsDimmed: Bool = true, alignment: Alignment = .center, isProminent: Bool = false) {
         self.content = content
@@ -34,6 +36,8 @@ public struct KeyFaceContext: Hashable, Sendable {
     public var shift: ShiftState
     public var returnKind: ReturnKind
     public var returnEnabled: Bool
+    public var canUndo = false
+    public var canRedo = false
 
     public init(device: DeviceClass, layer: KeyboardLayer, kind: InputKind, shift: ShiftState, returnKind: ReturnKind, returnEnabled: Bool) {
         self.device = device
@@ -90,8 +94,12 @@ extension KeyFace {
             self.init(content: .symbol("keyboard.chevron.compact.down"), alignment: edge)
         case .emoji:
             self.init(content: .symbol("face.smiling"), alignment: edge)
-        case .blank:
-            self.init(content: .none)
+        case .undo:
+            self.init(content: .symbol("arrow.uturn.backward"), alignment: edge)
+            isDimmed = !context.canUndo
+        case .redo:
+            self.init(content: .symbol("arrow.uturn.forward"), alignment: edge)
+            isDimmed = !context.canRedo
         }
     }
 
