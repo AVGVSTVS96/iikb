@@ -68,7 +68,7 @@ struct WritingSettings: View {
     private static let said = "Hey, are you free tonight. Let's grab dinner, and then see the show."
     private static let rambled = "Um, I think the the plan is, like, two, I mean three."
     private static let listed = "Buy one, eggs, two, milk, three, bread."
-    private static let texted = "By the way, are you free tonight? The food there is really amazing, let me know."
+    private static let texted = "By the way, are you free tonight? The food there is really amazing, for real. Let me know."
     private static let preview = "Um, so are you free tonight. Let's grab dinner at the the place on Main, and then see the show at two, I mean three."
     private let model = SettingsModel.shared
 

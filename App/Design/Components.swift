@@ -323,6 +323,7 @@ struct Column<Content: View>: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .defaultScrollAnchor(LaunchOptions.scrollAnchor)
+        .defaultScrollAnchor(LaunchOptions.scrollsToEnd ? .bottom : nil, for: .sizeChanges)
     }
 }
 

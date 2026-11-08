@@ -27,14 +27,19 @@ struct DictationTextModeTests {
     }
 
     @Test func genZTradesWordsForSlang() {
-        #expect(typed("Seriously, the food was really amazing. That's hilarious.", .genZ) == "fr fr, the food was highkey fire. i'm dead 💀")
-        #expect(typed("I don't know, it looks like you're kind of excited.", .genZ) == "idk, it's giving ur lowkey hyped")
+        #expect(typed("For real, the food was really amazing. That's hilarious.", .genZ) == "fr, the food was highkey fire. i'm dead 💀")
+        #expect(typed("I don't know, it looks like you're kinda excited. An amazing show.", .genZ) == "idk, it's giving ur lowkey hyped. a fire show")
+    }
+
+    @Test func aWordWithOtherSensesStaysOutsideAPhraseThatPinsItDown() {
+        #expect(typed("I'm going to the store, what kind of car, a great deal, I don't really care.", .genZ) == "i'm going to the store, what kind of car, a great deal, i don't rly care")
+        #expect(typed("I can't see you, we had a good night, what exactly happened.", .genZ) == "i can't see u, we had a good night, what exactly happened")
     }
 
     @Test func aPhraseIsSwappedOnlyAsWholeWordsWithSpacesBetween() {
         #expect(write("By the, way", .abbreviated) == "By the, way")
         #expect(write("Yours, your house", .texting) == "Yours, ur house")
-        #expect(write("A great, greatest", .genZ) == "A fire, greatest")
+        #expect(write("So amazing, amazingly", .genZ) == "So fire, amazingly")
     }
 
     @Test func textingIsTypedWithoutCapitalsWhateverTheStyle() {

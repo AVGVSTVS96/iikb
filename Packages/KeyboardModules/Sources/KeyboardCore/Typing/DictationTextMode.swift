@@ -1,9 +1,10 @@
 /// How far a dictation's words go toward texting, as steps on one scale, each taking every swap of the steps before
 /// it: Spelled Out keeps the words; Abbreviated writes the phrases people type as letters ("by the way" btw, "I don't
 /// know" idk); Texting also shortens single words ("you" u, "tonight" tn, "later" l8r) in lowercase; Gen Z also
-/// trades words for its slang ("really" highkey, "amazing" fire, "seriously" fr). A phrase is swapped only as whole
-/// words with nothing but spaces between them, the longest first, and
-/// a later step's swap over an earlier one's.
+/// trades words for its slang ("amazing" fire, "for real" fr). Each swap means the same wherever it lands, so a word
+/// with other senses ("kind of", "great", "going to") is swapped only in a phrase that pins it down. A phrase is swapped
+/// only as whole words with nothing but spaces between them, the longest first, and a later step's swap over an
+/// earlier one's.
 public enum DictationTextMode: String, CaseIterable, Hashable, Sendable {
     case spelledOut
     case abbreviated
@@ -58,25 +59,25 @@ public enum DictationTextMode: String, CaseIterable, Hashable, Sendable {
         ("for your information", "fyi"), ("let me know", "lmk"), ("oh my god", "omg"), ("oh my gosh", "omg"),
         ("never mind", "nvm"), ("talk to you later", "ttyl"), ("be right back", "brb"), ("for what it's worth", "fwiw"),
         ("in real life", "irl"), ("laughing out loud", "lol"), ("not gonna lie", "ngl"), ("not going to lie", "ngl"),
-        ("what are you doing", "wyd"), ("how about you", "hbu"), ("i love you", "ily"), ("good night", "gn"),
+        ("what are you doing", "wyd"), ("how about you", "hbu"), ("i love you", "ily"),
     ]
 
     private static let textingSwaps = [
         ("you", "u"), ("your", "ur"), ("you're", "ur"), ("are", "r"), ("tonight", "tn"), ("later", "l8r"),
         ("tomorrow", "tmrw"), ("please", "pls"), ("thanks", "thx"), ("thank you", "ty"), ("because", "bc"),
-        ("people", "ppl"), ("probably", "prob"), ("message", "msg"), ("before", "b4"), ("see you", "cya"),
-        ("okay", "ok"), ("with", "w/"), ("without", "w/o"), ("something", "smth"), ("definitely", "def"),
-        ("really", "rly"), ("what's up", "wassup"), ("going to", "gonna"), ("want to", "wanna"),
+        ("people", "ppl"), ("probably", "prob"), ("message", "msg"), ("before", "b4"), ("see you later", "cya l8r"),
+        ("see you soon", "cya soon"), ("okay", "ok"), ("with", "w/"), ("without", "w/o"), ("something", "smth"),
+        ("definitely", "def"), ("really", "rly"), ("what's up", "wassup"), ("want to", "wanna"),
     ]
 
     private static let genZSwaps = [
-        ("for real", "fr"), ("seriously", "fr fr"), ("i'm serious", "no cap"), ("no lie", "no cap"),
-        ("really", "highkey"), ("very", "highkey"), ("kind of", "lowkey"), ("kinda", "lowkey"), ("sort of", "lowkey"),
-        ("amazing", "fire"), ("awesome", "fire"), ("great", "fire"), ("delicious", "bussin"), ("boring", "mid"),
-        ("mediocre", "mid"), ("suspicious", "sus"), ("excited", "hyped"), ("embarrassing", "cringe"),
-        ("that's hilarious", "i'm dead 💀"), ("that's so funny", "i'm dead 💀"), ("hilarious", "sending me 💀"),
-        ("exactly", "facts"), ("i agree", "real"), ("friend", "bestie"), ("everyone", "y'all"), ("you guys", "y'all"),
-        ("it looks like", "it's giving"), ("it seems like", "it's giving"), ("showing off", "flexing"),
-        ("well done", "slay"), ("good job", "slay"), ("gossip", "tea"), ("obviously", "obvi"),
+        ("for real", "fr"), ("i'm serious", "no cap"), ("no lie", "no cap"), ("kinda", "lowkey"),
+        ("really amazing", "highkey fire"), ("really good", "highkey good"), ("really excited", "highkey hyped"),
+        ("an amazing", "a fire"), ("an awesome", "a fire"), ("amazing", "fire"), ("awesome", "fire"),
+        ("that's great", "that's fire"), ("delicious", "bussin"), ("boring", "mid"), ("mediocre", "mid"),
+        ("suspicious", "sus"), ("excited", "hyped"), ("that's embarrassing", "that's cringe"),
+        ("that's hilarious", "i'm dead 💀"), ("that's so funny", "i'm dead 💀"), ("you guys", "y'all"),
+        ("my friend", "my bestie"), ("it looks like", "it's giving"), ("it seems like", "it's giving"),
+        ("showing off", "flexing"), ("obviously", "obvi"),
     ]
 }
