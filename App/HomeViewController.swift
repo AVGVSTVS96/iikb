@@ -109,7 +109,10 @@ struct HomeView: View {
     private let status = AppStatus.shared
     @Environment(\.arrangement) private var arrangement
     @Environment(\.window) private var window
-    @State private var height: CGFloat = 0
+    /// From the page's top to the window's bottom, which the keys never change.
+    @State private var reach: CGFloat = 0
+    /// What the bars take at the bottom with no keys up; iOS adds the keys to it on the open Duo.
+    @State private var bars: CGFloat = 0
 
     var body: some View {
         let side = arrangement == .side
@@ -130,12 +133,15 @@ struct HomeView: View {
             .padding(.top, side ? 12 : 4)
             .frame(maxWidth: side ? .infinity : Arrangement.wide)
             .frame(maxWidth: .infinity)
-            .frame(minHeight: height, alignment: .top)
+            .frame(minHeight: reach - bars, alignment: .top)
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
         .ignoresSafeArea(.keyboard)
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+        .onGeometryChange(for: [CGFloat].self) { [$0.size.height + $0.safeAreaInsets.bottom, $0.safeAreaInsets.bottom] } action: { page in
+            reach = page[0]
+            if !state.typing { bars = page[1] }
+        }
         .appPage()
         .navigationTitle("iikb")
         .toolbarTitleDisplayMode(.inlineLarge)
