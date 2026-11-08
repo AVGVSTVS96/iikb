@@ -6,7 +6,8 @@ import UIKit
 
 /// iikb's home (docs/design.md, "The app"): whether the keyboard is on and what's left to set up, the microphone's
 /// switch, a field to try it, tiles for today's dictation and your taps, and a card for each setting you reach for,
-/// opening its page in Settings.
+/// opening its page in Settings. The keys cover the page rather than resize it, so its layout holds still while you
+/// type; what they cover fades (`HomeState.keysUp`).
 final class HomeViewController: UIHostingController<AnyView> {
     private let field: UITextView
     private let state: HomeState
@@ -74,7 +75,7 @@ final class HomeViewController: UIHostingController<AnyView> {
     var taps = 0
     var copied = 0
     var typed = false
-    /// The keyboard is up over a filled dashboard, which then shows only the field.
+    /// The keyboard is up, so the page shows only the field.
     var keysUp = false
     @ObservationIgnored private lazy var clipboard: ClipboardStore = {
         let store = ClipboardStore()
@@ -89,90 +90,44 @@ final class HomeViewController: UIHostingController<AnyView> {
     }
 }
 
-/// Wide, one dashboard that fills the window, every card a grid gap apart: when it fits the window's height (an iPad
-/// upright), the field across the top taking what the rest leaves, what iikb has gathered, then the settings' cards
-/// three across, voice typing's over the keyboard's; when it doesn't, the field over what iikb has gathered beside the
-/// cards two across, so the field stays above the keys while you try them. Elsewhere, one column, its field taking
-/// what a tall window leaves. A filled dashboard shows only the field while the keyboard is up.
+/// One dashboard that fills the window and scrolls only when it can't: the field taking what the rest leaves, what
+/// iikb has gathered under it, then the settings' cards. A window wider than tall sets the cards beside the field, two
+/// across, filling the height; a wide upright one, three across under it. The field is in the tree once, whatever the
+/// shape, so it's never handed from one host to another (a first responder that is hangs SwiftUI). While the keyboard
+/// is up, the page shows only the field.
 struct HomeView: View {
     let state: HomeState
     let field: UITextView
     private let status = AppStatus.shared
     @Environment(\.arrangement) private var arrangement
+    @Environment(\.window) private var window
+    @State private var height: CGFloat = 0
 
     var body: some View {
-        Group {
-            switch arrangement {
-            case .side:
-                ViewThatFits(in: .vertical) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        tryIt.frame(minHeight: 200, maxHeight: .infinity)
-                        Group {
-                            if !status.isSetUp { setUp }
-                            stats
-                            shortcutCards(across: 3)
-                        }
-                        .hiddenWhileTyping(state.keysUp)
-                    }
-                    .padding([.horizontal, .bottom], 16)
-                    .padding(.top, 12)
-                    HStack(alignment: .top, spacing: 12) {
-                        VStack(spacing: 12) {
-                            tryIt.frame(minHeight: 160, maxHeight: .infinity)
-                            stats.hiddenWhileTyping(state.keysUp)
-                        }
-                        .padding([.leading, .bottom], 16)
-                        .padding(.top, 12)
-                        if status.isSetUp {
-                            shortcutCards(across: 2, fills: true)
-                                .padding([.trailing, .bottom], 16)
-                                .padding(.top, 12)
-                                .hiddenWhileTyping(state.keysUp)
-                        } else {
-                            ScrollView {
-                                VStack(alignment: .leading, spacing: 28) {
-                                    setUp
-                                    shortcutCards(across: 2)
-                                }
-                                .padding([.trailing, .bottom], 16)
-                                .padding(.top, 12)
-                            }
-                        }
-                    }
+        let side = arrangement == .side
+        let beside = side && window.width > window.height
+        let layout = beside ? AnyLayout(HStackLayout(alignment: .top, spacing: 12)) : AnyLayout(VStackLayout(spacing: 12))
+        ScrollView {
+            layout {
+                VStack(spacing: side ? 12 : 28) {
+                    tryIt.frame(minHeight: side ? (beside ? 160 : 200) : 150, maxHeight: .infinity)
+                    stats.hiddenWhileTyping(state.keysUp)
                 }
-                .frame(maxHeight: .infinity, alignment: .top)
-                .ignoresSafeArea(.keyboard)
-            case .single:
-                ViewThatFits(in: .vertical) {
-                    VStack(alignment: .leading, spacing: 28) {
-                        tryIt.frame(minHeight: 150, maxHeight: .infinity)
-                        Group {
-                            if !status.isSetUp { setUp }
-                            VStack(spacing: 12) {
-                                stats
-                                shortcutCards(across: 2)
-                            }
-                        }
-                        .hiddenWhileTyping(state.keysUp)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
-                    .padding(.bottom, 16)
-                    .frame(maxWidth: Arrangement.wide)
-                    .frame(maxWidth: .infinity)
-                    Column(top: 4) {
-                        tryIt.frame(height: 150)
-                        if !status.isSetUp { setUp }
-                        VStack(spacing: 12) {
-                            stats
-                            shortcutCards(across: 2)
-                        }
-                    }
+                VStack(spacing: beside ? 28 : 12) {
+                    if !status.isSetUp { setUp }
+                    shortcutCards(across: side && !beside ? 3 : 2, fills: beside)
                 }
-                .frame(maxHeight: .infinity, alignment: .top)
-                .ignoresSafeArea(.keyboard)
+                .hiddenWhileTyping(state.keysUp)
             }
+            .padding([.horizontal, .bottom], 16)
+            .padding(.top, side ? 12 : 4)
+            .frame(maxWidth: side ? .infinity : Arrangement.wide)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: height, alignment: .top)
         }
+        .scrollBounceBehavior(.basedOnSize)
+        .ignoresSafeArea(.keyboard)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
         .appPage()
         .navigationTitle("iikb")
         .toolbarTitleDisplayMode(.inlineLarge)
