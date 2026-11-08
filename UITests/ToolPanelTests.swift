@@ -170,7 +170,7 @@ final class ToolPanelTests: XCTestCase {
         try shot("menu-kinds")
         app.buttons["iikb.shelf.clipboard"].tap()
         XCTAssertTrue(link.waitForExistence(timeout: 5), "the panel shows the link")
-        XCTAssertEqual(link.staticTexts["iikb.clip.detail"].label.contains("chars"), false, "a link says how long ago, not how long")
+        XCTAssertLessThan(link.frame.height, 40, "a link is a one-line badge")
         Thread.sleep(forTimeInterval: 2)
         try shot("clipboard-kinds")
         let list = app.collectionViews["iikb.clipboard"]
@@ -191,7 +191,7 @@ final class ToolPanelTests: XCTestCase {
         let page = XCUIApplication()
         page.launchArguments = ["-iikbTab", "clipboard", "-iikbOrientation", orientation]
         page.launch()
-        XCTAssertTrue(page.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'x.com'")).firstMatch.waitForExistence(timeout: 10), "the app's Clipboard writes a link by its site")
+        XCTAssertTrue(page.staticTexts["x.com"].waitForExistence(timeout: 10), "the app's Clipboard writes a link by its site's name")
         Thread.sleep(forTimeInterval: 2)
         try shot("app-clipboard-kinds")
         page.buttons["Links"].firstMatch.tap()

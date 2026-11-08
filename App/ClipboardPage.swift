@@ -3,8 +3,9 @@ import KeyboardCore
 import KeyboardUI
 import SwiftUI
 
-/// What you copied, as the keyboard's clipboard panel keeps it (`ClipboardStore`, in the App Group): pinned first, then
-/// by day, newest first. A tap copies an item again; holding it pins, shares or deletes it. Wide, the item last tapped
+/// What you copied, as the keyboard's clipboard panel keeps it (`ClipboardStore`, in the App Group): links on top as
+/// one-line badges, then the rest pinned first, then by day, newest first. A tap copies an item again; holding it pins,
+/// shares or deletes it. Wide, the item last tapped
 /// shows in full in the second pane, as Transcripts' picked one does.
 struct ClipboardPage: View {
     @State private var store = ClipboardStore()
@@ -18,11 +19,16 @@ struct ClipboardPage: View {
     @Environment(\.arrangement) private var arrangement
     private let status = AppStatus.shared
 
-    private var shown: [ClipboardHistory.Item] {
-        let query = query.trimmingCharacters(in: .whitespaces)
-        let found = query.isEmpty ? items : matches
-        return linksOnly ? found.filter { if case .link = $0.content.kind { true } else { false } } : found
+    private var found: [ClipboardHistory.Item] { query.trimmingCharacters(in: .whitespaces).isEmpty ? items : matches }
+
+    /// The links found: all of them under Links, the six newest under All.
+    private var links: [ClipboardHistory.Item] {
+        let links = found.filter(\.isLink)
+        return linksOnly ? links : Array(links.prefix(6))
     }
+
+    /// Everything else found, in rows; none under Links.
+    private var shown: [ClipboardHistory.Item] { linksOnly ? [] : found.filter { !$0.isLink } }
 
     private var groups: [(title: String, items: [ClipboardHistory.Item])] {
         let calendar = Calendar.current
@@ -77,11 +83,23 @@ struct ClipboardPage: View {
                     empty.frame(minHeight: 360)
                 } else {
                     SearchField(text: $query)
-                    if shown.isEmpty {
+                    if shown.isEmpty, links.isEmpty {
                         if linksOnly, query.trimmingCharacters(in: .whitespaces).isEmpty {
                             ContentUnavailableView("No Links Yet", systemImage: "link", description: Text("Links you copy show up here."))
                         } else {
                             ContentUnavailableView.search(text: query)
+                        }
+                    }
+                    if !links.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Links")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Color.appSecondary)
+                                .padding(.horizontal, 20)
+                                .accessibilityAddTraits(.isHeader)
+                            Flow(spacing: 8) {
+                                ForEach(links) { badge($0) }
+                            }
                         }
                     }
                     ForEach(groups, id: \.title) { group in
@@ -160,22 +178,31 @@ struct ClipboardPage: View {
             .buttonStyle(.plain)
             .hoverEffect(.highlight)
             .background(beside && item.content == shownInFull?.content ? Color.appPicked : .clear)
-            .contextMenu {
-                Button("Copy", systemImage: "doc.on.doc") { copy(item) }
-                if case .link = item.content.kind, let url = URL(string: item.content.preview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "") {
-                    Link(destination: url) { Label("Open", systemImage: "safari") }
-                }
-                if case .text(let text) = item.content { ShareLink(item: text) }
-                if case .textFile(let name, _) = item.content { ShareLink(item: store.file(name)) }
-                Button(item.pinned ? "Unpin" : "Pin", systemImage: item.pinned ? "pin.slash" : "pin") {
-                    store.setPinned(!item.pinned, item.content)
-                    refresh()
-                }
-                Button("Delete", systemImage: "trash", role: .destructive) {
-                    store.remove(item.content)
-                    refresh()
-                }
-            }
+            .contextMenu { actions(item) }
+    }
+
+    private func badge(_ item: ClipboardHistory.Item) -> some View {
+        Button { copy(item) } label: { LinkBadge(item: item, copied: item.content == copied, picked: beside && item.content == shownInFull?.content) }
+            .buttonStyle(.plain)
+            .hoverEffect(.highlight)
+            .contextMenu { actions(item) }
+    }
+
+    @ViewBuilder private func actions(_ item: ClipboardHistory.Item) -> some View {
+        Button("Copy", systemImage: "doc.on.doc") { copy(item) }
+        if case .link = item.content.kind, let url = URL(string: item.content.preview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "") {
+            Link(destination: url) { Label("Open", systemImage: "safari") }
+        }
+        if case .text(let text) = item.content { ShareLink(item: text) }
+        if case .textFile(let name, _) = item.content { ShareLink(item: store.file(name)) }
+        Button(item.pinned ? "Unpin" : "Pin", systemImage: item.pinned ? "pin.slash" : "pin") {
+            store.setPinned(!item.pinned, item.content)
+            refresh()
+        }
+        Button("Delete", systemImage: "trash", role: .destructive) {
+            store.remove(item.content)
+            refresh()
+        }
     }
 
     /// Puts an item back on the clipboard. It's already in the history, so the store skips it rather than keeping it again.
@@ -380,8 +407,74 @@ private struct ClipRow: View {
     }
 }
 
-/// A row's text by its kind (docs/design.md, "Clipboard"): a link as ChatGPT shows one, its site's icon, its site and
-/// its path on one line, cut short; an address or a phone number after its glyph; a color after a swatch of it; any
+/// A copied link in one line, as the keyboard's badge has it: its site's icon, the site's name and how long ago.
+private struct LinkBadge: View {
+    let item: ClipboardHistory.Item
+    let copied: Bool
+    let picked: Bool
+
+    var body: some View {
+        if case .link(let link) = item.content.kind {
+            HStack(spacing: 6) {
+                SiteIcon(site: link.site, side: 18)
+                Text(link.name).fontWeight(.semibold)
+                Group {
+                    if copied {
+                        Image(systemName: "checkmark").accessibilityLabel("Copied")
+                    } else {
+                        Text("· " + ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)).monospacedDigit()
+                    }
+                }
+                .foregroundStyle(Color.appSecondary)
+                if item.pinned {
+                    Image(systemName: "pin.fill")
+                        .font(.caption2)
+                        .foregroundStyle(Color.appSecondary)
+                        .accessibilityLabel("Pinned")
+                }
+            }
+            .font(.subheadline)
+            .lineLimit(1)
+            .padding(.leading, 9)
+            .padding(.trailing, 12)
+            .frame(height: 34)
+            .background(picked ? Color.appPicked : Color.appCard, in: .capsule)
+            .overlay(Capsule().strokeBorder(Color.appEdge))
+            .contentShape(.capsule)
+        }
+    }
+}
+
+/// Views in lines from the leading edge, each as wide as it needs up to the line, as words wrap.
+private struct Flow: Layout {
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let frames = frames(subviews, width: proposal.width ?? .infinity)
+        return CGSize(width: proposal.width ?? frames.map(\.maxX).max() ?? 0, height: frames.map(\.maxY).max() ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for (subview, frame) in zip(subviews, frames(subviews, width: bounds.width)) {
+            subview.place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), proposal: ProposedViewSize(frame.size))
+        }
+    }
+
+    private func frames(_ subviews: Subviews, width: CGFloat) -> [CGRect] {
+        var point = CGPoint.zero, line = 0.0
+        return subviews.map { subview in
+            let size = subview.sizeThatFits(ProposedViewSize(width: width, height: nil))
+            if point.x > 0, point.x + size.width > width {
+                point = CGPoint(x: 0, y: point.y + line + spacing)
+                line = 0
+            }
+            defer { point.x += size.width + spacing; line = max(line, size.height) }
+            return CGRect(origin: point, size: CGSize(width: min(size.width, width), height: size.height))
+        }
+    }
+}
+
+/// A row's text by its kind (docs/design.md, "Clipboard"), links being badges: an address or a phone number after its glyph; a color after a swatch of it; any
 /// other text up to four lines.
 private struct ClipTitle: View {
     let content: ClipboardHistory.Item.Content
@@ -391,12 +484,6 @@ private struct ClipTitle: View {
 
     var body: some View {
         switch content.kind {
-        case .link(let link):
-            HStack(spacing: 8) {
-                SiteIcon(site: link.site, side: 20)
-                Text("\(Text(link.site).fontWeight(.semibold))\(Text(link.path.removingPercentEncoding ?? link.path).foregroundStyle(Color.appSecondary))")
-                    .lineLimit(1)
-            }
         case .email: glyph("envelope")
         case .phone: glyph("phone")
         case .color(let red, let green, let blue):
@@ -407,7 +494,7 @@ private struct ClipTitle: View {
                     .frame(width: 20, height: 20)
                 Text(plain.uppercased()).monospaced()
             }
-        case .text, .image:
+        case .text, .image, .link:
             Text(plain).lineLimit(4)
         }
     }
@@ -449,4 +536,8 @@ private struct SiteIcon: View {
         .accessibilityHidden(true)
         .task(id: site) { icon = await LinkIcons.shared.icon(site) }
     }
+}
+
+private extension ClipboardHistory.Item {
+    var isLink: Bool { if case .link = content.kind { true } else { false } }
 }
