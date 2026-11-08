@@ -7,7 +7,8 @@ import notify
 
 /// Stats' Taps: what the keyboard learned of where you tap, for one screen at a time: your numbers, the keyboard drawn
 /// with it (Heat, Aim, Accuracy), a picked key up close, how each half pulls, and the keys you miss most. Wide, the
-/// keyboard and the pull take the pane before the hinge and the rest the one after.
+/// keyboard spans the window, as big as it's drawn, over two columns: your numbers and the picked key, then the pull
+/// and the misses.
 struct TapsPage: View {
     @State private var model = TapsModel()
     @State private var mode = LaunchOptions.tapsMode ?? .heat
@@ -32,22 +33,26 @@ struct TapsPage: View {
     @ViewBuilder private func content(_ board: TapBoard) -> some View {
         let summary = TapSummary(board)
         if arrangement == .side {
-            Panes {
-                ScrollViewReader { reader in
-                    Column(top: 4) {
+            ScrollViewReader { reader in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 28) {
                         map(board, reader: reader)
-                        Thumbs(board: board, summary: summary)
+                        HStack(alignment: .top, spacing: 32) {
+                            VStack(alignment: .leading, spacing: 28) {
+                                Numbers(summary: summary, perScreen: model.layouts.count > 1)
+                                detail(board)
+                            }
+                            VStack(alignment: .leading, spacing: 28) {
+                                Thumbs(board: board, summary: summary)
+                                Misses(summary: summary, selected: model.selected) { pick($0, reader: $1 ? reader : nil, anchor: "detail") }
+                            }
+                        }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .padding(.bottom, 40)
                 }
-            } second: {
-                ScrollViewReader { reader in
-                    Column(top: 4) {
-                        Numbers(summary: summary, perScreen: model.layouts.count > 1)
-                        detail(board)
-                        Misses(summary: summary, selected: model.selected) { pick($0, reader: $1 ? reader : nil, anchor: "detail") }
-                    }
-                    .onAppear { scrollForLaunch(reader) }
-                }
+                .onAppear { scrollForLaunch(reader) }
             }
         } else {
             ScrollViewReader { reader in

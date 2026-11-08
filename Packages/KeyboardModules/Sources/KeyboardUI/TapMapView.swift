@@ -89,7 +89,7 @@ public final class TapMapView: UIView {
         let scale = scale(for: bounds.width)
         canvas.transform = CGAffineTransform(scaleX: scale, y: scale)
         canvas.center = CGPoint(x: bounds.midX, y: bounds.midY)
-        let text = min(1 / scale, 2)
+        let text = min(1 / scale, 1.5)
         if marks.textScale != text {
             marks.textScale = text
             marks.setNeedsDisplay()
