@@ -111,6 +111,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     private func open(_ contexts: Set<UIOpenURLContext>) {
         if let source = contexts.lazy.compactMap({ Source(link: $0.url) }).first { return offer(source) }
+        if let added = contexts.lazy.compactMap({ Extension(link: $0.url) }).first { return offer(added) }
         if let computer = contexts.lazy.compactMap({ Computer(link: $0.url) }).first {
             Computers.shared.add(computer)
             Router.shared.statsComputer = computer.name
@@ -146,6 +147,21 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         HostApp.log.notice("back to \(host ?? "none", privacy: .public) \(opened ? "opened" : "failed", privacy: .public) after \(Date.now.timeIntervalSince(asked), format: .fixed(precision: 2))s")
     }
 
+    /// An extension's link asks before its chats open from the bar.
+    private func offer(_ added: Extension) {
+        let alert = UIAlertController(
+            title: "Add “\(added.name)”?",
+            message: "With Allow Full Access on, its chats open from the keyboard’s bar, and what you write in them goes to \(added.url.host() ?? "it").",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Add", style: .default) { _ in
+            ExtensionStore.add(added)
+            SettingsModel.shared.reload()
+        })
+        present(alert)
+    }
+
     /// A source's link asks before iikb starts telling it what you type.
     private func offer(_ source: Source) {
         let alert = UIAlertController(
@@ -158,6 +174,10 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             SourceStore.add(source)
             SettingsModel.shared.reload()
         })
+        present(alert)
+    }
+
+    private func present(_ alert: UIAlertController) {
         var top = window?.rootViewController
         while let presented = top?.presentedViewController { top = presented }
         top?.present(alert, animated: true)

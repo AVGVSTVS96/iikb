@@ -9,6 +9,7 @@ iikb's own keyboard, on KeyboardUI and KeyboardStore, and the only target that l
   - `TranscriptsPanel` shows what you dictated, from the copy the app writes for it (`TranscriptFeed`), in `ClipboardPanel`'s rows, from its own tool in the bar.
 - The clipboard's tool lets out the bar's tray first (`SuggestionBar.Edit`): cut, copy and paste through `UIPasteboard` and the engine, then the two panels.
 - `Sources`: the sources you add in the app (docs/sources.md). Each gets the field you type in as JSON, off the main thread, and its hint stands in for the suggestions until tapped. Only with Full Access, never password or code fields.
+- `Chats` and `ChatPanel`: the chats of the extensions you add in the app (docs/extensions.md), from the bar's Chats tool, with Full Access. The panel opens above the bar, and while it's open the engine types into its `LineDocument` in place of the app's field, with a send return key, so suggestions, autocorrect and the mic work there; return sends to the open chat. The open chat's messages are asked for again as each answer comes (the extension holds the request until they change), only while the panel is open. Sources aren't told what you write there. A chat open as the keyboard goes away opens again in the next keyboard in the same field, so dictating into it can go through the app and back.
 - `KeyboardHost`: the app the keyboard is in, from the moment it appears (docs/sources.md, "Which app you're typing in").
 
 ## Opening apps and knowing the host

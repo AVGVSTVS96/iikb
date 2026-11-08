@@ -84,6 +84,7 @@ struct TryPreview: View {
 
     private(set) var settings = SettingsStore.load()
     private(set) var sources = SourceStore.load()
+    private(set) var extensions = ExtensionStore.load()
     private(set) var keepMicOn = SettingsStore.keepMicOn
 
     private init() {
@@ -95,6 +96,7 @@ struct TryPreview: View {
     func reload() {
         settings = SettingsStore.load()
         sources = SourceStore.load()
+        extensions = ExtensionStore.load()
         keepMicOn = SettingsStore.keepMicOn
     }
 
@@ -119,6 +121,19 @@ struct TryPreview: View {
         if let old, let index = sources.firstIndex(of: old) { sources[index] = source } else { sources.append(source) }
         SourceStore.save(sources)
         self.sources = sources
+    }
+
+    /// Adds an extension, or puts `replacing` back with its new values.
+    func save(_ added: Extension, replacing old: Extension?) {
+        var extensions = ExtensionStore.load()
+        if let old, let index = extensions.firstIndex(of: old) { extensions[index] = added } else { extensions.append(added) }
+        ExtensionStore.save(extensions)
+        self.extensions = extensions
+    }
+
+    func delete(_ removed: Extension) {
+        extensions.removeAll { $0 == removed }
+        ExtensionStore.save(extensions)
     }
 
     func delete(_ offsets: IndexSet) {

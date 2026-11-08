@@ -61,6 +61,7 @@ extension Panel {
         case .gif: "GIFs"
         case .clipboard: "Clipboard"
         case .transcripts: "Transcripts"
+        case .chats: "Chats"
         }
     }
 
@@ -71,6 +72,7 @@ extension Panel {
         case .gif: Self.gifGlyph(side)
         case .clipboard: Self.symbol("list.clipboard", side)
         case .transcripts: Self.symbol("text.bubble", side)
+        case .chats: Self.symbol("bubble.left.and.bubble.right", side)
         }
     }
 

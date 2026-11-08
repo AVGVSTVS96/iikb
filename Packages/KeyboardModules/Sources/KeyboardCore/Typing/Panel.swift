@@ -6,6 +6,9 @@ public enum Panel: Hashable, Sendable, CaseIterable {
     case clipboard
     /// What you dictated.
     case transcripts
+    /// The chats of the extensions you added. It opens above the bar rather than in its place, and the keys type into a
+    /// message line as they do into any field (`LineDocument`), so the engine never opens it.
+    case chats
 
     /// The panels, in the order of their tools in the bar.
     public static let tools: [Panel] = [.emoji, .gif, .transcripts, .clipboard]

@@ -2,19 +2,52 @@ import KeyboardStore
 import KeyboardCore
 import SwiftUI
 
-struct SourcesPage: View {
-    private let model = SettingsModel.shared
-    @State private var editing: Source?
+/// What Sources and Extensions share: a service you run, with a name, an address and an optional token, added in
+/// Settings or from its link.
+protocol Service: Hashable, Identifiable {
+    var name: String { get }
+    var url: URL { get }
+    var token: String? { get }
+    init(name: String, url: URL, token: String?)
+    static var noun: String { get }
+    static var about: String { get }
+    @MainActor static var saved: [Self] { get }
+    @MainActor static func save(_ service: Self, replacing old: Self?)
+    @MainActor static func delete(_ service: Self)
+}
+
+extension Source: Service, @retroactive Identifiable {
+    public var id: String { name + url.absoluteString }
+    static let noun = "Source"
+    static let about = "A source is a service you run that iikb tells what you type. With Full Access on, each one gets the app’s bundle ID and the text of the field you’re typing in, never passwords or codes, and can answer with a hint above the keys. Tap a hint to hide it."
+    static var saved: [Source] { SettingsModel.shared.sources }
+    static func save(_ service: Source, replacing old: Source?) { SettingsModel.shared.save(service, replacing: old) }
+    static func delete(_ service: Source) {
+        if let index = saved.firstIndex(of: service) { SettingsModel.shared.delete([index]) }
+    }
+}
+
+extension Extension: Service, @retroactive Identifiable {
+    public var id: String { name + url.absoluteString }
+    static let noun = "Extension"
+    static let about = "An extension is a service you run whose chats open from the bar, to read them and write in them as you would in any field. With Full Access on, iikb asks it for its chats and sends it what you write there, nothing else you type."
+    static var saved: [Extension] { SettingsModel.shared.extensions }
+    static func save(_ service: Extension, replacing old: Extension?) { SettingsModel.shared.save(service, replacing: old) }
+    static func delete(_ service: Extension) { SettingsModel.shared.delete(service) }
+}
+
+struct ServicesPage<Item: Service>: View {
+    @State private var editing: Item?
     @State private var adding = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
-            if !model.sources.isEmpty {
-                Box(header: "Your Sources") {
-                    ForEach(model.sources, id: \.self) { source in
-                        Button { editing = source } label: {
+            if !Item.saved.isEmpty {
+                Box(header: "Your \(Item.noun)s") {
+                    ForEach(Item.saved) { service in
+                        Button { editing = service } label: {
                             HStack {
-                                RowText(title: source.name, detail: source.url.host() ?? source.url.absoluteString)
+                                RowText(title: service.name, detail: service.url.host() ?? service.url.absoluteString)
                                 Image(systemName: "chevron.right")
                                     .font(.footnote.weight(.semibold))
                                     .foregroundStyle(Color.appSecondary)
@@ -25,32 +58,28 @@ struct SourcesPage: View {
                     }
                 }
             }
-            Box(footer: "A source is a service you run that iikb tells what you type. With Full Access on, each one gets the app’s bundle ID and the text of the field you’re typing in, never passwords or codes, and can answer with a hint above the keys. Tap a hint to hide it.") {
-                ActionRow(title: "Add Source", symbol: "plus") { adding = true }
+            Box(footer: Item.about) {
+                ActionRow(title: "Add \(Item.noun)", symbol: "plus") { adding = true }
             }
         }
-        .sheet(isPresented: $adding) { SourceForm(source: nil) }
-        .sheet(item: $editing) { SourceForm(source: $0) }
+        .sheet(isPresented: $adding) { ServiceForm<Item>(service: nil) }
+        .sheet(item: $editing) { ServiceForm(service: $0) }
     }
 }
 
-extension Source: @retroactive Identifiable {
-    public var id: String { name + url.absoluteString }
-}
-
-/// A source's name, address and token, checked before it's saved.
-private struct SourceForm: View {
-    let source: Source?
+/// A service's name, address and token, checked before it's saved.
+private struct ServiceForm<Item: Service>: View {
+    let service: Item?
     @State private var name: String
     @State private var address: String
     @State private var token: String
     @Environment(\.dismiss) private var dismiss
 
-    init(source: Source?) {
-        self.source = source
-        _name = State(initialValue: source?.name ?? "")
-        _address = State(initialValue: source?.url.absoluteString ?? "https://")
-        _token = State(initialValue: source?.token ?? "")
+    init(service: Item?) {
+        self.service = service
+        _name = State(initialValue: service?.name ?? "")
+        _address = State(initialValue: service?.url.absoluteString ?? "https://")
+        _token = State(initialValue: service?.token ?? "")
     }
 
     private var url: URL? {
@@ -61,7 +90,7 @@ private struct SourceForm: View {
 
     private var problem: String? {
         if trimmedName.isEmpty { return nil }
-        if SettingsModel.shared.sources.contains(where: { $0.name == trimmedName && $0 != source }) { return "You already have a source called “\(trimmedName)”." }
+        if Item.saved.contains(where: { $0.name == trimmedName && $0 != service }) { return "“\(trimmedName)” is already one of your \(Item.noun.lowercased())s." }
         if url == nil, address.count > "https://".count { return "The address needs to start with https://." }
         return nil
     }
@@ -69,7 +98,7 @@ private struct SourceForm: View {
     var body: some View {
         NavigationStack {
             Column {
-                Box(footer: problem ?? "iikb sends the token with each update, so the source can tell it’s you.") {
+                Box(footer: problem ?? "iikb sends the token with each request, so the \(Item.noun.lowercased()) can tell it’s you.") {
                     TextField("Name", text: $name)
                         .textInputAutocapitalization(.words)
                         .row()
@@ -82,22 +111,22 @@ private struct SourceForm: View {
                         .textInputAutocapitalization(.never)
                         .row()
                 }
-                if let source {
+                if let service {
                     Box {
-                        ActionRow(title: "Delete Source", role: .destructive) {
-                            if let index = SettingsModel.shared.sources.firstIndex(of: source) { SettingsModel.shared.delete([index]) }
+                        ActionRow(title: "Delete \(Item.noun)", role: .destructive) {
+                            Item.delete(service)
                             dismiss()
                         }
                     }
                 }
             }
-            .pushedPage(source == nil ? "Add Source" : "Edit Source")
+            .pushedPage(service == nil ? "Add \(Item.noun)" : "Edit \(Item.noun)")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         guard let url else { return }
-                        SettingsModel.shared.save(Source(name: trimmedName, url: url, token: token.isEmpty ? nil : token), replacing: source)
+                        Item.save(Item(name: trimmedName, url: url, token: token.isEmpty ? nil : token), replacing: service)
                         dismiss()
                     }
                     .disabled(url == nil || trimmedName.isEmpty || problem != nil)

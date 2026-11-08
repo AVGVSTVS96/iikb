@@ -20,7 +20,7 @@ iikb's saved data, in the App Group the app and the keyboard extension share and
 - `TranscriptFeed`: what you dictated, copied by the app to the group's `Library/Caches` each time its transcripts change, for the keyboard's Transcripts panel; the backup leaves it out, since the app's own file is the one kept.
 - `TypingStats`: the hours the keyboard appends to the group's `Library/typing.jsonl` each time it closes or a message goes, with a Darwin notification.
 - `PersonalNetwork`, with `Network.current`.
-- `SourceStore`: the `Source`s you add in the app.
+- `SourceStore`: the `Source`s you add in the app; `ExtensionStore`: the `Extension`s.
 - `AppLink`: the app's links the keyboard opens.
 
 ## Dictation, the channel to the app for voice typing

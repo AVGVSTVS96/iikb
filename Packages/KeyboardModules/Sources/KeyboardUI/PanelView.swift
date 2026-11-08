@@ -59,14 +59,15 @@ public final class PanelView: UIView {
         setNeedsLayout()
     }
 
-    public func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
+    /// `caret` is how many characters of `query` are before the caret, at its end when nil.
+    public func show(query: String, caret: Int? = nil, theme: KeyboardTheme, metrics: KeyboardMetrics) {
         if metrics.toolbar != toolbar {
             toolbar = metrics.toolbar
             setNeedsLayout()
         }
         back.tintColor = theme.label.ui
         content?.show(query: query, theme: theme, metrics: metrics)
-        field.show(query, placeholder: content?.placeholder ?? "", glyph: content?.glyph, notice: content?.notice, theme: theme)
+        field.show(query, caretAt: caret ?? query.count, placeholder: content?.placeholder ?? "", glyph: content?.glyph, notice: content?.notice, theme: theme)
     }
 
     override public func layoutSubviews() {
@@ -95,6 +96,7 @@ private final class SearchField: UIView {
     private let caret = UIView()
     private let clear = UIButton(type: .custom)
     private var query = ""
+    private var caretAt = 0
     private var notice: String?
     private var clearTheme: KeyboardTheme?
 
@@ -107,6 +109,7 @@ private final class SearchField: UIView {
         glyph.contentMode = .center
         glyph.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 17, weight: .regular)
         label.font = .systemFont(ofSize: 17)
+        label.lineBreakMode = .byTruncatingHead
         caret.layer.cornerRadius = 1
         clear.accessibilityIdentifier = "iikb.panel.clear"
         clear.accessibilityLabel = "Clear"
@@ -121,9 +124,10 @@ private final class SearchField: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func show(_ query: String, placeholder: String, glyph image: UIImage?, notice: String?, theme: KeyboardTheme) {
-        if query != self.query || notice != self.notice { setNeedsLayout() }
+    func show(_ query: String, caretAt: Int, placeholder: String, glyph image: UIImage?, notice: String?, theme: KeyboardTheme) {
+        if query != self.query || caretAt != self.caretAt || notice != self.notice { setNeedsLayout() }
         self.query = query
+        self.caretAt = caretAt
         self.notice = notice
         accessibilityLabel = placeholder
         accessibilityValue = notice ?? query
@@ -157,6 +161,10 @@ private final class SearchField: UIView {
         if window != nil { blink() }
     }
 
+    private static func width(of text: String, in font: UIFont) -> CGFloat {
+        text.isEmpty ? 0 : ceil((text as NSString).size(withAttributes: [.font: font]).width)
+    }
+
     private static func clearImage(mark: UIImage?, circle: UIColor, field: UIColor) -> UIImage {
         UIGraphicsImageRenderer(size: CGSize(width: 20, height: 20)).image { _ in
             circle.setFill()
@@ -180,11 +188,11 @@ private final class SearchField: UIView {
             accessory.frame = CGRect(x: right - 32, y: 0, width: 32, height: bounds.height)
             right = accessory.frame.minX
         }
-        let text = glyph.frame.maxX + 6
+        let text = glyph.image == nil ? 14 : glyph.frame.maxX + 6
         let start = query.isEmpty && notice == nil ? text + 4 : text
         let width = min(label.intrinsicContentSize.width, right - start - 4)
         label.frame = CGRect(x: start, y: 0, width: max(width, 0), height: bounds.height)
-        let typed = query.isEmpty ? 0 : label.frame.width
+        let typed = query.isEmpty ? 0 : max(label.frame.width - Self.width(of: String(query.dropFirst(caretAt)), in: label.font), 0)
         caret.frame = CGRect(x: (text + typed + 1).rounded(scale: scale), y: ((bounds.height - 22) / 2).rounded(scale: scale), width: 2, height: 22)
     }
 }

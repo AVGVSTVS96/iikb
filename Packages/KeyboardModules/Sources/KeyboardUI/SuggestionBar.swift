@@ -205,7 +205,8 @@ public final class SuggestionBar: UIView {
     }
 
     /// The tools at the bar's left, where there's no pill row for them.
-    public func update(tools panels: [Panel], theme: KeyboardTheme) {
+    /// `open` is the panel whose tool shows it's out, besides the clipboard's, whose tray says so.
+    public func update(tools panels: [Panel], open: Panel? = nil, theme: KeyboardTheme) {
         if panels != tools.map(\.panel) {
             tools.forEach { $0.button.removeFromSuperview() }
             tools = panels.map { panel in
@@ -217,7 +218,10 @@ public final class SuggestionBar: UIView {
             }
             setNeedsLayout()
         }
-        tools.forEach { $0.button.theme = theme }
+        for (panel, button) in tools {
+            button.theme = theme
+            if panel != .clipboard { button.isOn = panel == open }
+        }
     }
 
     /// The clipboard's tray: out of the clipboard's button while `edits` says what it can do, tucked back in with nil.

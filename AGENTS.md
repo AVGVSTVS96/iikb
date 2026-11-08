@@ -20,6 +20,7 @@ Each module keeps its own AGENTS.md beside its code, with what it holds and why.
 - `UITests/`: types through the real extension in the simulator.
 - `web/`: the web demo and iikb's page, on KeyboardCore through `TypingEngine`, deployed to iikb.vercel.app. [web/AGENTS.md](web/AGENTS.md)
 - `sources/record.ts`: the record source (Bun): a log of every message you send and every field you leave with text you typed, with the host bundle ID the keyboard sends (docs/sources.md). `bun test sources/`.
+- `extensions/`: extensions (Bun): `iikb.ts` serves one from `chats({ name, list, read, send })`, and `hex.ts` is the first, your hex sessions as chats (docs/extensions.md). `bun test extensions/`.
 - `server/backup.ts`: the backup server (KeyboardStore/AGENTS.md, "Backup").
 - `scripts/`: build, install, simulator and measuring scripts. [scripts/AGENTS.md](scripts/AGENTS.md)
 - `project.yml`: XcodeGen spec. The `.xcodeproj` is generated, never committed.

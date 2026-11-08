@@ -7,12 +7,12 @@ import SwiftUI
 /// takes the first pane and the picked page the second; elsewhere a page opens on its own.
 struct SettingsPage: View {
     enum Page: String, CaseIterable, Hashable {
-        case appearance, typing, feedback, voice, writing, dictionary, sources, access, privacy, changelog, about
+        case appearance, typing, feedback, voice, writing, dictionary, extensions, sources, access, privacy, changelog, about
 
         static let sections: [(title: String, pages: [Page])] = [
             ("Keyboard", [.appearance, .typing, .feedback]),
             ("Voice Typing", [.voice, .writing, .dictionary]),
-            ("iikb", [.sources, .access, .privacy, .changelog, .about]),
+            ("iikb", [.extensions, .sources, .access, .privacy, .changelog, .about]),
         ]
 
         var title: String {
@@ -23,6 +23,7 @@ struct SettingsPage: View {
             case .voice: "Voice"
             case .writing: "Writing Style"
             case .dictionary: "Dictionary"
+            case .extensions: "Extensions"
             case .sources: "Sources"
             case .access: "Keyboard Access"
             case .privacy: "Privacy & Data"
@@ -39,6 +40,7 @@ struct SettingsPage: View {
             case .voice: ("waveform", .red)
             case .writing: ("textformat", .orange)
             case .dictionary: ("character.book.closed.fill", .brown)
+            case .extensions: ("bubble.left.and.bubble.right.fill", .green)
             case .sources: ("antenna.radiowaves.left.and.right", .teal)
             case .access: ("switch.2", .indigo)
             case .privacy: ("hand.raised.fill", .blue)
@@ -58,6 +60,7 @@ struct SettingsPage: View {
             case .voice: VoiceModel.shared.model.title
             case .writing: settings.dictationStyle.title
             case .dictionary: words == 1 ? "1 word" : "\(words.formatted()) words"
+            case .extensions: model.extensions.isEmpty ? "None" : model.extensions.count.formatted()
             case .sources: model.sources.isEmpty ? "None" : model.sources.count.formatted()
             case .access: AppStatus.shared.isSetUp ? "All Set" : "Needs Setup"
             case .about: AboutPage.version
@@ -72,6 +75,7 @@ struct SettingsPage: View {
             switch self {
             case .voice, .privacy, .changelog: true
             case .sources: !SettingsModel.shared.sources.isEmpty
+            case .extensions: !SettingsModel.shared.extensions.isEmpty
             default: false
             }
         }
@@ -175,7 +179,8 @@ struct SettingsContent: View {
             case .voice: VoiceSettings()
             case .writing: WritingSettings()
             case .dictionary: VocabularyView()
-            case .sources: SourcesPage()
+            case .extensions: ServicesPage<Extension>()
+            case .sources: ServicesPage<Source>()
             case .access: SetupPage()
             case .privacy: PrivacyPage()
             case .changelog: ChangelogPage()
