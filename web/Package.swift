@@ -5,7 +5,7 @@ let package = Package(
     name: "KeyboardWeb",
     dependencies: [
         .package(path: "../Packages/KeyboardModules"),
-        .package(url: "https://github.com/swiftwasm/JavaScriptKit.git", exact: "0.59.0"),
+        .package(url: "https://github.com/swiftwasm/JavaScriptKit.git", exact: "0.63.0"),
     ],
     targets: [
         .executableTarget(
