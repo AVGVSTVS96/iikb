@@ -1,7 +1,7 @@
 name: testflight
 on:
   push:
-    branches: [main]
+    branches: [beta]
   workflow_dispatch:
 concurrency:
   group: testflight
@@ -21,4 +21,6 @@ jobs:
           range=HEAD~1..HEAD
           git cat-file -e "$BEFORE^{commit}" 2>/dev/null && range="$BEFORE..HEAD"
           export WHATS_NEW="$(git log --no-merges --format='- %s' "$range" | sed -E 's/^- [a-z]+(\([^)]*\))?!?: /- /' | head -20)"
+          security unlock-keychain -p "$(cat ~/.appstoreconnect/keychain-password)" ~/Library/Keychains/testflight.keychain-db
+          cp ~/.appstoreconnect/klipy.key Packages/KeyboardModules/Sources/FullKeyboard/Resources/Keys/
           ~/.local/bin/turn sh scripts/testflight
