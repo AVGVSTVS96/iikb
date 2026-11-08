@@ -152,8 +152,9 @@ public struct EmojiHistory: Codable, Hashable, Sendable {
     static let capacity = 60
 
     static let shown = 30
-    /// Common picks, for a keyboard that hasn't seen you pick an emoji yet.
-    static let starters = ["❤️", "😂", "👍", "😭", "🙏", "😘", "🥰", "😍", "😊", "🎉", "😁", "💕", "🥺", "😅", "🔥", "☺️", "🤦", "♥️", "🤷", "🙄", "😆", "🤗", "😉", "🎂", "🤔", "👏", "🙂", "😳", "🥳", "😎"]
+    /// Common picks, for a keyboard that hasn't seen you pick an emoji yet: Unicode's most used, less ♥️, which iOS draws
+    /// as ❤️.
+    static let starters = ["❤️", "😂", "👍", "😭", "🙏", "😘", "🥰", "😍", "😊", "🎉", "😁", "💕", "🥺", "😅", "🔥", "☺️", "🤦", "🤷", "🙄", "😆", "🤗", "😉", "🎂", "🤔", "👏", "🙂", "😳", "🥳", "😎", "👌"]
 
     public init() {}
 
