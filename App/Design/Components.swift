@@ -298,6 +298,94 @@ extension View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
     }
+
+    /// A page opened from another in its tab: its Back sits in the Duo's side bar under the status icons on every
+    /// screen, where the system's own stays in the title row on some.
+    func backInSideBar(_ title: String) -> some View {
+        modifier(SideBarBack(title: title))
+    }
+}
+
+/// The open Duo held upright is the one screen where iOS puts the status icons across the top and no side bar beside
+/// them, so there the page keeps a column of its own at the trailing edge for Back, under the status icons, and its
+/// title sits at the leading edge as it does beside the side bar.
+private struct SideBarBack: ViewModifier {
+    let title: String
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.window) private var window
+
+    private var ownColumn: Bool {
+        !ThisDevice.isPad && window.width >= 600 && window.height > window.width
+    }
+
+    func body(content: Content) -> some View {
+        if #available(iOS 27.1, *) {
+            if ownColumn {
+                content
+                    .navigationBarBackButtonHidden()
+                    .background(SwipeBack())
+                    .toolbar(removing: .title)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Text(title).font(.headline).fixedSize().accessibilityAddTraits(.isHeader)
+                        }
+                        .sharedBackgroundVisibility(.hidden)
+                    }
+                    .safeAreaInset(edge: .trailing, spacing: 0) {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.backward")
+                                .font(.system(size: 20, weight: .semibold))
+                                .frame(width: 48, height: 48)
+                        }
+                        .buttonStyle(.plain)
+                        .glassEffect(.regular.interactive(), in: .circle)
+                        .accessibilityLabel("Back")
+                        .padding(.trailing, 23)
+                        .frame(maxHeight: .infinity, alignment: .top)
+                    }
+            } else {
+                content
+                    .navigationBarBackButtonHidden()
+                    .background(SwipeBack())
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Back", systemImage: "chevron.backward") { dismiss() }.labelStyle(.iconOnly)
+                        }
+                        .axisBehavior(.verticalPreferred)
+                    }
+            }
+        } else {
+            content
+        }
+    }
+}
+
+/// iOS stops the swipe from the leading edge going back while the system's Back is hidden; the page lets it go back
+/// again, and hands the swipe back to iOS as it leaves.
+private struct SwipeBack: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Controller { Controller() }
+    func updateUIViewController(_ controller: Controller, context: Context) {}
+
+    final class Controller: UIViewController, UIGestureRecognizerDelegate {
+        private weak var system: UIGestureRecognizerDelegate?
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            guard let swipe = navigationController?.interactivePopGestureRecognizer, swipe.delegate !== self else { return }
+            system = swipe.delegate
+            swipe.delegate = self
+        }
+
+        override func viewWillDisappear(_ animated: Bool) {
+            super.viewWillDisappear(animated)
+            guard let swipe = navigationController?.interactivePopGestureRecognizer, swipe.delegate === self else { return }
+            swipe.delegate = system
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            (navigationController?.viewControllers.count ?? 0) > 1
+        }
+    }
 }
 
 extension EnvironmentValues {

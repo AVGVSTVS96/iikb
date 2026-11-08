@@ -10,6 +10,7 @@ struct TranscriptsPage: View {
     @State private var query = ""
     @State private var selected: Transcript.ID?
     @State private var copies = 0
+    @State private var path = LaunchOptions.opensTranscript ? Array(Transcripts.shared.all.prefix(1).map(\.id)) : []
     @Environment(\.arrangement) private var arrangement
 
     private var shown: [Transcript] {
@@ -30,7 +31,7 @@ struct TranscriptsPage: View {
     private var beside: Bool { arrangement == .side }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: beside ? .constant([]) : $path) {
             Group {
                 if beside {
                     Panes(list: true) {
@@ -56,6 +57,7 @@ struct TranscriptsPage: View {
                         .navigationTitle("Transcript")
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar { MicSwitchItem() }
+                        .backInSideBar("Transcript")
                 }
             }
         }

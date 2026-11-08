@@ -8,6 +8,7 @@ The containing app, in Raycast's look (`AppStyle`, `Components`: black pages, ne
 - Each page is laid out by the width it gets, never the device or the fold (`Arrangement`, `Panes`): from 700 points (the open Duo in landscape, any iPad either way up, a wide iPad window), two panes, halves or a list up to 480 wide beside the page it picked; narrower (the Duo folded or open upright, a narrow window), one column. Home, wide, stacks into one dashboard when that fits the window's height (an iPad upright) and takes two panes when it doesn't.
 - `ThisDevice` names the device in what the app says (iPhone or iPad) and knows an iPad has no haptics; Appearance shows only the layout settings KeyboardCore applies on this device (`KeysHere`).
 - `scripts/sim ipadapp` (UITests/AppShots) screenshots the pages on iPads, turned and in windows dragged to Split View and Stage Manager sizes.
+- A page opened from another in its tab (a settings page, a transcript) takes `backInSideBar(_:)`: one Back in the Duo's side bar, under the status icons with the tabs, since the system's own Back stays in the title row on some screens; on the open Duo upright, where iOS has no side bar, the page keeps a column of its own for it at the trailing edge and its title at the leading. Swiping from the leading edge still goes back (`BackTests`).
 - `Router` opens a tab and settings page from another.
 - `Settings.bundle` has the keyboard's switches in Settings › Apps › iikb.
 - `scripts/sim duoapp` screenshots every screen of it on the Duo's four screens.

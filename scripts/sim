@@ -228,6 +228,7 @@ voice -iikbSettings voice
 writing -iikbSettings writing
 dictionary -iikbSettings dictionary
 transcripts -iikbTab transcripts
+transcript -iikbTab transcripts -iikbTranscript YES
 clipboard -iikbTab clipboard
 overview -iikbStats overview
 overview-mac -iikbStats overview -iikbStatsComputer Mac

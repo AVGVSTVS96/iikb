@@ -99,6 +99,7 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | The keyboard's height comes from Auto Layout content, never a plain height constraint (KeyboardUI) | judgment: nothing enforces it |
 | Recording never waits for a model: the `Microphone` knows nothing of `VoiceModel` (App/Voice) | judgment: nothing enforces it |
 | Never a Bluetooth microphone unless one is picked in Settings › Microphone (App/Voice) | judgment: nothing enforces it |
+| A page opened from another in its tab has one Back, in the Duo's side bar with the tabs on every screen (App) | `backInSideBar(_:)`, `BackTests` |
 | A new use of the host app goes through `FullKeyboardViewController.hostApp` (FullKeyboard) | judgment: nothing enforces it |
 | Only main's last commit reaches the phone, never mid-dictation, never without backup, never linked below iOS 27.1 (scripts) | `scripts/phone`: builds main in its own worktree, waits for the dictation, refuses without `backup.key` or below 27.1 |
 | Restore only after `scripts/phone`: an old build can't read a memory restored without its token | judgment: nothing enforces it |

@@ -45,6 +45,9 @@ enum LaunchOptions {
         router.show(defaults.string(forKey: "iikbTab").flatMap(Router.Destination.init) ?? .home)
     }
 
+    /// `-iikbTranscript YES` opens the newest transcript on its own page where it doesn't sit beside the list.
+    static var opensTranscript: Bool { defaults.bool(forKey: "iikbTranscript") }
+
     static var statsSection: StatsPage.Section? {
         defaults.bool(forKey: "iikbTaps") ? .taps : defaults.string(forKey: "iikbStats").flatMap(StatsPage.Section.init)
     }

@@ -104,7 +104,7 @@ struct SettingsPage: View {
                 } else {
                     SettingsList(picked: nil) { router.settingsPath = [$0] }
                         .navigationDestination(for: Page.self) { page in
-                            SettingsContent(page: page, top: 8).pushedPage(page.title)
+                            SettingsContent(page: page, top: 8).pushedPage(page.title).backInSideBar(page.title)
                         }
                 }
             }
