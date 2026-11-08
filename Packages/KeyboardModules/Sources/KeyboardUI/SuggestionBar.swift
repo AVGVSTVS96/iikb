@@ -65,6 +65,7 @@ public final class SuggestionBar: UIView {
     private let strip = ButtonScrollView()
     private var tools: [(panel: Panel, button: BarButton)] = []
     private let more = BarButton("More", draw: Panel.moreGlyph)
+    private var moreAction: UIAction?
     /// The clipboard's tray while it's out, nil while it's tucked into the clipboard's button.
     private var edits: Edits?
     private let tray = UIView()
@@ -240,13 +241,24 @@ public final class SuggestionBar: UIView {
         morph(growing: edits != nil) { self.layoutIfNeeded() }
     }
 
-    /// The More button at the far left, before the tools.
+    /// The More button at the far left, before the tools. A menu of one item is a button for it, since opening a menu to
+    /// make the only choice is a tap for nothing (an iPad's, which has only iikb Settings).
     public func update(more menu: UIMenu?) {
-        more.menu = menu
+        if let moreAction { more.removeAction(moreAction, for: .primaryActionTriggered) }
+        let items = menu.map(Self.actions) ?? []
+        moreAction = items.count == 1 ? items[0] : nil
+        if let moreAction { more.addAction(moreAction, for: .primaryActionTriggered) }
+        more.showsMenuAsPrimaryAction = moreAction == nil
+        more.menu = moreAction == nil ? menu : nil
+        more.accessibilityLabel = moreAction?.title ?? "More"
         if more.isHidden != (menu == nil) {
             more.isHidden = menu == nil
             setNeedsLayout()
         }
+    }
+
+    private static func actions(in menu: UIMenu) -> [UIAction] {
+        menu.children.flatMap { ($0 as? UIMenu).map(actions) ?? [$0 as? UIAction].compactMap { $0 } }
     }
 
     public func hear(_ level: Float, recorded: Double) {

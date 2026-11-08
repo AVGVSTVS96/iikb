@@ -1,7 +1,7 @@
 import XCTest
 
 /// Every state of the keyboard on one screen, through the real extension, for checking a layout on iPad (scripts/padshots):
-/// typing with suggestions, the number and symbol layers, the clipboard's tray, the More menu, the emoji, GIF, clipboard and
+/// typing with suggestions, the number and symbol layers, the clipboard's tray, the emoji, GIF, clipboard and
 /// Transcripts panels, and the keyboard pinched to float. Screenshots go to `IIKB_SHOTS-<state>.png`; a state the screen
 /// doesn't have is left out.
 final class PadShots: XCTestCase {
@@ -37,14 +37,6 @@ final class PadShots: XCTestCase {
             app.buttons["iikb.tool.clipboard"].tap()
             try shot("tray")
             app.buttons["iikb.tool.clipboard"].tap()
-        }
-        if wanted("more"), app.buttons["iikb.more"].exists {
-            let spot = space.frame
-            app.buttons["iikb.more"].tap()
-            try shot("more")
-            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: spot.midX, dy: spot.midY)).tap()
-            Thread.sleep(forTimeInterval: 0.5)
-            if !space.isHittable { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap() }
         }
         for (panel, tool) in [("emoji", "iikb.tool.emoji"), ("gif", "iikb.tool.gif")] where wanted(panel) {
             let button = app.buttons[tool].exists ? app.buttons[tool] : key("emoji", in: app)
