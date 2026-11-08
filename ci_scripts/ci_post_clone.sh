@@ -16,5 +16,6 @@ printf %s "${KLIPY_KEY:?the workflow's secret KLIPY_KEY holds KLIPY's API key}" 
 echo "DEVELOPMENT_TEAM = $CI_TEAM_ID" >Config/Team.xcconfig
 brew install --quiet xcodegen
 xcodegen generate -q
-# Xcode Cloud builds only with the versions in the project's Package.resolved, and the project is generated.
-xcodebuild -resolvePackageDependencies -project iikb.xcodeproj -scheme iikb -quiet
+# Xcode Cloud resolves no packages itself: the generated project takes the pins of the root Package.resolved.
+mkdir -p iikb.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
+cp Package.resolved iikb.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
