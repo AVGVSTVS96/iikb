@@ -200,14 +200,17 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     /// How many badges stack in a column in one row: as many as fit at least 26 tall.
     private var stacked: Int { max(Int((bounds.height + Self.gap) / (26 + Self.gap)), 1) }
 
-    /// A badge's size: one line, as wide as its words up to a card's width; in one row they stack in columns, each as
-    /// wide as its widest.
+    /// A badge's height in one row: a column's share of it, at most 32.
+    private var badgeHeight: CGFloat {
+        min(((bounds.height - Self.gap * CGFloat(stacked - 1)) / CGFloat(stacked)).rounded(.down), 32)
+    }
+
+    /// A badge's size: one line, as wide as its words up to 200; in one row they stack in columns, each as wide as its
+    /// widest.
     private func badgeSize(_ index: Int) -> CGSize {
         guard shown?.compact == true else { return CGSize(width: min(badgeWidth(index), 200), height: 32) }
         let column = (index / stacked * stacked)..<min(index / stacked * stacked + stacked, badges)
-        let card = ((bounds.width - 2 * Self.gap) / 3).rounded(.down)
-        let height = ((bounds.height - Self.gap * CGFloat(stacked - 1)) / CGFloat(stacked)).rounded(.down)
-        return CGSize(width: min(column.map(badgeWidth).max() ?? 0, card), height: height)
+        return CGSize(width: min(column.map(badgeWidth).max() ?? 0, 200), height: badgeHeight)
     }
 
     /// How many link badges show: all of them for the link button; in one row the newest two columns of them, before
@@ -237,7 +240,9 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         let first = section == 0 ? badges > 0 : badges == 0
         let before = first ? ahead : 0
         let after = section == 0 && badges > 0 && !items.isEmpty ? (compact ? Self.gap : 8) : 0
-        return compact ? UIEdgeInsets(top: 0, left: before, bottom: 0, right: after) : UIEdgeInsets(top: before, left: 0, bottom: after, right: 0)
+        let stack = CGFloat(stacked) * badgeHeight + CGFloat(stacked - 1) * Self.gap
+        let middle = section == 0 && compact ? ((bounds.height - stack) / 2).rounded(.down) : 0
+        return compact ? UIEdgeInsets(top: middle, left: before, bottom: middle, right: after) : UIEdgeInsets(top: before, left: 0, bottom: after, right: 0)
     }
 
     func collectionView(_ collectionView: UICollectionView, layout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
