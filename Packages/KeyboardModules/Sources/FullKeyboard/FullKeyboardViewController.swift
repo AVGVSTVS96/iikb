@@ -106,6 +106,10 @@ open class FullKeyboardViewController: UIInputViewController {
             feedback(.separator)
             handle(.trigger(Key(.return)))
         }
+        panel.onMic = { [unowned self] in
+            feedback(.other)
+            toggleVoice()
+        }
         panel.onFocus = { [unowned self] in raiseKeys() }
         panel.onEdit = { [unowned self] in edit($0) }
         panel.onBrowse = { [unowned self] in
@@ -584,7 +588,7 @@ open class FullKeyboardViewController: UIInputViewController {
                 inKeysPlace: keyboardView.bounds.height, field: metrics.toolbar.field)
         }
         if let line {
-            chatPanel.show(line, typing: keysUp)
+            chatPanel.show(line, typing: keysUp, mic: mic)
             panelView.show(query: line.text, caret: line.caret, theme: theme, metrics: shown)
         } else if panel != nil {
             panelView.show(query: engine.query, theme: theme, metrics: shown)
@@ -860,7 +864,8 @@ open class FullKeyboardViewController: UIInputViewController {
 
     /// Stops a dictation in progress, so what was heard is typed. Otherwise starts one, even while the last is still
     /// being written: in place while the app keeps the microphone on, or by opening the app, since a keyboard can't use
-    /// the microphone and iOS starts a recording only in an app in front.
+    /// the microphone and iOS starts a recording only in an app in front. A chat puts its keys down for it, so the thread
+    /// keeps the screen while what you say lands in its box.
     private func toggleVoice() {
         guard hasFullAccess else {
             notice = "Voice needs Allow Full Access in Settings › Apps › iikb › Keyboards"
@@ -870,6 +875,7 @@ open class FullKeyboardViewController: UIInputViewController {
         menuOpen = false
         Dictation.host = hostApp
         if dictation.listening { return Dictation.send(.finish, from: keyboard) }
+        if line != nil { keysUp = false }
         notice = nil
         micIsOn = Dictation.micIsOn
         if micIsOn { return Dictation.send(.start) }

@@ -7,19 +7,19 @@ you, in any app
   │ More, then a chat on the menu's Chats shelf
   ▼
 ┌──────────────────────────────┐  the keyboard grows once, to all of
-│ ⊞ (DM) General Craft      🎙 │  the screen but 140 pt for the app
+│ ⊞ (DM) General Craft      🎙 │  the screen but the app's room (140 pt, 172 on the Duo)
 │ is the build on? ███████     │
 │ ███ Yes, 655 is on your Duo. │  reading and dictating: keys down
-│ ( Message DM               ) │
+│ ( Message DM          🎙 ↑ ) │
 └──────────────────────────────┘
   │ tap the box: keys come up under it, same height
-  │ ↑ (keys down) or send (keys up) sends to the open chat
+  │ the box's ↑, or send on the keys, sends to the open chat
   ▼
 iikb ──► your extension ──► wherever it sends
      ◄── replies show as they come
 ```
 
-Chats is about reading and dictating, so it opens with the keys down and the chat filling a keyboard grown for it, the chats as pills in the bar. Dictation lands in the box as one edit and waits for ↑. Tapping the box brings the keys up under it, with the bar's suggestions on them and the chat still above; tapping the messages puts them away. The keyboard keeps one height from the moment a chat opens, so the app above moves once.
+Chats is about reading and dictating, so it opens with the keys down and the chat filling a keyboard grown for it, the chats as pills in the bar. The box has its own mic and ↑ at its end, so a message is said and sent without the keys; a dictation, started there or from the bar, puts the keys down and lands in the box as one edit, waiting for ↑. Tapping the box brings the keys up under it, with the bar's suggestions on them and the chat still above; tapping the messages puts them away. The keyboard keeps one height from the moment a chat opens, so the app above moves once.
 
 ## Writing one
 

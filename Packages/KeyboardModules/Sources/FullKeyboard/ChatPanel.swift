@@ -10,6 +10,7 @@ final class ChatPanel: UIView, PanelContent {
     var fullAccess: () -> Bool = { false }
     var onTurnOn: () -> Void = {}
     var onSend: () -> Void = {}
+    var onMic: () -> Void = {}
     /// The box was tapped with the keys down.
     var onFocus: () -> Void = {}
     /// The messages were tapped with the keys up.
@@ -22,6 +23,7 @@ final class ChatPanel: UIView, PanelContent {
     private let composer = MessageField()
     private var line: LineDocument?
     private var typing = false
+    private var mic = MicButton.Phase.off
 
     private struct Shown: Equatable {
         var revision: Int
@@ -58,6 +60,7 @@ final class ChatPanel: UIView, PanelContent {
         trouble.numberOfLines = 0
         thread.addSubview(trouble)
         composer.onSend = { [unowned self] in onSend() }
+        composer.onMic = { [unowned self] in onMic() }
         composer.onTap = { [unowned self] in if !typing { onFocus() } }
         composer.onSelect = { [unowned self] in onSelect($0) }
         composer.onEdit = { [unowned self] in onEdit($0) }
@@ -75,9 +78,10 @@ final class ChatPanel: UIView, PanelContent {
         shown = nil
     }
 
-    /// The box shows `line`; `typing` is whether the keys are up under it.
-    func show(_ line: LineDocument, typing: Bool) {
+    /// The box shows `line` and the dictation's `mic`; `typing` is whether the keys are up under it.
+    func show(_ line: LineDocument, typing: Bool, mic: MicButton.Phase) {
         self.line = line
+        self.mic = mic
         if typing != self.typing { setNeedsLayout() }
         self.typing = typing
     }
@@ -89,7 +93,7 @@ final class ChatPanel: UIView, PanelContent {
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
         if let line {
             composer.show(
-                line, placeholder: chats.open.map { "Message \($0.name)" } ?? "Message", caret: typing, sends: !typing,
+                line, placeholder: chats.open.map { "Message \($0.name)" } ?? "Message", caret: typing, mic: mic,
                 theme: theme)
         }
         title.text = chats.open?.name

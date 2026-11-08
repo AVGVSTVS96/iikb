@@ -8,6 +8,8 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate, UIEditMenu
     /// The caret or selection a touch picked, in characters.
     public var onSelect: (Range<Int>) -> Void = { _ in }
     public var onSend: () -> Void = {}
+    /// The box's mic was tapped, to start or stop a dictation into it.
+    public var onMic: () -> Void = {}
     /// Any tap on the field, before the `onSelect` it brings.
     public var onTap: () -> Void = {}
     /// Cut, Copy or Paste picked from the selection's menu, for the selection the owner holds.
@@ -18,6 +20,7 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate, UIEditMenu
     private let caret = UIView()
     private let handles = [Handle(), Handle()]
     private let send = UIButton(type: .custom)
+    private let mic = MicButton()
     private var shown: Shown?
     private var drag: Drag?
     private var taps = 1
@@ -30,8 +33,8 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate, UIEditMenu
         var placeholder: String
         var theme: KeyboardTheme
         var caret: Bool
-        var sends: Bool
-        var canSend: Bool { sends && text.contains { !$0.isWhitespace } }
+        var mic: MicButton.Phase
+        var canSend: Bool { text.contains { !$0.isWhitespace } }
     }
 
     private enum Drag { case caret, start, end }
@@ -40,7 +43,7 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate, UIEditMenu
     private static let lineHeight: CGFloat = 22
     private static let sendSize: CGFloat = 28
     private static let sendMargin: CGFloat = 6
-    private static let inset = UIEdgeInsets(top: 9, left: 14, bottom: 9, right: sendSize + 2 * sendMargin)
+    private static let inset = UIEdgeInsets(top: 9, left: 14, bottom: 9, right: 2 * sendSize + 3 * sendMargin)
     private static let cornerRadius: CGFloat = 20
 
     override public init(frame: CGRect) {
@@ -72,6 +75,9 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate, UIEditMenu
         send.layer.cornerRadius = Self.sendSize / 2
         send.addAction(UIAction { [unowned self] _ in onSend() }, for: .touchUpInside)
         addSubview(send)
+        mic.accessibilityIdentifier = "iikb.chat.mic"
+        mic.addAction(UIAction { [unowned self] _ in onMic() }, for: .touchUpInside)
+        addSubview(mic)
 
         let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
         tap.delegate = self
@@ -86,11 +92,14 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate, UIEditMenu
 
     required init?(coder: NSCoder) { fatalError() }
 
-    /// `caret` while the keys are up to type into it; `sends` while they're down, when send is the field's own.
-    public func show(_ line: LineDocument, placeholder: String, caret: Bool, sends: Bool, theme: KeyboardTheme) {
+    /// `caret` while the keys are up to type into it; `mic` the dictation's phase, which the box's mic shows, so a
+    /// message can be said and sent with the keys down.
+    public func show(
+        _ line: LineDocument, placeholder: String, caret: Bool, mic: MicButton.Phase, theme: KeyboardTheme
+    ) {
         let next = Shown(
-            text: line.text, selection: line.selection, placeholder: placeholder, theme: theme, caret: caret,
-            sends: sends)
+            text: line.text, selection: line.selection, placeholder: placeholder, theme: theme, caret: caret, mic: mic)
+        self.mic.show(mic, theme: theme)
         guard next != shown else { return }
         let last = shown
         shown = next
@@ -160,6 +169,7 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate, UIEditMenu
         let size = Self.sendSize
         send.bounds.size = CGSize(width: size, height: size)
         send.center = CGPoint(x: bounds.maxX - Self.sendMargin - size / 2, y: bounds.maxY - Self.sendMargin - size / 2)
+        mic.frame = send.frame.offsetBy(dx: -(size + Self.sendMargin), dy: 0)
         canvas.layoutIfNeeded()
         drawSelection()
         guard let shown, let range = textRange(shown.selection) else { return }
@@ -250,20 +260,20 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate, UIEditMenu
 
     private func showSend(_ visible: Bool, animated: Bool) {
         let change = { [send] in
-            send.alpha = visible ? 1 : 0
-            send.transform = visible ? .identity : CGAffineTransform(scaleX: 0.5, y: 0.5)
+            send.alpha = visible ? 1 : 0.3
         }
         send.isEnabled = visible
         if animated { UIView.animate(springDuration: 0.3, bounce: 0.2, animations: change) } else { change() }
     }
 
     override public func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        if send.isEnabled, send.frame.insetBy(dx: -8, dy: -8).contains(point) { return send }
+        if send.frame.insetBy(dx: -4, dy: -8).contains(point) { return send }
+        if mic.frame.insetBy(dx: -4, dy: -8).contains(point) { return mic }
         return super.hitTest(point, with: event)
     }
 
     public func gestureRecognizer(_ recognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        guard touch.view != send else { return false }
+        guard touch.view != send, touch.view?.isDescendant(of: mic) != true else { return false }
         if recognizer is UITapGestureRecognizer { taps = touch.tapCount }
         return true
     }
