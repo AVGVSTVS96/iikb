@@ -317,17 +317,11 @@ private struct TranscriptDetail: View {
 
     var body: some View {
         Column(top: beside ? 4 : 8) {
-            HStack(spacing: 4) {
-                Text(transcript.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().hour().minute()))
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.appSecondary)
-                Spacer(minLength: 8)
-                CopyButton(text: transcript.text)
-                ShareLink(item: transcript.text) { Image(systemName: "square.and.arrow.up").frame(width: 34, height: 34) }
-            }
-            .font(.body.weight(.semibold))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 4)
+            Text(transcript.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().hour().minute()))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.appSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 4)
             Text(transcript.shown)
                 .font(.title3)
                 .foregroundStyle(transcript.text.isEmpty ? Color.appSecondary : Color.primary)
@@ -336,7 +330,7 @@ private struct TranscriptDetail: View {
                 .padding(20)
                 .background(Color.appCard, in: .rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
-            RecordingActions(transcript: transcript)
+            TranscriptActions(transcript: transcript)
             Box {
                 Fact(title: "Length", value: Duration.seconds(transcript.seconds).formatted(.time(pattern: .minuteSecond)))
                 Fact(title: "Words", value: transcript.words.formatted())

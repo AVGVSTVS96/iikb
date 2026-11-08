@@ -1,16 +1,32 @@
 import SwiftUI
 
-/// A transcript's sound sent on, right under its text: in a new message in Messages' own audio format, or as a voice
-/// memo through the share sheet.
-struct RecordingActions: View {
+/// What's done with a transcript, right under its text: its words copied or shared, and, when iikb kept its sound, that
+/// sent on in a new message in Messages' own audio format or as a voice memo through the share sheet.
+struct TranscriptActions: View {
     let transcript: Transcript
     @State private var failure: String?
 
     var body: some View {
-        if Transcripts.shared.hasRecording(transcript.id) {
+        let kept = Transcripts.shared.hasRecording(transcript.id)
+        if !transcript.text.isEmpty || kept {
             Box {
-                ActionRow(title: "Send in Messages", symbol: "message") { send(as: .message) }
-                ActionRow(title: "Share Recording", symbol: "square.and.arrow.up") { send(as: .memo) }
+                if !transcript.text.isEmpty {
+                    CopyRow(text: transcript.text)
+                    ShareLink(item: transcript.text) {
+                        HStack(spacing: 10) {
+                            Text("Share Text")
+                            Spacer()
+                            Image(systemName: "square.and.arrow.up").font(.subheadline.weight(.semibold))
+                        }
+                        .foregroundStyle(Color.blue)
+                        .row()
+                    }
+                    .buttonStyle(.plain)
+                }
+                if kept {
+                    ActionRow(title: "Send in Messages", symbol: "message") { send(as: .message) }
+                    ActionRow(title: "Share Recording", symbol: "square.and.arrow.up") { send(as: .memo) }
+                }
                 if let failure { Text(failure).foregroundStyle(.red).row() }
             }
         }
