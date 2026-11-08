@@ -179,7 +179,10 @@ final class ToolPanelTests: XCTestCase {
         try shot("clipboard-kinds-more")
         list.swipeDown()
         list.swipeDown()
+        app.buttons["iikb.clipboard.links"].tap()
+        XCTAssertTrue(wait { !app.descendants(matching: .any)["iikb.clip.Meet at Sightglass on 7th, 4pm?"].exists }, "the link button shows only links")
         XCTAssertTrue(link.waitForExistence(timeout: 3))
+        try shot("clipboard-links")
         link.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 3))
         try shot("clipboard-link-preview")
@@ -191,6 +194,9 @@ final class ToolPanelTests: XCTestCase {
         XCTAssertTrue(page.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'x.com'")).firstMatch.waitForExistence(timeout: 10), "the app's Clipboard writes a link by its site")
         Thread.sleep(forTimeInterval: 2)
         try shot("app-clipboard-kinds")
+        page.buttons["Links"].firstMatch.tap()
+        XCTAssertTrue(wait { !page.staticTexts["hello@example.com"].exists }, "Links shows only links")
+        try shot("app-clipboard-links")
     }
 
     func testTheMenuTakesTheKeysPlaceWithEditsAndShelves() throws {

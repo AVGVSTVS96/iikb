@@ -56,6 +56,13 @@ enum ClipTitle {
         return make(.text("https://" + link.site), font: .systemFont(ofSize: 17), label: .label, secondary: .secondaryLabel)
     }
 
+    /// A link's path without its leading `/`, as a narrow card's second line has it after the age; nil when it's not a
+    /// link or has none.
+    static func path(_ content: ClipboardHistory.Item.Content) -> String? {
+        guard case .link(let link) = content.kind, !link.path.isEmpty else { return nil }
+        return String((link.path.removingPercentEncoding ?? link.path).dropFirst())
+    }
+
     /// The site whose icon a link's title shows, or nil when it's not a link.
     static func site(_ content: ClipboardHistory.Item.Content) -> String? {
         guard case .link(let link) = content.kind else { return nil }

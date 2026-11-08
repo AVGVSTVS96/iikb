@@ -13,13 +13,15 @@ struct ClipboardPage: View {
     @State private var matches: [ClipboardHistory.Item] = []
     @State private var copied: ClipboardHistory.Item.Content?
     @State private var picked: ClipboardHistory.Item.Content?
+    @State private var linksOnly = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.arrangement) private var arrangement
     private let status = AppStatus.shared
 
     private var shown: [ClipboardHistory.Item] {
         let query = query.trimmingCharacters(in: .whitespaces)
-        return query.isEmpty ? items : matches
+        let found = query.isEmpty ? items : matches
+        return linksOnly ? found.filter { if case .link = $0.content.kind { true } else { false } } : found
     }
 
     private var groups: [(title: String, items: [ClipboardHistory.Item])] {
@@ -75,7 +77,13 @@ struct ClipboardPage: View {
                     empty.frame(minHeight: 360)
                 } else {
                     SearchField(text: $query)
-                    if shown.isEmpty { ContentUnavailableView.search(text: query) }
+                    if shown.isEmpty {
+                        if linksOnly, query.trimmingCharacters(in: .whitespaces).isEmpty {
+                            ContentUnavailableView("No Links Yet", systemImage: "link", description: Text("Links you copy show up here."))
+                        } else {
+                            ContentUnavailableView.search(text: query)
+                        }
+                    }
                     ForEach(groups, id: \.title) { group in
                         Box(header: group.title) {
                             ForEach(group.items) { row($0) }
@@ -91,6 +99,17 @@ struct ClipboardPage: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .defaultScrollAnchor(LaunchOptions.scrollAnchor)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !items.isEmpty {
+                SectionPills(sections: [false, true], selection: $linksOnly) { $0 ? "Links" : "All" }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                    .frame(maxWidth: Arrangement.wide)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.appPage)
+            }
+        }
     }
 
     /// Keeps what's on the clipboard now, as the keyboard would, once the keyboard has started the history and iOS lets

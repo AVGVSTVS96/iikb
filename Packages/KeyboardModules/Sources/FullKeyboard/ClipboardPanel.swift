@@ -15,15 +15,20 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     var onTurnOn: () -> Void = {}
     /// The search row's notice changed.
     var changed: () -> Void = {}
-    let placeholder = "Search clipboard"
+    var placeholder: String { linksOnly ? "Search links" : "Search clipboard" }
     var glyph: UIImage? { UIImage(systemName: "list.clipboard") }
+    var accessories: [UIView] { [links] }
     private(set) var notice: String?
+    /// Whether only links show, the search row's link button on.
+    private var linksOnly = false
+    private let links = UIButton(type: .custom)
 
     private struct Shown: Equatable {
         var query: String
         var compact: Bool
         var theme: KeyboardTheme
         var length: ClipboardLength
+        var linksOnly: Bool
     }
 
     private let store: ClipboardStore
@@ -50,6 +55,15 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         list.register(ClipRow.self, forCellWithReuseIdentifier: "clip")
         message.accessibilityIdentifier = "iikb.clipboard.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
+        links.accessibilityIdentifier = "iikb.clipboard.links"
+        links.accessibilityLabel = "Links"
+        links.setImage(UIImage(systemName: "link", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)), for: .normal)
+        links.addAction(UIAction { [unowned self] _ in
+            linksOnly.toggle()
+            links.accessibilityTraits = linksOnly ? [.button, .selected] : .button
+            notice = nil
+            changed()
+        }, for: .touchUpInside)
         list.addSubview(message)
         addSubview(list)
         store.onChange = { [unowned self] in refresh() }
@@ -60,12 +74,15 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     func reset() {
         search += 1
         if fullAccess() { store.catchUp() }
+        linksOnly = false
+        links.accessibilityTraits = .button
         notice = nil
         shown = nil
     }
 
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
-        let next = Shown(query: query, compact: metrics.toolbar.isCompact, theme: theme, length: length())
+        links.tintColor = linksOnly ? theme.prominent.ui : theme.candidate.ui
+        let next = Shown(query: query, compact: metrics.toolbar.isCompact, theme: theme, length: length(), linksOnly: linksOnly)
         guard next != shown else { return }
         if query != shown?.query { notice = nil }
         shown = next
@@ -78,7 +95,8 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         search += 1
         let request = search
         Task {
-            let items = fullAccess() && store.loaded ? await store.matching(shown.query) : []
+            let found = fullAccess() && store.loaded ? await store.matching(shown.query) : []
+            let items = shown.linksOnly ? found.filter { ClipTitle.site($0.content) != nil } : found
             guard request == search else { return }
             display(items, shown: shown)
         }
@@ -87,7 +105,7 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     private func display(_ items: [ClipboardHistory.Item], shown: Shown) {
         let loaded = fullAccess() && store.loaded
         let missing: String? = if !fullAccess() { "Clipboard needs Full Access." } else if store.refused { "To keep what you copy, set Paste from Other Apps to Allow." } else { nil }
-        let empty: String? = loaded && items.isEmpty ? (shown.query.isEmpty ? "Things you copy show up here." : "Nothing copied with “\(shown.query)”") : nil
+        let empty: String? = loaded && items.isEmpty ? (shown.query.isEmpty ? (shown.linksOnly ? "Links you copy show up here." : "Things you copy show up here.") : "Nothing copied with “\(shown.query)”") : nil
         message.show(missing ?? empty, turnOn: missing != nil, oneRow: shown.compact, theme: shown.theme)
         let moved = items.map(\.content) != self.items.map(\.content)
         self.items = items
@@ -132,10 +150,16 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
 
     private func configure(_ row: ClipRow, _ item: ClipboardHistory.Item) {
         let compact = shown?.compact == true, theme = shown?.theme ?? .lightCurrent
-        let detail = [ClipboardHistory.length(of: item.content, in: shown?.length ?? .characters), ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)]
-        let title = ClipTitle.make(item.content, font: ClipRow.font(compact: compact), label: theme.label.ui, secondary: theme.candidate.ui, short: compact && layout.itemSize.width < 160)
+        let narrow = compact && layout.itemSize.width < 160
+        let age = ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)
+        let detail = if narrow, let path = ClipTitle.path(item.content) {
+            "\(age) · \(path)"
+        } else {
+            [ClipboardHistory.length(of: item.content, in: shown?.length ?? .characters), age].compactMap { $0 }.joined(separator: " · ")
+        }
+        let title = ClipTitle.make(item.content, font: ClipRow.font(compact: compact), label: theme.label.ui, secondary: theme.candidate.ui, short: narrow)
         row.show(
-            text: item.content.preview, styled: title, detail: detail.compactMap { $0 }.joined(separator: " · "), pinned: item.pinned,
+            text: item.content.preview, styled: title, detail: detail, pinned: item.pinned,
             compact: compact, theme: theme
         )
         row.shown = item.content
