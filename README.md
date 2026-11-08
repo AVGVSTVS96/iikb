@@ -23,7 +23,7 @@ Layouts, pop-ups, accents, the space bar cursor and the suggestion bar work as A
 
 ## Make it yours
 
-Five themes inspired by Raycast (Default, Clear, Physical, Mechanical and iOS 5), with controls for key spacing, roundness and haptic strength. The tools sit beside the suggestions, with dictation at the bar's right edge.
+Five themes inspired by Raycast (Default, Clear, Physical, Mechanical and iOS 5), with controls for key spacing, roundness and haptic strength. A menu button sits beside the suggestions, with dictation at the bar's right edge.
 
 ![The Default theme](web/site/shots/theme-default.webp)
 
@@ -64,7 +64,7 @@ A source is a web service you plug into the keyboard. iikb sends it the text of 
 
 ## Also
 
-- GIF search and your clipboard history, from the tools at the bar's left. The app's Clipboard tab shows the same history, pinned items first.
+- A menu in the keys' place: cut, copy and paste in the bar, then your clipboard history, transcripts and GIFs, the newest a tap away, and held, any of them shown in full. The app's Clipboard tab shows the same history, pinned items first.
 - A number row, Character Preview and skin tones, as Raycast's keyboard has.
 - One-handed keyboard: hold 123 and slide left or right.
 - Hold the space bar and slide to move the cursor, hold delete to erase whole words, flick down on iPad keys for their second character.

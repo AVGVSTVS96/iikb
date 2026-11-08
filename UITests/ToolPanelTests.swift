@@ -1,7 +1,7 @@
 import UniformTypeIdentifiers
 import XCTest
 
-/// The GIF, clipboard and Transcripts panels and the clipboard's tray through the real keyboard, with Full Access on (scripts/paneltest turns it on). With
+/// The menu, its edits and shelves, and the GIF, clipboard and Transcripts panels through the real keyboard, with Full Access on (scripts/paneltest turns it on). With
 /// IIKB_SHOTS set, screenshots each step.
 final class ToolPanelTests: XCTestCase {
     private var shots: String?
@@ -13,11 +13,9 @@ final class ToolPanelTests: XCTestCase {
 
     func testTheGifPanelSearchesKlipyAndCopiesWhatYouTap() throws {
         let app = launch()
-        let tool = app.buttons["iikb.tool.gif"]
-        XCTAssertTrue(tool.waitForExistence(timeout: 3), "the GIF tool shows when a KLIPY key is built in")
-        tool.tap()
+        open(.gif, in: app)
         let gifs = app.scrollViews["iikb.gifs"]
-        XCTAssertTrue(gifs.waitForExistence(timeout: 3), "the GIF tool opens the GIF panel")
+        XCTAssertTrue(gifs.waitForExistence(timeout: 3), "the menu's GIFs shelf opens the GIF panel")
         let tile = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'iikb.gif.'"))
         XCTAssertTrue(tile.firstMatch.waitForExistence(timeout: 15), "an empty search shows KLIPY's trending GIFs")
         try shot("gif")
@@ -39,6 +37,9 @@ final class ToolPanelTests: XCTestCase {
         app.buttons["iikb.gifs.recents"].tap()
         XCTAssertTrue(wait(15) { tile.firstMatch.identifier == id }, "the clock shows the GIF you sent first")
         try shot("gif-recents")
+        tile.firstMatch.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["Copy"].waitForExistence(timeout: 3), "holding a GIF shows it with Copy")
+        try shot("gif-preview")
     }
 
     func testAHeldGifDragsIntoTheMessage() throws {
@@ -54,7 +55,7 @@ final class ToolPanelTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10), "the conversation has a message field")
         field.tap()
         XCTAssertTrue(key("space", in: messages).waitForExistence(timeout: 20), "iikb is not the active keyboard")
-        messages.buttons["iikb.tool.gif"].tap()
+        open(.gif, in: messages)
         let tile = messages.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'iikb.gif.'"))
         XCTAssertTrue(tile.firstMatch.waitForExistence(timeout: 15), "an empty search shows KLIPY's trending GIFs")
         try shot("gif-drag")
@@ -74,10 +75,7 @@ final class ToolPanelTests: XCTestCase {
     func testTheClipboardPanelKeepsWhatYouCopyAndTypesWhatYouPick() throws {
         UIPasteboard.general.string = "Meet at Sightglass on 7th, 4pm?"
         var app = launch()
-        let tool = app.buttons["iikb.tool.clipboard"]
-        XCTAssertTrue(tool.waitForExistence(timeout: 3))
-        tool.tap()
-        app.buttons["iikb.edit.history"].tap()
+        open(.clipboard, in: app)
         let message = app.buttons["iikb.clipboard.message"]
         if message.waitForExistence(timeout: 2), message.label.contains("Paste from Other Apps") {
             try shot("clipboard-refused")
@@ -86,8 +84,7 @@ final class ToolPanelTests: XCTestCase {
             try shot("clipboard-settings")
             try allowPasteFromOtherApps()
             app = launch()
-            tool.tap()
-            app.buttons["iikb.edit.history"].tap()
+            open(.clipboard, in: app)
         }
         let row = app.descendants(matching: .any).matching(identifier: "iikb.clip.Meet at Sightglass on 7th, 4pm?").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5), "what you copied in another app is kept")
@@ -101,53 +98,78 @@ final class ToolPanelTests: XCTestCase {
         XCTAssertTrue(wait { (field.value as? String)?.contains("Meet at Sightglass on 7th, 4pm?") == true }, "a tap types it into the app")
         app.buttons["iikb.panel.clear"].tap()
 
-        row.press(forDuration: 0.8)
-        let pin = app.buttons["iikb.clipboard.pin"]
-        XCTAssertTrue(pin.waitForExistence(timeout: 3), "holding a row offers Pin and Delete")
+        row.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 3), "holding a row shows it with Pin and Delete")
+        let pin = app.buttons["Pin"].exists ? app.buttons["Pin"] : app.buttons["Unpin"]
         try shot("clipboard-hold")
-        let before = pin.label
+        let pinned = pin.label == "Pin"
         pin.tap()
-        XCTAssertTrue(wait { !pin.exists }, "Pin closes the actions")
-        row.press(forDuration: 0.8)
-        XCTAssertTrue(pin.waitForExistence(timeout: 3))
-        XCTAssertEqual(pin.label, before == "Pin" ? "Unpin" : "Pin", "Pin and Unpin take turns")
-        pin.label == "Pin" ? pin.tap() : row.tap()
-        XCTAssertTrue(wait { !pin.exists })
+        XCTAssertTrue(wait { !app.buttons["Delete"].exists }, "Pin closes the menu")
+        row.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons[pinned ? "Unpin" : "Pin"].waitForExistence(timeout: 3), "Pin and Unpin take turns")
+        app.buttons[pinned ? "Unpin" : "Pin"].tap()
+        XCTAssertTrue(wait { !app.buttons["Delete"].exists })
         try shot("clipboard-pinned")
     }
 
-    func testTheClipboardButtonLetsOutCutCopyAndPasteAndTucksThemBackOnceUsed() throws {
+    func testThePreviewOfAHeldClipShowsAllOfIt() throws {
+        UIPasteboard.general.string = "Meet at Sightglass on 7th, 4pm? Bring the deck and both printouts, and ask Sam about Thursday."
+        let app = launch()
+        open(.clipboard, in: app)
+        let row = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.Meet'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.press(forDuration: 1.2)
+        Thread.sleep(forTimeInterval: 1)
+        try shot("clipboard-preview")
+    }
+
+    func testTheMenuTakesTheKeysPlaceWithEditsAndShelves() throws {
+        UIPasteboard.general.string = "Meet at Sightglass on 7th, 4pm?"
+        let app = launch()
+        let more = app.buttons["iikb.more"]
+        XCTAssertTrue(more.waitForExistence(timeout: 3), "the bar's More button shows")
+        more.tap()
+        XCTAssertTrue(app.buttons["iikb.shelf.clipboard"].waitForExistence(timeout: 3), "the menu has the clipboard's shelf")
+        XCTAssertTrue(app.buttons["iikb.shelf.transcripts"].exists, "and Transcripts'")
+        XCTAssertFalse(key("space", in: app).isHittable, "the menu is in the keys' place")
+        Thread.sleep(forTimeInterval: ProcessInfo.processInfo.environment["IIKB_SETTLE"].flatMap(Double.init) ?? 3)
+        try shot("menu")
+        more.tap()
+        XCTAssertTrue(wait { self.key("space", in: app).isHittable }, "More again gives the keys back")
+    }
+
+    func testTheMenuLetsOutCutCopyAndPasteAndGivesTheKeysBackOnceUsed() throws {
         UIPasteboard.general.string = "Sightglass"
         let app = launch()
         let field = app.textViews.firstMatch
-        let tool = app.buttons["iikb.tool.clipboard"]
+        let tool = app.buttons["iikb.more"]
         XCTAssertTrue(tool.waitForExistence(timeout: 3))
         for letter in "hi" { key(String(letter), in: app).tap() }
         key("space", in: app).tap()
         let paste = app.buttons["iikb.edit.paste"], cut = app.buttons["iikb.edit.cut"]
-        XCTAssertFalse(paste.isHittable, "the tray is tucked into the clipboard's button")
+        XCTAssertFalse(paste.isHittable, "the edits are tucked into the More button")
         tool.tap()
-        XCTAssertTrue(wait { paste.isHittable }, "the clipboard's button lets out its tray")
+        XCTAssertTrue(wait { paste.isHittable }, "the More button lets them out")
         XCTAssertFalse(cut.isEnabled, "nothing selected, nothing to cut")
-        try shot("tray")
+        try shot("edits")
         paste.tap()
         let notice = app.staticTexts["iikb.notice"]
         if notice.waitForExistence(timeout: 2), notice.label.contains("Paste from Other Apps") {
-            try shot("tray-refused")
+            try shot("edits-refused")
             throw XCTSkip("iOS refused the paste and the bar said why: Paste from Other Apps is still Ask (the clipboard panel's test turns it on)")
         }
         XCTAssertTrue(wait { (field.value as? String)?.hasSuffix("hi Sightglass") == true }, "Paste types what's on the clipboard")
-        XCTAssertTrue(wait { !paste.isHittable }, "and the tray tucks back in")
+        XCTAssertTrue(wait { !paste.isHittable }, "and they tuck back in")
 
         tool.tap()
         XCTAssertTrue(wait { paste.isHittable })
-        key("a", in: app).tap()
-        XCTAssertTrue(wait { !paste.isHittable }, "a key tucks the tray back in")
+        tool.tap()
+        XCTAssertTrue(wait { !paste.isHittable }, "More again tucks them back in")
 
         field.doubleTap()
         tool.tap()
         XCTAssertTrue(wait { cut.isHittable && cut.isEnabled }, "with a selection, Cut and Copy can")
-        try shot("tray-selected")
+        try shot("edits-selected")
         cut.tap()
         XCTAssertTrue(wait { (field.value as? String)?.contains("Sightglass") == false }, "Cut takes the selection out")
         tool.tap()
@@ -156,13 +178,10 @@ final class ToolPanelTests: XCTestCase {
         XCTAssertTrue(wait { (field.value as? String)?.contains("Sightglass") == true }, "and Paste puts back what Cut copied")
     }
 
-    func testTranscriptsOpenFromTheirToolAndTypeWhatYouPick() throws {
+    func testTranscriptsOpenFromTheirShelfAndTypeWhatYouPick() throws {
         let app = launch()
-        let tool = app.buttons["iikb.tool.transcripts"]
-        XCTAssertTrue(tool.waitForExistence(timeout: 3))
-        try shot("transcripts-tool")
-        tool.tap()
-        XCTAssertTrue(app.collectionViews["iikb.transcripts"].waitForExistence(timeout: 3), "the bar's Transcripts tool opens them")
+        open(.transcripts, in: app)
+        XCTAssertTrue(app.collectionViews["iikb.transcripts"].waitForExistence(timeout: 3), "the menu's Transcripts shelf opens them")
         let row = app.descendants(matching: .any).matching(identifier: "iikb.transcript.0").firstMatch
         guard row.waitForExistence(timeout: 5) else {
             XCTAssertTrue(app.buttons["iikb.transcripts.message"].exists, "with nothing dictated, the drawer says so")
@@ -174,6 +193,9 @@ final class ToolPanelTests: XCTestCase {
         row.tap()
         let field = app.textViews.firstMatch
         XCTAssertTrue(wait { (field.value as? String)?.contains(text.prefix(20)) == true }, "a tap types it into the app")
+        row.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["Copy"].waitForExistence(timeout: 3), "holding a transcript shows it with Paste and Copy")
+        try shot("transcripts-preview")
     }
 
     private func launch() -> XCUIApplication {
@@ -186,6 +208,18 @@ final class ToolPanelTests: XCTestCase {
         }
         XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 30), "iikb is not the active keyboard")
         return app
+    }
+
+    private enum Shelf: String { case gif, clipboard, transcripts }
+
+    /// Opens a panel the way you do: the More button, then the shelf's name.
+    private func open(_ shelf: Shelf, in app: XCUIApplication) {
+        let more = app.buttons["iikb.more"]
+        XCTAssertTrue(more.waitForExistence(timeout: 3), "the bar's More button shows")
+        more.tap()
+        let head = app.buttons["iikb.shelf.\(shelf.rawValue)"]
+        XCTAssertTrue(head.waitForExistence(timeout: 3), "the menu has the \(shelf.rawValue) shelf")
+        head.tap()
     }
 
     private func wait(_ timeout: TimeInterval = 10, _ condition: @escaping () -> Bool) -> Bool {
@@ -214,7 +248,8 @@ final class ToolPanelTests: XCTestCase {
     private func shot(_ name: String) throws {
         guard let shots else { return }
         Thread.sleep(forTimeInterval: 1.5)
-        try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(shots)-\(name).png"))
+        let screen = XCUIScreen.screens.map { $0.screenshot() }.max { $0.image.size.width * $0.image.size.height < $1.image.size.width * $1.image.size.height }
+        try (screen ?? XCUIScreen.main.screenshot()).pngRepresentation.write(to: URL(fileURLWithPath: "\(shots)-\(name).png"))
     }
 
     private func key(_ name: String, in app: XCUIApplication) -> XCUIElement {

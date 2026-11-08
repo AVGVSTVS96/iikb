@@ -48,8 +48,7 @@ public final class KeyboardPreviewView: UIView {
         keyboard.update(layout: keys.layout, signature: "preview", metrics: keys.metrics, faces: faces, theme: theme)
         bar.toolbar = keys.metrics.toolbar
         bar.keys = (keys.grid.rows.first ?? []).map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
-        bar.update(tools: [.gif, .clipboard], theme: theme)
-        bar.update(more: keys.context.showsMoreButton ? UIMenu(children: []) : nil)
+        bar.update(more: true)
         bar.update(mic: .off, recorded: 0, saved: [], waitingFor: nil, notice: nil, theme: theme)
         bar.update([Suggestion("The", .candidate), Suggestion("I", .candidate), Suggestion("And", .candidate)], emoji: [], enabled: true, theme: theme)
         backgroundColor = (dark ? Self.card.dark : Self.card.light).ui

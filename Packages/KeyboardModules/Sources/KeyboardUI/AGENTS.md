@@ -14,12 +14,13 @@ UIKit, the parts any keyboard can build on, with no private API. Keyboard behavi
 
 ## The bar
 
-- `SuggestionBar`: Apple's three suggestions, the last giving way to the word's emoji when it has some, as many as fit and the rest a swipe away, the tools at its left, and `MicButton`, a round button always at its right end, set out as the top row's keys are (`BarLayout`, KeyboardCore).
+- `SuggestionBar`: Apple's three suggestions, the last giving way to the word's emoji when it has some, as many as fit and the rest a swipe away, the More button at its left, and `MicButton`, a round button always at its right end, set out as the top row's keys are (`BarLayout`, KeyboardCore).
 - The mic: tap to dictate (opening the app while its microphone is off), tap again to stop. Nothing in the keyboard turns the microphone off, only Home's switch or Keep Mic On running out.
   - While the app listens the mic grows into a red capsule over the suggestions holding the time and a waveform of the levels it publishes, after a cancel button, which throws away what's being recorded so it's never typed (`Dictation`'s `cancel`; Transcripts still keeps it).
   - Once you stop, dictations still waiting for the model stack as cards, the next with its length, beside what it's doing.
   - Stopping plays the stop animation Settings › Appearance picks (`StopAnimation`): Squeeze (the bars rush into the mic, a ring and a check while it writes), Drain (the red pours into the mic, which glows while it writes) or Card (the recording folds into a card that lifts off the keyboard's top). Cancelling turns the recording to dust (`Dust`).
-- `BarButton`: the More button or a tool at the bar's left, one per panel. The emoji panel opens from the emoji key beside space on iPhone, which Settings can take away.
+- `BarButton`: the More button, which opens the menu (FullKeyboard's `MenuView`), and on iPad the emoji tool. The emoji panel opens from the emoji key beside space on iPhone, which Settings can take away.
+- `EditPill`: cut, copy and paste, out of the More button over the suggestions while the menu is out (`SuggestionBar.Edit`).
 - `PanelView`: a panel in place of the bar: a `PanelContent`'s results over a back button and a search field the keys type into. `EmojiPanel` is the emoji one.
 
 ## For the app

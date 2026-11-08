@@ -1,6 +1,6 @@
 # Design
 
-iikb's look follows the Raycast keyboard for iOS (October 2026): one bar of suggestions with the tools at its left and the mic at its end, and big flat keys, with no AI tools. This file is the spec: every size is in points, every color is sRGB iikb. The Paper file "iikb · Raycast" (`01M66Y7ME0SWEVV7YJM62FBE02`) draws each frame from the same numbers.
+iikb's look follows the Raycast keyboard for iOS (October 2026): one bar of suggestions with the More button at its left and the mic at its end, and big flat keys, with no AI tools. This file is the spec: every size is in points, every color is sRGB iikb. The Paper file "iikb · Raycast" (`01M66Y7ME0SWEVV7YJM62FBE02`) draws each frame from the same numbers.
 
 Where this file and a Paper frame disagree, this file wins.
 
@@ -40,17 +40,22 @@ From top to bottom: 3 of padding (iOS draws its backdrop 4 above the keyboard, s
 
 ### The bar
 
-- The bar is 38 tall, or 32 to 34 where height is short. Its buttons are one circle (`Toolbar.button`, three quarters of the bar to an even point: 28 in a 38 bar, 26 in a 34, 24 in a 32): the mic filled, and the More button, the tools and cancel showing theirs only while pressed. Each tool's glyph fits one square (`Toolbar.glyph`: 20 in a 38 bar, 18 in a 32) by its longer side, so the four squares, GIF, the clipboard and the emoji face read as one size; the More button's squares span 0.88 of it, since a solid block looks bigger than an outline. The mic's `waveform` is 0.54 of its circle (15 in a 28) and its `stop.fill` 0.43.
+- The bar is 38 tall, or 32 to 34 where height is short. Its buttons are one circle (`Toolbar.button`, three quarters of the bar to an even point: 28 in a 38 bar, 26 in a 34, 24 in a 32): the mic filled, and the More button, the tools and cancel showing theirs only while pressed. Each tool's glyph fits one square (`Toolbar.glyph`: 20 in a 38 bar, 18 in a 32) by its longer side, so the four squares and the emoji face read as one size; the More button's squares span 0.88 of it, since a solid block looks bigger than an outline. The mic's `waveform` is 0.54 of its circle (15 in a 28) and its `stop.fill` 0.43.
 - Each button sits in a square cell the bar's height (a key wide where keys are narrower, as on an iPhone in portrait), so it has as much room beside it as above and below it. The cells are set out as the top row's keys are (`BarLayout`, from the keys' own frames): the More button's and the tools' from the first key's left edge and the mic's ending on the last key's right edge, a key gap apart. So the buttons keep one size and one rhythm on every screen, however wide the keys: on the open Duo they don't spread out with the keys, as tools centered over the keys did, and folded the mic sits evenly in its corner, 12 from the screen's edge and from the backdrop's top. Three suggestion slots of equal width share what's between them, 4 from each, divided by 1pt lines 28 tall.
 - One rule places everything on every screen, one-handed and split included, and `BarLayoutTests` checks it on each: the keys' edges and gaps. Nothing crowds the keyboard's corner, because the keys don't.
 - The mic is a circle at the bar's right end. Dark: white circle, black glyph. Light: black circle, white glyph. It is always there.
 - Where an iPhone's bar has room for three suggestions of 130 and two emoji more (the open Duo, and the folded Duo in landscape), the three are 130 wide from the bar's left and the word's emoji sit in the rest, as many as fit; with or without emoji the suggestions stay where they are, as Apple's never move while you type. Elsewhere the last slot gives way to the word's emoji when it has some (`EmojiCatalog`; none beats a wrong one): the ones picked for the word, then every emoji whose name or keywords hold the word, up to 30, 36 apart. As many as fit show, centered when they all do; the rest are a swipe left away.
 - What the slots hold and what a tap does doesn't change (`SuggestionBar`, Apple's three suggestions, a quoted middle when it will autocorrect).
 
-### The tools
+### The menu
 
-- GIF and Clipboard (and, on iPad with the emoji key on, Emoji) sit after the More button (Raycast's four rounded squares), in the label color, before the suggestions. GIF opens its panel (section "Panels"). A bar narrower than any iPhone's (the iPad's floating keyboard, about 320) keeps only Clipboard, whose tray has cut, copy and paste, so its three suggestions keep an iPhone's width; with every tool they were about 45 wide and cut words to "a…d".
-- Clipboard first lets out its tray, as the iPad's shortcut bar keeps hard buttons for these: a capsule in the key fill, with the keys' shadow, grows out of the clipboard's button over the suggestions, on the mic's spring, holding Cut (`scissors`), Copy (`doc.on.doc`) and Paste (`clipboard`), a 1×16 divider, then Clipboard History (`clock.arrow.circlepath`), each a tool's circle a pitch apart (closer where the bar is short). Cut and Copy dim to 0.3 with nothing selected, Paste with no text on the clipboard; without Full Access all show and a tap says what to turn on. The suggestions fade under it, and the clipboard's button keeps its pressed circle while it's out. It tucks back in once one is used, and when a key is touched, the clipboard's button is tapped again, a panel opens, you dictate or the keyboard goes away. What you copy or cut joins the clipboard's history.
+The More button (Raycast's four rounded squares) is the only button at the bar's left on iPhone (on iPad with the emoji key on, Emoji follows it). Bassim's ask (Nov 8): "replace the keyboard with their menu", the clip tools "on a toolbar, kind of in the query top row", and "the bottom section of that will then have the cards for the other items".
+
+- Tapping More puts the menu in the keys' place and keeps its own pressed circle while it's out. Cut (`scissors`), Copy (`square.on.square`) and Paste (`doc.on.clipboard`) grow out of it over the suggestions as three pills in the key fill, each its glyph and title (16 medium), sharing the bar to the mic, which stays live. Cut and Copy dim with nothing selected, Paste with no text on the clipboard; without Full Access all show and a tap says what to turn on.
+- Below, a shelf for each history, Clipboard, Transcripts and GIFs, as many as fit up to 60 tall: its name on a tile in the color Home's card for it has (orange, pink, purple) with a chevron, then its newest items in one row scrolling sideways, the panel's own compact results. A tap on an item types it (a GIF or image goes on the clipboard and the bar says so); a tap on the name opens the full panel with its search.
+- At the foot, what the More button's menu used to hold, where Settings › Layout › Keyboard Menu puts it: the layouts that apply (Left, Full, Right folded; Full and Split open in landscape), the one in use filled, then Next Keyboard where an iPhone needs one, and iikb Settings, titled where the bar is wider than 600.
+- It gives the keys back once anything in it is used, and when More is tapped again, you dictate or the keyboard goes away. What you copy or cut joins the clipboard's history.
+- Holding a clip, a transcript or a GIF, here or in its panel, shows all of it (UIKit's context menu, `UIContextMenuConfiguration`'s preview): the whole text, scrolling where it's long, or the image or GIF playing, with Paste (Copy for a GIF), Pin and Delete for clips and Copy for transcripts under it. A keyboard's window is the keyboard, so iOS fits the preview and its menu inside it.
 - Nothing AI goes here.
 
 ### Where taps land
@@ -193,7 +198,7 @@ Slightly folded in portrait with a panel open, the open Duo gives a keyboard onl
 
 ## Panels
 
-Emoji opens from its key, GIF and Transcripts (`text.bubble`; the waveform stays the mic's) from their tools in the bar, Clipboard from the clipboard's tray. A panel replaces the bar with a results area and a search field; the keys stay where they are and type into the field, not into the app.
+Emoji opens from its key, Clipboard, Transcripts (`text.bubble`; the waveform stays the mic's) and GIF from their shelves' names in the menu (section "The menu"). A panel replaces the bar with a results area and a search field; the keys stay where they are and type into the field, not into the app.
 
 ```
 ┌──────────────────────────────────────────┐
@@ -247,13 +252,13 @@ Emoji opens from its key, GIF and Transcripts (`text.bubble`; the waveform stays
 - History: everything you copied, newest first, until you delete it; an identical item moves to the top instead of repeating; pinned items stay above the rest. All of it shows, each row made as it scrolls into view, and every read and write of its files happens off the main thread, so a long history never slows a key. Kept in the App Group, so the app's Clipboard tab shows it, never online, with a copy in the keyboard's own container that a group without a history takes (iOS deletes the group's container whenever an install leaves no app claiming it; the history kept before it moved to the group got there this way). The keyboard starts the group's history, so the app keeps nothing before it has. Texts over 100 KB live in individual UTF-8 files, with only a short preview in the history; search reads the whole text, and selecting one loads it in full. The backup includes those files. Each side locks the history while reading and changing it, since iOS can run the keyboard in two apps at once, beside the app, and one would write over what another kept.
 - Results: rows 44 tall, 2 apart, three in view, scrolling up and down. Each row: a 16-wide slot with `pin.fill` (13, secondary) for pinned items, the text on one line in SF Pro 16 (images show a 32 thumbnail, radius 6), and at the right its length and how long ago in secondary 13 with even digits (`312 chars · 5m`, `48 words · 2d`; Settings › Layout › Clipboard Length counts Characters, the default, or Words; a text kept in a file and an image show only the age). iOS never tells a keyboard which app copied something (`UIPasteboard` has no such property), so a row can't say where it came from.
 - Field: leading clipboard glyph, placeholder "Search clipboard"; typing filters by substring.
-- Tap: inserts the text at the cursor (an image is copied back to the clipboard, as GIFs are). Hold: Pin or Unpin, Delete.
+- Tap: inserts the text at the cursor (an image is copied back to the clipboard, as GIFs are). Hold: all of it, with Paste, Pin or Unpin, and Delete (section "The menu").
 - Compact: one row of up to three cards, the key fill, radius 10, the text in 14 over its length and age in 11.
 - Empty: "Things you copy show up here." in secondary 15.
 
 ### Transcripts
 
-- Opens from the clipboard's tray, or the clipboard's field, so what you dictated is a tap away without the app. Needs Full Access, as the clipboard does.
+- Opens from its shelf in the menu, so what you dictated is a tap away without the app. Needs Full Access, as the clipboard does.
 - The app keeps transcripts in its own container, so it writes a copy for the keyboard (`TranscriptFeed`, the App Group's `Library/Caches/transcripts.json`: each one's ID, date and text) each time they change and as it starts; the panel reads it as it opens, off the main thread.
 - Results: the clipboard's rows, newest first: the text on one line, and at the right its words and how long ago (`48 words · 2h`). Compact: the clipboard's cards.
 - Field: leading `text.bubble`, placeholder "Search transcripts"; typing filters by substring.

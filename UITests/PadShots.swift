@@ -1,7 +1,7 @@
 import XCTest
 
 /// Every state of the keyboard on one screen, through the real extension, for checking a layout on iPad (scripts/padshots):
-/// typing with suggestions, the number and symbol layers, the clipboard's tray, the emoji, GIF, clipboard and
+/// typing with suggestions, the number and symbol layers, the menu, the emoji, GIF, clipboard and
 /// Transcripts panels, and the keyboard pinched to float. Screenshots go to `IIKB_SHOTS-<state>.png`; a state the screen
 /// doesn't have is left out.
 final class PadShots: XCTestCase {
@@ -33,22 +33,24 @@ final class PadShots: XCTestCase {
             }
             if key("letters", in: app).exists { key("letters", in: app).tap() }
         }
-        if wanted("tray"), app.buttons["iikb.tool.clipboard"].exists {
-            app.buttons["iikb.tool.clipboard"].tap()
-            try shot("tray")
-            app.buttons["iikb.tool.clipboard"].tap()
+        if wanted("more"), app.buttons["iikb.more"].exists {
+            app.buttons["iikb.more"].tap()
+            Thread.sleep(forTimeInterval: 2)
+            try shot("more")
+            app.buttons["iikb.more"].tap()
         }
-        for (panel, tool) in [("emoji", "iikb.tool.emoji"), ("gif", "iikb.tool.gif")] where wanted(panel) {
-            let button = app.buttons[tool].exists ? app.buttons[tool] : key("emoji", in: app)
+        for (panel, tool) in [("emoji", "iikb.tool.emoji"), ("gif", "iikb.shelf.gif")] where wanted(panel) {
+            if panel == "gif", app.buttons["iikb.more"].exists { app.buttons["iikb.more"].tap() }
+            let button = app.buttons[tool].waitForExistence(timeout: 2) ? app.buttons[tool] : key("emoji", in: app)
             guard button.exists else { continue }
             button.tap()
             Thread.sleep(forTimeInterval: panel == "gif" ? 4 : 1)
             try shot(panel)
             app.buttons["iikb.panel.back"].tap()
         }
-        if wanted("clipboard"), app.buttons["iikb.tool.clipboard"].exists {
-            app.buttons["iikb.tool.clipboard"].tap()
-            app.buttons["iikb.edit.history"].tap()
+        if wanted("clipboard"), app.buttons["iikb.more"].exists {
+            app.buttons["iikb.more"].tap()
+            app.buttons["iikb.shelf.clipboard"].tap()
             try shot("clipboard")
             app.buttons["iikb.panel.back"].tap()
         }

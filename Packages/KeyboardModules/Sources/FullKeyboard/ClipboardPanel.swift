@@ -3,10 +3,10 @@ import KeyboardCore
 import KeyboardUI
 import UIKit
 
-/// The clipboard panel's results (docs/design.md, "Clipboard"): what you copied, pinned items first, as rows scrolling up
-/// and down (cards in one row scrolling sideways in the compact layout). A tap types the text, or puts an image back on the clipboard;
-/// holding a row offers Pin and Delete. Only the rows on screen are made, and their thumbnails decode off the main
-/// thread, so a long history opens as fast as a short one.
+/// The clipboard panel's results (docs/design.md, "Clipboard"): what you copied, pinned items first, as rows scrolling
+/// up and down (cards in one row scrolling sideways in the compact layout). A tap types the text, or puts an image back
+/// on the clipboard; holding a row shows all of it, with Paste, Pin and Delete (UIKit's context menu). Only the rows on
+/// screen are made, and their thumbnails decode off the main thread, so a long history opens as fast as a short one.
 final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UICollectionViewDelegate {
     var fullAccess: () -> Bool = { false }
     /// What a row's length is counted in, Settings › Layout › Clipboard Length.
@@ -30,7 +30,6 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     private var search = 0
     private var shown: Shown?
     private var items: [ClipboardHistory.Item] = []
-    private var holding: ClipboardHistory.Item.Content?
     private let layout = UICollectionViewFlowLayout()
     private lazy var list = UICollectionView(frame: .zero, collectionViewLayout: layout)
     /// In the list's content, ahead of the rows, so in one row it scrolls away with them.
@@ -49,7 +48,6 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         list.accessibilityIdentifier = "iikb.clipboard"
         [list.topEdgeEffect, list.bottomEdgeEffect, list.leftEdgeEffect, list.rightEdgeEffect].forEach { $0.isHidden = true }
         list.register(ClipRow.self, forCellWithReuseIdentifier: "clip")
-        list.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(hold)))
         message.accessibilityIdentifier = "iikb.clipboard.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
         list.addSubview(message)
@@ -62,7 +60,6 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     func reset() {
         search += 1
         if fullAccess() { store.catchUp() }
-        holding = nil
         notice = nil
         shown = nil
     }
@@ -101,10 +98,6 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     }
 
     private func pick(_ item: ClipboardHistory.Item) {
-        guard holding == nil else {
-            holding = nil
-            return list.reloadData()
-        }
         switch item.content {
         case .text(let text): onPaste(text)
         case .textFile:
@@ -120,12 +113,6 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         }
     }
 
-    @objc private func hold(_ gesture: UILongPressGestureRecognizer) {
-        guard gesture.state == .began, let indexPath = list.indexPathForItem(at: gesture.location(in: list)) else { return }
-        holding = items[indexPath.item].content
-        list.reloadData()
-    }
-
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int { items.count }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -134,22 +121,40 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         let detail = [ClipboardHistory.length(of: item.content, in: shown?.length ?? .characters), ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)]
         row.show(
             text: item.content.preview, detail: detail.compactMap { $0 }.joined(separator: " · "), pinned: item.pinned,
-            compact: shown?.compact == true, theme: shown?.theme ?? .lightCurrent, holding: item.content == holding
+            compact: shown?.compact == true, theme: shown?.theme ?? .lightCurrent
         )
         row.accessibilityIdentifier = "iikb.clip.\(item.content.label)"
         row.shown = item.content
         if case .image(let name) = item.content { thumbnail(name, for: row) }
-        row.onPin = { [unowned self] in
-            store.setPinned(!item.pinned, item.content)
-            holding = nil
-            refresh()
-        }
-        row.onDelete = { [unowned self] in
-            store.remove(item.content)
-            holding = nil
-            refresh()
-        }
         return row
+    }
+
+    func collectionView(_ collectionView: UICollectionView, contextMenuConfigurationForItemsAt indexPaths: [IndexPath], point: CGPoint) -> UIContextMenuConfiguration? {
+        guard let item = indexPaths.first.map({ items[$0.item] }) else { return nil }
+        return UIContextMenuConfiguration(identifier: nil) { [unowned self] in preview(item.content) } actionProvider: { [unowned self] _ in
+            UIMenu(children: [
+                UIAction(title: "Paste", image: UIImage(systemName: "doc.on.clipboard")) { _ in self.pick(item) },
+                UIAction(title: item.pinned ? "Unpin" : "Pin", image: UIImage(systemName: item.pinned ? "pin.slash" : "pin")) { _ in
+                    self.store.setPinned(!item.pinned, item.content)
+                    self.refresh()
+                },
+                UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { _ in
+                    self.store.remove(item.content)
+                    self.refresh()
+                },
+            ])
+        }
+    }
+
+    private func preview(_ content: ClipboardHistory.Item.Content) -> ClipPreview {
+        switch content {
+        case .text(let text): return ClipPreview(text: text)
+        case .textFile(_, let start):
+            let preview = ClipPreview(text: start)
+            Task { [store] in if let text = await store.text(content) { preview.show(text) } }
+            return preview
+        case .image(let name): return ClipPreview(image: store.thumbnail(name, side: 900))
+        }
     }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
@@ -182,11 +187,8 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     }
 }
 
-/// One row of a drawer, the clipboard's or Transcripts': its pin, its text or a thumbnail, and its length and age;
-/// held, Pin and Delete in place of those.
+/// One row of a drawer, the clipboard's or Transcripts': its pin, its text or a thumbnail, and its length and age.
 final class ClipRow: UICollectionViewCell {
-    var onPin: () -> Void = {}
-    var onDelete: () -> Void = {}
     var thumbnail: UIImage? {
         get { image.image }
         set { image.image = newValue }
@@ -195,13 +197,10 @@ final class ClipRow: UICollectionViewCell {
     var shown: ClipboardHistory.Item.Content?
     private var pinned = false
     private var compact = false
-    private var holding = false
     private let pin = UIImageView()
     private let text = UILabel()
     private let image = UIImageView()
     private let age = UILabel()
-    private let pinButton = UIButton(type: .system)
-    private let deleteButton = UIButton(type: .system)
     private let backdrop = UIView()
     private var fill = UIColor.clear
     private var pressedFill = UIColor.clear
@@ -215,18 +214,10 @@ final class ClipRow: UICollectionViewCell {
         image.layer.cornerRadius = 6
         image.clipsToBounds = true
         image.contentMode = .scaleAspectFill
-        pinButton.accessibilityIdentifier = "iikb.clipboard.pin"
-        deleteButton.accessibilityIdentifier = "iikb.clipboard.delete"
-        deleteButton.accessibilityLabel = "Delete"
-        deleteButton.setImage(UIImage(systemName: "trash", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17)), for: .normal)
-        pinButton.addAction(UIAction { [unowned self] _ in onPin() }, for: .touchUpInside)
-        deleteButton.addAction(UIAction { [unowned self] _ in onDelete() }, for: .touchUpInside)
         [backdrop, pin, text, image, age].forEach {
             $0.isUserInteractionEnabled = false
             contentView.addSubview($0)
         }
-        contentView.addSubview(pinButton)
-        contentView.addSubview(deleteButton)
         text.accessibilityIdentifier = "iikb.clip.text"
         age.accessibilityIdentifier = "iikb.clip.detail"
     }
@@ -234,10 +225,9 @@ final class ClipRow: UICollectionViewCell {
     required init?(coder: NSCoder) { fatalError() }
 
     /// `text` nil shows the thumbnail; `detail` is the length and age, "312 chars · 5m".
-    func show(text string: String?, detail: String, pinned: Bool, compact: Bool, theme: KeyboardTheme, holding: Bool) {
+    func show(text string: String?, detail: String, pinned: Bool, compact: Bool, theme: KeyboardTheme) {
         self.pinned = pinned
         self.compact = compact
-        self.holding = holding
         fill = compact ? theme.key.ui : .clear
         pressedFill = compact ? theme.keyPressed.ui : theme.label.ui.withAlphaComponent(0.12)
         pin.tintColor = theme.candidate.ui
@@ -253,10 +243,6 @@ final class ClipRow: UICollectionViewCell {
         text.isHidden = string == nil
         image.isHidden = string != nil
         if string != nil { image.image = nil }
-        pinButton.setImage(UIImage(systemName: pinned ? "pin.slash" : "pin", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17)), for: .normal)
-        pinButton.accessibilityLabel = pinned ? "Unpin" : "Pin"
-        pinButton.tintColor = theme.label.ui
-        deleteButton.tintColor = theme.record.ui
         setNeedsLayout()
     }
 
@@ -266,35 +252,28 @@ final class ClipRow: UICollectionViewCell {
     }
 
     override var isHighlighted: Bool {
-        didSet { backdrop.backgroundColor = isHighlighted || holding ? pressedFill : fill }
+        didSet { backdrop.backgroundColor = isHighlighted ? pressedFill : fill }
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
         let bounds = contentView.bounds
         backdrop.frame = bounds
-        backdrop.backgroundColor = isHighlighted || holding ? pressedFill : fill
-        pinButton.isHidden = !holding
-        deleteButton.isHidden = !holding
-        age.isHidden = holding
+        backdrop.backgroundColor = isHighlighted ? pressedFill : fill
         if compact {
             let inset = bounds.insetBy(dx: 10, dy: 6)
             pin.frame = CGRect(x: inset.maxX - 14, y: inset.minY, width: 14, height: 14)
             text.frame = CGRect(x: inset.minX, y: inset.minY, width: inset.width - (pinned ? 16 : 0), height: inset.height - 13)
             image.frame = CGRect(x: inset.minX, y: inset.minY, width: inset.height - 13, height: inset.height - 13)
             age.frame = CGRect(x: inset.minX, y: inset.maxY - 13, width: inset.width, height: 13)
-            pinButton.frame = CGRect(x: inset.maxX - 64, y: inset.maxY - 30, width: 32, height: 30)
-            deleteButton.frame = CGRect(x: inset.maxX - 32, y: inset.maxY - 30, width: 32, height: 30)
             return
         }
         pin.frame = CGRect(x: 0, y: 0, width: 16, height: bounds.height)
         let detail = ceil(age.sizeThatFits(bounds.size).width)
-        let right = holding ? bounds.width - 84 : bounds.width - max(detail, 28)
+        let right = bounds.width - max(detail, 28)
         age.frame = CGRect(x: right, y: 0, width: bounds.width - right, height: bounds.height)
         image.frame = CGRect(x: 22, y: (bounds.height - 32) / 2, width: 32, height: 32)
         text.frame = CGRect(x: 22, y: 0, width: right - 34, height: bounds.height)
-        pinButton.frame = CGRect(x: bounds.width - 84, y: 0, width: 42, height: bounds.height)
-        deleteButton.frame = CGRect(x: bounds.width - 42, y: 0, width: 42, height: bounds.height)
     }
 }
 

@@ -54,8 +54,57 @@ final class BarButton: UIButton {
     }
 }
 
+/// One of the menu's edits in the bar: its glyph and title on a pill drawn as a key is, dimmed while it can't be done.
+final class EditPill: UIButton {
+    var theme = KeyboardTheme.lightCurrent { didSet { refresh() } }
+    private let icon = UIImageView()
+    private let label = UILabel()
+
+    init(title: String, symbol: String) {
+        super.init(frame: .zero)
+        accessibilityLabel = title
+        icon.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .medium))
+        icon.contentMode = .center
+        label.text = title
+        label.font = .systemFont(ofSize: 16, weight: .medium)
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.8
+        [icon, label].forEach {
+            $0.isUserInteractionEnabled = false
+            addSubview($0)
+        }
+        layer.cornerCurve = .continuous
+        refresh()
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override var isHighlighted: Bool { didSet { refresh() } }
+    override var isEnabled: Bool { didSet { refresh() } }
+
+    private func refresh() {
+        backgroundColor = isHighlighted ? theme.keyPressed.ui : theme.key.ui
+        let tint = isEnabled ? theme.label.ui : theme.candidate.ui
+        icon.tintColor = tint
+        label.textColor = tint
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        layer.cornerRadius = bounds.height / 2
+        let glyph = icon.image?.size.width ?? 0, spacing: CGFloat = 6
+        let text = min(label.intrinsicContentSize.width, bounds.width - glyph - spacing - 16)
+        let showsTitle = text >= 24
+        label.isHidden = !showsTitle
+        let total = showsTitle ? glyph + spacing + text : glyph
+        let left = ((bounds.width - total) / 2).rounded()
+        icon.frame = CGRect(x: left, y: 0, width: glyph, height: bounds.height)
+        label.frame = CGRect(x: left + glyph + spacing, y: 0, width: max(text, 0), height: bounds.height)
+    }
+}
+
 extension Panel {
-    var title: String {
+    package var title: String {
         switch self {
         case .emoji: "Emoji"
         case .gif: "GIFs"
@@ -66,7 +115,7 @@ extension Panel {
     }
 
     /// The tool's glyph, its longer side `side` long, so every tool and the More button read as one size.
-    func icon(_ side: CGFloat) -> UIImage? {
+    package func icon(_ side: CGFloat) -> UIImage? {
         switch self {
         case .emoji: Self.symbol("face.smiling", side)
         case .gif: Self.gifGlyph(side)

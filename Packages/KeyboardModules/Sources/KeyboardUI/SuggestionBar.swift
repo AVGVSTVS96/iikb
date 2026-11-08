@@ -5,15 +5,14 @@ import KeyboardCore
 /// right end that starts and stops dictation, and the tools at the left end, all placed on the top row's keys by
 /// `BarLayout`. While the app listens, the mic grows into a red capsule over the suggestions holding the time so far and
 /// the waveform of your voice, and lets out a cancel button before it. Once you stop, dictations still waiting for the
-/// model stack as cards in its place. The clipboard's button grows the same way into a tray of its tools over the
-/// suggestions: cut, copy and paste, then its history.
+/// model stack as cards in its place. While the menu is out (the More button), cut, copy and paste stand over the
+/// suggestions as labeled pills, grown out of the More button.
 public final class SuggestionBar: UIView {
-    /// What the clipboard's tray does.
     public enum Edit: CaseIterable, Sendable {
-        case cut, copy, paste, history
+        case cut, copy, paste
     }
 
-    /// Which of the tray's edits can be done now: cut and copy with a selection, paste with text on the clipboard.
+    /// Which edits can be done now: cut and copy with a selection, paste with text on the clipboard.
     public struct Edits: Equatable, Sendable {
         public var cut, copy, paste: Bool
 
@@ -28,7 +27,6 @@ public final class SuggestionBar: UIView {
             case .cut: cut
             case .copy: copy
             case .paste: paste
-            case .history: true
             }
         }
     }
@@ -39,6 +37,7 @@ public final class SuggestionBar: UIView {
     public var onCancel: () -> Void = {}
     public var onNotice: () -> Void = {}
     public var onTool: (Panel) -> Void = { _ in }
+    public var onMore: () -> Void = {}
     public var onEdit: (Edit) -> Void = { _ in }
     /// How the recording goes back into the mic when you stop (Settings › Appearance).
     public var stopAnimation = StopAnimation.squeeze { didSet { mic.writes = stopAnimation } }
@@ -65,13 +64,10 @@ public final class SuggestionBar: UIView {
     private let strip = ButtonScrollView()
     private var tools: [(panel: Panel, button: BarButton)] = []
     private let more = BarButton("More", draw: Panel.moreGlyph)
-    private var moreAction: UIAction?
-    /// The clipboard's tray while it's out, nil while it's tucked into the clipboard's button.
+    /// The edits while the menu is out, nil while they're tucked into the More button.
     private var edits: Edits?
-    private let tray = UIView()
-    private let trayDivider = UIView()
-    private let editButtons: [(edit: Edit, button: BarButton)] = Edit.allCases.map { edit in
-        let button = BarButton(edit.title) { UIImage(systemName: edit.symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: ($0 * 0.82).rounded(), weight: .medium)) }
+    private let editButtons: [(edit: Edit, button: EditPill)] = Edit.allCases.map { edit in
+        let button = EditPill(title: edit.title, symbol: edit.symbol)
         button.accessibilityIdentifier = "iikb.edit.\(edit)"
         return (edit, button)
     }
@@ -101,18 +97,11 @@ public final class SuggestionBar: UIView {
             addSubview(slot)
         }
         dividers.forEach(addSubview)
-        tray.layer.cornerCurve = .continuous
-        tray.layer.shadowOffset = CGSize(width: 0, height: 1)
-        tray.layer.shadowRadius = 0
-        tray.layer.shadowOpacity = 1
-        tray.isUserInteractionEnabled = false
-        addSubview(tray)
-        addSubview(trayDivider)
         for (edit, button) in editButtons {
             button.addAction(UIAction { [unowned self] _ in onEdit(edit) }, for: .touchUpInside)
             addSubview(button)
         }
-        more.showsMenuAsPrimaryAction = true
+        more.addAction(UIAction { [unowned self] _ in onMore() }, for: .touchUpInside)
         more.isHidden = true
         more.accessibilityIdentifier = "iikb.more"
         addSubview(more)
@@ -225,14 +214,11 @@ public final class SuggestionBar: UIView {
         }
     }
 
-    /// The clipboard's tray: out of the clipboard's button while `edits` says what it can do, tucked back in with nil.
+    /// The menu's edits: out of the More button while `edits` says what they can do, tucked back in with nil.
     public func update(edits: Edits?, theme: KeyboardTheme) {
         let moves = (edits == nil) != (self.edits == nil)
         if edits != self.edits { setNeedsLayout() }
         self.edits = edits
-        tray.backgroundColor = theme.key.ui
-        tray.layer.shadowColor = theme.shadow.ui.cgColor
-        trayDivider.backgroundColor = theme.candidateDivider.ui
         for (edit, button) in editButtons {
             button.theme = theme
             button.isEnabled = edits?.allows(edit) ?? false
@@ -241,24 +227,11 @@ public final class SuggestionBar: UIView {
         morph(growing: edits != nil) { self.layoutIfNeeded() }
     }
 
-    /// The More button at the far left, before the tools. A menu of one item is a button for it, since opening a menu to
-    /// make the only choice is a tap for nothing (an iPad's, which has only iikb Settings).
-    public func update(more menu: UIMenu?) {
-        if let moreAction { more.removeAction(moreAction, for: .primaryActionTriggered) }
-        let items = menu.map(Self.actions) ?? []
-        moreAction = items.count == 1 ? items[0] : nil
-        if let moreAction { more.addAction(moreAction, for: .primaryActionTriggered) }
-        more.showsMenuAsPrimaryAction = moreAction == nil
-        more.menu = moreAction == nil ? menu : nil
-        more.accessibilityLabel = moreAction?.title ?? "More"
-        if more.isHidden != (menu == nil) {
-            more.isHidden = menu == nil
-            setNeedsLayout()
-        }
-    }
-
-    private static func actions(in menu: UIMenu) -> [UIAction] {
-        menu.children.flatMap { ($0 as? UIMenu).map(actions) ?? [$0 as? UIAction].compactMap { $0 } }
+    /// The More button at the far left, before the tools, which opens the menu in the keys' place.
+    public func update(more shown: Bool) {
+        guard more.isHidden == shown else { return }
+        more.isHidden = !shown
+        setNeedsLayout()
     }
 
     public func hear(_ level: Float, recorded: Double) {
@@ -406,37 +379,26 @@ public final class SuggestionBar: UIView {
         cancel.alpha = listening || mic != nil ? 1 : 0
     }
 
-    /// Out, the tray runs from the clipboard's button over the suggestions, its buttons a little apart and History set off
-    /// past the divider, closer where the bar is short of room; tucked, it's the button's own circle, its tools shrunk into it. The suggestions fade under it.
-    private func placeTray(end: CGFloat, reach: UIEdgeInsets) {
-        guard let clip = tools.first(where: { $0.panel == .clipboard })?.button.frame else {
-            tray.isHidden = true
-            editButtons.forEach { $0.button.isHidden = true }
-            return
-        }
-        let out = edits != nil
-        let apart = clip.width * 0.3
-        let step = min(clip.width + apart, (end - clip.maxX - apart) / CGFloat(editButtons.count))
-        let places = editButtons.indices.map { clip.offsetBy(dx: CGFloat($0 + 1) * step + ($0 == 3 ? apart : 0), dy: 0) }
-        let inset = (step - clip.width) / 2
-        let around = UIEdgeInsets(top: reach.top, left: -inset, bottom: reach.bottom, right: -inset)
-        tray.isHidden = false
-        tray.frame = out ? CGRect(x: clip.minX, y: clip.minY, width: places[places.count - 1].maxX - clip.minX, height: clip.height) : clip
-        tray.layer.cornerRadius = clip.height / 2
-        tray.alpha = out ? 1 : 0
-        tools.first { $0.panel == .clipboard }?.button.isOn = out
-        for ((_, button), place) in zip(editButtons, places) {
-            button.isHidden = false
+    /// Out, the edits share the bar between the last tool and the mic; tucked, they shrink into the More button. The
+    /// suggestions fade under them.
+    private func placeEdits(end: CGFloat) {
+        let anchor = more.frame
+        let out = edits != nil && !more.isHidden
+        more.isOn = out
+        let gap: CGFloat = 8
+        let start = (tools.last?.button.frame ?? anchor).maxX + gap
+        let width = max((end - start - gap * CGFloat(editButtons.count - 1)) / CGFloat(editButtons.count), 0)
+        let height = min(toolbar.bar - 4, toolbar.button + 8)
+        for (index, (_, button)) in editButtons.enumerated() {
+            let place = CGRect(x: start + CGFloat(index) * (width + gap), y: toolbar.top + (toolbar.bar - height) / 2, width: width, height: height)
+            button.isHidden = more.isHidden
             button.transform = .identity
-            button.place(place, glyph: toolbar.glyph, reach: around)
-            button.center = out ? CGPoint(x: place.midX, y: place.midY) : CGPoint(x: clip.midX, y: clip.midY)
-            button.transform = out ? .identity : CGAffineTransform(scaleX: 0.4, y: 0.4)
-            button.alpha = out ? (button.isEnabled ? 1 : 0.3) : 0
+            button.bounds.size = place.size
+            button.center = out ? CGPoint(x: place.midX, y: place.midY) : CGPoint(x: anchor.midX, y: anchor.midY)
+            button.transform = out ? .identity : CGAffineTransform(scaleX: 0.2, y: 0.2)
+            button.alpha = out ? 1 : 0
             button.isUserInteractionEnabled = out
         }
-        let paste = places[2], history = places[3]
-        trayDivider.frame = CGRect(x: ((paste.maxX + history.minX) / 2).rounded(scale: traitCollection.displayScale) - 0.5, y: clip.midY - 8, width: 1, height: 16)
-        trayDivider.alpha = out ? 1 : 0
         let under: CGFloat = out ? 0 : 1
         (slots + dividers + [strip, notice, stack] as [UIView]).forEach { $0.alpha = under }
     }
@@ -485,7 +447,7 @@ public final class SuggestionBar: UIView {
         )
         for (tool, frame) in zip(tools, layout.tools) { tool.button.place(CGRect(frame), glyph: toolbar.glyph, reach: reach) }
         if let frame = layout.more { more.place(CGRect(frame), glyph: toolbar.glyph, reach: reach) }
-        placeTray(end: CGFloat(layout.mic.map { $0.x - BarLayout.gap } ?? layout.maxX), reach: reach)
+        placeEdits(end: CGFloat(layout.mic.map { $0.x - BarLayout.gap } ?? layout.maxX))
         for (slot, frame) in zip(slots, layout.slots) {
             let minX = CGFloat(frame.x).rounded(scale: scale), maxX = CGFloat(frame.x + frame.width).rounded(scale: scale)
             slot.frame = CGRect(x: minX, y: frame.y, width: maxX - minX, height: frame.height)
@@ -643,7 +605,6 @@ extension SuggestionBar.Edit {
         case .cut: "Cut"
         case .copy: "Copy"
         case .paste: "Paste"
-        case .history: "Clipboard History"
         }
     }
 
@@ -652,7 +613,6 @@ extension SuggestionBar.Edit {
         case .cut: "scissors"
         case .copy: "square.on.square"
         case .paste: "doc.on.clipboard"
-        case .history: "clock.arrow.trianglehead.counterclockwise.rotate.90"
         }
     }
 }

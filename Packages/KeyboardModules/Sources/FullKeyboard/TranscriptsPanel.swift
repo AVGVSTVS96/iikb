@@ -4,7 +4,8 @@ import KeyboardUI
 import UIKit
 
 /// What you dictated (docs/design.md, "Transcripts"), from the app's copy (`TranscriptFeed`), newest first, in the
-/// clipboard's rows: its text, and its words and age at the right. A tap types it. The copy is read as the panel opens,
+/// clipboard's rows: its text, and its words and age at the right. A tap types it; holding one shows all of it, with
+/// Paste and Copy (UIKit's context menu). The copy is read as the panel opens,
 /// off the main thread.
 final class TranscriptsPanel: UIView, PanelContent, UICollectionViewDataSource, UICollectionViewDelegate {
     var fullAccess: () -> Bool = { false }
@@ -87,9 +88,19 @@ final class TranscriptsPanel: UIView, PanelContent, UICollectionViewDataSource, 
         let row = collectionView.dequeueReusableCell(withReuseIdentifier: "transcript", for: indexPath) as! ClipRow
         let entry = entries[indexPath.item]
         let detail = ClipboardHistory.length(of: entry.text, in: .words) + " · " + ClipboardHistory.age(of: entry.date, now: Date.now.timeIntervalSince1970)
-        row.show(text: entry.text, detail: detail, pinned: false, compact: shown?.compact == true, theme: shown?.theme ?? .lightCurrent, holding: false)
+        row.show(text: entry.text, detail: detail, pinned: false, compact: shown?.compact == true, theme: shown?.theme ?? .lightCurrent)
         row.accessibilityIdentifier = "iikb.transcript.\(indexPath.item)"
         return row
+    }
+
+    func collectionView(_ collectionView: UICollectionView, contextMenuConfigurationForItemsAt indexPaths: [IndexPath], point: CGPoint) -> UIContextMenuConfiguration? {
+        guard let text = indexPaths.first.map({ entries[$0.item].text }) else { return nil }
+        return UIContextMenuConfiguration(identifier: nil) { ClipPreview(text: text) } actionProvider: { [unowned self] _ in
+            UIMenu(children: [
+                UIAction(title: "Paste", image: UIImage(systemName: "doc.on.clipboard")) { _ in self.onPaste(text) },
+                UIAction(title: "Copy", image: UIImage(systemName: "square.on.square")) { _ in UIPasteboard.general.string = text },
+            ])
+        }
     }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {

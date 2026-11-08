@@ -17,13 +17,14 @@ open class FullKeyboardViewController: UIInputViewController {
     private var keyboard = UInt64.random(in: 1 ... .max)
     /// What the app told you about a dictation, or why copy or paste couldn't, until you tap it or a key.
     private var notice: String?
-    /// The clipboard's tray is out of its button (docs/design.md, "The tools"), until one of its tools is used or a key
-    /// is touched.
-    private var trayOut = false
+    /// The menu is in the keys' place (docs/design.md, "The menu"), until something in it is used or the More button is
+    /// tapped again.
+    private var menuOpen = false
     private let suggestionBar = SuggestionBar()
     /// The record button in the bottom row, where Settings › Layout › Record Key puts it in the globe's place.
     private let keyMic = MicButton()
     private let panelView = PanelView()
+    private let menuView = MenuView()
     private let toolbarView = UIView()
     private var toolbar = KeyboardMetrics.phone(width: 390).toolbar
     private lazy var emojiPanel: EmojiPanel = {
@@ -41,29 +42,23 @@ open class FullKeyboardViewController: UIInputViewController {
         panel.app = { [unowned self] in hostApp }
         panel.onCopied = { [unowned self] in clipboard.skip(changeCount: $0) }
         panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
-        panel.changed = { [unowned self] in render() }
+        panel.changed = { [unowned self] in noticed(panel.notice) }
         panel.clearSearch = { [unowned self] in handle(.panel(.gif)) }
         return panel
     }
     private lazy var clipboardPanel: ClipboardPanel = {
         let panel = ClipboardPanel(store: clipboard)
         panel.fullAccess = { [unowned self] in hasFullAccess }
-        panel.onPaste = { [unowned self] in
-            feedback(.input)
-            handle(.paste($0))
-        }
+        panel.onPaste = { [unowned self] in paste($0) }
         panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
-        panel.changed = { [unowned self] in render() }
+        panel.changed = { [unowned self] in noticed(panel.notice) }
         panel.length = { [unowned self] in engine.settings.clipboardLength }
         return panel
     }()
     private lazy var transcriptsPanel: TranscriptsPanel = {
         let panel = TranscriptsPanel()
         panel.fullAccess = { [unowned self] in hasFullAccess }
-        panel.onPaste = { [unowned self] in
-            feedback(.input)
-            handle(.paste($0))
-        }
+        panel.onPaste = { [unowned self] in paste($0) }
         panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
         return panel
     }()
@@ -108,7 +103,7 @@ open class FullKeyboardViewController: UIInputViewController {
 
     override open func viewDidLoad() {
         super.viewDidLoad()
-        [toolbarView, keyboardView].forEach {
+        [toolbarView, keyboardView, menuView].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         }
@@ -127,7 +122,23 @@ open class FullKeyboardViewController: UIInputViewController {
             keyboardView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             keyboardHeightConstraint,
             keysMinimumConstraint,
+            menuView.topAnchor.constraint(equalTo: keyboardView.topAnchor),
+            menuView.leadingAnchor.constraint(equalTo: keyboardView.leadingAnchor),
+            menuView.trailingAnchor.constraint(equalTo: keyboardView.trailingAnchor),
+            menuView.bottomAnchor.constraint(equalTo: keyboardView.bottomAnchor),
         ])
+        menuView.isHidden = true
+        menuView.onOpen = { [unowned self] in
+            menuOpen = false
+            open($0)
+        }
+        menuView.onEvent = { [unowned self] in
+            feedback(.other)
+            menuOpen = false
+            handle($0)
+            render()
+        }
+        suggestionBar.onMore = { [unowned self] in toggleMenu() }
         suggestionBar.onMic = { [unowned self] in toggleVoice() }
         suggestionBar.onTool = { [unowned self] in tool($0) }
         suggestionBar.onEdit = { [unowned self] in edit($0) }
@@ -273,7 +284,7 @@ open class FullKeyboardViewController: UIInputViewController {
         Dictation.keep(engine.takeDraft(), in: field)
         field = nil
         engine.handle(.panel(nil), in: document)
-        trayOut = false
+        menuOpen = false
         haptics.stop()
         TouchTrace.shared.flush()
         saveMemory()
@@ -434,11 +445,7 @@ open class FullKeyboardViewController: UIInputViewController {
         keyboardView.menu = (context.menuKeys(in: layout), context.menu, context.menuPick)
         keyboardView.update(layout: layout, signature: context.signature, metrics: metrics, faces: engine.faces(on: device), theme: theme)
         renderToolbar(metrics, device: device)
-        let more = context.showsMoreButton ? [context.menuPick] + context.layoutPicks + context.moreMenu : []
-        if more != shownMore {
-            shownMore = more
-            suggestionBar.update(more: more.isEmpty ? nil : moreMenu(context))
-        }
+        renderMenu(context, metrics: metrics)
         renderSuggestions()
 
         if keyboardHeightConstraint.constant != height {
@@ -458,7 +465,7 @@ open class FullKeyboardViewController: UIInputViewController {
         // 375 is the narrowest iPhone; only the iPad's floating keyboard is narrower.
         let narrow = width < 375
         let hasChats = hasFullAccess && !chats.services.isEmpty && !narrow
-        let tools = line != nil ? [.chats] : (hasChats ? [.chats] : []) + Panel.tools.filter { panels[$0] != nil && ($0 != .emoji || engine.settings.emojiKey && device != .phone) && (!narrow || $0 == .clipboard) }
+        let tools: [Panel] = line != nil ? [.chats] : (hasChats ? [.chats] : []) + (engine.settings.emojiKey && device != .phone && !narrow ? [.emoji] : [])
         let panel = line != nil ? chatPanel : engine.panel.flatMap { panels[$0] }
         panelView.open(panel)
         panelView.isHidden = panel == nil
@@ -467,7 +474,8 @@ open class FullKeyboardViewController: UIInputViewController {
         suggestionBar.toolbar = toolbar
         suggestionBar.maximumSlotWidth = metrics.toolbar.slot
         suggestionBar.update(tools: tools, open: line == nil ? nil : .chats, theme: theme)
-        suggestionBar.update(edits: trayOut && panel == nil ? edits : nil, theme: theme)
+        suggestionBar.update(more: true)
+        suggestionBar.update(edits: menuOpen && panel == nil ? edits : nil, theme: theme)
         suggestionBar.update(mic: mic, recorded: recorded, saved: dictation.writing, waitingFor: dictation.waiting, notice: notice ?? hint, theme: theme)
         keyMic.show(mic, theme: theme)
         if let line {
@@ -477,16 +485,44 @@ open class FullKeyboardViewController: UIInputViewController {
         }
     }
 
-    /// The bar's More button, on every screen: the layouts holding 123 offers where there are any, then the next
-    /// keyboard and iikb's settings.
-    private func moreMenu(_ context: LayoutContext) -> UIMenu {
-        let action = { [unowned self] (item: KeyboardEvent) in
-            UIAction(title: item.title, image: UIImage(systemName: item.symbol), state: item == context.menuPick ? .on : .off) { _ in
-                self.handle(item)
-            }
+    /// The menu in the keys' place while it's open: the clipboard's, Transcripts' and the GIFs' shelves, then what the
+    /// More button offers where Settings › Layout › Keyboard Menu puts layouts there.
+    private func renderMenu(_ context: LayoutContext, metrics: KeyboardMetrics) {
+        let open = menuOpen && engine.panel == nil && line == nil
+        keyboardView.isHidden = open
+        if open != !menuView.isHidden {
+            menuView.isHidden = !open
+            if open { menuView.open([Panel.clipboard, .transcripts, .gif].compactMap { panel in panels[panel].map { (panel, $0) } }) }
         }
-        let picks = context.layoutPicks
-        return UIMenu(children: [UIMenu(options: .displayInline, children: picks.map(action))] + context.moreMenu.dropFirst(picks.count).map(action))
+        guard open else { return }
+        let width = view.bounds.width
+        let block = (minX: CGFloat(metrics.margin.leading + metrics.sideInset), maxX: width - CGFloat(metrics.margin.trailing + metrics.sideInset))
+        menuView.show(footer: context.showsMoreButton ? context.moreMenu : [.settings], picked: context.menuPick, theme: theme, metrics: metrics, block: block)
+    }
+
+    private func toggleMenu() {
+        feedback(.other)
+        menuOpen.toggle()
+        notice = nil
+        if menuOpen, hasFullAccess { clipboard.catchUp() }
+        render()
+    }
+
+    /// Something picked in a panel or the menu's shelves is typed, and the menu gives the keys back.
+    private func paste(_ text: String) {
+        feedback(.input)
+        menuOpen = false
+        handle(.paste(text))
+    }
+
+    /// A panel's notice, like a GIF's "Copied": in its search row while the panel is open, in the bar once the menu,
+    /// which has no search row, gives the keys back.
+    private func noticed(_ panelNotice: String?) {
+        if menuOpen, let panelNotice {
+            menuOpen = false
+            notice = panelNotice
+        }
+        render()
     }
 
     private func open(_ panel: Panel) {
@@ -494,19 +530,15 @@ open class FullKeyboardViewController: UIInputViewController {
         handle(.panel(panel))
     }
 
-    /// A tool in the bar opens its panel, but the clipboard's lets out its tray first.
     private func tool(_ panel: Panel) {
         if panel == .chats {
             feedback(.other)
             return line == nil ? openChat() : closeChat()
         }
-        guard panel == .clipboard else { return open(panel) }
-        feedback(.other)
-        trayOut.toggle()
-        render()
+        open(panel)
     }
 
-    /// What the tray can do now. Without Full Access a keyboard can't reach the clipboard, so every edit is offered and
+    /// What the menu's edits can do now. Without Full Access a keyboard can't reach the clipboard, so every edit is offered and
     /// a tap says why it can't.
     private var edits: SuggestionBar.Edits {
         guard hasFullAccess else { return .init(cut: true, copy: true, paste: true) }
@@ -519,13 +551,10 @@ open class FullKeyboardViewController: UIInputViewController {
         return selected.isEmpty ? engine.text.selected : selected
     }
 
-    /// One of the tray's tools, after which it tucks back in. What you copy or cut joins the clipboard's history.
+    /// One of the menu's edits, after which it gives the keys back. What you copy or cut joins the clipboard's history.
     private func edit(_ edit: SuggestionBar.Edit) {
-        trayOut = false
-        switch edit {
-        case .history: return open(.clipboard)
-        case .cut, .copy, .paste: feedback(.other)
-        }
+        menuOpen = false
+        feedback(.other)
         guard hasFullAccess else {
             notice = "Copy and paste need Allow Full Access in Settings › Apps › iikb › Keyboards"
             return render()
@@ -554,8 +583,6 @@ open class FullKeyboardViewController: UIInputViewController {
     /// From viewWillAppear to viewWillDisappear. Once the keyboard goes away the text document proxy is torn down while
     /// this controller lives on, and reading it then crashes, so a ranking job or load that finishes later draws nothing.
     private var isShown = false
-    /// What the More menu was made from, so it's made again only when that changes.
-    private var shownMore: [KeyboardEvent] = []
 
     private func renderSuggestions() {
         guard isShown else { return }
@@ -582,9 +609,8 @@ open class FullKeyboardViewController: UIInputViewController {
         case .down(let key, _):
             feedback(Self.haptic(for: key))
             if key.action == .delete { startDeleteRepeat() }
-            if notice != nil || trayOut {
+            if notice != nil {
                 notice = nil
-                trayOut = false
                 render()
             }
         case .up(let key) where key.action == .delete:
@@ -604,7 +630,7 @@ open class FullKeyboardViewController: UIInputViewController {
         case .settings:
             open(AppLink.keyboard)
         case .panel:
-            trayOut = false
+            menuOpen = false
         case .nextKeyboard:
             advanceToNextInputMode()
         default:
@@ -618,7 +644,7 @@ open class FullKeyboardViewController: UIInputViewController {
     /// return key sends.
     private func openChat(_ text: String = "", at chat: String? = nil) {
         guard line == nil else { return }
-        trayOut = false
+        menuOpen = false
         engine.handle(.panel(nil), in: host)
         engine.leaveField()
         let line = LineDocument(text)
@@ -668,7 +694,7 @@ open class FullKeyboardViewController: UIInputViewController {
             return render()
         }
         updateHost()
-        trayOut = false
+        menuOpen = false
         Dictation.host = hostApp
         if dictation.listening { return Dictation.send(.finish, from: keyboard) }
         notice = nil

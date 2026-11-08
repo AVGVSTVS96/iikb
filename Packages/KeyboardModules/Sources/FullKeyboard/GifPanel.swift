@@ -119,6 +119,7 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
         tiles += gifs.dropFirst(tiles.count).map { gif in
             let tile = GifTile(gif: gif, fill: theme.key.ui)
             tile.addAction(UIAction { [unowned self, unowned tile] _ in copy(tile) }, for: .touchUpInside)
+            tile.copy = { [unowned self, unowned tile] in copy(tile) }
             tile.dropped = { [weak self] in self?.sent(gif) }
             scroll.addSubview(tile)
             return tile
@@ -196,10 +197,12 @@ private extension GifSearch.Feed {
 }
 
 /// One GIF: the key fill while it loads, then its frames, played by ImageIO one at a time while it's on screen. Held, it
-/// lifts out of the keyboard as the GIF's file, which the app takes in where it's dropped.
+/// plays bigger with Copy under it (UIKit's context menu), or, moved, lifts out of the keyboard as the GIF's file, which
+/// the app takes in where it's dropped.
 private final class GifTile: UIControl, UIDragInteractionDelegate {
     let gif: Gif
     var dropped: () -> Void = {}
+    var copy: () -> Void = {}
     var isOnScreen = false { didSet { if isOnScreen != oldValue { isOnScreen ? play() : stop() } } }
     private let image = UIImageView()
     private var data: Data?
@@ -223,6 +226,13 @@ private final class GifTile: UIControl, UIDragInteractionDelegate {
         let drag = UIDragInteraction(delegate: self)
         drag.isEnabled = true
         addInteraction(drag)
+        isContextMenuInteractionEnabled = true
+    }
+
+    override func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
+        UIContextMenuConfiguration(identifier: nil) { [unowned self] in ClipPreview(image: image.image, gif: data) } actionProvider: { [unowned self] _ in
+            UIMenu(children: [UIAction(title: "Copy", image: UIImage(systemName: "square.on.square")) { _ in self.copy() }])
+        }
     }
 
     func dragInteraction(_ interaction: UIDragInteraction, itemsForBeginning session: UIDragSession) -> [UIDragItem] {
