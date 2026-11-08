@@ -449,16 +449,16 @@ private struct LinkBadge: View {
         if case .link(let link) = item.content.kind {
             HStack(spacing: 6) {
                 SiteIcon(site: link.site, side: 18)
-                Text(link.name).fontWeight(.semibold)
-                Group {
-                    if copied {
-                        Image(systemName: "checkmark").accessibilityLabel("Copied")
-                    } else {
-                        Text("· " + ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970))
-                            .monospacedDigit()
-                    }
+                if copied {
+                    Text(link.name).fontWeight(.semibold)
+                    Image(systemName: "checkmark").foregroundStyle(Color.appSecondary).accessibilityLabel("Copied")
+                } else {
+                    let age = ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)
+                    Text(
+                        "\(Text(link.name).fontWeight(.semibold))\(Text(" · " + age).foregroundStyle(Color.appSecondary))"
+                    )
+                    .monospacedDigit()
                 }
-                .foregroundStyle(Color.appSecondary)
                 if item.pinned {
                     Image(systemName: "pin.fill")
                         .font(.caption2)
