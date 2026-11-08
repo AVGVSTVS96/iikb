@@ -28,12 +28,13 @@ enum LargePadLayouts {
     private static let trailingShift = RowItem.key(Key(.shift, width: .fill))
 
     private static func bottomRow(_ context: LayoutContext, layerKey: KeyboardLayer) -> [RowItem] {
+        let right = context.isLandscape ? 2.13 : 2.14
         let leading: [RowItem] = context.showsGlobe ? [.key(Key(.nextKeyboard, width: .pitch(1.415)))] : []
         return leading + [
             .key(Key(.layer(layerKey), width: .pitch(1.415))),
             .key(Key(.space, width: .fill)),
-            .key(Key(.layer(layerKey), width: .pitch(2.14))),
-            .key(Key(.dismiss, width: .pitch(2.14))),
+            .key(Key(.layer(layerKey), width: .pitch(right))),
+            .key(Key(.dismiss, width: .pitch(right))),
         ]
     }
 }

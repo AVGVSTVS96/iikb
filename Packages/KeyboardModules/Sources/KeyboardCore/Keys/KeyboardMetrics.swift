@@ -28,6 +28,9 @@ public struct KeyboardMetrics: Hashable, Sendable {
     public var textInset: Double = 7
     public var textBaselineInset: Double = 8
     public var letterBaselineInset: Double = 9
+    /// A single character in the 13-inch's short row of digits (its number layer's `` ` `` to `>`), smaller than the
+    /// letter rows' as Apple's is; nil draws it at `letterSize`.
+    public var numberRowLetterSize: Double?
     public var secondaryCapTop: Double = 10.5
     /// An iPad's keys with two characters (`!` over `,`): their size, and the top of the upper one's capitals and the
     /// lower one's baseline as shares of the key's height, as Apple's grow with the key. The 13-inch's row of digits
@@ -214,7 +217,7 @@ extension KeyboardMetrics {
             keyHeight: 55.5, numberRowHeight: 0,
             topInset: 8, bottomInset: 8, cornerRadius: 9.5,
             letterSize: 22, labelSize: 18.5, secondarySize: 12.5, symbolSize: 23,
-            pairBaselineRatio: 0.243, wordsAsGlyphs: true, toolbar: .pad
+            letterBaselineInset: 7.5, pairBaselineRatio: 0.243, wordsAsGlyphs: true, toolbar: .pad
         )
         guard landscape else { return metrics }
         var sideways = metrics.sideways(keyHeight: 74.75, numberRowHeight: 0, rowGap: 11, labelSize: 24.5, symbolSize: 25)
@@ -234,7 +237,7 @@ extension KeyboardMetrics {
             keyHeight: large ? 55.5 : 55, numberRowHeight: 0,
             topInset: 8, bottomInset: 8, cornerRadius: 9.5,
             letterSize: 22, labelSize: 15, secondarySize: 12.5, symbolSize: 23,
-            wordsAsGlyphs: true, toolbar: .pad
+            letterBaselineInset: 7.5, wordsAsGlyphs: true, toolbar: .pad
         )
         guard landscape else { return metrics }
         var sideways = metrics.sideways(keyHeight: 73.75, numberRowHeight: 0, rowGap: 12, labelSize: 18.5, symbolSize: 24.5)
@@ -257,8 +260,8 @@ extension KeyboardMetrics {
             keyHeight: 61, numberRowHeight: 45.5,
             topInset: 6, bottomInset: 4, cornerRadius: 11.5,
             letterSize: 22, labelSize: 17, secondarySize: 16, symbolSize: 21,
-            edgeInset: Size(width: 11.5, height: 8), textInset: 14, textBaselineInset: 13.5,
-            pairSize: 19, numberRowPairSize: 16, pairCapTopRatio: 0.22, pairBaselineRatio: 0.155,
+            edgeInset: Size(width: 11.5, height: 8), textInset: 14, textBaselineInset: 13.5, letterBaselineInset: 8,
+            numberRowLetterSize: 17.7, pairSize: 19, numberRowPairSize: 16, pairCapTopRatio: 0.22, pairBaselineRatio: 0.155,
             wordsAsGlyphs: true, toolbar: .pad
         )
         guard landscape else { return metrics }
@@ -268,6 +271,7 @@ extension KeyboardMetrics {
         sideways.edgeInset = Size(width: 14.5, height: 9)
         sideways.textInset = 16
         sideways.textBaselineInset = 14.5
+        sideways.letterBaselineInset = 13
         sideways.toolbar.slot = 224.5
         return sideways
     }
@@ -286,8 +290,9 @@ extension KeyboardMetrics {
         metrics.secondarySize *= type
         metrics.pairSize *= type
         metrics.numberRowPairSize *= type
+        metrics.numberRowLetterSize = metrics.numberRowLetterSize.map { $0 * type }
         metrics.secondaryCapTop = 15
-        metrics.letterBaselineInset = 14
+        metrics.letterBaselineInset = 12.5
         return metrics
     }
 }

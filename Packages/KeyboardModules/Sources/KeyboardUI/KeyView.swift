@@ -122,6 +122,11 @@ final class KeyView: UIView {
         guard let metrics else { return }
         defer { placeContentOnPixels() }
         layoutPaint(radius: metrics.cornerRadius)
+        let numberRow = metrics.numberRowHeight > 0 && bounds.height < metrics.keyHeight - 0.5
+        if isLetter, shown.secondary == nil, let size = metrics.numberRowLetterSize {
+            let scaled = (numberRow ? size : metrics.letterSize) * (theme.keyShape?.letterScale ?? 1)
+            if label.font.map({ Double($0.pointSize) }) != scaled { label.font = KeyboardFont.letter(scaled) }
+        }
         label.sizeToFit()
         icon.sizeToFit()
         layoutCorner(inset: metrics.cornerRadius)
@@ -146,7 +151,6 @@ final class KeyView: UIView {
 
         let isPair = shown.secondary != nil && !shown.secondaryIsDimmed
         if isPair {
-            let numberRow = metrics.numberRowHeight > 0 && bounds.height < metrics.keyHeight - 0.5
             let size = numberRow ? metrics.numberRowPairSize : metrics.pairSize
             if label.font.map({ Double($0.pointSize) }) != size {
                 label.font = .systemFont(ofSize: size, weight: .regular)
