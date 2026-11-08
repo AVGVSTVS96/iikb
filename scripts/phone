@@ -128,6 +128,12 @@ path = max(glob.glob(os.path.expanduser('~/.config/xtool/data/??????????')), key
 der = plistlib.load(open(path, 'rb'))['certificate']
 print(subprocess.run(['openssl', 'x509', '-inform', 'DER', '-noout', '-serial'], input=der, capture_output=True).stdout.decode().split('=')[1].strip())")
 ssh mac sh -s "$serial" < scripts/resign
+# A locked or asleep iPhone, or one off the Mac's network and cable, can't be reached; the install waits for it.
+reachable() { ssh mac xcrun devicectl device info details --device "$phone" >/dev/null 2>&1; }
+until reachable; do
+  echo "waiting for the $kind to be unlocked and on the Mac's Wi-Fi or cable" >&2
+  sleep 30
+done
 IIKB_BACKUP=$backups scripts/backup "$phone"
 dictating() {
   ssh mac sh -s "$phone" <<'MAC'
@@ -150,6 +156,7 @@ for try in 1 2 3; do
   ssh mac xcrun devicectl device install app --device "$phone" Developer/iikb-phone/iikb.app && break
   [ "$try" -lt 3 ] || exit 1
   echo "the install was cut off, so it tries again" >&2
+  until reachable; do sleep 30; done
 done
 fresh=$(ssh mac sh -s "$phone" <<'MAC'
 xcrun devicectl device info files --device "$1" --domain-type appDataContainer --domain-identifier com.shahidy.iikb \
