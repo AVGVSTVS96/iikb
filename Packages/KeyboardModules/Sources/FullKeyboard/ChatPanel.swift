@@ -27,6 +27,8 @@ final class ChatPanel: UIView, PanelContent {
     private let row = ButtonScrollView()
     private var chips: [UIButton] = []
     private var names: [String] = []
+    /// In one row, the open chat's name, whose menu picks another, in the chips' place.
+    private let picker = UIButton(configuration: .plain())
     private let thread = UIScrollView()
     private var bubbles: [Bubble] = []
     private let message = PanelNotice()
@@ -46,6 +48,10 @@ final class ChatPanel: UIView, PanelContent {
         trouble.textAlignment = .center
         trouble.numberOfLines = 0
         thread.addSubview(trouble)
+        picker.accessibilityIdentifier = "iikb.chat.picker"
+        picker.showsMenuAsPrimaryAction = true
+        picker.layer.cornerCurve = .continuous
+        addSubview(picker)
         send.accessibilityIdentifier = "iikb.chat.send"
         send.accessibilityLabel = "Send"
         send.addAction(UIAction { [unowned self] _ in onSend() }, for: .touchUpInside)
@@ -99,6 +105,19 @@ final class ChatPanel: UIView, PanelContent {
                 return chip
             }
         }
+        var look = UIButton.Configuration.plain()
+        look.attributedTitle = AttributedString(chats.open?.name ?? "Chats", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 15, weight: .medium)]))
+        look.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold))
+        look.imagePlacement = .trailing
+        look.imagePadding = 4
+        look.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 10)
+        look.titleLineBreakMode = .byTruncatingTail
+        look.baseForegroundColor = theme.label.ui
+        picker.configuration = look
+        picker.backgroundColor = theme.key.ui
+        picker.menu = UIMenu(children: chats.list.map { chat in
+            UIAction(title: chat.name, state: chat == chats.open ? .on : .off) { [unowned self] _ in chats.pick(chat) }
+        })
         for (chip, chat) in zip(chips, chats.list) {
             let open = chat == chats.open
             chip.backgroundColor = open ? theme.key.ui : .clear
@@ -122,7 +141,12 @@ final class ChatPanel: UIView, PanelContent {
         super.layoutSubviews()
         let compact = shown?.compact == true
         let rowHeight = min(32.0, bounds.height)
-        row.frame = CGRect(x: 0, y: compact ? (bounds.height - rowHeight) / 2 : 0, width: bounds.width, height: rowHeight)
+        row.frame = CGRect(x: 0, y: 0, width: bounds.width, height: rowHeight)
+        row.isHidden = compact
+        picker.isHidden = !compact || chats.list.isEmpty
+        let pick = picker.isHidden ? 0 : min(ceil(picker.sizeThatFits(CGSize(width: 200, height: rowHeight)).width), bounds.width * 0.4)
+        picker.frame = CGRect(x: 0, y: (bounds.height - rowHeight) / 2, width: pick, height: rowHeight)
+        picker.layer.cornerRadius = rowHeight / 2
         var x = 0.0
         for chip in chips {
             let width = ceil(chip.sizeThatFits(CGSize(width: 240, height: rowHeight)).width)
@@ -131,19 +155,24 @@ final class ChatPanel: UIView, PanelContent {
             x += chip.frame.width + 4
         }
         row.contentSize = CGSize(width: max(x - 4, 0), height: rowHeight)
-        thread.isHidden = compact
-        thread.frame = CGRect(x: 0, y: rowHeight + 6, width: bounds.width, height: max(bounds.height - rowHeight - 6, 0))
-        message.frame = compact ? .zero : thread.frame
-        let widest = (bounds.width * 0.82).rounded(.down)
+        thread.frame = compact
+            ? CGRect(x: pick + 6, y: 0, width: max(bounds.width - pick - 6, 0), height: bounds.height)
+            : CGRect(x: 0, y: rowHeight + 6, width: bounds.width, height: max(bounds.height - rowHeight - 6, 0))
+        message.frame = thread.frame
+        let width = thread.bounds.width
+        let widest = compact ? width : (width * 0.82).rounded(.down)
         var y = 0.0
-        for bubble in bubbles {
+        for (index, bubble) in bubbles.enumerated() {
+            bubble.oneLine = compact
+            bubble.isHidden = compact && index != bubbles.count - 1
+            guard !bubble.isHidden else { continue }
             let size = bubble.size(within: widest)
-            bubble.frame = CGRect(x: bubble.mine ? bounds.width - size.width : 0, y: y, width: size.width, height: size.height)
+            bubble.frame = CGRect(x: bubble.mine ? width - size.width : 0, y: y, width: size.width, height: size.height)
             y += size.height + 4
         }
-        if let problem = trouble.text, !problem.isEmpty {
-            let fits = trouble.sizeThatFits(CGSize(width: bounds.width, height: .greatestFiniteMagnitude))
-            trouble.frame = CGRect(x: 0, y: y + 2, width: bounds.width, height: ceil(fits.height))
+        if let problem = trouble.text, !problem.isEmpty, !compact {
+            let fits = trouble.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+            trouble.frame = CGRect(x: 0, y: y + 2, width: width, height: ceil(fits.height))
             y = trouble.frame.maxY + 4
         } else {
             trouble.frame = .zero
@@ -151,7 +180,7 @@ final class ChatPanel: UIView, PanelContent {
         let height = max(y - 4, 0)
         thread.contentInset.top = max(thread.bounds.height - height, 0)
         let wasAtEnd = thread.contentOffset.y >= thread.contentSize.height - thread.bounds.height - 1
-        thread.contentSize = CGSize(width: bounds.width, height: height)
+        thread.contentSize = CGSize(width: width, height: height)
         if wasAtEnd || height <= thread.bounds.height { thread.contentOffset.y = height - thread.bounds.height }
     }
 }
@@ -159,6 +188,8 @@ final class ChatPanel: UIView, PanelContent {
 /// One message: yours on the prominent color, the other side's on a key's, its markdown's bold, italics and code drawn.
 private final class Bubble: UIView {
     private(set) var mine = false
+    /// In one row, a message is one line, cut off at its end.
+    var oneLine = false { didSet { label.numberOfLines = oneLine ? 1 : 0 } }
     private let label = UILabel()
     private static let inset = UIEdgeInsets(top: 6, left: 10, bottom: 6, right: 10)
 

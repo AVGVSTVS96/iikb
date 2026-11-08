@@ -30,10 +30,12 @@ final class ChatTests: XCTestCase {
         XCTAssertTrue(tool.waitForExistence(timeout: 10), "the bar has the Chats tool")
         tool.tap()
         try shot("\(shots)-panel")
-        let chat = environment["IIKB_CHAT"].map { name in app.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch }
-            ?? element("iikb.chat.0", in: app)
-        XCTAssertTrue(chat.waitForExistence(timeout: 20), "the chats are listed")
-        chat.tap()
+        let listed = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN %@", ["iikb.chat.0", "iikb.chat.picker"])).firstMatch
+        XCTAssertTrue(listed.waitForExistence(timeout: 20), "the chats are listed, as chips or, in one row, a picker")
+        if let name = environment["IIKB_CHAT"] {
+            if listed.identifier == "iikb.chat.picker" { listed.tap() }
+            app.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch.tap()
+        }
         try shot("\(shots)-open")
 
         type(message, in: app)
