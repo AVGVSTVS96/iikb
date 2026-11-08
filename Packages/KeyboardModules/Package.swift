@@ -1,6 +1,9 @@
 // swift-tools-version: 6.2
 import PackageDescription
 
+let shipped: [SwiftSetting] = [.treatAllWarnings(as: .error)]
+let onMain: [SwiftSetting] = shipped + [.defaultIsolation(MainActor.self)]
+
 let package = Package(
     name: "KeyboardModules",
     platforms: [.iOS(.v26), .macOS(.v26)],
@@ -12,7 +15,7 @@ let package = Package(
         .library(name: "FullKeyboard", targets: ["FullKeyboard"]),
     ],
     targets: [
-        .target(name: "KeyboardCore", exclude: ["AGENTS.md"]),
+        .target(name: "KeyboardCore", exclude: ["AGENTS.md"], swiftSettings: shipped),
         .target(name: "KeyboardArbiter"),
         .target(
             name: "KeyboardEnglish", dependencies: ["KeyboardCore"],
@@ -20,18 +23,18 @@ let package = Package(
             resources: [
                 .copy("Resources/en.lexicon"), .copy("Resources/en.network"), .copy("Resources/en.swipe"),
                 .copy("Resources/SWIPE-LICENSE"), .copy("Resources/emoji.txt"), .copy("Resources/emoji-search.txt"),
-            ]),
+            ], swiftSettings: shipped),
         .target(
             name: "KeyboardStore", dependencies: ["KeyboardCore", "KeyboardEnglish"], exclude: ["AGENTS.md"],
-            resources: [.copy("Resources/Keys")], swiftSettings: [.defaultIsolation(MainActor.self)]),
+            resources: [.copy("Resources/Keys")], swiftSettings: onMain),
         .target(
             name: "KeyboardUI", dependencies: ["KeyboardCore", "KeyboardEnglish"], exclude: ["AGENTS.md"],
-            swiftSettings: [.defaultIsolation(MainActor.self)]),
+            swiftSettings: onMain),
         .target(
             name: "FullKeyboard",
             dependencies: ["KeyboardCore", "KeyboardEnglish", "KeyboardStore", "KeyboardUI", "KeyboardArbiter"],
             exclude: ["AGENTS.md"], resources: [.copy("Resources/Keys")],
-            swiftSettings: [.defaultIsolation(MainActor.self)]),
+            swiftSettings: onMain),
         .target(
             name: "MinimalKeyboard", dependencies: ["KeyboardCore", "KeyboardEnglish", "KeyboardUI"],
             path: "Examples/MinimalKeyboard"),

@@ -5,6 +5,7 @@ let settings: [SwiftSetting] = [
     .defaultIsolation(MainActor.self),
     .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
     .enableUpcomingFeature("InferIsolatedConformances"),
+    .treatAllWarnings(as: .error),
 ]
 
 let package = Package(
