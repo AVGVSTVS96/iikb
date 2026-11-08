@@ -25,6 +25,8 @@ final class Chats {
     private(set) var list: [Chat] = []
     private(set) var open: Chat?
     private(set) var messages: [Message] = []
+    /// The open chat's messages have come at least once.
+    private(set) var loaded = false
     /// Why something can't be shown or sent, like an extension that doesn't answer.
     private(set) var problem: String?
     /// Counts every change, so the panel redraws only when there's one.
@@ -54,7 +56,7 @@ final class Chats {
 
     func pick(_ chat: Chat?) {
         reading?.cancel()
-        if chat != open { messages = [] }
+        if chat != open { (messages, loaded) = ([], false) }
         open = chat
         report()
         guard let chat else { return }
@@ -93,6 +95,7 @@ final class Chats {
             guard read.version != version || problem != nil else { continue }
             version = read.version
             messages = read.messages
+            loaded = true
             problem = nil
             report()
         }

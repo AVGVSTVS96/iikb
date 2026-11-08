@@ -296,6 +296,7 @@ open class FullKeyboardViewController: UIInputViewController {
     /// The app kept new settings while the keyboard is up, as beside it on the open iPhone Duo.
     private func settingsChanged() {
         loadSettings()
+        if hasFullAccess { chats.reload() }
         if hapticsEnabled { haptics.start() }
         render()
     }

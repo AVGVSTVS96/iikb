@@ -24,6 +24,7 @@ final class ChatPanel: UIView, PanelContent {
     private var shown: Shown?
     private let row = ButtonScrollView()
     private var chips: [UIButton] = []
+    private var names: [String] = []
     private let thread = UIScrollView()
     private var bubbles: [Bubble] = []
     private let message = PanelNotice()
@@ -63,19 +64,21 @@ final class ChatPanel: UIView, PanelContent {
         showChips(theme)
         showMessages(theme)
         let missing = fullAccess() ? nil : "Chats need Full Access."
-        let quiet = chats.open == nil && chats.problem == nil ? nil : chats.messages.isEmpty && chats.problem == nil ? "No messages yet." : nil
+        let quiet = chats.loaded && chats.messages.isEmpty ? "No messages yet." : nil
         message.show(missing ?? chats.problem ?? quiet, turnOn: missing != nil, oneRow: true, theme: theme)
         setNeedsLayout()
     }
 
     private func showChips(_ theme: KeyboardTheme) {
-        if chips.count != chats.list.count || zip(chips, chats.list).contains(where: { $0.currentTitle != $1.name }) {
+        if names != chats.list.map(\.name) {
+            names = chats.list.map(\.name)
             chips.forEach { $0.removeFromSuperview() }
             chips = chats.list.enumerated().map { index, chat in
-                let chip = UIButton(type: .custom)
-                chip.setTitle(chat.name, for: .normal)
-                chip.titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
-                chip.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+                var look = UIButton.Configuration.plain()
+                look.attributedTitle = AttributedString(chat.name, attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 15, weight: .medium)]))
+                look.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12)
+                look.titleLineBreakMode = .byTruncatingTail
+                let chip = UIButton(configuration: look)
                 chip.layer.cornerCurve = .continuous
                 chip.accessibilityIdentifier = "iikb.chat.\(index)"
                 chip.addAction(UIAction { [unowned self] _ in chats.pick(chat) }, for: .touchUpInside)
@@ -86,7 +89,7 @@ final class ChatPanel: UIView, PanelContent {
         for (chip, chat) in zip(chips, chats.list) {
             let open = chat == chats.open
             chip.backgroundColor = open ? theme.candidatePill.ui : .clear
-            chip.setTitleColor(open ? theme.label.ui : theme.candidate.ui, for: .normal)
+            chip.configuration?.baseForegroundColor = open ? theme.label.ui : theme.candidate.ui
             chip.accessibilityTraits = open ? [.button, .selected] : .button
         }
     }
