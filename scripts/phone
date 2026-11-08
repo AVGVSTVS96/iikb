@@ -34,6 +34,34 @@ for arg; do
   case $arg in (iPhone|iPad) kind=$arg ;; (--now|--reinstall) flag=$arg ;; (*) echo "usage: scripts/phone [iPad] [--now|--reinstall]" >&2; exit 2 ;; esac
 done
 set -- $flag
+find_phone() {
+  ssh mac sh -s "$kind" <<'MAC'
+xcrun devicectl list devices --json-output /tmp/iikb-phone.json >/dev/null && /usr/bin/python3 -c "
+import json, sys
+for d in json.load(open('/tmp/iikb-phone.json'))['result']['devices']:
+    h, c = d['hardwareProperties'], d['connectionProperties']
+    if h.get('deviceType') == sys.argv[1] and h.get('reality') == 'physical' and c.get('transportType'): print(h['udid']); break" "$1"
+MAC
+}
+installed_build() {
+  ssh mac sh -s "$phone" <<'MAC'
+xcrun devicectl device info apps --device "$1" --bundle-id com.shahidy.iikb --json-output /tmp/iikb-apps.json >/dev/null 2>&1 &&
+/usr/bin/python3 -c "import json; print(next((a.get('bundleVersion', '') for a in json.load(open('/tmp/iikb-apps.json'))['result']['apps']), ''))"
+MAC
+}
+# Waits, without holding the build lock, for the device to be on the Mac and unlocked, so a locked iPad never holds
+# up an iPhone's install; run again under the lock, it finds it at once.
+reach() {
+  until phone=$(find_phone) && [ -n "$phone" ]; do
+    echo "waiting for the $kind to be unlocked and on the Mac's Wi-Fi or cable" >&2
+    sleep 30
+  done
+  until installed=$(installed_build); do
+    echo "waiting for the $kind to be unlocked: it was reached but locked" >&2
+    sleep 30
+  done
+}
+reach
 build=../iikb-build
 exec 9>"$build.lock"
 flock 9
@@ -52,29 +80,7 @@ fi
 git fetch -q origin main
 commit=$(git rev-parse --short origin/main)
 number=$(git rev-list --count origin/main)
-find_phone() {
-  ssh mac sh -s "$kind" <<'MAC'
-xcrun devicectl list devices --json-output /tmp/iikb-phone.json >/dev/null && /usr/bin/python3 -c "
-import json, sys
-for d in json.load(open('/tmp/iikb-phone.json'))['result']['devices']:
-    h, c = d['hardwareProperties'], d['connectionProperties']
-    if h.get('deviceType') == sys.argv[1] and h.get('reality') == 'physical' and c.get('transportType'): print(h['udid']); break" "$1"
-MAC
-}
-until phone=$(find_phone) && [ -n "$phone" ]; do
-  echo "waiting for the $kind to be unlocked and on the Mac's Wi-Fi or cable" >&2
-  sleep 30
-done
-installed_build() {
-  ssh mac sh -s "$phone" <<'MAC'
-xcrun devicectl device info apps --device "$1" --bundle-id com.shahidy.iikb --json-output /tmp/iikb-apps.json >/dev/null 2>&1 &&
-/usr/bin/python3 -c "import json; print(next((a.get('bundleVersion', '') for a in json.load(open('/tmp/iikb-apps.json'))['result']['apps']), ''))"
-MAC
-}
-until installed=$(installed_build); do
-  echo "waiting for the $kind to be unlocked: it was reached but locked" >&2
-  sleep 30
-done
+reach
 if [ -n "$installed" ] && [ "$installed" -gt "$number" ] && [ "${1:-}" != --reinstall ]; then
   echo "the $kind has build $installed, newer than main's $number ($commit), so nothing is installed" >&2
   exit 1
