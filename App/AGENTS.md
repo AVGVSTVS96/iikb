@@ -2,7 +2,7 @@
 
 The containing app, in Raycast's look (`AppStyle`, `Components`: black pages, near-black cards, radio marks; docs/design.md, "The app"), with titles and big numbers in Helvetica Neue (`AppStyle.display`, `Font.display`; `brand/BRAND.md`).
 
-- A folder per feature (Voice, Transcripts, Stats, Settings, Dictionary); a piece more than one feature uses goes in `Design/`.
+- A folder per feature (Home, Transcripts, Clipboard, Stats, Settings, Voice, Dictionary); a piece more than one feature uses goes in `Design/`, and what the whole app runs on (launch, backup, the app's status) stays at the root.
 - Five tabs in the system tab bar, which iOS 27.1 puts in the iPhone Duo's vertical bar.
 - Every page but Settings has the microphone's switch in its header: on keeps it on until you turn it off there; off lets it go once what's said is written down (`MicSwitch`, `Listener.turnMicOn`, `turnMicOff`). Control Center's iikb Mic (`Controls/`) turns it off the same way, and turned on opens the app on Home with it on.
 - Each page is laid out by the width it gets, never the device or the fold (`Arrangement`, `Panes`): from 700 points (the open Duo in landscape, any iPad either way up, a wide iPad window), two panes, halves or a list up to 480 wide beside the page it picked; narrower (the Duo folded or open upright, a narrow window), one column. Home, wide, stacks into one dashboard when that fits the window's height (an iPad upright) and takes two panes when it doesn't.
