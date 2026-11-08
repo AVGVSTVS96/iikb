@@ -146,13 +146,13 @@ struct HomeView: View {
         .navigationTitle("iikb")
         .toolbarTitleDisplayMode(.inlineLarge)
         .toolbar {
-            MicSwitchItem()
             if state.typing {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .confirm) { field.resignFirstResponder() }
                         .accessibilityIdentifier("home-done")
                 }
             }
+            MicSwitchItem()
         }
     }
 
