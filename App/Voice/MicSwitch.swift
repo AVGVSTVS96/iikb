@@ -40,11 +40,11 @@ struct MicSwitch: View {
     var body: some View {
         let listener = Listener.shared
         let on = flipping ?? (listener.isMicOn && !listener.isTurningMicOff)
-        HStack(spacing: 10) {
+        HStack(spacing: 0) {
             Image(systemName: on ? "mic.fill" : "mic.slash.fill")
                 .font(.body)
                 .foregroundStyle(on ? Color.green : Color.appSecondary)
-                .frame(width: 20)
+                .frame(width: 44, height: 44)
                 .contentTransition(.symbolEffect(.replace))
                 .accessibilityHidden(true)
             Toggle("Microphone", isOn: Binding(get: { on }, set: flip))
@@ -53,9 +53,8 @@ struct MicSwitch: View {
                 .tint(.blue)
                 .accessibilityIdentifier("home-mic")
         }
-        .padding(.leading, 5.5)
-        .padding(.trailing, 11.5)
-        .frame(height: 44)
+        // The switch draws its track 1.5pt past its frame's trailing edge; this sits it 8pt in, as it sits top and bottom.
+        .padding(.trailing, 9.5)
         .glassEffect(.regular, in: .capsule)
         .alert(
             "Couldn’t Turn On the Microphone",
