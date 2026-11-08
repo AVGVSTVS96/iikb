@@ -1,7 +1,7 @@
 #!/bin/bash
 # Runs on the Mac. Every state of the keyboard (UITests/PadShots: typing, layers, the tray, the More menu, each panel, floating)
 # through the real extension on each iPad, portrait and landscape, light and dark, into shots/raw/pad/<tag>/:
-# scripts/padshots <tag>. DEVICES ("iPad Pro 11:iPad-Pro-11-inch-M5-12GB" …), ORIENTATIONS, APPEARANCES and STATES
+# scripts/padshots <tag>. DEVICES ("iPad Pro 11:iPad-Pro-11-inch-M4-8GB" …), ORIENTATIONS, APPEARANCES and STATES
 # (layers tray more emoji gif clipboard window floating) narrow it; KEYBOARDS="system iikb" shoots Apple's beside it;
 # WINDOW (600x834) drags the app's window to that size for the window state, as Split View and Stage Manager make it;
 # FLOATING=true shoots every state with the keyboard floating, which a pinch can't do to a third-party keyboard.
@@ -9,7 +9,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 tag=${1:?tag}
 export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
-devices=${DEVICES:-"iPad mini:iPad-mini-A17-Pro|iPad Pro 11:iPad-Pro-11-inch-M5-12GB|iPad Pro 13:iPad-Pro-13-inch-M5-12GB"}
+devices=${DEVICES:-"iPad mini:iPad-mini-A17-Pro|iPad Pro 11:iPad-Pro-11-inch-M4-8GB|iPad Pro 13:iPad-Pro-13-inch-M4-8GB"}
 built=
 IFS='|' read -ra specs <<<"$devices"
 for spec in "${specs[@]}"; do
