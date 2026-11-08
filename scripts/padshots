@@ -19,6 +19,7 @@ for spec in "${specs[@]}"; do
   if [ -z "$built" ]; then
     xcodegen generate -q
     xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest -quiet
+    touch "$APP"
     built=1
   fi
   scripts/sim boot "$ID"

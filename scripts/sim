@@ -45,9 +45,15 @@ print([r['identifier'] for r in json.load(sys.stdin)['runtimes'] if r['platform'
   echo "$id"
 }
 
+# Boots a simulator and installs iikb, built first when a file it's built from is newer than the build, as after a sync,
+# so a shot never shows an older iikb; a build a command made itself (APP set) it refuses when older.
 boot() {
   perl -e 'alarm shift; exec @ARGV' 600 xcrun simctl bootstatus "$1" -b >/dev/null
   xcrun simctl spawn "$1" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
+  if [ ! -e "$APP" ] || [ -n "$(find App Packages Keyboard Controls project.yml -newer "$APP" -print -quit)" ]; then
+    [ "$APP" = build/Build/Products/Debug-iphonesimulator/iikb.app ] || { echo "$APP is older than the tree it would show; build it first" >&2; exit 1; }
+    scripts/build >&2 && touch "$APP"
+  fi
   xcrun simctl install "$1" "$APP"
 }
 
@@ -315,7 +321,7 @@ ipadapp() {
     if [ "$device" != "$last" ]; then
       id=$(ensure "$device" "$device")
       [ -n "$last" ] || { xcodegen generate -q
-        xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$id" -derivedDataPath build/uitest -quiet; }
+        xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$id" -derivedDataPath build/uitest -quiet && touch "$APP"; }
       boot "$id"
       allow "$id" paste
       use "$id" iikb
