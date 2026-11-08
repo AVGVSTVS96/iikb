@@ -2,23 +2,38 @@
 /// engine edits it as it edits any field, and return takes what it holds and leaves it empty.
 public final class LineDocument: TextDocument {
     public private(set) var text: String
-    /// How many characters are before the caret.
-    public private(set) var caret: Int
+    /// The selected characters, as offsets; empty is the caret, before `lowerBound` characters.
+    public private(set) var selection: Range<Int>
     private var returned: String?
 
     public init(_ text: String = "") {
         self.text = text
-        caret = text.count
+        selection = text.count..<text.count
     }
 
-    public var textBeforeInput: String? { String(text.prefix(caret)) }
+    /// How many characters are before the caret, or before the selection.
+    public var caret: Int { selection.lowerBound }
 
-    public var textAfterInput: String? { String(text.dropFirst(caret)) }
+    public var textBeforeInput: String? { String(text.prefix(selection.lowerBound)) }
+
+    public var textAfterInput: String? { String(text.dropFirst(selection.upperBound)) }
+
+    public var selectedText: String? { String(text.dropFirst(selection.lowerBound).prefix(selection.count)) }
+
+    /// Selects `range`, kept inside the text; an empty one places the caret.
+    public func select(_ range: Range<Int>) {
+        let lower = min(max(range.lowerBound, 0), text.count)
+        selection = lower..<min(max(range.upperBound, lower), text.count)
+    }
+
+    public func placeCaret(at offset: Int) {
+        select(offset..<offset)
+    }
 
     public func insert(_ string: String) {
         guard let end = string.firstIndex(where: \.isNewline) else {
-            text.insert(contentsOf: string, at: text.index(text.startIndex, offsetBy: caret))
-            caret += string.count
+            text.replaceSubrange(indices(selection), with: string)
+            placeCaret(at: selection.lowerBound + string.count)
             return
         }
         insert(String(string[..<end]))
@@ -26,25 +41,32 @@ public final class LineDocument: TextDocument {
         clear()
     }
 
+    /// A selection goes first and counts as one of `count`, as in a field.
     public func deleteBackward(_ count: Int) {
-        let removed = min(count, caret)
-        let end = text.index(text.startIndex, offsetBy: caret)
-        text.removeSubrange(text.index(end, offsetBy: -removed)..<end)
-        caret -= removed
+        let removed = min(max(selection.isEmpty ? count : count - 1, 0), caret)
+        let range = caret - removed..<selection.upperBound
+        text.removeSubrange(indices(range))
+        placeCaret(at: range.lowerBound)
     }
 
+    /// Moves the caret from the selection's start going back and from its end going on, collapsing it.
     public func moveCursor(by offset: Int) {
-        caret = min(max(caret + offset, 0), text.count)
+        placeCaret(at: (offset < 0 ? selection.lowerBound : selection.upperBound) + offset)
     }
 
     public func clear() {
         text = ""
-        caret = 0
+        selection = 0..<0
     }
 
     /// What the line held when return was typed, once.
     public func takeReturned() -> String? {
         defer { returned = nil }
         return returned
+    }
+
+    private func indices(_ range: Range<Int>) -> Range<String.Index> {
+        let start = text.index(text.startIndex, offsetBy: range.lowerBound)
+        return start..<text.index(start, offsetBy: range.count)
     }
 }
