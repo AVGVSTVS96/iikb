@@ -271,6 +271,7 @@ private struct FortnightChart: View {
         let active = days.filter { $0.words > 0 }
         let average = active.isEmpty ? 0 : active.reduce(0) { $0 + $1.words } / active.count
         let best = days.max { $0.words < $1.words }
+        let labeled = stride(from: 0, to: days.count, by: 7).compactMap { Calendar.current.date(byAdding: .hour, value: 12, to: days[$0].date) }
         Chart {
             ForEach(days, id: \.date) { day in
                 let marked = Calendar.current.isDateInToday(day.date) || day.date == best?.date
@@ -299,11 +300,23 @@ private struct FortnightChart: View {
             }
         }
         .chartYAxis(.hidden)
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: 7)) { _ in
-                AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true)
+        .chartXAxis(.hidden)
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                if let plot = proxy.plotFrame.map({ geometry[$0] }) {
+                    ForEach(labeled, id: \.self) { noon in
+                        if let x = proxy.position(forX: noon) {
+                            Text(noon, format: .dateTime.month(.abbreviated).day())
+                                .font(.caption2)
+                                .foregroundStyle(Color.appSecondary)
+                                .fixedSize()
+                                .position(x: plot.minX + x, y: plot.maxY + 12)
+                        }
+                    }
+                }
             }
         }
+        .padding(.bottom, 20)
         .frame(height: 112)
         .accessibilityLabel("Words a day, last 2 weeks")
     }
