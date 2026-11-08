@@ -6,6 +6,7 @@ import SwiftUI
 /// iikb drawn as these settings make it on the screen the app is on, at the width it's offered.
 struct KeyboardPreview: UIViewRepresentable {
     let settings: KeyboardSettings
+    let screen: CGSize
 
     func makeUIView(context: Context) -> KeyboardPreviewView {
         let view = KeyboardPreviewView()
@@ -15,13 +16,13 @@ struct KeyboardPreview: UIViewRepresentable {
     }
 
     func updateUIView(_ view: KeyboardPreviewView, context: Context) {
-        view.show(settings, dark: context.environment.colorScheme == .dark, screen: context.environment.window)
+        view.show(settings, dark: context.environment.colorScheme == .dark, screen: screen)
         view.layer.borderColor = AppStyle.edge.resolvedColor(with: view.traitCollection).cgColor
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: KeyboardPreviewView, context: Context) -> CGSize? {
-        let width = min(proposal.width ?? 390, 520)
-        return CGSize(width: width, height: KeyboardPreviewView.height(forWidth: width, settings: settings, screen: context.environment.window))
+        let width = proposal.width ?? 390
+        return CGSize(width: width, height: KeyboardPreviewView.height(forWidth: width, settings: settings, screen: screen))
     }
 }
 
@@ -31,9 +32,11 @@ struct TryPreview: View {
     @State private var text = ""
     @FocusState private var focused: Bool
     @Environment(\.window) private var window
+    @Environment(\.inPane) private var inPane
     private let model = SettingsModel.shared
 
     var body: some View {
+        let screen = ThisDevice.screen
         VStack(spacing: 14) {
             if trying {
                 TextField("Type to try iikb", text: $text, axis: .vertical)
@@ -47,7 +50,7 @@ struct TryPreview: View {
                     .onChange(of: focused) { _, focused in if !focused { withAnimation(.snappy) { trying = false } } }
                     .transition(.opacity.combined(with: .scale(scale: 0.97)))
             } else {
-                KeyboardPreview(settings: model.settings)
+                KeyboardPreview(settings: model.settings, screen: screen)
                     .transition(.opacity)
                 Button {
                     withAnimation(.snappy) { trying = true }
@@ -63,13 +66,14 @@ struct TryPreview: View {
                 .foregroundStyle(.primary)
             }
         }
-        .frame(maxWidth: maxWidth)
+        .frame(maxWidth: maxWidth(screen))
         .frame(maxWidth: .infinity)
     }
 
-    /// Wide enough to read, short enough to leave the settings in view: at most two fifths of the window's height.
-    private var maxWidth: CGFloat {
-        min(520, window.height * 0.4 / (KeyboardPreviewView.height(forWidth: 100, settings: model.settings, screen: window) / 100))
+    /// Wide enough to read, short enough to leave the settings in view: at most two fifths of the window's height, and
+    /// alone in a column 520 at most, while in a pane as wide as the cards under it.
+    private func maxWidth(_ screen: CGSize) -> CGFloat {
+        min(inPane ? .infinity : 520, window.height * 0.4 / (KeyboardPreviewView.height(forWidth: 100, settings: model.settings, screen: screen) / 100))
     }
 }
 
@@ -132,7 +136,7 @@ struct TryPreview: View {
 struct AppearanceSettings: View {
     var body: some View {
         ThemeSettings()
-        CharacterPreviewPicker()
+        if KeysHere().characterPreview { CharacterPreviewPicker() }
         StopAnimationPicker()
         LayoutSettings()
     }
@@ -229,10 +233,9 @@ struct TypingSettings: View {
 
 private struct LayoutSettings: View {
     private let model = SettingsModel.shared
-    @Environment(\.window) private var window
 
     var body: some View {
-        let here = KeysHere(screen: window)
+        let here = KeysHere()
         Box(header: "Size and Shape", footer: "Less space between the keys makes them bigger. The keyboard stays the same size.") {
             StopSlider(title: "Space Between Keys", label: "Key Spacing", level: model.binding(\.keySpacing), levels: KeySpacing.allCases, name: \.title, ends: ("Bigger Keys", "More Space"))
             StopSlider(title: "Corners", label: "Key Roundness", level: model.binding(\.keyRoundness), levels: KeyRoundness.allCases, name: \.title, ends: ("Sharper", "Rounder"))
@@ -294,10 +297,11 @@ private struct LayoutSettings: View {
 /// those: an iPad's keyboard keeps its own globe, menu button and one-row panels, with none of an iPhone's extra keys or
 /// layouts.
 private struct KeysHere {
-    let numberRow, emojiKey, recordKey, globeKey, keyboardMenu, split, oneHanded, largePanels: Bool
+    let numberRow, emojiKey, recordKey, globeKey, keyboardMenu, split, oneHanded, largePanels, characterPreview: Bool
 
-    init(screen: CGSize) {
-        let device = DeviceClass(isPad: UIDevice.current.userInterfaceIdiom == .pad, shortSide: min(screen.width, screen.height))
+    @MainActor init() {
+        let screen = ThisDevice.screen, device = ThisDevice.keyboard
+        characterPreview = device == .phone
         let all = LayoutContext(device: device, layer: .letters, showsGlobe: true, showsEmoji: true, showsGlobeKey: true, showsNumberRow: true, keyboardMenu: .hold)
         numberRow = all.showsNumberRow
         emojiKey = all.showsEmoji

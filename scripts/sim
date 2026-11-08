@@ -231,9 +231,12 @@ stats-mac -iikbStats typing -iikbStatsComputer Mac
 stats-mac-dictation -iikbStats dictation -iikbStatsComputer Mac
 add-computer -iikbStats typing -iikbAddComputer YES
 taps -iikbTaps YES
+taps-aim -iikbTaps YES -iikbTapsMode aim -iikbTapsKey e
 sources -iikbSettings sources
 access -iikbSettings access
-privacy -iikbSettings privacy"
+privacy -iikbSettings privacy
+changelog -iikbSettings changelog
+about -iikbSettings about"
 
 # Fills an installed app with what duoapp and ipadapp show: TOUCHES (a touch model, as the keyboard shares it), TYPING
 # (JSON lines of hours, as the keyboard shares them) and TRANSCRIPTS (JSON lines, as the app keeps them, with RECORDINGS a

@@ -66,6 +66,15 @@ struct SettingsPage: View {
 
         /// The keyboard's pages show iikb drawn as their settings make it, with a field to try it.
         var showsKeyboard: Bool { [.appearance, .typing, .feedback].contains(self) }
+
+        /// Whether the page opens on a box's header, which beside the list sits level with the list's first header.
+        @MainActor var opensOnHeader: Bool {
+            switch self {
+            case .voice, .privacy, .changelog: true
+            case .sources: !SettingsModel.shared.sources.isEmpty
+            default: false
+            }
+        }
     }
 
     @Bindable private var router = Router.shared
@@ -73,6 +82,10 @@ struct SettingsPage: View {
     private let model = SettingsModel.shared
 
     private var beside: Bool { arrangement == .side }
+
+    /// How far a box's first row sits under the top of its header, so a page without one starts level with the list's
+    /// first box.
+    private static var header: CGFloat { UIFont.preferredFont(forTextStyle: .subheadline).lineHeight.rounded(.up) + 8 }
 
     var body: some View {
         NavigationStack(path: beside ? .constant([]) : $router.settingsPath) {
@@ -82,7 +95,7 @@ struct SettingsPage: View {
                     Panes(list: true) {
                         SettingsList(picked: picked) { router.settingsPath = [$0] }
                     } second: {
-                        SettingsContent(page: picked, top: 4).id(picked)
+                        SettingsContent(page: picked, top: picked.opensOnHeader ? 4 : 4 + Self.header).id(picked)
                     }
                 } else {
                     SettingsList(picked: nil) { router.settingsPath = [$0] }

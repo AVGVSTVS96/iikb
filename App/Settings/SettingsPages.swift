@@ -191,7 +191,7 @@ struct PrivacyPage: View {
             Box(footer: "Deletes the counts Stats keeps of your typing on this \(ThisDevice.name): never what you typed, only how much, how fast and in which app.") {
                 ActionRow(title: "Delete Typing Stats", role: .destructive) { confirmsDeleteTyping = true }
             }
-            Box(footer: transcripts.all.isEmpty ? "You haven’t dictated anything yet." : "Deletes all \(transcripts.all.count.formatted()) dictations and their sound from this \(ThisDevice.name).") {
+            Box(footer: transcripts.all.isEmpty ? "You haven’t dictated anything yet." : "Deletes all \(transcripts.all.count.formatted()) transcripts and their sound from this \(ThisDevice.name).") {
                 ActionRow(title: "Delete All Transcripts", role: .destructive) { confirmsDelete = true }
                     .disabled(transcripts.all.isEmpty)
             }
