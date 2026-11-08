@@ -52,15 +52,19 @@ fi
 git fetch -q origin main
 commit=$(git rev-parse --short origin/main)
 number=$(git rev-list --count origin/main)
-phone=$(ssh mac sh -s "$kind" <<'MAC'
+find_phone() {
+  ssh mac sh -s "$kind" <<'MAC'
 xcrun devicectl list devices --json-output /tmp/iikb-phone.json >/dev/null && /usr/bin/python3 -c "
 import json, sys
 for d in json.load(open('/tmp/iikb-phone.json'))['result']['devices']:
     h, c = d['hardwareProperties'], d['connectionProperties']
     if h.get('deviceType') == sys.argv[1] and h.get('reality') == 'physical' and c.get('transportType'): print(h['udid']); break" "$1"
 MAC
-)
-[ -n "$phone" ] || { echo "the Mac doesn't reach an $kind" >&2; exit 1; }
+}
+until phone=$(find_phone) && [ -n "$phone" ]; do
+  echo "waiting for the $kind to be unlocked and on the Mac's Wi-Fi or cable" >&2
+  sleep 30
+done
 installed=$(ssh mac sh -s "$phone" <<'MAC'
 xcrun devicectl device info apps --device "$1" --bundle-id com.shahidy.iikb --json-output /tmp/iikb-apps.json >/dev/null 2>&1 &&
 /usr/bin/python3 -c "import json; print(next((a.get('bundleVersion', '') for a in json.load(open('/tmp/iikb-apps.json'))['result']['apps']), ''))"
