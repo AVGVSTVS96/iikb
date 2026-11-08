@@ -80,7 +80,8 @@ final class HomeViewController: UIHostingController<AnyView> {
 /// Wide, one dashboard that fills the window, every card a grid gap apart: when it fits the window's height (an iPad
 /// upright), the field across the top taking what the rest leaves, what iikb has gathered, then the settings' cards
 /// three across, voice typing's over the keyboard's; when it doesn't, the field over what iikb has gathered beside the
-/// cards two across, so the field stays above the keys while you try them. Elsewhere, one column.
+/// cards two across, so the field stays above the keys while you try them. Elsewhere, one column, its field taking
+/// what a tall window leaves.
 struct HomeView: View {
     let state: HomeState
     let field: UITextView
@@ -126,14 +127,31 @@ struct HomeView: View {
                 .frame(maxHeight: .infinity, alignment: .top)
                 .ignoresSafeArea(.keyboard)
             case .single:
-                Column(top: 4) {
-                    tryIt.frame(height: 150)
-                    if !status.isSetUp { setUp }
-                    VStack(spacing: 12) {
-                        stats
-                        shortcutCards(across: 2)
+                ViewThatFits(in: .vertical) {
+                    VStack(alignment: .leading, spacing: 28) {
+                        tryIt.frame(minHeight: 150, maxHeight: .infinity)
+                        if !status.isSetUp { setUp }
+                        VStack(spacing: 12) {
+                            stats
+                            shortcutCards(across: 2)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .padding(.bottom, 16)
+                    .frame(maxWidth: 640)
+                    .frame(maxWidth: .infinity)
+                    Column(top: 4) {
+                        tryIt.frame(height: 150)
+                        if !status.isSetUp { setUp }
+                        VStack(spacing: 12) {
+                            stats
+                            shortcutCards(across: 2)
+                        }
                     }
                 }
+                .frame(maxHeight: .infinity, alignment: .top)
+                .ignoresSafeArea(.keyboard)
             }
         }
         .appPage()
