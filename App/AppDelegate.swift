@@ -172,10 +172,12 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Add", style: .default) { _ in
+        let add = UIAlertAction(title: "Add", style: .default) { _ in
             ExtensionStore.add(added)
             SettingsModel.shared.reload()
-        })
+        }
+        alert.addAction(add)
+        alert.preferredAction = add
         present(alert)
     }
 

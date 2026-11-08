@@ -11,6 +11,8 @@ public protocol PanelContent: UIView {
     var accessories: [UIView] { get }
     /// What the search row says in place of the search, like "Copied", until the panel takes it back.
     var notice: String? { get }
+    /// Whether the field offers a clear button once it has text.
+    var clears: Bool { get }
     /// The results for `query`. Called on every render; redraw only when something changed, so results never move
     /// under a finger.
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics)
@@ -22,6 +24,7 @@ extension PanelContent {
     public var glyph: UIImage? { UIImage(systemName: "magnifyingglass") }
     public var accessories: [UIView] { [] }
     public var notice: String? { nil }
+    public var clears: Bool { true }
     public func reset() {}
 }
 
@@ -67,7 +70,7 @@ public final class PanelView: UIView {
         }
         back.tintColor = theme.label.ui
         content?.show(query: query, theme: theme, metrics: metrics)
-        field.show(query, caretAt: caret ?? query.count, placeholder: content?.placeholder ?? "", glyph: content?.glyph, notice: content?.notice, theme: theme)
+        field.show(query, caretAt: caret ?? query.count, placeholder: content?.placeholder ?? "", glyph: content?.glyph, notice: content?.notice, clears: content?.clears ?? true, theme: theme)
     }
 
     override public func layoutSubviews() {
@@ -124,7 +127,7 @@ private final class SearchField: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func show(_ query: String, caretAt: Int, placeholder: String, glyph image: UIImage?, notice: String?, theme: KeyboardTheme) {
+    func show(_ query: String, caretAt: Int, placeholder: String, glyph image: UIImage?, notice: String?, clears: Bool, theme: KeyboardTheme) {
         if query != self.query || caretAt != self.caretAt || notice != self.notice { setNeedsLayout() }
         self.query = query
         self.caretAt = caretAt
@@ -140,7 +143,7 @@ private final class SearchField: UIView {
         glyph.tintColor = theme.candidate.ui
         caret.backgroundColor = theme.prominent.ui
         backgroundColor = theme.searchField.ui
-        clear.isHidden = query.isEmpty || notice != nil
+        clear.isHidden = query.isEmpty || notice != nil || !clears
         guard theme != clearTheme else { return }
         clearTheme = theme
         let mark = UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .bold))

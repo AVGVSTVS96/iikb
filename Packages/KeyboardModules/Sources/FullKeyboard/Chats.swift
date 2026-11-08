@@ -27,6 +27,8 @@ final class Chats {
     private(set) var messages: [Message] = []
     /// The open chat's messages have come at least once.
     private(set) var loaded = false
+    /// Every extension has answered with its chats, or failed to.
+    private(set) var listed = false
     /// Why something can't be shown or sent, like an extension that doesn't answer.
     private(set) var problem: String?
     /// Counts every change, so the panel redraws only when there's one.
@@ -42,6 +44,7 @@ final class Chats {
     /// The panel opened: every extension's chats, then `kept` open again, or the first.
     func start(at kept: String? = nil) {
         stop()
+        listed = false
         listing = Task { [weak self, services] in
             var all: [Chat] = [], unreachable: [String] = []
             for service in services {
@@ -49,6 +52,7 @@ final class Chats {
             }
             guard let self, !Task.isCancelled else { return }
             list = all.filter(\.pinned) + all.filter { !$0.pinned }
+            listed = true
             problem = unreachable.isEmpty ? nil : "Can’t reach \(unreachable.joined(separator: ", "))."
             pick(list.first { $0.id == kept } ?? list.first)
         }

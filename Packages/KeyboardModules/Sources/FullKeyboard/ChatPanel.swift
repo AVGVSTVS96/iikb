@@ -12,6 +12,8 @@ final class ChatPanel: UIView, PanelContent {
     var placeholder: String { chats.open.map { "Message \($0.name)" } ?? "Message" }
     var glyph: UIImage? { nil }
     var accessories: [UIView] { [send] }
+    /// Send sits where Messages has it, at the line's end, so no clear button beside it: delete empties the line.
+    let clears = false
 
     private struct Shown: Equatable {
         var revision: Int
@@ -28,6 +30,8 @@ final class ChatPanel: UIView, PanelContent {
     private let thread = UIScrollView()
     private var bubbles: [Bubble] = []
     private let message = PanelNotice()
+    /// What went wrong, under the messages, when there are messages to keep showing.
+    private let trouble = UILabel()
     private let send = UIButton(type: .custom)
 
     init(chats: Chats) {
@@ -36,10 +40,14 @@ final class ChatPanel: UIView, PanelContent {
         row.accessibilityIdentifier = "iikb.chats"
         thread.accessibilityIdentifier = "iikb.chat.messages"
         thread.showsVerticalScrollIndicator = false
-        [thread.topEdgeEffect, thread.bottomEdgeEffect, thread.leftEdgeEffect, thread.rightEdgeEffect].forEach { $0.isHidden = true }
+        [thread.bottomEdgeEffect, thread.leftEdgeEffect, thread.rightEdgeEffect].forEach { $0.isHidden = true }
+        thread.topEdgeEffect.style = .soft
+        trouble.font = .systemFont(ofSize: 13)
+        trouble.textAlignment = .center
+        trouble.numberOfLines = 0
+        thread.addSubview(trouble)
         send.accessibilityIdentifier = "iikb.chat.send"
         send.accessibilityLabel = "Send"
-        send.setImage(UIImage(systemName: "arrow.up.circle.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 24)), for: .normal)
         send.addAction(UIAction { [unowned self] _ in onSend() }, for: .touchUpInside)
         message.accessibilityIdentifier = "iikb.chat.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
@@ -58,14 +66,19 @@ final class ChatPanel: UIView, PanelContent {
         guard next != shown else { return }
         let moved = next.revision != shown?.revision || next.theme != shown?.theme
         shown = next
-        send.tintColor = next.canSend ? theme.prominent.ui : theme.candidate.ui
+        let colors = next.canSend ? [theme.prominentLabel.ui, theme.prominent.ui] : [theme.searchField.ui, theme.candidate.ui]
+        let look = UIImage.SymbolConfiguration(pointSize: 24).applying(UIImage.SymbolConfiguration(paletteColors: colors))
+        send.setImage(UIImage(systemName: "arrow.up.circle.fill", withConfiguration: look), for: .normal)
         send.isEnabled = next.canSend
         guard moved else { return }
         showChips(theme)
         showMessages(theme)
         let missing = fullAccess() ? nil : "Chats need Full Access."
-        let quiet = chats.loaded && chats.messages.isEmpty ? "No messages yet." : nil
-        message.show(missing ?? chats.problem ?? quiet, turnOn: missing != nil, oneRow: true, theme: theme)
+        let empty = chats.messages.isEmpty
+        let quiet = !chats.listed ? "Loading chats…" : chats.list.isEmpty ? "No chats yet." : chats.loaded && empty ? "No messages yet." : nil
+        message.show(missing ?? (empty ? chats.problem : nil) ?? quiet, turnOn: missing != nil, oneRow: true, theme: theme)
+        trouble.text = empty ? nil : chats.problem
+        trouble.textColor = theme.candidate.ui
         setNeedsLayout()
     }
 
@@ -88,7 +101,7 @@ final class ChatPanel: UIView, PanelContent {
         }
         for (chip, chat) in zip(chips, chats.list) {
             let open = chat == chats.open
-            chip.backgroundColor = open ? theme.candidatePill.ui : .clear
+            chip.backgroundColor = open ? theme.key.ui : .clear
             chip.configuration?.baseForegroundColor = open ? theme.label.ui : theme.candidate.ui
             chip.accessibilityTraits = open ? [.button, .selected] : .button
         }
@@ -128,10 +141,18 @@ final class ChatPanel: UIView, PanelContent {
             bubble.frame = CGRect(x: bubble.mine ? bounds.width - size.width : 0, y: y, width: size.width, height: size.height)
             y += size.height + 4
         }
+        if let problem = trouble.text, !problem.isEmpty {
+            let fits = trouble.sizeThatFits(CGSize(width: bounds.width, height: .greatestFiniteMagnitude))
+            trouble.frame = CGRect(x: 0, y: y + 2, width: bounds.width, height: ceil(fits.height))
+            y = trouble.frame.maxY + 4
+        } else {
+            trouble.frame = .zero
+        }
         let height = max(y - 4, 0)
+        thread.contentInset.top = max(thread.bounds.height - height, 0)
         let wasAtEnd = thread.contentOffset.y >= thread.contentSize.height - thread.bounds.height - 1
         thread.contentSize = CGSize(width: bounds.width, height: height)
-        if wasAtEnd || height <= thread.bounds.height { thread.contentOffset.y = max(height - thread.bounds.height, 0) }
+        if wasAtEnd || height <= thread.bounds.height { thread.contentOffset.y = height - thread.bounds.height }
     }
 }
 
