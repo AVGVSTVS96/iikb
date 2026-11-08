@@ -146,12 +146,12 @@ extension Panel {
         }.withRenderingMode(.alwaysTemplate)
     }
 
-    /// Raycast's four rounded squares, for the More button, drawn in a `side` square. A solid block looks bigger than an
-    /// outline of the same size, so they span 0.88 of it.
+    /// Raycast's four rounded squares, for the More button, drawn in a `side` square. They span 0.72 of it, so the
+    /// circle the button shows while the menu is out has room around them.
     static func moreGlyph(_ side: CGFloat) -> UIImage {
         let size = CGSize(width: side, height: side)
-        let extent = side * 0.88
-        let gap = side * 0.13
+        let extent = side * 0.72
+        let gap = side * 0.11
         let square = (extent - gap) / 2
         return UIGraphicsImageRenderer(size: size).image { _ in
             let origin = (side - extent) / 2

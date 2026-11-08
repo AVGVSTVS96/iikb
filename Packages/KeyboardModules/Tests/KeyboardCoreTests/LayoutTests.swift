@@ -114,8 +114,8 @@ struct LayoutTests {
         #expect(Layouts.layout(for: pad).keys.contains { $0.action == .nextKeyboard } && pad.moreMenu == [.settings])
     }
 
-    /// The menu opens from holding 123, the bar's menu button, or both, as Settings picks; an iPad, with no hold menu,
-    /// always keeps its button.
+    /// Layouts and Settings open from holding 123 on every iPhone, and the bar's menu button shows unless Settings picks
+    /// Hold 123 alone; an iPad, with no hold menu, always keeps its button.
     @Test func theKeyboardMenuOpensWhereSettingsPutIt() {
         var settings = KeyboardSettings()
         let open = { (device: DeviceClass) in
@@ -128,7 +128,7 @@ struct LayoutTests {
         #expect(!open(.phone).menu.isEmpty && !open(.phone).showsMoreButton)
         #expect(open(.pad).menu.isEmpty && open(.pad).showsMoreButton)
         settings.keyboardMenu = .button
-        #expect(open(.phone).menu.isEmpty && open(.phone).showsMoreButton)
+        #expect(!open(.phone).menu.isEmpty && open(.phone).showsMoreButton)
     }
 
     @Test func emailAndURLBottomRows() {

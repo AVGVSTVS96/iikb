@@ -41,10 +41,11 @@ final class Chats {
         services = ExtensionStore.load()
     }
 
-    /// The panel opened: every extension's chats, then `kept` open again, or the first.
-    func start(at kept: String? = nil) {
+    /// Every extension's chats, pinned first, kept on show until the new list comes; then, `opening` them (the panel
+    /// rather than the menu's shelf), `kept` open again, or the first.
+    func start(at kept: String? = nil, opening: Bool = true) {
         stop()
-        listed = false
+        if list.isEmpty { listed = false }
         listing = Task { [weak self, services] in
             var all: [Chat] = []
             var unreachable: [String] = []
@@ -55,7 +56,7 @@ final class Chats {
             list = all.filter(\.pinned) + all.filter { !$0.pinned }
             listed = true
             problem = unreachable.isEmpty ? nil : "Can’t reach \(unreachable.joined(separator: ", "))."
-            pick(list.first { $0.id == kept } ?? list.first)
+            if opening { pick(list.first { $0.id == kept } ?? list.first) } else { report() }
         }
     }
 

@@ -16,9 +16,12 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     var onTurnOn: () -> Void = {}
     /// The search row's notice changed.
     var changed: () -> Void = {}
-    var placeholder: String { linksOnly ? "Search links" : "Search clipboard" }
-    var glyph: UIImage? { UIImage(systemName: "list.clipboard") }
-    var accessories: [UIView] { [linksButton] }
+    var field: PanelField {
+        .search(
+            .init(
+                linksOnly ? "Search links" : "Search clipboard", glyph: UIImage(systemName: "list.clipboard"),
+                accessories: [linksButton], notice: notice))
+    }
     private(set) var notice: String?
     /// Whether only links show, the search row's link button on.
     private var linksOnly = false

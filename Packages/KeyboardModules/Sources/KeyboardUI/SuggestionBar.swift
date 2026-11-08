@@ -39,6 +39,8 @@ public final class SuggestionBar: UIView {
     public var onTool: (Panel) -> Void = { _ in }
     public var onMore: () -> Void = {}
     public var onEdit: (Edit) -> Void = { _ in }
+    /// A chat's pill was tapped, by its index.
+    public var onChat: (Int) -> Void = { _ in }
     /// How the recording goes back into the mic when you stop (Settings › Appearance).
     public var stopAnimation = StopAnimation.squeeze { didSet { mic.writes = stopAnimation } }
     public var maximumSlotWidth = CGFloat.infinity { didSet { setNeedsLayout() } }
@@ -64,10 +66,16 @@ public final class SuggestionBar: UIView {
     private let dividers = (0..<2).map { _ in UIView() }
     private var emoji: [EmojiPick] = []
     private let strip = ButtonScrollView()
+    /// While a chat is read with the keys down, the chats as pills in the suggestions' place.
+    private let chatStrip = ButtonScrollView()
+    private var chatPills: [UIButton] = []
+    private var chatNames: [String]?
     private var tools: [(panel: Panel, button: BarButton)] = []
     private let more = BarButton("More", draw: Panel.moreGlyph)
     /// The edits while the menu is out, nil while they're tucked into the More button.
     private var edits: Edits?
+    /// Something the More button opened is out in the keys' place, the menu or a panel from it.
+    private var moreOn = false
     private let editButtons: [(edit: Edit, button: EditPill)] = Edit.allCases.map { edit in
         let button = EditPill(title: edit.title, symbol: edit.symbol)
         button.accessibilityIdentifier = "iikb.edit.\(edit)"
@@ -111,6 +119,8 @@ public final class SuggestionBar: UIView {
         strip.alwaysBounceHorizontal = false
         strip.accessibilityIdentifier = "iikb.suggestion.emoji"
         addSubview(strip)
+        chatStrip.accessibilityIdentifier = "iikb.chats"
+        addSubview(chatStrip)
         mic.addAction(UIAction { [unowned self] _ in onMic() }, for: .touchUpInside)
         cancel.addAction(
             UIAction { [unowned self] _ in
@@ -168,6 +178,7 @@ public final class SuggestionBar: UIView {
         theme: KeyboardTheme
     ) {
         let grows = (mic == .listening) != (self.mic.phase == .listening)
+        if (mic == .listening || mic == .writing) != recording { setNeedsLayout() }
         let shown = CGRect(
             x: self.mic.center.x - self.mic.bounds.width / 2, y: self.mic.center.y - self.mic.bounds.height / 2,
             width: self.mic.bounds.width, height: self.mic.bounds.height)
@@ -227,6 +238,42 @@ public final class SuggestionBar: UIView {
         }
     }
 
+    /// The chats as pills in the suggestions' place, `open` the one shown, or the suggestions back with nil.
+    public func update(chats names: [String]?, open: Int?, theme: KeyboardTheme) {
+        if names != chatNames {
+            chatNames = names
+            chatPills.forEach { $0.removeFromSuperview() }
+            chatPills = (names ?? []).enumerated().map { index, name in
+                let pill = UIButton(configuration: .plain())
+                pill.accessibilityIdentifier = "iikb.chat.\(index)"
+                pill.layer.cornerCurve = .continuous
+                pill.addAction(UIAction { [unowned self] _ in onChat(index) }, for: .touchUpInside)
+                chatStrip.addSubview(pill)
+                return pill
+            }
+            setNeedsLayout()
+        }
+        for (index, pill) in chatPills.enumerated() {
+            let on = index == open
+            var look = UIButton.Configuration.plain()
+            look.attributedTitle = AttributedString(
+                chatNames?[index] ?? "",
+                attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 15, weight: on ? .semibold : .medium)])
+            )
+            look.baseForegroundColor = on ? theme.label.ui : theme.candidate.ui
+            look.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 13, bottom: 0, trailing: 13)
+            look.titleLineBreakMode = .byTruncatingTail
+            pill.configuration = look
+            pill.backgroundColor = on ? theme.key.ui : .clear
+            pill.layer.shadowColor = theme.shadow.ui.cgColor
+            pill.layer.shadowOpacity = on ? 1 : 0
+            pill.layer.shadowOffset = CGSize(width: 0, height: 1)
+            pill.layer.shadowRadius = 0
+            pill.accessibilityTraits = on ? [.button, .selected] : .button
+        }
+        refresh()
+    }
+
     /// The menu's edits: out of the More button while `edits` says what they can do, tucked back in with nil.
     public func update(edits: Edits?, theme: KeyboardTheme) {
         let moves = (edits == nil) != (self.edits == nil)
@@ -240,8 +287,13 @@ public final class SuggestionBar: UIView {
         morph(growing: edits != nil) { self.layoutIfNeeded() }
     }
 
-    /// The More button at the far left, before the tools, which opens the menu in the keys' place.
-    public func update(more shown: Bool) {
+    /// The More button at the far left, before the tools, which opens the menu in the keys' place, and shows `on` while
+    /// what it opened is out.
+    public func update(more shown: Bool, on: Bool = false) {
+        if on != moreOn {
+            moreOn = on
+            setNeedsLayout()
+        }
         guard more.isHidden == shown else { return }
         more.isHidden = !shown
         setNeedsLayout()
@@ -402,7 +454,7 @@ public final class SuggestionBar: UIView {
     private func placeEdits(end: CGFloat) {
         let anchor = more.frame
         let out = edits != nil && !more.isHidden
-        more.isOn = out
+        more.isOn = out || moreOn
         let gap: CGFloat = 8
         let start = (tools.last?.button.frame ?? anchor).maxX + gap
         let width = max((end - start - gap * CGFloat(editButtons.count - 1)) / CGFloat(editButtons.count), 0)
@@ -433,8 +485,10 @@ public final class SuggestionBar: UIView {
         let quiet = !enabled || noticed || recording
         notice.isHidden = !noticed || recording
         cancel.shows = mic.phase == .listening
-        slots.forEach { $0.isHidden = quiet }
-        strip.isHidden = quiet || emoji.isEmpty
+        let chatting = chatNames != nil
+        chatStrip.isHidden = !chatting
+        slots.forEach { $0.isHidden = quiet || chatting }
+        strip.isHidden = quiet || chatting || emoji.isEmpty
         emoji.forEach { $0.isHidden = quiet }
         if !emoji.isEmpty, !emojiBeside { slots[slots.count - 1].isHidden = true }
         refreshDividers()
@@ -472,7 +526,8 @@ public final class SuggestionBar: UIView {
             tool.button.place(CGRect(frame), glyph: toolbar.glyph, reach: reach)
         }
         if let frame = layout.more { more.place(CGRect(frame), glyph: toolbar.glyph, reach: reach) }
-        placeEdits(end: CGFloat(layout.mic.map { $0.x - BarLayout.gap } ?? layout.maxX))
+        let edge = CGFloat(layout.mic.map { $0.x - BarLayout.gap } ?? layout.maxX)
+        placeEdits(end: recording ? min(edge, CGRect(layout.cancel).minX - 8) : edge)
         for (slot, frame) in zip(slots, layout.slots) {
             let minX = CGFloat(frame.x).rounded(scale: scale)
             let maxX = CGFloat(frame.x + frame.width).rounded(scale: scale)
@@ -499,6 +554,19 @@ public final class SuggestionBar: UIView {
         }
         strip.contentSize = CGSize(width: max(total, place.width), height: place.height)
         let row = CGRect(x: layout.minX, y: toolbar.top, width: layout.maxX - layout.minX, height: toolbar.bar)
+        chatStrip.frame =
+            recording
+            ? CGRect(
+                x: row.minX, y: row.minY, width: max(CGRect(layout.cancel).minX - 8 - row.minX, 0), height: row.height)
+            : row
+        var x = 0.0
+        for pill in chatPills {
+            let width = min(ceil(pill.sizeThatFits(CGSize(width: 200, height: 30)).width), 200)
+            pill.frame = CGRect(x: x, y: (row.height - 30) / 2, width: width, height: 30)
+            pill.layer.cornerRadius = 15
+            x += width + 4
+        }
+        chatStrip.contentSize = CGSize(width: max(x - 4, 0), height: row.height)
         for (index, divider) in dividers.enumerated() {
             divider.frame = CGRect(x: slots[index].frame.maxX - 0.5, y: row.midY - 14, width: 1, height: 28)
         }

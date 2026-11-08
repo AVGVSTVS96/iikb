@@ -2,47 +2,46 @@ import KeyboardCore
 import KeyboardUI
 import UIKit
 
-/// The chats panel (docs/extensions.md): the chats in a row, pinned first, and the open one's latest messages, yours on
-/// the right; under them the message line the keys type into, and its send button. Opens above the bar, so the bar's
-/// suggestions and mic work in the line as in any field.
+/// The chats panel (docs/extensions.md): the open chat's messages, yours on the right, over the message box the keys
+/// and the bar's mic type into (`MessageField`). Opened from the menu it fills a keyboard grown for it, the chats as
+/// pills in the bar, so you read and dictate with the keys down; a tap on the box brings them up under it at the same
+/// height, and a tap on the messages puts them away.
 final class ChatPanel: UIView, PanelContent {
     var fullAccess: () -> Bool = { false }
     var onTurnOn: () -> Void = {}
     var onSend: () -> Void = {}
-    var placeholder: String { chats.open.map { "Message \($0.name)" } ?? "Message" }
-    var glyph: UIImage? { nil }
-    var accessories: [UIView] { [send] }
-    /// Send sits where Messages has it, at the line's end, so no clear button beside it: delete empties the line.
-    let clears = false
+    /// The box was tapped with the keys down.
+    var onFocus: () -> Void = {}
+    /// The messages were tapped with the keys up.
+    var onBrowse: () -> Void = {}
+    /// A tap or a drag in the box placed the caret or selected, as offsets into its text.
+    var onSelect: (Range<Int>) -> Void = { _ in }
+    /// Cut, Copy or Paste from the box's edit menu.
+    var onEdit: (SuggestionBar.Edit) -> Void = { _ in }
+    var field: PanelField { .own(composer) }
+    private let composer = MessageField()
+    private var line: LineDocument?
+    private var typing = false
 
     private struct Shown: Equatable {
         var revision: Int
-        var compact: Bool
         var theme: KeyboardTheme
-        var canSend: Bool
     }
 
     private let chats: Chats
     private var shown: Shown?
-    private let row = ButtonScrollView()
-    private var chips: [UIButton] = []
-    private var names: [String] = []
-    /// In one row, the open chat's name, whose menu picks another, in the chips' place.
-    private let picker = UIButton(configuration: .plain())
     private let thread = UIScrollView()
-    /// Holds the thread and fades its top, so a message scrolled under the chips goes soft rather than cut.
+    /// Holds the thread and fades its top, so a message scrolled up goes soft rather than cut.
     private let well = UIView()
     private let fade = CAGradientLayer()
     private var bubbles: [Bubble] = []
     private let message = PanelNotice()
     /// What went wrong, under the messages, when there are messages to keep showing.
     private let trouble = UILabel()
-    private let send = UIButton(type: .custom)
 
     init(chats: Chats) {
         self.chats = chats
         super.init(frame: .zero)
-        row.accessibilityIdentifier = "iikb.chats"
         thread.accessibilityIdentifier = "iikb.chat.messages"
         thread.showsVerticalScrollIndicator = false
         [thread.topEdgeEffect, thread.bottomEdgeEffect, thread.leftEdgeEffect, thread.rightEdgeEffect].forEach {
@@ -55,16 +54,14 @@ final class ChatPanel: UIView, PanelContent {
         trouble.textAlignment = .center
         trouble.numberOfLines = 0
         thread.addSubview(trouble)
-        picker.accessibilityIdentifier = "iikb.chat.picker"
-        picker.showsMenuAsPrimaryAction = true
-        picker.layer.cornerCurve = .continuous
-        addSubview(picker)
-        send.accessibilityIdentifier = "iikb.chat.send"
-        send.accessibilityLabel = "Send"
-        send.addAction(UIAction { [unowned self] _ in onSend() }, for: .touchUpInside)
+        composer.onSend = { [unowned self] in onSend() }
+        composer.onTap = { [unowned self] in if !typing { onFocus() } }
+        composer.onSelect = { [unowned self] in onSelect($0) }
+        composer.onEdit = { [unowned self] in onEdit($0) }
+        well.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapMessages)))
         message.accessibilityIdentifier = "iikb.chat.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
-        [row, well, message].forEach(addSubview)
+        [well, message].forEach(addSubview)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -73,22 +70,25 @@ final class ChatPanel: UIView, PanelContent {
         shown = nil
     }
 
-    /// `query` is what the line holds.
+    /// The box shows `line`; `typing` is whether the keys are up under it.
+    func show(_ line: LineDocument, typing: Bool) {
+        self.line = line
+        self.typing = typing
+    }
+
+    @objc private func tapMessages() {
+        if typing { onBrowse() }
+    }
+
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
-        let next = Shown(
-            revision: chats.revision, compact: metrics.toolbar.isCompact, theme: theme,
-            canSend: !query.trimmingCharacters(in: .whitespaces).isEmpty)
+        if let line {
+            composer.show(
+                line, placeholder: chats.open.map { "Message \($0.name)" } ?? "Message", caret: typing, sends: !typing,
+                theme: theme)
+        }
+        let next = Shown(revision: chats.revision, theme: theme)
         guard next != shown else { return }
-        let moved = next.revision != shown?.revision || next.theme != shown?.theme
         shown = next
-        let colors =
-            next.canSend ? [theme.prominentLabel.ui, theme.prominent.ui] : [theme.searchField.ui, theme.candidate.ui]
-        let look = UIImage.SymbolConfiguration(pointSize: 24).applying(
-            UIImage.SymbolConfiguration(paletteColors: colors))
-        send.setImage(UIImage(systemName: "arrow.up.circle.fill", withConfiguration: look), for: .normal)
-        send.isEnabled = next.canSend
-        guard moved else { return }
-        showChips(theme)
         showMessages(theme)
         let missing = fullAccess() ? nil : "Chats need Full Access."
         let empty = chats.messages.isEmpty
@@ -96,60 +96,14 @@ final class ChatPanel: UIView, PanelContent {
             !chats.listed
             ? "Loading chats…" : chats.list.isEmpty ? "No chats yet." : chats.loaded && empty ? "No messages yet." : nil
         message.show(
-            missing ?? (empty ? chats.problem : nil) ?? quiet, turnOn: missing != nil, oneRow: true, theme: theme)
+            missing ?? (empty ? chats.problem : nil) ?? quiet, turnOn: missing != nil, oneRow: false, theme: theme)
         trouble.text = empty ? nil : chats.problem
         trouble.textColor = theme.candidate.ui
         setNeedsLayout()
     }
 
-    private func showChips(_ theme: KeyboardTheme) {
-        if names != chats.list.map(\.name) {
-            names = chats.list.map(\.name)
-            chips.forEach { $0.removeFromSuperview() }
-            chips = chats.list.enumerated().map { index, chat in
-                var look = UIButton.Configuration.plain()
-                look.attributedTitle = AttributedString(
-                    chat.name, attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 15, weight: .medium)]))
-                look.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12)
-                look.titleLineBreakMode = .byTruncatingTail
-                let chip = UIButton(configuration: look)
-                chip.layer.cornerCurve = .continuous
-                chip.accessibilityIdentifier = "iikb.chat.\(index)"
-                chip.addAction(UIAction { [unowned self] _ in chats.pick(chat) }, for: .touchUpInside)
-                row.addSubview(chip)
-                return chip
-            }
-        }
-        var look = UIButton.Configuration.plain()
-        look.attributedTitle = AttributedString(
-            chats.open?.name ?? "Chats",
-            attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 15, weight: .medium)]))
-        look.image = UIImage(
-            systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)
-        )
-        look.imagePlacement = .trailing
-        look.imagePadding = 4
-        look.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 10)
-        look.titleLineBreakMode = .byTruncatingTail
-        look.baseForegroundColor = theme.label.ui
-        picker.configuration = look
-        picker.backgroundColor = theme.key.ui
-        picker.menu = UIMenu(
-            children: chats.list.map { chat in
-                UIAction(title: chat.name, state: chat == chats.open ? .on : .off) { [unowned self] _ in
-                    chats.pick(chat)
-                }
-            })
-        for (chip, chat) in zip(chips, chats.list) {
-            let open = chat == chats.open
-            chip.backgroundColor = open ? theme.key.ui : .clear
-            chip.configuration?.baseForegroundColor = open ? theme.label.ui : theme.candidate.ui
-            chip.accessibilityTraits = open ? [.button, .selected] : .button
-        }
-    }
-
     private func showMessages(_ theme: KeyboardTheme) {
-        let shown = chats.messages.suffix(20)
+        let shown = Array(chats.messages.suffix(40))
         while bubbles.count < shown.count {
             let bubble = Bubble()
             thread.addSubview(bubble)
@@ -161,73 +115,56 @@ final class ChatPanel: UIView, PanelContent {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let compact = shown?.compact == true
-        let rowHeight = min(32.0, bounds.height)
-        row.frame = CGRect(x: 0, y: 0, width: bounds.width, height: rowHeight)
-        row.isHidden = compact
-        picker.isHidden = !compact || chats.list.isEmpty
-        let pick =
-            picker.isHidden
-            ? 0 : min(ceil(picker.sizeThatFits(CGSize(width: 200, height: rowHeight)).width), bounds.width * 0.4)
-        picker.frame = CGRect(x: 0, y: (bounds.height - rowHeight) / 2, width: pick, height: rowHeight)
-        picker.layer.cornerRadius = rowHeight / 2
-        var x = 0.0
-        for chip in chips {
-            let width = ceil(chip.sizeThatFits(CGSize(width: 240, height: rowHeight)).width)
-            chip.frame = CGRect(x: x, y: 0, width: min(width, 240), height: rowHeight)
-            chip.layer.cornerRadius = rowHeight / 2
-            x += chip.frame.width + 4
-        }
-        row.contentSize = CGSize(width: max(x - 4, 0), height: rowHeight)
-        well.frame =
-            compact
-            ? CGRect(x: pick + 6, y: 0, width: max(bounds.width - pick - 6, 0), height: bounds.height)
-            : CGRect(x: 0, y: rowHeight + 6, width: bounds.width, height: max(bounds.height - rowHeight - 6, 0))
+        well.frame = bounds
         thread.frame = well.bounds
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         fade.frame = well.bounds
-        fade.locations = [0, NSNumber(value: compact || well.bounds.height == 0 ? 0 : min(14 / well.bounds.height, 1))]
+        fade.locations = [0, NSNumber(value: well.bounds.height == 0 ? 0 : min(14 / well.bounds.height, 1))]
         CATransaction.commit()
-        message.frame = well.frame
+        message.frame = bounds
         let width = thread.bounds.width
-        let widest = compact ? width : (width * 0.82).rounded(.down)
+        let widest = min((width * 0.75).rounded(.down), 520)
         var y = 0.0
         for (index, bubble) in bubbles.enumerated() {
-            bubble.oneLine = compact
-            bubble.isHidden = compact && index != bubbles.count - 1
-            guard !bubble.isHidden else { continue }
+            let after = index > 0 && bubbles[index - 1].mine == bubble.mine
+            let before = index + 1 < bubbles.count && bubbles[index + 1].mine == bubble.mine
+            bubble.joined = (above: after, below: before)
+            if index > 0 { y += after ? 2 : 10 }
             let size = bubble.size(within: widest)
             bubble.frame = CGRect(x: bubble.mine ? width - size.width : 0, y: y, width: size.width, height: size.height)
-            y += size.height + 4
+            y += size.height
         }
-        if let problem = trouble.text, !problem.isEmpty, !compact {
+        if let problem = trouble.text, !problem.isEmpty {
             let fits = trouble.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-            trouble.frame = CGRect(x: 0, y: y + 2, width: width, height: ceil(fits.height))
-            y = trouble.frame.maxY + 4
+            trouble.frame = CGRect(x: 0, y: y + 8, width: width, height: ceil(fits.height))
+            y = trouble.frame.maxY
         } else {
             trouble.frame = .zero
         }
-        let height = max(y - 4, 0)
-        thread.contentInset.top = max(thread.bounds.height - height, 0)
+        thread.contentInset.top = max(thread.bounds.height - y, 0)
         let wasAtEnd = thread.contentOffset.y >= thread.contentSize.height - thread.bounds.height - 1
-        thread.contentSize = CGSize(width: width, height: height)
-        if wasAtEnd || height <= thread.bounds.height { thread.contentOffset.y = height - thread.bounds.height }
+        thread.contentSize = CGSize(width: width, height: y)
+        if wasAtEnd || y <= thread.bounds.height { thread.contentOffset.y = y - thread.bounds.height }
     }
 }
 
-/// One message: yours on the prominent color, the other side's on a key's, its markdown's bold, italics and code drawn.
+/// One message as Messages draws it: yours on the accent color, hex's on a key's, SF Pro 17 on 22 point lines, hugging
+/// its text; markdown's bold, italics and code drawn.
 private final class Bubble: UIView {
     private(set) var mine = false
-    /// In one row, a message is one line, cut off at its end.
-    var oneLine = false { didSet { label.numberOfLines = oneLine ? 1 : 0 } }
+    /// Whether the message above and below is from the same side, whose corners on that side tighten, as Messages'.
+    var joined = (above: false, below: false) { didSet { if joined != oldValue { setNeedsLayout() } } }
+    private let shape = CAShapeLayer()
     private let label = UILabel()
-    private static let inset = UIEdgeInsets(top: 6, left: 10, bottom: 6, right: 10)
+    private static let inset = UIEdgeInsets(top: 7, left: 12, bottom: 7, right: 12)
+    private static let size = 17.0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        layer.cornerRadius = 15
-        layer.cornerCurve = .continuous
+        layer.insertSublayer(shape, at: 0)
+        layer.shadowOffset = CGSize(width: 0, height: 1)
+        layer.shadowRadius = 0
         label.numberOfLines = 0
         addSubview(label)
     }
@@ -236,7 +173,9 @@ private final class Bubble: UIView {
 
     func show(_ message: Chats.Message, theme: KeyboardTheme) {
         mine = message.mine
-        backgroundColor = mine ? theme.prominent.ui : theme.key.ui
+        shape.fillColor = (mine ? theme.prominent.ui : theme.key.ui).cgColor
+        layer.shadowColor = theme.shadow.ui.cgColor
+        layer.shadowOpacity = mine ? 0 : 1
         alpha = message.pending == true ? 0.6 : 1
         let color = mine ? theme.prominentLabel.ui : theme.label.ui
         let markdown = try? NSMutableAttributedString(
@@ -244,16 +183,19 @@ private final class Bubble: UIView {
         )
         let text = markdown ?? NSMutableAttributedString(string: message.text)
         let whole = NSRange(location: 0, length: text.length)
-        text.addAttribute(.foregroundColor, value: color, range: whole)
+        let lines = NSMutableParagraphStyle()
+        lines.minimumLineHeight = 22
+        lines.maximumLineHeight = 22
+        text.addAttributes([.foregroundColor: color, .paragraphStyle: lines], range: whole)
         text.enumerateAttribute(.inlinePresentationIntent, in: whole) { intent, range, _ in
             let intent = (intent as? NSNumber).map { InlinePresentationIntent(rawValue: $0.uintValue) } ?? []
-            let size = 15.0
             let font: UIFont =
                 intent.contains(.code)
-                ? .monospacedSystemFont(ofSize: size - 1, weight: .regular)
+                ? .monospacedSystemFont(ofSize: Self.size - 2, weight: .regular)
                 : intent.contains(.stronglyEmphasized)
-                    ? .systemFont(ofSize: size, weight: .semibold)
-                    : intent.contains(.emphasized) ? .italicSystemFont(ofSize: size) : .systemFont(ofSize: size)
+                    ? .systemFont(ofSize: Self.size, weight: .semibold)
+                    : intent.contains(.emphasized)
+                        ? .italicSystemFont(ofSize: Self.size) : .systemFont(ofSize: Self.size)
             text.addAttribute(.font, value: font, range: range)
         }
         label.attributedText = text
@@ -271,5 +213,155 @@ private final class Bubble: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         label.frame = bounds.inset(by: Self.inset)
+        let round: CGFloat = 18
+        let tight: CGFloat = 6
+        let side = (top: joined.above ? tight : round, bottom: joined.below ? tight : round)
+        let radii =
+            mine
+            ? (topLeft: round, topRight: side.top, bottomLeft: round, bottomRight: side.bottom)
+            : (topLeft: side.top, topRight: round, bottomLeft: side.bottom, bottomRight: round)
+        let path = UIBezierPath(shape: bounds, radii)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        shape.frame = bounds
+        shape.path = path.cgPath
+        layer.shadowPath = path.cgPath
+        CATransaction.commit()
+    }
+}
+
+extension UIBezierPath {
+    /// A rectangle with each corner its own radius.
+    fileprivate convenience init(
+        shape rect: CGRect, _ r: (topLeft: CGFloat, topRight: CGFloat, bottomLeft: CGFloat, bottomRight: CGFloat)
+    ) {
+        self.init()
+        move(to: CGPoint(x: rect.minX + r.topLeft, y: rect.minY))
+        addLine(to: CGPoint(x: rect.maxX - r.topRight, y: rect.minY))
+        addArc(
+            withCenter: CGPoint(x: rect.maxX - r.topRight, y: rect.minY + r.topRight), radius: r.topRight,
+            startAngle: -.pi / 2, endAngle: 0, clockwise: true)
+        addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - r.bottomRight))
+        addArc(
+            withCenter: CGPoint(x: rect.maxX - r.bottomRight, y: rect.maxY - r.bottomRight), radius: r.bottomRight,
+            startAngle: 0, endAngle: .pi / 2, clockwise: true)
+        addLine(to: CGPoint(x: rect.minX + r.bottomLeft, y: rect.maxY))
+        addArc(
+            withCenter: CGPoint(x: rect.minX + r.bottomLeft, y: rect.maxY - r.bottomLeft), radius: r.bottomLeft,
+            startAngle: .pi / 2, endAngle: .pi, clockwise: true)
+        addLine(to: CGPoint(x: rect.minX, y: rect.minY + r.topLeft))
+        addArc(
+            withCenter: CGPoint(x: rect.minX + r.topLeft, y: rect.minY + r.topLeft), radius: r.topLeft, startAngle: .pi,
+            endAngle: -.pi / 2, clockwise: true)
+        close()
+    }
+}
+
+/// Chats' shelf in the menu: a card for each chat, pinned first, its name over its latest line, as the clipboard's
+/// shelf has cards; a tap opens that chat.
+final class ChatShelf: UIView, PanelResults {
+    var fullAccess: () -> Bool = { false }
+    var onTurnOn: () -> Void = {}
+    var onPick: (Chats.Chat) -> Void = { _ in }
+
+    private let chats: Chats
+    private let row = ButtonScrollView()
+    private var cards: [ChatCard] = []
+    private let message = PanelNotice()
+    private var shown: (revision: Int, theme: KeyboardTheme)?
+
+    init(chats: Chats) {
+        self.chats = chats
+        super.init(frame: .zero)
+        row.accessibilityIdentifier = "iikb.chats.shelf"
+        message.onTurnOn = { [unowned self] in onTurnOn() }
+        [row, message].forEach(addSubview)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func reset() {
+        shown = nil
+    }
+
+    func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
+        guard shown?.revision != chats.revision || shown?.theme != theme else { return }
+        shown = (chats.revision, theme)
+        if cards.map(\.chat) != chats.list {
+            cards.forEach { $0.removeFromSuperview() }
+            cards = chats.list.enumerated().map { index, chat in
+                let card = ChatCard(chat)
+                card.accessibilityIdentifier = "iikb.chats.shelf.\(index)"
+                card.addAction(UIAction { [unowned self] _ in onPick(chat) }, for: .touchUpInside)
+                row.addSubview(card)
+                return card
+            }
+        }
+        cards.forEach { $0.show(theme) }
+        let missing = fullAccess() ? nil : "Chats need Full Access."
+        message.show(
+            missing ?? (!chats.listed ? "Loading chats…" : chats.list.isEmpty ? chats.problem ?? "No chats yet." : nil),
+            turnOn: missing != nil, oneRow: true, theme: theme)
+        setNeedsLayout()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        row.frame = bounds
+        message.frame = bounds
+        let gap = 6.0
+        let width = ((bounds.width - 2 * gap) / 3).rounded(.down)
+        for (index, card) in cards.enumerated() {
+            card.frame = CGRect(x: CGFloat(index) * (width + gap), y: 0, width: width, height: bounds.height)
+        }
+        row.contentSize = CGSize(width: max(CGFloat(cards.count) * (width + gap) - gap, 0), height: bounds.height)
+    }
+}
+
+private final class ChatCard: UIControl {
+    let chat: Chats.Chat
+    private let name = UILabel()
+    private let line = UILabel()
+    private var theme = KeyboardTheme.lightCurrent
+
+    init(_ chat: Chats.Chat) {
+        self.chat = chat
+        super.init(frame: .zero)
+        accessibilityLabel = chat.name
+        accessibilityTraits = .button
+        isAccessibilityElement = true
+        layer.cornerRadius = 10
+        layer.cornerCurve = .continuous
+        name.text = chat.name
+        name.font = .systemFont(ofSize: 14)
+        line.text = chat.line.map { line in
+            (try? AttributedString(markdown: line, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+                .map { String($0.characters) } ?? line
+        }
+        line.font = .systemFont(ofSize: 12)
+        [name, line].forEach {
+            $0.isUserInteractionEnabled = false
+            addSubview($0)
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func show(_ theme: KeyboardTheme) {
+        self.theme = theme
+        name.textColor = theme.label.ui
+        line.textColor = theme.candidate.ui
+        backgroundColor = isHighlighted ? theme.keyPressed.ui : theme.key.ui
+    }
+
+    override var isHighlighted: Bool { didSet { show(theme) } }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let inset = bounds.insetBy(dx: 10, dy: 6)
+        let both = line.text != nil && inset.height >= 30
+        line.isHidden = !both
+        name.frame = both ? CGRect(x: inset.minX, y: inset.minY, width: inset.width, height: inset.height - 15) : inset
+        line.frame = CGRect(x: inset.minX, y: inset.maxY - 15, width: inset.width, height: 15)
     }
 }

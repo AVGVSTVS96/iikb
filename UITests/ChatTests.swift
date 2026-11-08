@@ -26,23 +26,31 @@ final class ChatTests: XCTestCase {
         app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", "portrait"]
         app.launch()
         XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
-        let tool = element("iikb.tool.chats", in: app)
-        XCTAssertTrue(tool.waitForExistence(timeout: 10), "the bar has the Chats tool")
-        tool.tap()
-        try shot("\(shots)-panel")
-        let listed = app.descendants(matching: .any).matching(
-            NSPredicate(format: "identifier IN %@", ["iikb.chat.0", "iikb.chat.picker"])
-        ).firstMatch
-        XCTAssertTrue(listed.waitForExistence(timeout: 20), "the chats are listed, as chips or, in one row, a picker")
+        element("iikb.more", in: app).tap()
+        let card = element("iikb.chats.shelf.0", in: app)
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
+        try shot("\(shots)-menu")
         if let name = environment["IIKB_CHAT"] {
-            if listed.identifier == "iikb.chat.picker" { listed.tap() }
             app.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch.tap()
+        } else {
+            card.tap()
         }
+        let field = element("iikb.chat.field", in: app)
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the chat opens with its message box")
+        XCTAssertFalse(key("space", in: app).isHittable, "the chat opens with the keys down")
+        XCTAssertTrue(element("iikb.chat.0", in: app).waitForExistence(timeout: 20), "the chats are pills in the bar")
+        Thread.sleep(forTimeInterval: 1)
         try shot("\(shots)-open")
 
+        field.tap()
+        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 5), "tapping the box brings the keys up")
         type(message, in: app)
         try shot("\(shots)-typed")
-        element("iikb.chat.send", in: app).tap()
+        field.doubleTap()
+        Thread.sleep(forTimeInterval: 1.5)
+        try shot("\(shots)-select")
+        field.tap()
+        key("return", in: app).tap()
         let answer = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", reply))
             .firstMatch
         XCTAssertTrue(
@@ -50,8 +58,11 @@ final class ChatTests: XCTestCase {
             "the reply shows in the panel")
         try shot("\(shots)-reply")
 
-        element("iikb.panel.back", in: app).tap()
-        XCTAssertTrue(wait { !self.element("iikb.chat.send", in: app).exists }, "back closes the chats")
+        element("iikb.chat.messages", in: app).tap()
+        XCTAssertTrue(wait { !self.key("space", in: app).isHittable }, "tapping the messages puts the keys away")
+        try shot("\(shots)-read")
+        element("iikb.more", in: app).tap()
+        XCTAssertTrue(wait { !field.exists }, "More leaves the chat")
     }
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {

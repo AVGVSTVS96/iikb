@@ -21,7 +21,7 @@ UIKit, the parts any keyboard can build on, with no private API. Keyboard behavi
   - Stopping plays the stop animation Settings › Appearance picks (`StopAnimation`): Squeeze (the bars rush into the mic, a ring and a check while it writes), Drain (the red pours into the mic, which glows while it writes) or Card (the recording folds into a card that lifts off the keyboard's top). Cancelling turns the recording to dust (`Dust`).
 - `BarButton`: the More button, which opens the menu (FullKeyboard's `MenuView`), and on iPad the emoji tool. The emoji panel opens from the emoji key beside space on iPhone, which Settings can take away.
 - `EditPill`: cut, copy and paste, out of the More button over the suggestions while the menu is out (`SuggestionBar.Edit`).
-- `PanelView`: a panel in place of the bar: a `PanelContent`'s results over a back button and a search field the keys type into. `EmojiPanel` is the emoji one.
+- `PanelView`: a panel above the keys or in their place: a `PanelContent`'s results over a back button and the field the keys type into. Each panel names its field (`PanelField`), with no default: `.search` is iOS's one-line search field; a field for anything else is the panel's own view, built for that job as iOS's own field for it is (Chats' `MessageField`, Messages' composer), never search made to look like it. `EmojiPanel` is the emoji one.
 
 ## For the app
 

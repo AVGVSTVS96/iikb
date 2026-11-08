@@ -9,7 +9,7 @@ public final class EmojiPanel: UIView, PanelContent, UICollectionViewDataSource,
     public var onPick: (String, String?) -> Void = { _, _ in }
     /// What you've picked, read as the panel opens and as the search changes, so emoji never move under your finger.
     public var history: () -> EmojiHistory = { EmojiHistory() }
-    public let placeholder = "Search emoji"
+    public var field: PanelField { .search(.init("Search emoji")) }
 
     private let layout = UICollectionViewFlowLayout()
     private lazy var grid = UICollectionView(frame: .zero, collectionViewLayout: layout)

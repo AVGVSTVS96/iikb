@@ -110,10 +110,11 @@ public struct LayoutContext: Hashable, Sendable {
         ]
     }
 
-    /// What holding an iPhone's layer key offers, left to right, on every screen: the More button's items, after the
-    /// layout in use where no other applies, so letting go without sliding changes nothing.
+    /// What holding an iPhone's layer key offers, left to right, on every screen, the only place they are, since they're
+    /// for typing: the layouts, the next keyboard and iikb Settings, after the layout in use where no other applies, so
+    /// letting go without sliding changes nothing.
     public var menu: [KeyboardEvent] {
-        guard keyboardMenu != .button else { return [] }
+        guard device == .phone else { return [] }
         return (layoutPicks.isEmpty ? [.keep] : []) + moreMenu
     }
 

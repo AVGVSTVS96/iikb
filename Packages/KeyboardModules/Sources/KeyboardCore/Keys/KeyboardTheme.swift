@@ -46,6 +46,9 @@ public struct KeyboardTheme: Hashable, Sendable {
     public var micGlyph: RGBA
     public var record: RGBA
     public var searchField: RGBA
+    /// The keyboard's card as iOS draws it behind a keyboard, opaque, for what covers more of the app than the keys
+    /// do (Chats), where the app would show through iOS's glass.
+    public var card = RGBA.rgb(224, 225, 232)
 
     /// How each kind of key is painted; the plain themes paint every key with `key`, `keyPressed` and `label`.
     public var letterKey = KeyPaint.flat(.white, pressed: .white, label: .black)
@@ -81,7 +84,7 @@ public struct KeyboardTheme: Hashable, Sendable {
 
     public static func dark(_ style: KeyboardStyle) -> KeyboardTheme {
         let ios27 = style == .ios27
-        return KeyboardTheme.plain(
+        var theme = KeyboardTheme.plain(
             key: RGBA(white: (ios27 ? 68 : 61) / 255),
             keyPressed: RGBA(white: 0.42),
             label: .white,
@@ -101,6 +104,8 @@ public struct KeyboardTheme: Hashable, Sendable {
             record: .rgb(255, 69, 58),
             searchField: .rgb(51, 51, 53)
         )
+        theme.card = .rgb(34, 34, 35)
+        return theme
     }
 
     private static func plain(

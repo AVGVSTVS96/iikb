@@ -17,10 +17,10 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
     var changed: () -> Void = {}
     /// Empties the search, as the clock does, so recents never sit under words they don't match.
     var clearSearch: () -> Void = {}
-    let placeholder = "Search KLIPY"
-    var glyph: UIImage? { Self.fieldGlyph }
+    var field: PanelField {
+        .search(.init("Search KLIPY", glyph: Self.fieldGlyph, accessories: [clock], notice: notice))
+    }
     private static let fieldGlyph = Panel.gifGlyph(18.4)
-    var accessories: [UIView] { [clock] }
     private(set) var notice: String?
 
     private let klipy: Klipy

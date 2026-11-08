@@ -73,6 +73,7 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | A correctly typed real word is never changed; word frequencies only choose among what the fingers could have meant (KeyboardCore) | `TypingModelTests`, `scripts/eval` |
 | Learning comes only from real events, and nothing in the model runs on a clock (KeyboardCore) | `TypingModelTests` |
 | A change that moves the eval's numbers beats them and updates `scripts/eval.expected` in the same commit (scripts) | `scripts/eval` diffs every full run |
+| A surface is done when it holds up beside the app that does the same job best (Messages for a chat, Spotlight for search), in screenshots at the phone's size, with its text and small details checked zoomed in. A new kind of input or view gets its own primitive built for its job, never the nearest existing one bent to fit (KeyboardUI, `PanelField`) | `PanelField` has no default; judgment, shots |
 | Keys behave and sit as Apple's do, measured in the same simulator (`shots/`, `scripts/shotdiff.py`), never eyeballed; docs/design.md says where and why it moves a key off Apple's geometry | judgment, measured with `scripts/shotdiff.py` |
 | The keyboard, the app's preview and Your Taps lay out the same keys (KeyboardCore) | `KeyboardGeometry`, `GeometryTests` |
 | The bar's buttons are set out as the top row's keys are (KeyboardCore) | `BarLayoutTests` |

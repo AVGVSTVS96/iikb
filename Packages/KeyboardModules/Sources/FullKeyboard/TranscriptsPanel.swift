@@ -11,8 +11,7 @@ final class TranscriptsPanel: UIView, PanelContent, UICollectionViewDataSource, 
     var fullAccess: () -> Bool = { false }
     var onPaste: (String) -> Void = { _ in }
     var onTurnOn: () -> Void = {}
-    let placeholder = "Search transcripts"
-    var glyph: UIImage? { UIImage(systemName: "text.bubble") }
+    var field: PanelField { .search(.init("Search transcripts", glyph: UIImage(systemName: "text.bubble"))) }
 
     private struct Shown: Equatable {
         var query: String

@@ -1,42 +1,68 @@
 import KeyboardCore
 import UIKit
 
-/// What a panel shows above its search field. Each panel (emoji, GIFs, the clipboard) brings its own; `PanelView`
-/// draws the search row under it and the keys type into the field.
-public protocol PanelContent: UIView {
-    var placeholder: String { get }
-    /// The field's leading glyph.
-    var glyph: UIImage? { get }
-    /// Buttons at the field's right end, before its clear button.
-    var accessories: [UIView] { get }
-    /// What the search row says in place of the search, like "Copied", until the panel takes it back.
-    var notice: String? { get }
-    /// Whether the field offers a clear button once it has text.
-    var clears: Bool { get }
-    /// The results for `query`. Called on every render; redraw only when something changed, so results never move
-    /// under a finger.
+/// What the menu's shelves and a panel's results share: the results for `query`, laid out for `metrics`.
+public protocol PanelResults: UIView {
+    /// Called on every render; redraw only when something changed, so results never move under a finger.
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics)
-    /// The panel just opened.
+    /// The panel or shelf just opened.
     func reset()
 }
 
-extension PanelContent {
-    public var glyph: UIImage? { UIImage(systemName: "magnifyingglass") }
-    public var accessories: [UIView] { [] }
-    public var notice: String? { nil }
-    public var clears: Bool { true }
-    public func reset() {}
+/// A panel: its results, and under them the field the keys type into, which each panel picks for its job.
+public protocol PanelContent: PanelResults {
+    var field: PanelField { get }
 }
 
-/// A panel in place of the bar and the pill row: results on top, then a back button and the search field.
+/// The field under a panel's results. Search is iOS's one-line search field; anything else (a message, a note) is a
+/// view of the panel's own that does that job as iOS's own field for it does, never search made to look like it.
+public enum PanelField {
+    case search(Search)
+    /// As tall as its `sizeThatFits` for the row's width, up to what the panel leaves it.
+    case own(UIView)
+
+    public struct Search {
+        public var placeholder: String
+        public var glyph: UIImage?
+        /// Buttons at the field's right end, before its clear button.
+        public var accessories: [UIView]
+        /// What the field says in place of the search, like "Copied", until the panel takes it back.
+        public var notice: String?
+
+        public init(
+            _ placeholder: String, glyph: UIImage? = UIImage(systemName: "magnifyingglass"), accessories: [UIView] = [],
+            notice: String? = nil
+        ) {
+            self.placeholder = placeholder
+            self.glyph = glyph
+            self.accessories = accessories
+            self.notice = notice
+        }
+    }
+}
+
+/// A panel: its results over a back button and its field. Above the keys (`inKeysPlace` false) it takes the bar's place,
+/// its results `toolbar.results` tall; in the keys' place, as a panel opened from the menu is until you tap its field,
+/// its results fill what its field leaves.
 public final class PanelView: UIView {
     public var onClose: () -> Void = {}
     public var onClear: () -> Void = {}
+    /// The field was tapped while the panel is in the keys' place, so the keys come up to type into it.
+    public var onField: () -> Void = {}
     public var block = (minX: CGFloat(0), maxX: CGFloat(0)) { didSet { if block != oldValue { setNeedsLayout() } } }
+    public var inKeysPlace = false { didSet { if inKeysPlace != oldValue { setNeedsLayout() } } }
+    /// Chats has no back button: More, still on, takes you back.
+    public var showsBack = true { didSet { if showsBack != oldValue { setNeedsLayout() } } }
+    /// Under the field in the keys' place, so it ends where the bottom row of keys would.
+    public var bottomInset = PanelView.inset { didSet { if bottomInset != oldValue { setNeedsLayout() } } }
     private(set) var content: PanelContent?
     private var toolbar = KeyboardMetrics.phone(width: 390).toolbar
     private let back = UIButton(type: .custom)
-    private let field = SearchField()
+    private let search = SearchField()
+    private var own: UIView?
+
+    /// Padding around a panel in the keys' place, the menu's gap.
+    public static let inset: CGFloat = 8
 
     override public init(frame: CGRect) {
         super.init(frame: frame)
@@ -47,21 +73,32 @@ public final class PanelView: UIView {
                 systemName: "chevron.left",
                 withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)), for: .normal)
         back.addAction(UIAction { [unowned self] _ in onClose() }, for: .touchUpInside)
-        field.onClear = { [unowned self] in onClear() }
+        search.onClear = { [unowned self] in onClear() }
+        search.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapField)))
         addSubview(back)
-        addSubview(field)
+        addSubview(search)
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
+    @objc private func tapField() {
+        if inKeysPlace { onField() }
+    }
+
     public func open(_ content: PanelContent?) {
         guard content !== self.content else { return }
         self.content?.removeFromSuperview()
+        own?.removeFromSuperview()
+        own = nil
         self.content = content
         guard let content else { return }
         content.reset()
-        field.accessories = content.accessories
         insertSubview(content, at: 0)
+        if case .own(let view) = content.field {
+            own = view
+            addSubview(view)
+        }
+        search.isHidden = own != nil
         setNeedsLayout()
     }
 
@@ -73,29 +110,44 @@ public final class PanelView: UIView {
         }
         back.tintColor = theme.label.ui
         content?.show(query: query, theme: theme, metrics: metrics)
-        field.show(
-            query, caretAt: caret ?? query.count, placeholder: content?.placeholder ?? "", glyph: content?.glyph,
-            notice: content?.notice, clears: content?.clears ?? true, theme: theme)
+        guard case .search(let look) = content?.field else { return }
+        search.accessories = look.accessories
+        search.show(query, caretAt: caret ?? query.count, look: look, typing: !inKeysPlace, theme: theme)
+    }
+
+    /// How tall the results are in the keys' place, `height` tall, with a search field under them.
+    public static func results(inKeysPlace height: CGFloat, field: Double) -> Double {
+        max(Double(height - 2 * inset) - Toolbar.fieldGap - field, 0)
     }
 
     override public func layoutSubviews() {
         super.layoutSubviews()
         let width = block.maxX - block.minX
-        content?.frame = CGRect(x: block.minX, y: toolbar.top, width: width, height: toolbar.results)
-        let row = CGRect(
-            x: block.minX, y: toolbar.top + toolbar.results + Toolbar.fieldGap, width: width, height: toolbar.field)
-        back.frame = CGRect(x: row.minX, y: row.minY, width: 36, height: row.height)
-        field.frame = CGRect(
-            x: back.frame.maxX + 4, y: row.minY, width: row.maxX - back.frame.maxX - 4, height: row.height)
+        let top = inKeysPlace ? Self.inset : CGFloat(toolbar.top)
+        let bottom = inKeysPlace ? bounds.height - bottomInset : bounds.height
+        back.isHidden = !showsBack
+        let fieldX = block.minX + (showsBack ? 40 : 0)
+        let fieldWidth = max(block.maxX - fieldX, 0)
+        let room = bottom - top - CGFloat(Toolbar.fieldGap)
+        let fieldHeight =
+            own.map { min(ceil($0.sizeThatFits(CGSize(width: fieldWidth, height: room - 46)).height), room - 46) }
+            ?? CGFloat(toolbar.field)
+        let row = CGRect(x: block.minX, y: bottom - fieldHeight, width: width, height: fieldHeight)
+        content?.frame = CGRect(
+            x: block.minX, y: top, width: width, height: max(row.minY - CGFloat(Toolbar.fieldGap) - top, 0))
+        let line = CGFloat(own == nil ? toolbar.field : min(toolbar.field, 36))
+        back.frame = CGRect(x: row.minX, y: row.maxY - line, width: 36, height: line)
+        (own ?? search).frame = CGRect(x: fieldX, y: row.minY, width: fieldWidth, height: row.height)
     }
 }
 
-/// A panel's search field: a glyph, what the keys typed (or the placeholder) and the cursor, its accessories, and a
-/// clear button once there's text. It takes no taps of its own: the keys below type into it.
+/// A panel's search field: a glyph, what the keys typed (or the placeholder) and, while the keys are up, the cursor; its
+/// accessories, and a clear button once there's text. The keys type into it; a tap on it only brings them up.
 private final class SearchField: UIView {
     var onClear: () -> Void = {}
     var accessories: [UIView] = [] {
         didSet {
+            guard !accessories.elementsEqual(oldValue, by: ===) else { return }
             oldValue.forEach { $0.removeFromSuperview() }
             accessories.forEach(addSubview)
             setNeedsLayout()
@@ -134,10 +186,8 @@ private final class SearchField: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func show(
-        _ query: String, caretAt: Int, placeholder: String, glyph image: UIImage?, notice: String?, clears: Bool,
-        theme: KeyboardTheme
-    ) {
+    func show(_ query: String, caretAt: Int, look: PanelField.Search, typing: Bool, theme: KeyboardTheme) {
+        let (placeholder, image, notice) = (look.placeholder, look.glyph, look.notice)
         if query != self.query || caretAt != self.caretAt || notice != self.notice { setNeedsLayout() }
         self.query = query
         self.caretAt = caretAt
@@ -148,12 +198,12 @@ private final class SearchField: UIView {
         if shown != label.text { setNeedsLayout() }
         label.text = shown
         label.textColor = query.isEmpty && notice == nil ? theme.candidate.ui : theme.label.ui
-        caret.isHidden = notice != nil
+        caret.isHidden = notice != nil || !typing
         glyph.image = notice == nil ? image : UIImage(systemName: "checkmark.circle.fill")
         glyph.tintColor = theme.candidate.ui
         caret.backgroundColor = theme.prominent.ui
         backgroundColor = theme.searchField.ui
-        clear.isHidden = query.isEmpty || notice != nil || !clears
+        clear.isHidden = query.isEmpty || notice != nil
         guard theme != clearTheme else { return }
         clearTheme = theme
         let mark = UIImage(

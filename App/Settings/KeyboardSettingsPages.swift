@@ -368,12 +368,13 @@ private struct LayoutSettings: View {
             Box(
                 header: "Keyboard Menu",
                 footer:
-                    "Where to open layouts, Next Keyboard and iikb Settings: hold 123 or emoji and slide, or tap the menu button above the keys."
+                    "Layouts, Next Keyboard and iikb Settings open from holding 123 or emoji and sliding. The menu button above the keys opens your clipboard, transcripts, GIFs and chats."
             ) {
-                ForEach(KeyboardMenu.allCases, id: \.self) { place in
-                    ChoiceRow(title: place.title, picked: model.settings.keyboardMenu == place) {
-                        model.update { $0.keyboardMenu = place }
-                    }
+                ForEach([KeyboardMenu.both, .hold], id: \.self) { place in
+                    ChoiceRow(
+                        title: place == .both ? "Hold 123 and Menu Button" : place.title,
+                        picked: (model.settings.keyboardMenu == .hold) == (place == .hold)
+                    ) { model.update { $0.keyboardMenu = place } }
                 }
             }
         }

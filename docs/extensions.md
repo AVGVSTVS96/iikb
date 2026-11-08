@@ -1,23 +1,25 @@
 # Extensions
 
-An extension is a service whose chats open from the keyboard's bar, in any app. iikb draws the panel: the chats in a row, the open one's latest messages, and a line the keys and the mic type into, with suggestions and autocorrect as in any field. Return sends. The extension says what chats there are, what's in them, and where your words go.
+An extension is a service whose chats open from the keyboard's menu, in any app. iikb draws the panel: the open chat's messages and a message box the mic and the keys type into, with suggestions and autocorrect as in any field. The extension says what chats there are, what's in them, and where your words go.
 
 ```
 you, in any app
-  │ tap Chats in the bar
+  │ More, then a chat on the menu's Chats shelf
   ▼
-┌──────────────────────────────┐
-│ DM  General  Extensions  …   │  chats, pinned first
-│ hex: pushed 8a1ed50          │  latest messages
-│ ▍Message DM               ⬆  │  the keys type here
-│ suggestions             🎙   │
-│ q w e r t y u i o p          │
+┌──────────────────────────────┐  the keyboard grows once, to all of
+│ ⊞ (DM) General Craft      🎙 │  the screen but 140 pt for the app
+│ is the build on? ███████     │
+│ ███ Yes, 655 is on your Duo. │  reading and dictating: keys down
+│ ( Message DM               ) │
 └──────────────────────────────┘
-  │ return sends to the open chat
+  │ tap the box: keys come up under it, same height
+  │ ↑ (keys down) or send (keys up) sends to the open chat
   ▼
 iikb ──► your extension ──► wherever it sends
      ◄── replies show as they come
 ```
+
+Chats is about reading and dictating, so it opens with the keys down and the chat filling a keyboard grown for it, the chats as pills in the bar. Dictation lands in the box as one edit and waits for ↑. Tapping the box brings the keys up under it, with the bar's suggestions on them and the chat still above; tapping the messages puts them away. The keyboard keeps one height from the moment a chat opens, so the app above moves once.
 
 ## Writing one
 
@@ -67,4 +69,4 @@ GET  <url>/<chat>?after=<version> → { version, messages: [{ from, text, pendin
 POST <url>/<chat> { text, id }  → 2xx once it's sent
 ```
 
-iikb asks for the open chat's messages again as soon as each answer comes, and stops when the panel closes. One that fails says so in the panel; picking the chat asks again. A message that can't be sent goes back into the line. An extension gets only what you write in its panel, never what you type in the app's field.
+iikb asks for the open chat's messages again as soon as each answer comes, and stops when the panel closes. One that fails says so in the panel; picking the chat asks again. A message that can't be sent goes back into the box. An extension gets only what you write in its panel, never what you type in the app's field.
