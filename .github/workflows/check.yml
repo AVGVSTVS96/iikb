@@ -1,0 +1,16 @@
+name: check
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  swift:
+    runs-on: ubuntu-latest
+    container: swift:6.4.0-noble
+    steps:
+      - uses: actions/checkout@v5
+      - run: scripts/format --check
+      - run: scripts/coretest
