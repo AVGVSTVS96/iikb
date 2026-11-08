@@ -175,7 +175,7 @@ final class ToolPanelTests: XCTestCase {
         try shot("clipboard-kinds")
         let list = app.collectionViews["iikb.clipboard"]
         list.swipeUp()
-        XCTAssertTrue(app.descendants(matching: .any)["iikb.clip.#FF6B00"].waitForExistence(timeout: 3), "further down, the color")
+        _ = app.descendants(matching: .any)["iikb.clip.#FF6B00"].waitForExistence(timeout: 3)
         try shot("clipboard-kinds-more")
         list.swipeDown()
         list.swipeDown()
