@@ -138,9 +138,9 @@ final class ToolPanelTests: XCTestCase {
 
     /// Made-up and public items of every kind, oldest first.
     private static let kinds = [
-        "Meet at Sightglass on 7th, 4pm?", "#FF6B00", "(415) 555-0132", "hello@example.com",
-        "https://en.wikipedia.org/wiki/International_Typographic_Style", "https://www.youtube.com/watch?v=aircAruvnKk",
-        "https://github.com/swiftlang/swift/pull/80000", "https://x.com/vercel/status/1985000000000000001?s=46",
+        "Meet at Sightglass on 7th, 4pm?", "https://en.wikipedia.org/wiki/International_Typographic_Style", "#FF6B00",
+        "https://www.youtube.com/watch?v=aircAruvnKk", "https://github.com/swiftlang/swift/pull/80000", "(415) 555-0132",
+        "hello@example.com", "https://x.com/vercel/status/1985000000000000001?s=46",
     ]
 
     func testCopiedItemsShowByKind() throws {
@@ -175,7 +175,7 @@ final class ToolPanelTests: XCTestCase {
         try shot("clipboard-kinds")
         let list = app.collectionViews["iikb.clipboard"]
         list.swipeUp()
-        XCTAssertTrue(app.descendants(matching: .any)["iikb.clip.hello@example.com"].waitForExistence(timeout: 3), "further down, the address")
+        XCTAssertTrue(app.descendants(matching: .any)["iikb.clip.#FF6B00"].waitForExistence(timeout: 3), "further down, the color")
         try shot("clipboard-kinds-more")
         list.swipeDown()
         list.swipeDown()
