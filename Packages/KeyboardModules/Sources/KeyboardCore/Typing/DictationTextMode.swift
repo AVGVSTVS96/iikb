@@ -23,14 +23,17 @@ public enum DictationTextMode: String, CaseIterable, Hashable, Sendable {
         case .texting: Self.textingSwaps + Self.abbreviatedSwaps
         case .genZ: Self.genZSwaps + Self.textingSwaps + Self.abbreviatedSwaps
         }
+        let replies = self == .genZ ? Self.genZReplies : []
         guard !table.isEmpty else { return text }
-        let phrases = table.map { (words: $0.0.split(separator: " ").map(String.init), with: Array($0.1)) }
+        let phrases = (replies.map { ($0, true) } + table.map { ($0, false) }).map { swap, alone in
+            (words: swap.0.split(separator: " ").map(String.init), with: Array(swap.1), alone: alone)
+        }
         let words = Words.ranges(in: text)
         var out: [Character] = []
         var copied = 0
         var at = 0
         while at < words.count {
-            let found = phrases.filter { Self.matches($0.words, in: text, words: words, from: at) }
+            let found = phrases.filter { Self.matches($0.words, in: text, words: words, from: at, alone: $0.alone) }
             guard let phrase = found.max(by: { $0.words.count < $1.words.count }) else {
                 at += 1
                 continue
@@ -42,9 +45,12 @@ public enum DictationTextMode: String, CaseIterable, Hashable, Sendable {
         return out + text[copied...]
     }
 
-    /// Whether `phrase` is said starting at `words[from]`.
-    private static func matches(_ phrase: [String], in text: [Character], words: [Range<Int>], from: Int) -> Bool {
+    /// Whether `phrase` is said starting at `words[from]`, and when `alone`, with no word going on from it.
+    private static func matches(_ phrase: [String], in text: [Character], words: [Range<Int>], from: Int, alone: Bool) -> Bool {
         guard from + phrase.count <= words.count else { return false }
+        if alone, from + phrase.count < words.count, text[words[from + phrase.count - 1].upperBound ..< words[from + phrase.count].lowerBound].allSatisfy(\.isWhitespace) {
+            return false
+        }
         for (offset, word) in phrase.enumerated() {
             let range = words[from + offset]
             guard Words.plain(String(text[range])).lowercased() == word else { return false }
@@ -71,13 +77,16 @@ public enum DictationTextMode: String, CaseIterable, Hashable, Sendable {
     ]
 
     private static let genZSwaps = [
-        ("for real", "fr"), ("i'm serious", "no cap"), ("no lie", "no cap"), ("kinda", "lowkey"),
+        ("for real", "fr"), ("no lie", "no cap"),
         ("really amazing", "highkey fire"), ("really good", "highkey good"), ("really excited", "highkey hyped"),
         ("an amazing", "a fire"), ("an awesome", "a fire"), ("amazing", "fire"), ("awesome", "fire"),
-        ("that's great", "that's fire"), ("delicious", "bussin"), ("boring", "mid"), ("mediocre", "mid"),
-        ("suspicious", "sus"), ("excited", "hyped"), ("that's embarrassing", "that's cringe"),
-        ("that's hilarious", "i'm dead 💀"), ("that's so funny", "i'm dead 💀"), ("you guys", "y'all"),
-        ("my friend", "my bestie"), ("it looks like", "it's giving"), ("it seems like", "it's giving"),
-        ("showing off", "flexing"), ("obviously", "obvi"),
+        ("that's great", "that's fire"), ("delicious", "bussin"), ("mediocre", "mid"), ("excited", "hyped"),
+        ("you guys", "y'all"), ("showing off", "flexing"), ("obviously", "obvi"),
+    ]
+
+    /// Replies that mean what they say only as a whole sentence: "that's so funny you mention it" stays.
+    private static let genZReplies = [
+        ("i'm serious", "no cap"), ("that's hilarious", "i'm dead 💀"), ("that's so funny", "i'm dead 💀"),
+        ("that's embarrassing", "that's cringe"), ("that's suspicious", "that's sus"),
     ]
 }
