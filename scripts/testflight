@@ -1,6 +1,7 @@
 #!/bin/sh
-# Runs on the Mac: scripts/mac scripts/testflight. Archives the App Store build and uploads it to App Store Connect,
-# where TestFlight's public link hands it out. That build is compiled with APP_STORE, which leaves out every call to
+# Runs on the Mac: scripts/mac scripts/testflight, and .github/workflows/testflight.yml runs it for every push to main.
+# Archives the App Store build, uploads it to App Store Connect and hands it to TestFlight's public link with
+# scripts/testflight-publish, $WHATS_NEW as its What to Test note. That build is compiled with APP_STORE, which leaves out every call to
 # private API (KeyboardHost, HostApp, AppName, AppStatus), and then checks no private name is left in its binaries.
 # Xcode signs and uploads with an App Store Connect API key: ~/.appstoreconnect/env sets ASC_KEY_ID, ASC_ISSUER_ID and
 # ASC_TEAM, and the key is ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8.
@@ -49,4 +50,4 @@ cat >"$out/export.plist" <<EOF
 EOF
 xcodebuild -exportArchive -archivePath "$out/iikb.xcarchive" -exportOptionsPlist "$out/export.plist" \
   -exportPath "$out/export" $auth
-echo "uploaded build $(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Info.plist")"
+scripts/testflight-publish "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Info.plist")" "${WHATS_NEW:-}"

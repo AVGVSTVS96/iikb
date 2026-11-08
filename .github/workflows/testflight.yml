@@ -1,0 +1,24 @@
+name: testflight
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: testflight
+  cancel-in-progress: true
+jobs:
+  testflight:
+    runs-on: [self-hosted, testflight]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 50
+      - name: Upload to TestFlight
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          range=HEAD~1..HEAD
+          git cat-file -e "$BEFORE^{commit}" 2>/dev/null && range="$BEFORE..HEAD"
+          export WHATS_NEW="$(git log --no-merges --format='- %s' "$range" | sed -E 's/^- [a-z]+(\([^)]*\))?!?: /- /' | head -20)"
+          ~/.local/bin/turn sh scripts/testflight
