@@ -7,8 +7,9 @@ import UIKit
 /// iikb's home (docs/design.md, "The app"): whether the keyboard is on and what's left to set up, the microphone's
 /// switch, a field to try it, tiles for today's dictation and your taps, and a card for each setting you reach for,
 /// opening its page in Settings. The keys cover the page rather than resize it, so its layout holds still while you
-/// type; what they cover fades (`HomeState.keysUp`).
-final class HomeViewController: UIHostingController<AnyView> {
+/// type, and the page stays as it is under them. Done, a tap anywhere but the field, or scrolling the page puts them
+/// away.
+final class HomeViewController: UIHostingController<AnyView>, UIGestureRecognizerDelegate {
     private let field: UITextView
     private let state: HomeState
 
@@ -36,7 +37,12 @@ final class HomeViewController: UIHostingController<AnyView> {
         state.typed = !field.text.isEmpty
         NotificationCenter.default.addObserver(self, selector: #selector(refresh), name: UIApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(edited), name: UITextView.textDidChangeNotification, object: field)
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardMoved), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(focused), name: UITextView.textDidBeginEditingNotification, object: field)
+        NotificationCenter.default.addObserver(self, selector: #selector(focused), name: UITextView.textDidEndEditingNotification, object: field)
+        let tap = UITapGestureRecognizer(target: self, action: #selector(endTyping))
+        tap.cancelsTouchesInView = false
+        tap.delegate = self
+        view.addGestureRecognizer(tap)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -60,13 +66,16 @@ final class HomeViewController: UIHostingController<AnyView> {
         state.typed = !field.text.isEmpty
     }
 
-    /// Whether keys on the screen cover the page under the field: not a hardware keyboard's bar alone, nor another
-    /// app's keyboard in Split View.
-    @objc private func keyboardMoved(_ note: Notification) {
-        guard let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect, let screen = view.window?.screen else { return }
-        let covered = end.intersection(screen.bounds).height > 120 && field.isFirstResponder
-        guard covered != state.keysUp else { return }
-        withAnimation(.snappy(duration: 0.25)) { state.keysUp = covered }
+    @objc private func focused() {
+        withAnimation(.snappy(duration: 0.25)) { state.typing = field.isFirstResponder }
+    }
+
+    @objc private func endTyping() {
+        field.resignFirstResponder()
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        touch.view?.isDescendant(of: field) != true
     }
 }
 
@@ -75,8 +84,8 @@ final class HomeViewController: UIHostingController<AnyView> {
     var taps = 0
     var copied = 0
     var typed = false
-    /// The keyboard is up, so the page shows only the field.
-    var keysUp = false
+    /// The field has the keys.
+    var typing = false
     @ObservationIgnored private lazy var clipboard: ClipboardStore = {
         let store = ClipboardStore()
         store.onChange = { [unowned self, unowned store] in copied = store.history.items.count }
@@ -93,8 +102,7 @@ final class HomeViewController: UIHostingController<AnyView> {
 /// One dashboard that fills the window and scrolls only when it can't: the field taking what the rest leaves, what
 /// iikb has gathered under it, then the settings' cards. A window wider than tall sets the cards beside the field, two
 /// across, filling the height; a wide upright one, three across under it. The field is in the tree once, whatever the
-/// shape, so it's never handed from one host to another (a first responder that is hangs SwiftUI). While the keyboard
-/// is up, the page shows only the field.
+/// shape, so it's never handed from one host to another (a first responder that is hangs SwiftUI).
 struct HomeView: View {
     let state: HomeState
     let field: UITextView
@@ -111,13 +119,12 @@ struct HomeView: View {
             layout {
                 VStack(spacing: side ? 12 : 28) {
                     tryIt.frame(minHeight: side ? (beside ? 160 : 200) : 150, maxHeight: .infinity)
-                    stats.hiddenWhileTyping(state.keysUp)
+                    stats
                 }
                 VStack(spacing: beside ? 28 : 12) {
                     if !status.isSetUp { setUp }
                     shortcutCards(across: side && !beside ? 3 : 2, fills: beside)
                 }
-                .hiddenWhileTyping(state.keysUp)
             }
             .padding([.horizontal, .bottom], 16)
             .padding(.top, side ? 12 : 4)
@@ -126,12 +133,21 @@ struct HomeView: View {
             .frame(minHeight: height, alignment: .top)
         }
         .scrollBounceBehavior(.basedOnSize)
+        .scrollDismissesKeyboard(.interactively)
         .ignoresSafeArea(.keyboard)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
         .appPage()
         .navigationTitle("iikb")
         .toolbarTitleDisplayMode(.inlineLarge)
-        .toolbar { MicSwitchItem() }
+        .toolbar {
+            MicSwitchItem()
+            if state.typing {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(role: .confirm) { field.resignFirstResponder() }
+                        .accessibilityIdentifier("home-done")
+                }
+            }
+        }
     }
 
     private var tryIt: some View {
@@ -276,14 +292,6 @@ private struct CountRow: View {
                 .layoutPriority(1)
         }
         .row()
-    }
-}
-
-private extension View {
-    /// Fades out while the keyboard covers it, so the keys never cut a card in half and the field is all that's left
-    /// above them.
-    func hiddenWhileTyping(_ typing: Bool) -> some View {
-        opacity(typing ? 0 : 1).allowsHitTesting(!typing)
     }
 }
 
