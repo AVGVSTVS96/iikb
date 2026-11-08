@@ -97,7 +97,9 @@ struct StatCard<Accessory: View, Content: View>: View {
 
 extension StatCard where Accessory == EmptyView {
     init(symbol: String, color: Color, title: String, subtitle: String? = nil, @ViewBuilder content: () -> Content) {
-        self.init(symbol: symbol, color: color, title: title, subtitle: subtitle, accessory: { EmptyView() }, content: content)
+        self.init(
+            symbol: symbol, color: color, title: title, subtitle: subtitle, accessory: { EmptyView() }, content: content
+        )
     }
 }
 
@@ -223,18 +225,27 @@ struct StatGrid<Content: View>: View {
     var body: some View {
         Group(subviews: content) { facts in
             let across = width >= CGFloat(facts.count) * 118 ? facts.count : columns
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .topLeading), count: across), alignment: .leading, spacing: 14) {
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .topLeading), count: across),
+                alignment: .leading, spacing: 14
+            ) {
                 ForEach(facts) { $0 }
             }
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            width = $0
+        }
     }
 }
 
 enum Format {
     /// 1,234 below ten thousand, 12.3k and 1.2M above.
     static func short(_ count: Int) -> String {
-        count >= 10000 ? Double(count).formatted(.number.notation(.compactName).precision(.fractionLength(0 ... 1))).lowercased() : count.formatted()
+        count >= 10000
+            ? Double(count).formatted(.number.notation(.compactName).precision(.fractionLength(0...1))).lowercased()
+            : count.formatted()
     }
 
     /// The round number at or above `value` a chart's top reads, close enough that the tallest bar nears it: 1, 1.5,
@@ -247,14 +258,15 @@ enum Format {
 
     /// 860, 8.6k, 21k: a chart's label, short at any size.
     static func compact(_ count: Int) -> String {
-        count.formatted(.number.notation(.compactName).precision(.fractionLength(0 ... 1))).lowercased()
+        count.formatted(.number.notation(.compactName).precision(.fractionLength(0...1))).lowercased()
     }
 
     static func speed(_ speed: Double?) -> String { speed.map { "\(Int($0.rounded()))" } ?? "–" }
 
     static func time(_ seconds: Double) -> String {
         if seconds < 60 { return "\(Int(seconds))s" }
-        return Duration.seconds(seconds).formatted(.units(allowed: [.hours, .minutes], width: .narrow, maximumUnitCount: 2))
+        return Duration.seconds(seconds).formatted(
+            .units(allowed: [.hours, .minutes], width: .narrow, maximumUnitCount: 2))
     }
 
     static func day(_ date: Date) -> String { date.formatted(.dateTime.month(.abbreviated).day()) }
@@ -268,7 +280,10 @@ enum Format {
         guard before > 0 else { return nil }
         let share = now / before - 1
         guard abs(share) >= 0.005 else { return nil }
-        return ("\(share > 0 ? "↑" : "↓") \(abs(share).formatted(.percent.precision(.fractionLength(0)))) vs previous", share > 0)
+        return (
+            "\(share > 0 ? "↑" : "↓") \(abs(share).formatted(.percent.precision(.fractionLength(0)))) vs previous",
+            share > 0
+        )
     }
 }
 
@@ -294,10 +309,14 @@ private struct Today: View {
 
     var body: some View {
         let today = Date.now.startOfDay
-        let typed = activity.channel(.typed, on: today), said = activity.channel(.said, on: today)
+        let typed = activity.channel(.typed, on: today)
+        let said = activity.channel(.said, on: today)
         let words = typed.words + said.words
-        StatCard(symbol: "calendar", color: .orange, title: "Today", subtitle: today.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())) {
-            if case let .computer(name) = device, let asOf = Computers.shared.asOf[name] {
+        StatCard(
+            symbol: "calendar", color: .orange, title: "Today",
+            subtitle: today.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
+        ) {
+            if case .computer(let name) = device, let asOf = Computers.shared.asOf[name] {
                 Text(asOf.formatted(.relative(presentation: .named)))
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Color.appSecondary)
@@ -316,7 +335,9 @@ private struct Today: View {
                         .foregroundStyle(Color.appSecondary)
                 }
                 .accessibilityElement(children: .combine)
-                Split(parts: [(Activity.Kind.typed.color, Double(typed.words)), (Activity.Kind.said.color, Double(said.words))])
+                Split(parts: [
+                    (Activity.Kind.typed.color, Double(typed.words)), (Activity.Kind.said.color, Double(said.words)),
+                ])
                 HStack(spacing: 14) {
                     LegendDot(color: Activity.Kind.typed.color, name: "Typed \(typed.words.formatted())")
                     LegendDot(color: Activity.Kind.said.color, name: "Dictated \(said.words.formatted())")
@@ -328,7 +349,10 @@ private struct Today: View {
                 Stat(label: "Typing speed", value: Format.speed(speed), unit: speed == nil ? nil : "wpm")
                 Stat(label: "Active time", value: Format.time(typed.seconds + said.seconds))
                 Stat(
-                    label: "Accuracy", value: typed.keys > 0 ? (1 - Double(typed.deletes) / Double(typed.keys)).formatted(.percent.precision(.fractionLength(0))) : "–",
+                    label: "Accuracy",
+                    value: typed.keys > 0
+                        ? (1 - Double(typed.deletes) / Double(typed.keys)).formatted(
+                            .percent.precision(.fractionLength(0))) : "–",
                     detail: typed.keys > 0 ? "\(typed.deletes.formatted()) deleted" : nil
                 )
                 Stat(label: "Keystrokes", value: typed.keys.formatted())
@@ -351,7 +375,8 @@ struct Split: View {
             HStack(spacing: gap) {
                 if total > 0 {
                     ForEach(shown.indices, id: \.self) { index in
-                        Capsule().fill(shown[index].color.gradient).frame(width: max(width * shown[index].value / total, height))
+                        Capsule().fill(shown[index].color.gradient).frame(
+                            width: max(width * shown[index].value / total, height))
                     }
                 }
             }
@@ -374,7 +399,10 @@ struct History: View {
     @State private var span = 30
     @State private var picked: Date?
 
-    enum Measure: String, CaseIterable { case words = "Words", speed = "Speed" }
+    enum Measure: String, CaseIterable {
+        case words = "Words"
+        case speed = "Speed"
+    }
 
     private struct Point: Identifiable {
         let date: Date
@@ -384,14 +412,16 @@ struct History: View {
     }
 
     private func range(_ days: Int, back: Int = 0) -> [Date] {
-        (0 ..< days).reversed().map { Date.now.adding(days: -$0 - back) }
+        (0..<days).reversed().map { Date.now.adding(days: -$0 - back) }
     }
 
     private func total(_ dates: [Date]) -> Activity.Channel {
         dates.reduce(Activity.Channel()) { sum, date in kinds.reduce(sum) { $0 + activity.channel($1, on: date) } }
     }
 
-    private func speed(_ channel: Activity.Channel) -> Double? { channel.seconds >= 60 ? channel.paced / channel.seconds * 60 : nil }
+    private func speed(_ channel: Activity.Channel) -> Double? {
+        channel.seconds >= 60 ? channel.paced / channel.seconds * 60 : nil
+    }
 
     var body: some View {
         let dates = range(span)
@@ -400,15 +430,23 @@ struct History: View {
                 let channel = activity.channel(kind, on: date)
                 switch measure {
                 case .words: return Point(date: date, kind: kind, value: Double(channel.words))
-                case .speed: return channel.seconds >= 30 ? Point(date: date, kind: kind, value: channel.paced / channel.seconds * 60) : nil
+                case .speed:
+                    return channel.seconds >= 30
+                        ? Point(date: date, kind: kind, value: channel.paced / channel.seconds * 60) : nil
                 }
             }
         }
         let shown = picked.flatMap { date in dates.first { Calendar.current.isDate($0, inSameDayAs: date) } }
-        let top = Format.roundUp(measure == .words
-            ? dates.map { date in kinds.reduce(0) { $0 + Double(activity.channel($1, on: date).words) } }.max() ?? 0
-            : points.map(\.value).max() ?? 0)
-        StatCard(symbol: "chart.bar.fill", color: .indigo, title: "History", subtitle: measure == .words ? "Words \(kinds == [.said] ? "said" : kinds == [.typed] ? "typed" : "written") per day" : "Words a minute per day") {
+        let top = Format.roundUp(
+            measure == .words
+                ? dates.map { date in kinds.reduce(0) { $0 + Double(activity.channel($1, on: date).words) } }.max() ?? 0
+                : points.map(\.value).max() ?? 0)
+        StatCard(
+            symbol: "chart.bar.fill", color: .indigo, title: "History",
+            subtitle: measure == .words
+                ? "Words \(kinds == [.said] ? "said" : kinds == [.typed] ? "typed" : "written") per day"
+                : "Words a minute per day"
+        ) {
             HStack(spacing: 6) {
                 ChoicePills(values: Measure.allCases, selection: $measure) { $0.rawValue }
                 ChoicePills(values: [7, 30, 90], selection: $span) { "\($0)D" }
@@ -421,10 +459,16 @@ struct History: View {
             Chart(points) { point in
                 switch measure {
                 case .words:
-                    BarMark(x: .value("Day", point.date, unit: .day), y: .value("Words", point.value), width: .ratio(span > 30 ? 0.8 : 0.66))
-                        .foregroundStyle(by: .value("Kind", point.kind.name))
-                        .opacity(shown == nil || shown == point.date ? 1 : 0.35)
-                        .clipShape(UnevenRoundedRectangle(topLeadingRadius: span > 30 ? 1.5 : 3, topTrailingRadius: span > 30 ? 1.5 : 3, style: .continuous))
+                    BarMark(
+                        x: .value("Day", point.date, unit: .day), y: .value("Words", point.value),
+                        width: .ratio(span > 30 ? 0.8 : 0.66)
+                    )
+                    .foregroundStyle(by: .value("Kind", point.kind.name))
+                    .opacity(shown == nil || shown == point.date ? 1 : 0.35)
+                    .clipShape(
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: span > 30 ? 1.5 : 3, topTrailingRadius: span > 30 ? 1.5 : 3,
+                            style: .continuous))
                 case .speed:
                     LineMark(x: .value("Day", point.date, unit: .day), y: .value("WPM", point.value))
                         .foregroundStyle(by: .value("Kind", point.kind.name))
@@ -441,13 +485,15 @@ struct History: View {
                 }
             }
             .chartForegroundStyleScale(domain: kinds.map(\.name), range: kinds.map { $0.color.gradient })
-            .chartYScale(domain: 0 ... top)
+            .chartYScale(domain: 0...top)
             .chartLegend(.hidden)
             .chartXSelection(value: $picked)
-            .chartXScale(domain: dates[0] ... Date.now.adding(days: 1))
+            .chartXScale(domain: dates[0]...Date.now.adding(days: 1))
             .chartXAxis {
                 AxisMarks(values: .stride(by: .day, count: span == 7 ? 1 : span == 30 ? 7 : 30)) { _ in
-                    AxisValueLabel(format: span == 7 ? .dateTime.weekday(.narrow) : .dateTime.month(.abbreviated).day(), centered: span == 7)
+                    AxisValueLabel(
+                        format: span == 7 ? .dateTime.weekday(.narrow) : .dateTime.month(.abbreviated).day(),
+                        centered: span == 7)
                 }
             }
             .chartYAxis {
@@ -467,14 +513,19 @@ struct History: View {
     }
 
     @ViewBuilder private func summary(_ dates: [Date]) -> some View {
-        let now = total(dates), before = total(range(span, back: span))
+        let now = total(dates)
+        let before = total(range(span, back: span))
         let active = dates.count { date in kinds.contains { activity.channel($0, on: date).words > 0 } }
         let words = change(Double(now.words), Double(before.words))
         let pace = speed(now).flatMap { now in speed(before).flatMap { change(now, $0) } }
         StatGrid {
-            Stat(label: "Words · \(span)d", value: Format.short(now.words), detail: words?.text, detailColor: words.map { $0.up ? .green : .orange } ?? .appSecondary)
+            Stat(
+                label: "Words · \(span)d", value: Format.short(now.words), detail: words?.text,
+                detailColor: words.map { $0.up ? .green : .orange } ?? .appSecondary)
             Stat(label: "Per active day", value: Format.short(active > 0 ? now.words / active : 0))
-            Stat(label: kinds.count > 1 ? "Overall speed" : "Speed", value: Format.speed(speed(now)), unit: "wpm", detail: pace?.text, detailColor: pace.map { $0.up ? .green : .orange } ?? .appSecondary)
+            Stat(
+                label: kinds.count > 1 ? "Overall speed" : "Speed", value: Format.speed(speed(now)), unit: "wpm",
+                detail: pace?.text, detailColor: pace.map { $0.up ? .green : .orange } ?? .appSecondary)
             Stat(label: "Active days", value: "\(active)", unit: "of \(span)")
         }
     }
@@ -483,10 +534,14 @@ struct History: View {
 
     @ViewBuilder private func day(_ date: Date) -> some View {
         StatGrid(columns: 3) {
-            Stat(label: date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()), value: Format.short(kinds.reduce(0) { $0 + activity.channel($1, on: date).words }), unit: "words")
+            Stat(
+                label: date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
+                value: Format.short(kinds.reduce(0) { $0 + activity.channel($1, on: date).words }), unit: "words")
             ForEach(kinds, id: \.self) { kind in
                 let channel = activity.channel(kind, on: date)
-                Stat(label: kind.name, value: Format.short(channel.words), detail: speed(channel).map { "\(Int($0.rounded())) wpm" }, detailColor: kind.color)
+                Stat(
+                    label: kind.name, value: Format.short(channel.words),
+                    detail: speed(channel).map { "\(Int($0.rounded())) wpm" }, detailColor: kind.color)
             }
         }
     }
@@ -502,34 +557,57 @@ private struct Records: View {
 
     var body: some View {
         let streak = streaks
-        let most = activity.days.max { $0.value.typed.words + $0.value.said.words < $1.value.typed.words + $1.value.said.words }
-        let fastest = activity.days.compactMap { date, day in day.typed.seconds >= 120 ? day.typed.speed.map { (date, $0) } : nil }.max { $0.1 < $1.1 }
+        let most = activity.days.max {
+            $0.value.typed.words + $0.value.said.words < $1.value.typed.words + $1.value.said.words
+        }
+        let fastest = activity.days.compactMap { date, day in
+            day.typed.seconds >= 120 ? day.typed.speed.map { (date, $0) } : nil
+        }.max { $0.1 < $1.1 }
         let burst = activity.days.map { ($0.key, $0.value.typed.peak) }.max { $0.1 < $1.1 }
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: width >= 4 * 150 + 36 ? 4 : 2), spacing: 12) {
-            Record(symbol: "flame.fill", color: .orange, title: "Streak", value: "\(streak.current)", unit: streak.current == 1 ? "day" : "days", detail: "Longest \(streak.longest) days")
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: width >= 4 * 150 + 36 ? 4 : 2),
+            spacing: 12
+        ) {
             Record(
-                symbol: "trophy.fill", color: .yellow, title: "Most words", value: Format.short(most.map { $0.value.typed.words + $0.value.said.words } ?? 0), unit: "words",
+                symbol: "flame.fill", color: .orange, title: "Streak", value: "\(streak.current)",
+                unit: streak.current == 1 ? "day" : "days", detail: "Longest \(streak.longest) days")
+            Record(
+                symbol: "trophy.fill", color: .yellow, title: "Most words",
+                value: Format.short(most.map { $0.value.typed.words + $0.value.said.words } ?? 0), unit: "words",
                 detail: most.map { Format.day($0.key) } ?? "–"
             )
-            Record(symbol: "gauge.with.dots.needle.67percent", color: .green, title: "Fastest day", value: Format.speed(fastest?.1), unit: "wpm", detail: fastest.map { Format.day($0.0) } ?? "Two minutes of typing a day")
             Record(
-                symbol: "bolt.fill", color: .purple, title: "Top burst", value: Format.speed((burst?.1 ?? 0) > 0 ? burst?.1 : nil), unit: "wpm",
+                symbol: "gauge.with.dots.needle.67percent", color: .green, title: "Fastest day",
+                value: Format.speed(fastest?.1), unit: "wpm",
+                detail: fastest.map { Format.day($0.0) } ?? "Two minutes of typing a day")
+            Record(
+                symbol: "bolt.fill", color: .purple, title: "Top burst",
+                value: Format.speed((burst?.1 ?? 0) > 0 ? burst?.1 : nil), unit: "wpm",
                 detail: burst.flatMap { $0.1 > 0 ? Format.day($0.0) : nil } ?? "–"
             )
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            width = $0
+        }
     }
 
     /// Days in a row with words, up to today (or yesterday, while today has none yet), and the most ever.
     private var streaks: (current: Int, longest: Int) {
         let days = Set(activity.activeDays)
-        var longest = 0, run = 0, previous: Date?
+        var longest = 0
+        var run = 0
+        var previous: Date?
         for day in days.sorted() {
-            run = previous.map { Calendar.current.dateComponents([.day], from: $0, to: day).day == 1 } == true ? run + 1 : 1
+            run =
+                previous.map { Calendar.current.dateComponents([.day], from: $0, to: day).day == 1 } == true
+                ? run + 1 : 1
             longest = max(longest, run)
             previous = day
         }
-        var current = 0, day = Date.now.startOfDay
+        var current = 0
+        var day = Date.now.startOfDay
         if !days.contains(day) { day = day.adding(days: -1) }
         while days.contains(day) {
             current += 1
@@ -580,7 +658,8 @@ private struct Record: View {
             RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous)
                 .fill(Color.appCard)
                 .overlay(alignment: .topLeading) {
-                    Circle().fill(color.opacity(0.16)).frame(width: 120, height: 120).blur(radius: 40).offset(x: -40, y: -50)
+                    Circle().fill(color.opacity(0.16)).frame(width: 120, height: 120).blur(radius: 40).offset(
+                        x: -40, y: -50)
                 }
                 .clipShape(.rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
         }
@@ -604,20 +683,26 @@ struct Rhythm: View {
     }
 
     var body: some View {
-        let hours = kinds.flatMap { kind in activity.total(kind).hours.enumerated().map { Hour(hour: $0.offset, kind: kind, words: $0.element / 5) } }
-        let sums = (0 ..< 24).map { hour in hours.filter { $0.hour == hour }.reduce(0) { $0 + $1.words } }
+        let hours = kinds.flatMap { kind in
+            activity.total(kind).hours.enumerated().map { Hour(hour: $0.offset, kind: kind, words: $0.element / 5) }
+        }
+        let sums = (0..<24).map { hour in hours.filter { $0.hour == hour }.reduce(0) { $0 + $1.words } }
         if let busiest = sums.indices.max(by: { sums[$0] < sums[$1] }), sums[busiest] > 0 {
             let top = Format.roundUp(sums[busiest])
-            StatCard(symbol: "clock.fill", color: .teal, title: "Daily rhythm", subtitle: "Most active around \(Format.hour(busiest))") {
+            StatCard(
+                symbol: "clock.fill", color: .teal, title: "Daily rhythm",
+                subtitle: "Most active around \(Format.hour(busiest))"
+            ) {
                 Chart(hours) { hour in
                     BarMark(x: .value("Hour", "\(hour.hour)"), y: .value("Words", hour.words), width: .ratio(0.72))
                         .foregroundStyle(by: .value("Kind", hour.kind.name))
-                        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 2, topTrailingRadius: 2, style: .continuous))
+                        .clipShape(
+                            UnevenRoundedRectangle(topLeadingRadius: 2, topTrailingRadius: 2, style: .continuous))
                 }
                 .chartForegroundStyleScale(domain: kinds.map(\.name), range: kinds.map { $0.color.gradient })
                 .chartLegend(.hidden)
-                .chartXScale(domain: (0 ..< 24).map { "\($0)" })
-                .chartYScale(domain: 0 ... top)
+                .chartXScale(domain: (0..<24).map { "\($0)" })
+                .chartYScale(domain: 0...top)
                 .chartXAxis {
                     AxisMarks { value in
                         if let hour = value.as(String.self).flatMap(Int.init), hour % 6 == 0 {
@@ -661,13 +746,22 @@ struct Speeds: View {
     }
 
     var body: some View {
-        let low = percentile(0.1) / 5 * 5, high = (percentile(0.9) + 4) / 5 * 5, median = percentile(0.5)
-        StatCard(symbol: "speedometer", color: .blue, title: "Speed range", subtitle: "Usually \(low)–\(high) wpm · median ~\(median) wpm") {
+        let low = percentile(0.1) / 5 * 5
+        let high = (percentile(0.9) + 4) / 5 * 5
+        let median = percentile(0.5)
+        StatCard(
+            symbol: "speedometer", color: .blue, title: "Speed range",
+            subtitle: "Usually \(low)–\(high) wpm · median ~\(median) wpm"
+        ) {
             Chart(bands, id: \.speed) { band in
                 BarMark(x: .value("WPM", "\(band.speed)"), y: .value("Stretches", band.count), width: .ratio(0.78))
-                    .foregroundStyle(band.speed >= low && band.speed <= high
-                        ? AnyShapeStyle(LinearGradient(colors: [Color.cyan, .blue, .indigo], startPoint: .top, endPoint: .bottom))
-                        : AnyShapeStyle(Color.appSecondary.opacity(0.5)))
+                    .foregroundStyle(
+                        band.speed >= low && band.speed <= high
+                            ? AnyShapeStyle(
+                                LinearGradient(
+                                    colors: [Color.cyan, .blue, .indigo], startPoint: .top, endPoint: .bottom))
+                            : AnyShapeStyle(Color.appSecondary.opacity(0.5))
+                    )
                     .clipShape(UnevenRoundedRectangle(topLeadingRadius: 2, topTrailingRadius: 2, style: .continuous))
             }
             .chartXScale(domain: bands.map { "\($0.speed)" })
@@ -709,7 +803,8 @@ private struct Talking: View {
     }
 
     var body: some View {
-        let said = activity.total(.said), typed = activity.total(.typed)
+        let said = activity.total(.said)
+        let typed = activity.total(.typed)
         let all = said.words + typed.words
         if all > 0 {
             StatCard(symbol: "waveform", color: .pink, title: "Dictation", subtitle: "All time") {
@@ -722,15 +817,26 @@ private struct Talking: View {
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Color.appSecondary)
                     }
-                    Split(parts: [(Activity.Kind.said.color, Double(said.words)), (Activity.Kind.typed.color, Double(typed.words))])
-                    Text("\((Double(said.words) / Double(all)).formatted(.percent.precision(.fractionLength(0)))) of everything you’ve written")
-                        .font(.footnote)
-                        .foregroundStyle(Color.appSecondary)
+                    Split(parts: [
+                        (Activity.Kind.said.color, Double(said.words)),
+                        (Activity.Kind.typed.color, Double(typed.words)),
+                    ])
+                    Text(
+                        "\((Double(said.words) / Double(all)).formatted(.percent.precision(.fractionLength(0)))) of everything you’ve written"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(Color.appSecondary)
                 }
                 StatGrid(columns: 3) {
-                    Stat(label: "Speaking", value: Format.speed(said.speed), unit: "wpm", detail: said.speed.flatMap { s in typed.speed.map { String(format: "%.1f× your typing", s / $0) } }, detailColor: .pink)
+                    Stat(
+                        label: "Speaking", value: Format.speed(said.speed), unit: "wpm",
+                        detail: said.speed.flatMap { s in
+                            typed.speed.map { String(format: "%.1f× your typing", s / $0) }
+                        }, detailColor: .pink)
                     Stat(label: "Dictations", value: said.dictations.formatted())
-                    Stat(label: "Avg length", value: said.dictations > 0 ? "\(said.words / said.dictations)" : "–", unit: "words")
+                    Stat(
+                        label: "Avg length", value: said.dictations > 0 ? "\(said.words / said.dictations)" : "–",
+                        unit: "words")
                 }
                 let apps = apps
                 if !apps.isEmpty {
@@ -751,17 +857,27 @@ private struct Talking: View {
                                         .foregroundStyle(Color.appSecondary)
                                 }
                                 GeometryReader { proxy in
-                                    Split(parts: [(Activity.Kind.typed.color, Double(app.typed)), (Activity.Kind.said.color, Double(app.said))], height: 6)
-                                        .frame(width: max(proxy.size.width * Double(app.words) / top, 6))
+                                    Split(
+                                        parts: [
+                                            (Activity.Kind.typed.color, Double(app.typed)),
+                                            (Activity.Kind.said.color, Double(app.said)),
+                                        ], height: 6
+                                    )
+                                    .frame(width: max(proxy.size.width * Double(app.words) / top, 6))
                                 }
                                 .frame(height: 6)
                             }
                             .accessibilityElement(children: .ignore)
-                            .accessibilityLabel("\(app.name), \(app.typed.formatted()) typed, \(app.said.formatted()) dictated")
+                            .accessibilityLabel(
+                                "\(app.name), \(app.typed.formatted()) typed, \(app.said.formatted()) dictated")
                         }
                     }
                     if apps.contains(where: { $0.typed > 0 }) {
-                        HStack(spacing: 14) { ForEach([Activity.Kind.typed, .said], id: \.self) { LegendDot(color: $0.color, name: $0.name) } }
+                        HStack(spacing: 14) {
+                            ForEach([Activity.Kind.typed, .said], id: \.self) {
+                                LegendDot(color: $0.color, name: $0.name)
+                            }
+                        }
                     }
                 }
             }
@@ -786,11 +902,18 @@ struct Year: View {
         let since = Date.now.adding(days: -weeks * 7)
         let active = activity.days.count { date, _ in date > since && words(date).typed + words(date).said > 0 }
         let months = Int((Double(weeks) / 4.35).rounded())
-        StatCard(symbol: "square.grid.3x3.fill", color: .green, title: weeks >= 52 ? "Past year" : "Past \(months) months", subtitle: "\(active) active \(active == 1 ? "day" : "days") · shaded by words written") {
+        StatCard(
+            symbol: "square.grid.3x3.fill", color: .green, title: weeks >= 52 ? "Past year" : "Past \(months) months",
+            subtitle: "\(active) active \(active == 1 ? "day" : "days") · shaded by words written"
+        ) {
             Canvas { context, size in draw(in: &context, size: size) }
                 .accessibilityHidden(true)
                 .frame(height: 7 * cell + 6 * gap + 18)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.width
+                } action: {
+                    width = $0
+                }
             HStack(spacing: 4) {
                 if kinds.count > 1 {
                     LegendDot(color: Activity.Kind.typed.color, name: "Typed")
@@ -798,9 +921,16 @@ struct Year: View {
                 }
                 Spacer()
                 Text("Less").font(.caption).foregroundStyle(Color.appSecondary)
-                ForEach(0 ..< 5) { level in
+                ForEach(0..<5) { level in
                     RoundedRectangle(cornerRadius: 2.5)
-                        .fill(level == 0 ? AnyShapeStyle(Color.appPressed) : AnyShapeStyle(LinearGradient(colors: kinds.map { $0.color.opacity([0, 0.3, 0.5, 0.75, 1][level]) }, startPoint: .topLeading, endPoint: .bottomTrailing)))
+                        .fill(
+                            level == 0
+                                ? AnyShapeStyle(Color.appPressed)
+                                : AnyShapeStyle(
+                                    LinearGradient(
+                                        colors: kinds.map { $0.color.opacity([0, 0.3, 0.5, 0.75, 1][level]) },
+                                        startPoint: .topLeading, endPoint: .bottomTrailing))
+                        )
                         .frame(width: 10, height: 10)
                 }
                 Text("More").font(.caption).foregroundStyle(Color.appSecondary)
@@ -809,18 +939,24 @@ struct Year: View {
     }
 
     private func words(_ date: Date) -> (typed: Int, said: Int) {
-        (kinds.contains(.typed) ? activity.channel(.typed, on: date).words : 0, kinds.contains(.said) ? activity.channel(.said, on: date).words : 0)
+        (
+            kinds.contains(.typed) ? activity.channel(.typed, on: date).words : 0,
+            kinds.contains(.said) ? activity.channel(.said, on: date).words : 0
+        )
     }
 
     private func shade(level: Int, said: Double) -> Color {
         guard level > 0 else { return Color.appPressed }
-        let typed = UIColor(Activity.Kind.typed.color), pink = UIColor(Activity.Kind.said.color)
+        let typed = UIColor(Activity.Kind.typed.color)
+        let pink = UIColor(Activity.Kind.said.color)
         let color = kinds == [.said] ? pink : kinds == [.typed] ? typed : Self.mix(typed, pink, said)
         return Color(color).opacity([0, 0.3, 0.5, 0.75, 1][level])
     }
 
     private static func mix(_ a: UIColor, _ b: UIColor, _ t: Double) -> UIColor {
-        var (r1, g1, b1, a1, r2, g2, b2, a2) = (CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0))
+        var (r1, g1, b1, a1, r2, g2, b2, a2) = (
+            CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0)
+        )
         a.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
         b.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
         return UIColor(red: r1 + (r2 - r1) * t, green: g1 + (g2 - g1) * t, blue: b1 + (b2 - b1) * t, alpha: 1)
@@ -832,7 +968,8 @@ struct Year: View {
         let today = Date.now.startOfDay
         let weekday = (calendar.component(.weekday, from: today) - calendar.firstWeekday + 7) % 7
         let start = today.adding(days: -(weeks - 1) * 7 - weekday)
-        let totals = (0 ..< weeks * 7).map { words(start.adding(days: $0)) }.map { $0.typed + $0.said }.filter { $0 > 0 }.sorted()
+        let totals = (0..<weeks * 7).map { words(start.adding(days: $0)) }.map { $0.typed + $0.said }.filter { $0 > 0 }
+            .sorted()
         func level(_ value: Int) -> Int {
             guard value > 0, !totals.isEmpty else { return 0 }
             let rank = Double(totals.firstIndex { $0 >= value } ?? totals.count - 1) / Double(max(totals.count - 1, 1))
@@ -841,29 +978,38 @@ struct Year: View {
         let label = Color.appSecondary
         for row in [1, 3, 5] {
             let name = calendar.shortWeekdaySymbols[(row + calendar.firstWeekday - 1) % 7]
-            context.draw(Text(name).font(.system(size: 9, weight: .medium)).foregroundStyle(label), at: CGPoint(x: 0, y: top + CGFloat(row) * (cell + gap) + cell / 2), anchor: .leading)
+            context.draw(
+                Text(name).font(.system(size: 9, weight: .medium)).foregroundStyle(label),
+                at: CGPoint(x: 0, y: top + CGFloat(row) * (cell + gap) + cell / 2), anchor: .leading)
         }
         var lastMonth = -1
-        for week in 0 ..< weeks {
+        for week in 0..<weeks {
             let x = left + CGFloat(week) * (cell + gap)
             let first = start.adding(days: week * 7)
             let month = calendar.component(.month, from: first)
             if month != lastMonth {
                 if lastMonth != -1 || calendar.component(.day, from: first) <= 7 {
                     let fits = x + 22 <= size.width
-                    context.draw(Text(first.formatted(.dateTime.month(.abbreviated))).font(.system(size: 9, weight: .medium)).foregroundStyle(label), at: CGPoint(x: fits ? x : x + cell, y: 5), anchor: fits ? .leading : .trailing)
+                    context.draw(
+                        Text(first.formatted(.dateTime.month(.abbreviated))).font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(label), at: CGPoint(x: fits ? x : x + cell, y: 5),
+                        anchor: fits ? .leading : .trailing)
                 }
                 lastMonth = month
             }
-            for day in 0 ..< 7 {
+            for day in 0..<7 {
                 let date = start.adding(days: week * 7 + day)
                 guard date <= today else { continue }
                 let value = words(date)
                 let total = value.typed + value.said
                 let rect = CGRect(x: x, y: top + CGFloat(day) * (cell + gap), width: cell, height: cell)
-                context.fill(Path(roundedRect: rect, cornerRadius: 2.5), with: .color(shade(level: level(total), said: total > 0 ? Double(value.said) / Double(total) : 0)))
+                context.fill(
+                    Path(roundedRect: rect, cornerRadius: 2.5),
+                    with: .color(shade(level: level(total), said: total > 0 ? Double(value.said) / Double(total) : 0)))
                 if date == today {
-                    context.stroke(Path(roundedRect: rect.insetBy(dx: -1, dy: -1), cornerRadius: 3.5), with: .color(.primary.opacity(0.7)), lineWidth: 1)
+                    context.stroke(
+                        Path(roundedRect: rect.insetBy(dx: -1, dy: -1), cornerRadius: 3.5),
+                        with: .color(.primary.opacity(0.7)), lineWidth: 1)
                 }
             }
         }
@@ -877,13 +1023,21 @@ private struct AllTime: View {
     let activity: Activity
 
     var body: some View {
-        let typed = activity.total(.typed), said = activity.total(.said)
+        let typed = activity.total(.typed)
+        let said = activity.total(.said)
         if let first = activity.activeDays.first {
-            StatCard(symbol: "infinity", color: .gray, title: "All time", subtitle: "Since \(first.formatted(.dateTime.month(.abbreviated).day().year()))") {
+            StatCard(
+                symbol: "infinity", color: .gray, title: "All time",
+                subtitle: "Since \(first.formatted(.dateTime.month(.abbreviated).day().year()))"
+            ) {
                 StatGrid(columns: 3) {
                     Stat(label: "Words", value: Format.short(typed.words + said.words))
-                    Stat(label: "Typed", value: Format.short(typed.words), detail: typed.speed.map { "\(Int($0.rounded())) wpm" }, detailColor: Activity.Kind.typed.color)
-                    Stat(label: "Dictated", value: Format.short(said.words), detail: said.speed.map { "\(Int($0.rounded())) wpm" }, detailColor: Activity.Kind.said.color)
+                    Stat(
+                        label: "Typed", value: Format.short(typed.words),
+                        detail: typed.speed.map { "\(Int($0.rounded())) wpm" }, detailColor: Activity.Kind.typed.color)
+                    Stat(
+                        label: "Dictated", value: Format.short(said.words),
+                        detail: said.speed.map { "\(Int($0.rounded())) wpm" }, detailColor: Activity.Kind.said.color)
                     Stat(label: "Active time", value: Format.time(typed.seconds + said.seconds))
                     Stat(label: "Keystrokes", value: Format.short(typed.keys))
                     Stat(label: "Active days", value: "\(activity.activeDays.count)")

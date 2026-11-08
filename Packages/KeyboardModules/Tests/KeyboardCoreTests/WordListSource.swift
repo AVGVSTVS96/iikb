@@ -3,7 +3,11 @@
 final class WordListSource: CandidateSource {
     let words: [String]
 
-    init(_ words: [String] = ["hello", "help", "helping", "the", "they", "then", "there", "world", "way", "work", "I", "I'm"]) {
+    init(
+        _ words: [String] = [
+            "hello", "help", "helping", "the", "they", "then", "there", "world", "way", "work", "I", "I'm",
+        ]
+    ) {
         self.words = words
     }
 
@@ -20,7 +24,8 @@ final class WordListSource: CandidateSource {
     }
 
     private func distance(_ a: String, _ b: String) -> Int {
-        let a = Array(a), b = Array(b)
+        let a = Array(a)
+        let b = Array(b)
         var row = Array(0...b.count)
         for i in 1...max(a.count, 1) where !a.isEmpty {
             var previous = row[0]

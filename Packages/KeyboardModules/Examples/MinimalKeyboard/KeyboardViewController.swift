@@ -1,7 +1,7 @@
-import UIKit
 import KeyboardCore
 import KeyboardEnglish
 import KeyboardUI
+import UIKit
 
 /// A keyboard on iikb's engine with a look of its own: Apple's layouts and key sizes on every iPhone and iPad,
 /// autocorrect that learns where you tap, and the suggestion bar's top three. Everything it knows is `TypingEngine`'s;
@@ -96,15 +96,21 @@ final class KeyboardViewController: UIInputViewController {
         guard isShown else { return }
         let screen = view.window?.windowScene?.screen.bounds.size ?? view.bounds.size
         let size = Size(width: screen.width, height: screen.height)
-        let device = DeviceClass(isPad: traitCollection.userInterfaceIdiom == .pad, shortSide: min(size.width, size.height))
+        let device = DeviceClass(
+            isPad: traitCollection.userInterfaceIdiom == .pad, shortSide: min(size.width, size.height))
         let context = engine.layout(on: device, screen: size, showsGlobe: needsInputModeSwitchKey)
         let layout = Layouts.layout(for: context)
         let metrics = KeyboardMetrics.for(context, screen: size, window: view.bounds.width, style: .current)
         let dark = traitCollection.userInterfaceStyle == .dark || textDocumentProxy.keyboardAppearance == .dark
         theme = dark ? .dark(.current) : .light(.current)
-        keys.show(KeyGrid(layout, width: view.bounds.width, metrics: metrics.grid, signature: context.signature), faces: engine.faces(on: device), metrics: metrics, theme: theme)
+        keys.show(
+            KeyGrid(layout, width: view.bounds.width, metrics: metrics.grid, signature: context.signature),
+            faces: engine.faces(on: device), metrics: metrics, theme: theme)
         engine.use(keys.grid)
-        let heights = (bar: metrics.toolbar.height, keys: metrics.height(rows: layout.rows.count, hasNumberRow: layout.hasNumberRow))
+        let heights = (
+            bar: metrics.toolbar.height,
+            keys: metrics.height(rows: layout.rows.count, hasNumberRow: layout.hasNumberRow)
+        )
         if barHeight.constant != heights.bar { barHeight.constant = heights.bar }
         if keysHeight.constant != heights.keys { keysHeight.constant = heights.keys }
         rank()
@@ -136,10 +142,11 @@ final class KeyboardViewController: UIInputViewController {
         shown = (suggestions, theme)
         bar.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for suggestion in suggestions {
-            let button = UIButton(primaryAction: UIAction(title: suggestion.title) { [unowned self] _ in
-                engine.accept(suggestion, in: document)
-                render()
-            })
+            let button = UIButton(
+                primaryAction: UIAction(title: suggestion.title) { [unowned self] _ in
+                    engine.accept(suggestion, in: document)
+                    render()
+                })
             button.tintColor = UIColor(theme.candidate)
             bar.addArrangedSubview(button)
         }
@@ -151,7 +158,8 @@ final class KeysView: UIView {
     var onEvent: (KeyboardEvent) -> Void = { _ in }
     var resolve: (KeyGrid, CGPoint) -> (row: Int, key: Int)? = { grid, point in grid.index(atX: point.x, y: point.y) }
     private(set) var grid = KeyGrid()
-    private var faces = KeyFaceContext(device: .phone, layer: .letters, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
+    private var faces = KeyFaceContext(
+        device: .phone, layer: .letters, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
     private var metrics: KeyboardMetrics?
     private var theme = KeyboardTheme.light(.current)
     private var touched: [ObjectIdentifier: (key: Key, frame: Rect, point: CGPoint)] = [:]
@@ -183,18 +191,23 @@ final class KeysView: UIView {
     }
 
     private func draw(_ content: KeyFace.Content, in box: CGRect, color: UIColor, metrics: KeyboardMetrics) {
-        let text: (String, Double)? = switch content {
-        case .letter(let letter): (letter, metrics.letterSize)
-        case .text(let label): (label, metrics.labelSize)
-        case .smallText(let label): (label, metrics.labelSize * 0.75)
-        case .symbol, .none: nil
-        }
-        if case let (string, size)? = text {
-            let label = NSAttributedString(string: string, attributes: [.font: UIFont.systemFont(ofSize: size), .foregroundColor: color])
+        let text: (String, Double)? =
+            switch content {
+            case .letter(let letter): (letter, metrics.letterSize)
+            case .text(let label): (label, metrics.labelSize)
+            case .smallText(let label): (label, metrics.labelSize * 0.75)
+            case .symbol, .none: nil
+            }
+        if case (let string, let size)? = text {
+            let label = NSAttributedString(
+                string: string, attributes: [.font: UIFont.systemFont(ofSize: size), .foregroundColor: color])
             let fit = label.size()
             label.draw(at: CGPoint(x: box.midX - fit.width / 2, y: box.midY - fit.height / 2))
         } else if case .symbol(let name) = content,
-                  let image = UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: metrics.symbolSize))?.withTintColor(color) {
+            let image = UIImage(
+                systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: metrics.symbolSize))?
+                .withTintColor(color)
+        {
             image.draw(at: CGPoint(x: box.midX - image.size.width / 2, y: box.midY - image.size.height / 2))
         }
     }
@@ -242,8 +255,8 @@ final class KeysView: UIView {
     }
 }
 
-private extension UIColor {
-    convenience init(_ color: RGBA) {
+extension UIColor {
+    fileprivate convenience init(_ color: RGBA) {
         self.init(red: color.red, green: color.green, blue: color.blue, alpha: color.alpha)
     }
 }

@@ -48,7 +48,9 @@ public struct KeyboardMetrics: Hashable, Sendable {
     public var toolbar = Toolbar.phone
 
     public var grid: GridMetrics {
-        GridMetrics(columns: columns, sideInset: sideInset, keyGap: keyGap, rowGap: rowGap, keyHeight: keyHeight, numberRowHeight: numberRowHeight, topInset: topInset, margin: margin)
+        GridMetrics(
+            columns: columns, sideInset: sideInset, keyGap: keyGap, rowGap: rowGap, keyHeight: keyHeight,
+            numberRowHeight: numberRowHeight, topInset: topInset, margin: margin)
     }
 
     public func height(rows: Int, hasNumberRow: Bool) -> Double {
@@ -70,25 +72,35 @@ public struct KeyboardMetrics: Hashable, Sendable {
 }
 
 extension KeyboardMetrics {
-    public static func `for`(_ device: DeviceClass, width: Double, height: Double, style: KeyboardStyle = .ios26, oneHanded: OneHanded = .off, split: Bool = false) -> KeyboardMetrics {
+    public static func `for`(
+        _ device: DeviceClass, width: Double, height: Double, style: KeyboardStyle = .ios26,
+        oneHanded: OneHanded = .off, split: Bool = false
+    ) -> KeyboardMetrics {
         let landscape = width > height
-        var metrics = switch (device, Duo.Screen(width: width, height: height)) {
-        case (.phone, let duo?): Self.duo(duo, style: style, oneHanded: oneHanded, split: split)
-        case (.phone, nil) where landscape: phoneLandscape(width: width)
-        case (.phone, nil): phone(width: width, style: style).oneHanded(oneHanded, width: width)
-        case (.compactPad, _): compactPad(landscape: landscape)
-        case (.pad, _): pad(shortSide: min(width, height), landscape: landscape)
-        case (.largePad, _): largePad(landscape: landscape)
-        }
+        var metrics =
+            switch (device, Duo.Screen(width: width, height: height)) {
+            case (.phone, let duo?): Self.duo(duo, style: style, oneHanded: oneHanded, split: split)
+            case (.phone, nil) where landscape: phoneLandscape(width: width)
+            case (.phone, nil): phone(width: width, style: style).oneHanded(oneHanded, width: width)
+            case (.compactPad, _): compactPad(landscape: landscape)
+            case (.pad, _): pad(shortSide: min(width, height), landscape: landscape)
+            case (.largePad, _): largePad(landscape: landscape)
+            }
         if device == .phone { metrics.numberRowHeight = (metrics.keyHeight * 0.8).rounded() }
         return metrics
     }
 
     /// The keys of `context` on a `screen`-sized device, in a keyboard `window` wide: what the keyboard draws, and the
     /// app's preview and Your Taps with it.
-    public static func `for`(_ context: LayoutContext, screen: Size, window: Double, style: KeyboardStyle) -> KeyboardMetrics {
-        var metrics = Self.for(context.device, width: screen.width, height: screen.height, style: style, oneHanded: context.oneHanded, split: context.isSplit)
-        if context.device == .phone, !context.isLandscape { metrics = metrics.fitted(screen: screen.width, window: window) }
+    public static func `for`(_ context: LayoutContext, screen: Size, window: Double, style: KeyboardStyle)
+        -> KeyboardMetrics
+    {
+        var metrics = Self.for(
+            context.device, width: screen.width, height: screen.height, style: style, oneHanded: context.oneHanded,
+            split: context.isSplit)
+        if context.device == .phone, !context.isLandscape {
+            metrics = metrics.fitted(screen: screen.width, window: window)
+        }
         metrics.roundness = context.keyRoundness
         return metrics.spaced(context.keySpacing, rows: Layouts.layout(for: context).rows.count)
     }
@@ -222,7 +234,8 @@ extension KeyboardMetrics {
             letterBaselineInset: 7.5, pairBaselineRatio: 0.243, wordsAsGlyphs: true, toolbar: .pad
         )
         guard landscape else { return metrics }
-        var sideways = metrics.sideways(keyHeight: 74.75, numberRowHeight: 0, rowGap: 11, labelSize: 24.5, symbolSize: 25)
+        var sideways = metrics.sideways(
+            keyHeight: 74.75, numberRowHeight: 0, rowGap: 11, labelSize: 24.5, symbolSize: 25)
         sideways.pairBaselineRatio = 0.202
         sideways.toolbar.slot = 259.5
         sideways.sideInset = 7
@@ -242,7 +255,8 @@ extension KeyboardMetrics {
             letterBaselineInset: 7.5, wordsAsGlyphs: true, toolbar: .pad
         )
         guard landscape else { return metrics }
-        var sideways = metrics.sideways(keyHeight: 73.75, numberRowHeight: 0, rowGap: 12, labelSize: 18.5, symbolSize: 24.5)
+        var sideways = metrics.sideways(
+            keyHeight: 73.75, numberRowHeight: 0, rowGap: 12, labelSize: 18.5, symbolSize: 24.5)
         sideways.sideInset = 15
         sideways.keyGap = 14
         sideways.bottomInset = 11
@@ -263,7 +277,8 @@ extension KeyboardMetrics {
             topInset: 6, bottomInset: 4, cornerRadius: 11.5,
             letterSize: 22, labelSize: 17, secondarySize: 16, symbolSize: 21, letterOffset: 1,
             edgeInset: Size(width: 11.5, height: 8), textInset: 14, textBaselineInset: 13.5, letterBaselineInset: 8,
-            numberRowLetterSize: 17.7, numberRowLetterOffset: 2.5, pairSize: 19, numberRowPairSize: 16, pairCapTopRatio: 0.22, pairBaselineRatio: 0.155,
+            numberRowLetterSize: 17.7, numberRowLetterOffset: 2.5, pairSize: 19, numberRowPairSize: 16,
+            pairCapTopRatio: 0.22, pairBaselineRatio: 0.155,
             wordsAsGlyphs: true, toolbar: .pad
         )
         guard landscape else { return metrics }
@@ -280,7 +295,9 @@ extension KeyboardMetrics {
 
     /// An iPad held sideways: Apple's keys grow by about a third, and their letters, digits and punctuation by a
     /// quarter, further from the key's edges.
-    private func sideways(keyHeight: Double, numberRowHeight: Double, rowGap: Double, labelSize: Double, symbolSize: Double) -> KeyboardMetrics {
+    private func sideways(
+        keyHeight: Double, numberRowHeight: Double, rowGap: Double, labelSize: Double, symbolSize: Double
+    ) -> KeyboardMetrics {
         let type = 1.24
         var metrics = self
         metrics.keyHeight = keyHeight

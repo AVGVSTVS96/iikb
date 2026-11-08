@@ -62,7 +62,8 @@ public struct DictationDraft: Codable, Sendable {
     static let anchor = 12
 
     public init(_ state: TextState) {
-        let before = Array(state.before), selected = Array(state.selected)
+        let before = Array(state.before)
+        let selected = Array(state.selected)
         text = before + selected + Array(state.after ?? "")
         caret = before.count..<before.count + selected.count
     }
@@ -75,7 +76,9 @@ public struct DictationDraft: Codable, Sendable {
         text = Array(try container.decode(String.self, forKey: .text))
         dictations = try container.decode([Dictation].self, forKey: .dictations)
         pieces = try container.decode([Piece].self, forKey: .pieces)
-        reach = (try container.decode(Int.self, forKey: .reachBefore), try container.decode(Int.self, forKey: .reachAfter))
+        reach = (
+            try container.decode(Int.self, forKey: .reachBefore), try container.decode(Int.self, forKey: .reachAfter)
+        )
         uncertain = try container.decode(Bool.self, forKey: .uncertain)
         shown = try container.decode(Bool.self, forKey: .shown)
         caret = nil
@@ -94,26 +97,35 @@ public struct DictationDraft: Codable, Sendable {
 
     /// Follows the dictation the keyboard just typed, which ends at the caret, cutting it out of any it was typed into, in
     /// a field of `traits` after `before`.
-    public mutating func add(_ id: String, typed: String, in traits: InputTraits = InputTraits(), after before: String = "") {
+    public mutating func add(
+        _ id: String, typed: String, in traits: InputTraits = InputTraits(), after before: String = ""
+    ) {
         guard let caret, caret.isEmpty, caret.lowerBound >= typed.count else { return }
         let range = caret.lowerBound - typed.count..<caret.lowerBound
         guard String(text[range]) == typed else { return }
         pieces = pieces.flatMap { piece -> [Piece] in
             guard piece.range.overlaps(range) else { return [piece] }
-            var head = piece, tail = piece
+            var head = piece
+            var tail = piece
             head.range = piece.range.lowerBound..<range.lowerBound
             head.openEnd = false
             tail.range = range.upperBound..<piece.range.upperBound
             tail.openStart = false
             return [head, tail].filter { !$0.range.isEmpty }
         }
-        dictations.append(Dictation(id: id, typed: typed, kind: traits.kind, content: traits.content == .other ? nil : traits.content, before: before))
+        dictations.append(
+            Dictation(
+                id: id, typed: typed, kind: traits.kind, content: traits.content == .other ? nil : traits.content,
+                before: before))
         pieces.append(Piece(dictation: dictations.count - 1, range: range))
         pieces.sort { $0.range.lowerBound < $1.range.lowerBound }
     }
 
     public mutating func insert(_ string: String) {
-        guard let caret else { return uncertain = true }
+        guard let caret else {
+            uncertain = true
+            return
+        }
         let inserted = Array(string)
         replace(caret, with: inserted)
         self.caret = caret.lowerBound + inserted.count..<caret.lowerBound + inserted.count
@@ -121,7 +133,10 @@ public struct DictationDraft: Codable, Sendable {
 
     /// As `TextState.deleteBackward`: a selection goes with the first delete.
     public mutating func deleteBackward(_ count: Int) {
-        guard let caret else { return uncertain = true }
+        guard let caret else {
+            uncertain = true
+            return
+        }
         let start = max(caret.lowerBound - (caret.isEmpty ? count : count - 1), 0)
         replace(start..<caret.upperBound, with: [])
         self.caret = start..<start
@@ -129,7 +144,10 @@ public struct DictationDraft: Codable, Sendable {
 
     public mutating func moveCursor(by offset: Int) {
         close()
-        guard let caret, caret.isEmpty, (0...text.count).contains(caret.lowerBound + offset) else { return caret = nil }
+        guard let caret, caret.isEmpty, (0...text.count).contains(caret.lowerBound + offset) else {
+            caret = nil
+            return
+        }
         self.caret = caret.lowerBound + offset..<caret.lowerBound + offset
     }
 
@@ -148,8 +166,10 @@ public struct DictationDraft: Codable, Sendable {
         dictations.indices.map { index in
             let final = pieces.filter { $0.dictation == index }.map { String(text[$0.range]) }.joined()
             let dictation = dictations[index]
-            return Outcome(id: dictation.id, typed: dictation.typed, final: final, sent: sent, uncertain: uncertain, kind: dictation.kind,
-                           content: dictation.content, before: dictation.before)
+            return Outcome(
+                id: dictation.id, typed: dictation.typed, final: final, sent: sent, uncertain: uncertain,
+                kind: dictation.kind,
+                content: dictation.content, before: dictation.before)
         }
     }
 
@@ -162,18 +182,27 @@ public struct DictationDraft: Codable, Sendable {
         let window = Array(before) + Array(selected) + Array(after)
         let shown = before.count..<before.count + selected.count
         reach = (max(reach.before, before.count), max(reach.after, after.count))
-        let (lefts, rights) = agreements(of: window, around: shown, whole: (before.isEmpty || before.count < reach.before, after.isEmpty || after.count < reach.after))
-        var best: (rank: [Int], left: Int, right: Int, span: Int, end: Int)?, tied = false
+        let (lefts, rights) = agreements(
+            of: window, around: shown,
+            whole: (before.isEmpty || before.count < reach.before, after.isEmpty || after.count < reach.after))
+        var best: (rank: [Int], left: Int, right: Int, span: Int, end: Int)?
+        var tied = false
         for left in lefts {
             for right in rights {
                 let span = max(0, right.reach - left.reach, left.offset - right.offset)
                 let (first, last) = (max(right.reach, span), min(left.reach + span, window.count))
                 guard first <= last else { continue }
-                let cost = 2 * span - (left.offset - right.offset) + max(0, -left.offset) + max(0, right.offset + window.count - text.count)
+                let cost =
+                    2 * span - (left.offset - right.offset) + max(0, -left.offset)
+                    + max(0, right.offset + window.count - text.count)
                 let rank = [left.cuts + right.cuts, cost, left.overruns + right.overruns]
                 let end = min(max(shown.lowerBound, first), last)
                 if let best, rank == best.rank {
-                    tied = tied || (left.offset, right.offset + end, left.offset + end - span) != (best.left, best.right + best.end, best.left + best.end - best.span)
+                    tied =
+                        tied
+                        || (left.offset, right.offset + end, left.offset + end - span) != (
+                            best.left, best.right + best.end, best.left + best.end - best.span
+                        )
                 } else if best.map({ rank.lexicographicallyPrecedes($0.rank) }) ?? true {
                     best = (rank, left.offset, right.offset, span, end)
                     tied = false
@@ -181,7 +210,10 @@ public struct DictationDraft: Codable, Sendable {
             }
         }
         let wasLost = caret == nil
-        guard let best, !tied else { return caret = nil }
+        guard let best, !tied else {
+            caret = nil
+            return
+        }
         let lead = max(0, -best.left)
         prepend(window[..<lead])
         let (left, right) = (best.left + lead, best.right + lead)
@@ -212,33 +244,48 @@ public struct DictationDraft: Codable, Sendable {
     /// window are found in the draft, where the caret puts it, and where the window starts or ends with the draft. One
     /// shorter than `anchor` counts only at one of the last three, holding all of the draft on its side of the caret
     /// that the window shows, as after a paste or a cut there.
-    private func agreements(of window: [Character], around shown: Range<Int>, whole: (left: Bool, right: Bool)) -> (left: [Side], right: [Side]) {
+    private func agreements(of window: [Character], around shown: Range<Int>, whole: (left: Bool, right: Bool)) -> (
+        left: [Side], right: [Side]
+    ) {
         let expected = caret.map { (left: $0.lowerBound - shown.lowerBound, right: $0.upperBound - shown.upperBound) }
         var offsets = Set([expected?.left, expected?.right, 0, text.count - window.count].compactMap(\.self))
         let k = min(Self.anchor, window.count)
         if k > 0, text.count >= k {
-            for i in Set([0, shown.lowerBound - k, shown.lowerBound, shown.upperBound - k, shown.upperBound, window.count - k].map { min(max($0, 0), window.count - k) }) {
+            for i in Set(
+                [0, shown.lowerBound - k, shown.lowerBound, shown.upperBound - k, shown.upperBound, window.count - k]
+                    .map { min(max($0, 0), window.count - k) })
+            {
                 let run = window[i..<i + k]
-                for position in 0...(text.count - k) where text[position] == run.first && text[position..<position + k].elementsEqual(run) {
+                for position in 0...(text.count - k)
+                where text[position] == run.first && text[position..<position + k].elementsEqual(run) {
                     offsets.insert(position - i)
                 }
             }
         }
-        var left: [Side] = [], right: [Side] = []
+        var left: [Side] = []
+        var right: [Side] = []
         for offset in offsets {
-            let low = max(0, -offset), high = min(window.count, text.count - offset)
+            let low = max(0, -offset)
+            let high = min(window.count, text.count - offset)
             guard low <= high else { continue }
             var end = low
             while end < high, window[end] == text[offset + end] { end += 1 }
             var start = high
             while start > low, window[start - 1] == text[offset + start - 1] { start -= 1 }
-            if end - low >= max(k, 1) || low == 0 && [expected?.left, 0].contains(offset) && caret.map({ (offset...offset + end).contains($0.lowerBound) }) == true {
+            if end - low >= max(k, 1)
+                || low == 0 && [expected?.left, 0].contains(offset)
+                    && caret.map({ (offset...offset + end).contains($0.lowerBound) }) == true
+            {
                 let cuts = whole.left && offset > 0 && text[offset - 1] != "\n"
                 left.append(Side(offset: offset, reach: end, cuts: cuts ? 1 : 0, overruns: low == 0 ? 0 : 1))
             }
-            if high - start >= max(k, 1) || high == window.count && [expected?.right, text.count - window.count].contains(offset) && caret.map({ (offset + start...offset + high).contains($0.upperBound) }) == true {
+            if high - start >= max(k, 1)
+                || high == window.count && [expected?.right, text.count - window.count].contains(offset)
+                    && caret.map({ (offset + start...offset + high).contains($0.upperBound) }) == true
+            {
                 let cuts = whole.right && offset + window.count < text.count && text[offset + window.count] != "\n"
-                right.append(Side(offset: offset, reach: start, cuts: cuts ? 1 : 0, overruns: high == window.count ? 0 : 1))
+                right.append(
+                    Side(offset: offset, reach: start, cuts: cuts ? 1 : 0, overruns: high == window.count ? 0 : 1))
             }
         }
         return (left, right)
@@ -299,7 +346,8 @@ public struct DictationDraft: Codable, Sendable {
         guard !lead.isEmpty else { return }
         text.insert(contentsOf: lead, at: 0)
         for index in pieces.indices {
-            pieces[index].range = pieces[index].range.lowerBound + lead.count..<pieces[index].range.upperBound + lead.count
+            pieces[index].range =
+                pieces[index].range.lowerBound + lead.count..<pieces[index].range.upperBound + lead.count
         }
         caret = caret.map { $0.lowerBound + lead.count..<$0.upperBound + lead.count }
     }

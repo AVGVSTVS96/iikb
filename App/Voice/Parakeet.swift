@@ -41,7 +41,9 @@ nonisolated extension AsrModelVersion {
     private static let clearCompiled: Void = {
         let install = "\(Bundle.main.bundlePath) \(ProcessInfo.processInfo.operatingSystemVersionString)"
         guard UserDefaults.standard.string(forKey: "compiledFor") != install else { return }
-        try? FileManager.default.removeItem(at: URL.cachesDirectory.appending(path: "\(Bundle.main.bundleIdentifier ?? "")/com.apple.e5rt.e5bundlecache"))
+        try? FileManager.default.removeItem(
+            at: URL.cachesDirectory.appending(
+                path: "\(Bundle.main.bundleIdentifier ?? "")/com.apple.e5rt.e5bundlecache"))
         UserDefaults.standard.set(install, forKey: "compiledFor")
     }()
 
@@ -51,7 +53,9 @@ nonisolated extension AsrModelVersion {
         let own = URL.applicationSupportDirectory.appending(path: "FluidAudio")
         let shared = library.appending(path: "Application Support/FluidAudio")
         let files = FileManager.default
-        guard files.fileExists(atPath: own.path(percentEncoded: false)), !files.fileExists(atPath: shared.path(percentEncoded: false)) else { return shared }
+        guard files.fileExists(atPath: own.path(percentEncoded: false)),
+            !files.fileExists(atPath: shared.path(percentEncoded: false))
+        else { return shared }
         try? files.createDirectory(at: shared.deletingLastPathComponent(), withIntermediateDirectories: true)
         guard (try? files.moveItem(at: own, to: shared)) != nil else { return nil }
         return shared

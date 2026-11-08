@@ -7,12 +7,16 @@ import UIKit
 enum RecordingShare {
     static func send(_ transcript: Transcript, as kind: Recording.Export) throws {
         let recording = Transcripts.shared.recording(of: transcript.id)
-        guard kind == .message, MFMessageComposeViewController.canSendText(), MFMessageComposeViewController.canSendAttachments() else {
+        guard kind == .message, MFMessageComposeViewController.canSendText(),
+            MFMessageComposeViewController.canSendAttachments()
+        else {
             return try share(Recording.export(recording, named: name(transcript), as: .memo))
         }
         let file = try Recording.export(recording, named: "Audio Message", as: .message)
         let compose = MFMessageComposeViewController()
-        compose.addAttachmentData(try Data(contentsOf: file), typeIdentifier: "com.apple.coreaudio-format", filename: file.lastPathComponent) // file: recording export
+        compose.addAttachmentData(
+            // file: recording export
+            try Data(contentsOf: file), typeIdentifier: "com.apple.coreaudio-format", filename: file.lastPathComponent)
         try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
         compose.messageComposeDelegate = Closer.shared
         top()?.present(compose, animated: true)
@@ -20,15 +24,20 @@ enum RecordingShare {
 
     private static func share(_ file: URL) {
         let sheet = UIActivityViewController(activityItems: [file], applicationActivities: nil)
-        sheet.completionWithItemsHandler = { _, _, _, _ in try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+        sheet.completionWithItemsHandler = { _, _, _, _ in
+            try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
+        }
         guard let top = top() else { return }
         sheet.popoverPresentationController?.sourceView = top.view
-        sheet.popoverPresentationController?.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+        sheet.popoverPresentationController?.sourceRect = CGRect(
+            x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
         top.present(sheet, animated: true)
     }
 
     private static func name(_ transcript: Transcript) -> String {
-        let words = transcript.text.split(whereSeparator: \.isWhitespace).prefix(6).joined(separator: " ").filter { !"/:".contains($0) }
+        let words = transcript.text.split(whereSeparator: \.isWhitespace).prefix(6).joined(separator: " ").filter {
+            !"/:".contains($0)
+        }
         return words.isEmpty ? "iikb Recording" : words
     }
 
@@ -42,7 +51,9 @@ enum RecordingShare {
     private final class Closer: NSObject, MFMessageComposeViewControllerDelegate {
         static let shared = Closer()
 
-        func messageComposeViewController(_ controller: MFMessageComposeViewController, didFinishWith result: MessageComposeResult) {
+        func messageComposeViewController(
+            _ controller: MFMessageComposeViewController, didFinishWith result: MessageComposeResult
+        ) {
             controller.dismiss(animated: true)
         }
     }

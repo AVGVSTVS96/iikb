@@ -20,7 +20,8 @@ public final class DeleteRepeat {
     }
 
     private func schedule(after interval: TimeInterval) {
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in // timer: key repeat
+        // timer: key repeat
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated { self?.fire() }
         }
     }

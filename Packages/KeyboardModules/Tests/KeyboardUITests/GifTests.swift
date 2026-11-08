@@ -1,6 +1,7 @@
 import Foundation
 import KeyboardCore
 import Testing
+
 @testable import FullKeyboard
 
 struct GifTests {

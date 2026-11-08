@@ -14,11 +14,12 @@ enum HostApp {
     }
 
     #if APP_STORE
-    nonisolated private static func rusage(_ pid: pid_t, _ flavor: Int32, _ usage: UnsafeMutableRawPointer) -> Int32 { -1 }
+        nonisolated private static func rusage(_ pid: pid_t, _ flavor: Int32, _ usage: UnsafeMutableRawPointer) -> Int32
+        { -1 }
     #else
-    /// libproc's `proc_pid_rusage`, in iOS's libSystem but not its SDK's headers.
-    @_silgen_name("proc_pid_rusage")
-    nonisolated private static func rusage(_ pid: pid_t, _ flavor: Int32, _ usage: UnsafeMutableRawPointer) -> Int32
+        /// libproc's `proc_pid_rusage`, in iOS's libSystem but not its SDK's headers.
+        @_silgen_name("proc_pid_rusage")
+        nonisolated private static func rusage(_ pid: pid_t, _ flavor: Int32, _ usage: UnsafeMutableRawPointer) -> Int32
     #endif
 
     static func open(_ bundle: String) async -> Bool {
@@ -30,15 +31,17 @@ enum HostApp {
 
     private static func openByID(_ bundle: String) -> Bool {
         #if APP_STORE
-        return false
+            return false
         #else
-        let selector = NSSelectorFromString("openApplicationWithBundleID:")
-        guard let type = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type,
-              let workspace = type.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue() as? NSObject,
-              workspace.responds(to: selector)
-        else { return false }
-        typealias Open = @convention(c) (NSObject, Selector, NSString) -> Bool
-        return unsafeBitCast(workspace.method(for: selector), to: Open.self)(workspace, selector, bundle as NSString)
+            let selector = NSSelectorFromString("openApplicationWithBundleID:")
+            guard let type = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type,
+                let workspace = type.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
+                    as? NSObject,
+                workspace.responds(to: selector)
+            else { return false }
+            typealias Open = @convention(c) (NSObject, Selector, NSString) -> Bool
+            return unsafeBitCast(workspace.method(for: selector), to: Open.self)(
+                workspace, selector, bundle as NSString)
         #endif
     }
 

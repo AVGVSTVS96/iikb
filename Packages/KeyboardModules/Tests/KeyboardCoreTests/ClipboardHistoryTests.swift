@@ -1,4 +1,5 @@
 import Testing
+
 @testable import KeyboardCore
 
 struct ClipboardHistoryTests {
@@ -15,9 +16,14 @@ struct ClipboardHistoryTests {
         #expect(ClipboardHistory.length(of: "hello", in: .words) == "1 word")
         #expect(ClipboardHistory.length(of: "see you\nat  noon", in: .words) == "4 words")
         #expect(ClipboardHistory.length(of: "a", in: .characters) == "1 char")
-        #expect(ClipboardHistory.length(of: "café 👋🏽", in: .characters) == "6 chars", "a character is what you see, so an emoji with its tone is one")
+        #expect(
+            ClipboardHistory.length(of: "café 👋🏽", in: .characters) == "6 chars",
+            "a character is what you see, so an emoji with its tone is one")
         #expect(ClipboardHistory.length(of: String(repeating: "x", count: 1234), in: .characters) == "1.2K chars")
-        #expect([999, 1000, 9949, 9950, 48_400, 999_499, 999_500, 1_500_000].map(ClipboardHistory.short) == ["999", "1K", "9.9K", "10K", "48K", "999K", "1M", "1.5M"])
+        #expect(
+            [999, 1000, 9949, 9950, 48_400, 999_499, 999_500, 1_500_000].map(ClipboardHistory.short) == [
+                "999", "1K", "9.9K", "10K", "48K", "999K", "1M", "1.5M",
+            ])
     }
 
     @Test func largeCopiesAreKept() {
@@ -51,7 +57,7 @@ struct ClipboardHistoryTests {
         var history = ClipboardHistory()
         history.keep(.text("keep me"), at: 0)
         history.setPinned(true, .text("keep me"))
-        for i in 1 ... 500 { history.keep(.text("\(i)"), at: Double(i)) }
+        for i in 1...500 { history.keep(.text("\(i)"), at: Double(i)) }
         #expect(history.items.count == 501, "everything you copied stays until you delete it")
         #expect(history.items.first == .init(content: .text("keep me"), found: 0, pinned: true))
         #expect(history.items[1].content == .text("500"))
@@ -101,18 +107,29 @@ struct ClipboardPasteTests {
 }
 
 struct ClipboardKindTests {
-    private func kind(_ text: String) -> ClipboardHistory.Item.Content.Kind { ClipboardHistory.Item.Content.text(text).kind }
+    private func kind(_ text: String) -> ClipboardHistory.Item.Content.Kind {
+        ClipboardHistory.Item.Content.text(text).kind
+    }
 
     @Test func aLinkShowsItsSiteAndPathWithoutWhatOnlyTracks() {
-        #expect(kind("https://x.com/vercel/status/1985000000000000001?s=46&t=abc") == .link(ClipLink("https://x.com/vercel/status/1985000000000000001")!))
-        #expect(ClipLink("https://x.com/vercel/status/1985000000000000001?s=46&t=abc") == ClipLink(site: "x.com", path: "/vercel/status/1985000000000000001"))
+        #expect(
+            kind("https://x.com/vercel/status/1985000000000000001?s=46&t=abc")
+                == .link(ClipLink("https://x.com/vercel/status/1985000000000000001")!))
+        #expect(
+            ClipLink("https://x.com/vercel/status/1985000000000000001?s=46&t=abc")
+                == ClipLink(site: "x.com", path: "/vercel/status/1985000000000000001"))
         #expect(ClipLink("  HTTPS://www.Example.com/  ".trimmingWhitespace) == ClipLink(site: "example.com", path: ""))
-        #expect(ClipLink("http://user@docs.example.org:8080/a/b/#top") == ClipLink(site: "docs.example.org", path: "/a/b"))
-        #expect(kind(" https://example.com/a \n") == .link(ClipLink(site: "example.com", path: "/a")), "space around a link leaves it a link")
+        #expect(
+            ClipLink("http://user@docs.example.org:8080/a/b/#top") == ClipLink(site: "docs.example.org", path: "/a/b"))
+        #expect(
+            kind(" https://example.com/a \n") == .link(ClipLink(site: "example.com", path: "/a")),
+            "space around a link leaves it a link")
     }
 
     @Test func aCardNamesASiteAsChatGPTsPillsDo() {
-        let names = ["x.com", "github.com", "en.wikipedia.org", "news.ycombinator.com", "bbc.co.uk", "t.co"].map { ClipLink(site: $0, path: "").name }
+        let names = ["x.com", "github.com", "en.wikipedia.org", "news.ycombinator.com", "bbc.co.uk", "t.co"].map {
+            ClipLink(site: $0, path: "").name
+        }
         #expect(names == ["x.com", "github", "wikipedia", "ycombinator", "bbc", "t.co"])
     }
 
@@ -143,6 +160,8 @@ struct ClipboardKindTests {
     }
 }
 
-private extension String {
-    var trimmingWhitespace: String { String(drop { $0.isWhitespace }.reversed().drop { $0.isWhitespace }.reversed()) }
+extension String {
+    fileprivate var trimmingWhitespace: String {
+        String(drop { $0.isWhitespace }.reversed().drop { $0.isWhitespace }.reversed())
+    }
 }

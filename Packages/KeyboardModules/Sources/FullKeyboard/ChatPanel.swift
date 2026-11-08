@@ -45,7 +45,9 @@ final class ChatPanel: UIView, PanelContent {
         row.accessibilityIdentifier = "iikb.chats"
         thread.accessibilityIdentifier = "iikb.chat.messages"
         thread.showsVerticalScrollIndicator = false
-        [thread.topEdgeEffect, thread.bottomEdgeEffect, thread.leftEdgeEffect, thread.rightEdgeEffect].forEach { $0.isHidden = true }
+        [thread.topEdgeEffect, thread.bottomEdgeEffect, thread.leftEdgeEffect, thread.rightEdgeEffect].forEach {
+            $0.isHidden = true
+        }
         fade.colors = [UIColor.clear.cgColor, UIColor.black.cgColor]
         well.layer.mask = fade
         well.addSubview(thread)
@@ -73,12 +75,16 @@ final class ChatPanel: UIView, PanelContent {
 
     /// `query` is what the line holds.
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
-        let next = Shown(revision: chats.revision, compact: metrics.toolbar.isCompact, theme: theme, canSend: !query.trimmingCharacters(in: .whitespaces).isEmpty)
+        let next = Shown(
+            revision: chats.revision, compact: metrics.toolbar.isCompact, theme: theme,
+            canSend: !query.trimmingCharacters(in: .whitespaces).isEmpty)
         guard next != shown else { return }
         let moved = next.revision != shown?.revision || next.theme != shown?.theme
         shown = next
-        let colors = next.canSend ? [theme.prominentLabel.ui, theme.prominent.ui] : [theme.searchField.ui, theme.candidate.ui]
-        let look = UIImage.SymbolConfiguration(pointSize: 24).applying(UIImage.SymbolConfiguration(paletteColors: colors))
+        let colors =
+            next.canSend ? [theme.prominentLabel.ui, theme.prominent.ui] : [theme.searchField.ui, theme.candidate.ui]
+        let look = UIImage.SymbolConfiguration(pointSize: 24).applying(
+            UIImage.SymbolConfiguration(paletteColors: colors))
         send.setImage(UIImage(systemName: "arrow.up.circle.fill", withConfiguration: look), for: .normal)
         send.isEnabled = next.canSend
         guard moved else { return }
@@ -86,8 +92,11 @@ final class ChatPanel: UIView, PanelContent {
         showMessages(theme)
         let missing = fullAccess() ? nil : "Chats need Full Access."
         let empty = chats.messages.isEmpty
-        let quiet = !chats.listed ? "Loading chats…" : chats.list.isEmpty ? "No chats yet." : chats.loaded && empty ? "No messages yet." : nil
-        message.show(missing ?? (empty ? chats.problem : nil) ?? quiet, turnOn: missing != nil, oneRow: true, theme: theme)
+        let quiet =
+            !chats.listed
+            ? "Loading chats…" : chats.list.isEmpty ? "No chats yet." : chats.loaded && empty ? "No messages yet." : nil
+        message.show(
+            missing ?? (empty ? chats.problem : nil) ?? quiet, turnOn: missing != nil, oneRow: true, theme: theme)
         trouble.text = empty ? nil : chats.problem
         trouble.textColor = theme.candidate.ui
         setNeedsLayout()
@@ -99,7 +108,8 @@ final class ChatPanel: UIView, PanelContent {
             chips.forEach { $0.removeFromSuperview() }
             chips = chats.list.enumerated().map { index, chat in
                 var look = UIButton.Configuration.plain()
-                look.attributedTitle = AttributedString(chat.name, attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 15, weight: .medium)]))
+                look.attributedTitle = AttributedString(
+                    chat.name, attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 15, weight: .medium)]))
                 look.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12)
                 look.titleLineBreakMode = .byTruncatingTail
                 let chip = UIButton(configuration: look)
@@ -111,8 +121,12 @@ final class ChatPanel: UIView, PanelContent {
             }
         }
         var look = UIButton.Configuration.plain()
-        look.attributedTitle = AttributedString(chats.open?.name ?? "Chats", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 15, weight: .medium)]))
-        look.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold))
+        look.attributedTitle = AttributedString(
+            chats.open?.name ?? "Chats",
+            attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 15, weight: .medium)]))
+        look.image = UIImage(
+            systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)
+        )
         look.imagePlacement = .trailing
         look.imagePadding = 4
         look.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 10)
@@ -120,9 +134,12 @@ final class ChatPanel: UIView, PanelContent {
         look.baseForegroundColor = theme.label.ui
         picker.configuration = look
         picker.backgroundColor = theme.key.ui
-        picker.menu = UIMenu(children: chats.list.map { chat in
-            UIAction(title: chat.name, state: chat == chats.open ? .on : .off) { [unowned self] _ in chats.pick(chat) }
-        })
+        picker.menu = UIMenu(
+            children: chats.list.map { chat in
+                UIAction(title: chat.name, state: chat == chats.open ? .on : .off) { [unowned self] _ in
+                    chats.pick(chat)
+                }
+            })
         for (chip, chat) in zip(chips, chats.list) {
             let open = chat == chats.open
             chip.backgroundColor = open ? theme.key.ui : .clear
@@ -149,7 +166,9 @@ final class ChatPanel: UIView, PanelContent {
         row.frame = CGRect(x: 0, y: 0, width: bounds.width, height: rowHeight)
         row.isHidden = compact
         picker.isHidden = !compact || chats.list.isEmpty
-        let pick = picker.isHidden ? 0 : min(ceil(picker.sizeThatFits(CGSize(width: 200, height: rowHeight)).width), bounds.width * 0.4)
+        let pick =
+            picker.isHidden
+            ? 0 : min(ceil(picker.sizeThatFits(CGSize(width: 200, height: rowHeight)).width), bounds.width * 0.4)
         picker.frame = CGRect(x: 0, y: (bounds.height - rowHeight) / 2, width: pick, height: rowHeight)
         picker.layer.cornerRadius = rowHeight / 2
         var x = 0.0
@@ -160,7 +179,8 @@ final class ChatPanel: UIView, PanelContent {
             x += chip.frame.width + 4
         }
         row.contentSize = CGSize(width: max(x - 4, 0), height: rowHeight)
-        well.frame = compact
+        well.frame =
+            compact
             ? CGRect(x: pick + 6, y: 0, width: max(bounds.width - pick - 6, 0), height: bounds.height)
             : CGRect(x: 0, y: rowHeight + 6, width: bounds.width, height: max(bounds.height - rowHeight - 6, 0))
         thread.frame = well.bounds
@@ -228,9 +248,12 @@ private final class Bubble: UIView {
         text.enumerateAttribute(.inlinePresentationIntent, in: whole) { intent, range, _ in
             let intent = (intent as? NSNumber).map { InlinePresentationIntent(rawValue: $0.uintValue) } ?? []
             let size = 15.0
-            let font: UIFont = intent.contains(.code) ? .monospacedSystemFont(ofSize: size - 1, weight: .regular)
-                : intent.contains(.stronglyEmphasized) ? .systemFont(ofSize: size, weight: .semibold)
-                : intent.contains(.emphasized) ? .italicSystemFont(ofSize: size) : .systemFont(ofSize: size)
+            let font: UIFont =
+                intent.contains(.code)
+                ? .monospacedSystemFont(ofSize: size - 1, weight: .regular)
+                : intent.contains(.stronglyEmphasized)
+                    ? .systemFont(ofSize: size, weight: .semibold)
+                    : intent.contains(.emphasized) ? .italicSystemFont(ofSize: size) : .systemFont(ofSize: size)
             text.addAttribute(.font, value: font, range: range)
         }
         label.attributedText = text
@@ -241,7 +264,8 @@ private final class Bubble: UIView {
     func size(within width: CGFloat) -> CGSize {
         let inset = Self.inset
         let fits = label.sizeThatFits(CGSize(width: width - inset.left - inset.right, height: .greatestFiniteMagnitude))
-        return CGSize(width: ceil(fits.width) + inset.left + inset.right, height: ceil(fits.height) + inset.top + inset.bottom)
+        return CGSize(
+            width: ceil(fits.width) + inset.left + inset.right, height: ceil(fits.height) + inset.top + inset.bottom)
     }
 
     override func layoutSubviews() {

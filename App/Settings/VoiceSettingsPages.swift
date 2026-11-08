@@ -1,6 +1,6 @@
-import KeyboardStore
 import KeyboardCore
 import KeyboardEnglish
+import KeyboardStore
 import KeyboardUI
 import SwiftUI
 
@@ -18,7 +18,11 @@ private struct ModelSettings: View {
     private let voice = VoiceModel.shared
 
     var body: some View {
-        Box(header: "Voice Model", footer: "Everything you say is written down on this \(ThisDevice.name) and never leaves it. What you dictate while a Parakeet gets ready is written once it’s ready, in the order you said it.") {
+        Box(
+            header: "Voice Model",
+            footer:
+                "Everything you say is written down on this \(ThisDevice.name) and never leaves it. What you dictate while a Parakeet gets ready is written once it’s ready, in the order you said it."
+        ) {
             ForEach([VoiceModel.Model.v3, .ultra, .apple], id: \.self) { choice in
                 ChoiceRow(title: choice.title, detail: choice.detail, picked: choice == voice.model) {
                     voice.pick(choice)
@@ -68,8 +72,10 @@ struct WritingSettings: View {
     private static let said = "Hey, are you free tonight. Let's grab dinner, and then see the show."
     private static let rambled = "Um, I think the the plan is, like, two, I mean three."
     private static let listed = "Buy one, eggs, two, milk, three, bread."
-    private static let texted = "By the way, are you free tonight? The food there is really amazing, for real. Let me know."
-    private static let preview = "Um, so are you free tonight. Let's grab dinner at the the place on Main, and then see the show at two, I mean three."
+    private static let texted =
+        "By the way, are you free tonight? The food there is really amazing, for real. Let me know."
+    private static let preview =
+        "Um, so are you free tonight. Let's grab dinner at the the place on Main, and then see the show at two, I mean three."
     private let model = SettingsModel.shared
 
     private func typed(_ said: String, _ change: (inout DictationWriting) -> Void = { _ in }) -> String {
@@ -85,50 +91,78 @@ struct WritingSettings: View {
     /// The apps you've dictated into, most dictated first, then any other with a style of its own.
     private var apps: [String] {
         var counts: [String: Int] = [:]
-        for case let app? in Transcripts.shared.all.map(\.app) where app != Bundle.main.bundleIdentifier { counts[app, default: 0] += 1 }
+        for case let app? in Transcripts.shared.all.map(\.app) where app != Bundle.main.bundleIdentifier {
+            counts[app, default: 0] += 1
+        }
         for app in model.settings.appDictationStyles.keys where counts[app] == nil { counts[app] = 0 }
         return counts.sorted { ($0.value, AppName.of($1.key)) > ($1.value, AppName.of($0.key)) }.map(\.key)
     }
 
     private func style(in app: String) -> Binding<DictationStyle?> {
-        Binding { model.settings.appDictationStyles[app] } set: { style in
+        Binding {
+            model.settings.appDictationStyles[app]
+        } set: { style in
             withAnimation(.snappy(duration: 0.25)) { model.update { $0.appDictationStyles[app] = style } }
         }
     }
 
     var body: some View {
         WritingPreview(said: Self.preview, typed: typed(Self.preview))
-        Box(header: "Style", footer: "A style sets all the punctuation. Formal keeps every mark; Casual drops the last period and the comma after “so” or “hey”; very casual also drops capitals and the comma before “and” or “but”; Excited! ends short sentences with “!”. Every style asks a question with “?”. Capitals follow Auto-Capitalization in Keyboard › Typing.") {
+        Box(
+            header: "Style",
+            footer:
+                "A style sets all the punctuation. Formal keeps every mark; Casual drops the last period and the comma after “so” or “hey”; very casual also drops capitals and the comma before “and” or “but”; Excited! ends short sentences with “!”. Every style asks a question with “?”. Capitals follow Auto-Capitalization in Keyboard › Typing."
+        ) {
             ForEach(DictationStyle.allCases, id: \.self) { style in
-                ChoiceRow(title: style.title, detail: quoted(Self.said) { $0.style = style }, picked: model.settings.dictationStyle == style) {
+                ChoiceRow(
+                    title: style.title, detail: quoted(Self.said) { $0.style = style },
+                    picked: model.settings.dictationStyle == style
+                ) {
                     withAnimation(.snappy(duration: 0.25)) { model.update { $0.dictationStyle = style } }
                 }
             }
         }
         if !apps.isEmpty {
-            Box(header: "Style in Each App", footer: "An app on Default writes in the style above. Each app you dictate into shows here.") {
+            Box(
+                header: "Style in Each App",
+                footer: "An app on Default writes in the style above. Each app you dictate into shows here."
+            ) {
                 ForEach(apps, id: \.self) { app in
-                    MenuRow(title: AppName.of(app), selection: style(in: app), choices: [nil] + DictationStyle.allCases) { $0?.title ?? "Default" }
+                    MenuRow(title: AppName.of(app), selection: style(in: app), choices: [nil] + DictationStyle.allCases)
+                    { $0?.title ?? "Default" }
                 }
             }
         }
-        Box(header: "Editing", footer: "Clean also takes back what you cancel with “scratch that”. Transcripts keep what the model wrote.") {
+        Box(
+            header: "Editing",
+            footer: "Clean also takes back what you cancel with “scratch that”. Transcripts keep what the model wrote."
+        ) {
             ForEach(DictationEditing.allCases, id: \.self) { editing in
-                ChoiceRow(title: editing.title, detail: quoted(Self.rambled) { $0.editing = editing }, picked: model.settings.dictationEditing == editing) {
+                ChoiceRow(
+                    title: editing.title, detail: quoted(Self.rambled) { $0.editing = editing },
+                    picked: model.settings.dictationEditing == editing
+                ) {
                     withAnimation(.snappy(duration: 0.25)) { model.update { $0.dictationEditing = editing } }
                 }
             }
         }
         Box(header: "Lists", footer: "A list you say with one, two or first, second is written on lines of its own.") {
             ForEach(DictationLists.allCases, id: \.self) { lists in
-                ChoiceRow(title: lists.title, detail: typed(Self.listed) { $0.lists = lists }, picked: model.settings.dictationLists == lists) {
+                ChoiceRow(
+                    title: lists.title, detail: typed(Self.listed) { $0.lists = lists },
+                    picked: model.settings.dictationLists == lists
+                ) {
                     withAnimation(.snappy(duration: 0.25)) { model.update { $0.dictationLists = lists } }
                 }
             }
         }
-        Box(header: "Text Mode", footer: "Each step adds to the one before it. Transcripts keep what the model wrote.") {
+        Box(header: "Text Mode", footer: "Each step adds to the one before it. Transcripts keep what the model wrote.")
+        {
             ForEach(DictationTextMode.allCases, id: \.self) { mode in
-                ChoiceRow(title: mode.title, detail: quoted(Self.texted) { $0.textMode = mode }, picked: model.settings.dictationTextMode == mode) {
+                ChoiceRow(
+                    title: mode.title, detail: quoted(Self.texted) { $0.textMode = mode },
+                    picked: model.settings.dictationTextMode == mode
+                ) {
                     withAnimation(.snappy(duration: 0.25)) { model.update { $0.dictationTextMode = mode } }
                 }
             }
@@ -173,9 +207,15 @@ private struct MicSettings: View {
     private let model = SettingsModel.shared
 
     var body: some View {
-        Box(header: "Keep Mic On", footer: "After you dictate, iikb keeps the mic on this long, so the mic beside the suggestions starts and stops without leaving your app. Hold it to turn the mic off.") {
+        Box(
+            header: "Keep Mic On",
+            footer:
+                "After you dictate, iikb keeps the mic on this long, so the mic beside the suggestions starts and stops without leaving your app. Hold it to turn the mic off."
+        ) {
             ForEach(Dictation.micChoices, id: \.self) { seconds in
-                ChoiceRow(title: Dictation.title(keepingMicOn: seconds), picked: model.keepMicOn == seconds) { model.keepMicOn(seconds) }
+                ChoiceRow(title: Dictation.title(keepingMicOn: seconds), picked: model.keepMicOn == seconds) {
+                    model.keepMicOn(seconds)
+                }
             }
         }
     }
@@ -186,10 +226,16 @@ private struct MicrophoneSettings: View {
     private let choices = MicrophoneChoices.shared
 
     var body: some View {
-        Box(header: "Microphone", footer: "Automatic uses the \(ThisDevice.name) or a wired headset, never Bluetooth, so music on AirPods keeps its full quality. A pick is used whenever it’s connected; a Bluetooth one may put its device on a call while the mic is on.") {
+        Box(
+            header: "Microphone",
+            footer:
+                "Automatic uses the \(ThisDevice.name) or a wired headset, never Bluetooth, so music on AirPods keeps its full quality. A pick is used whenever it’s connected; a Bluetooth one may put its device on a call while the mic is on."
+        ) {
             ChoiceRow(title: "Automatic", picked: choices.picked == nil) { choices.pick(nil) }
             ForEach(choices.all, id: \.uid) { microphone in
-                ChoiceRow(title: microphone.title, detail: detail(microphone), picked: choices.isPicked(microphone)) { choices.pick(microphone) }
+                ChoiceRow(title: microphone.title, detail: detail(microphone), picked: choices.isPicked(microphone)) {
+                    choices.pick(microphone)
+                }
             }
         }
         .onAppear { choices.reload() }

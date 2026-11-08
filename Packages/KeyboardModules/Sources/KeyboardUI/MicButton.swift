@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// The bar's mic: a round button, white on dark and black on light, with a green dot while the app keeps the
 /// microphone on. While it listens it turns record red and grows into a capsule over the suggestions, which holds the
@@ -67,7 +67,10 @@ public final class MicButton: UIControl {
         didSet {
             guard isHighlighted != oldValue else { return }
             let scale = isHighlighted ? 1 - 6 / max(bounds.width, 1) : 1
-            UIView.animate(springDuration: isHighlighted ? 0.16 : 0.3, bounce: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
+            UIView.animate(
+                springDuration: isHighlighted ? 0.16 : 0.3, bounce: 0,
+                options: [.beginFromCurrentState, .allowUserInteraction]
+            ) {
                 self.transform = CGAffineTransform(scaleX: scale, y: scale)
             }
         }
@@ -79,11 +82,12 @@ public final class MicButton: UIControl {
         self.phase = phase
         self.theme = theme
         accessibilityLabel = phase == .listening ? "Stop Dictating" : "Dictate"
-        accessibilityValue = switch phase {
-        case .on: "Mic On"
-        case .writing: "Writing"
-        case .off, .listening: nil
-        }
+        accessibilityValue =
+            switch phase {
+            case .on: "Mic On"
+            case .writing: "Writing"
+            case .off, .listening: nil
+            }
         if phase != .listening { voice = 0 }
         if phase == .writing { spinner.startAnimating() }
         spin(phase == .writing && writes == .squeeze)
@@ -111,7 +115,8 @@ public final class MicButton: UIControl {
     /// The glyphs never change color: the mic's waveform shrinks away in its own color as the stop, always white,
     /// grows in its place, so neither flashes against the face while it turns red.
     private func refresh() {
-        let listening = phase == .listening, idle = phase == .off || phase == .on
+        let listening = phase == .listening
+        let idle = phase == .off || phase == .on
         face.backgroundColor = listening ? theme.record.ui : theme.mic.ui
         halo.backgroundColor = theme.record.ui
         halo.alpha = listening && breathes ? 0.2 : 0
@@ -185,7 +190,10 @@ public final class MicButton: UIControl {
     /// The glyphs in proportion with the circle (the waveform 15 points in a 28 one, the stop 12), and no bigger than 17
     /// and 13 in the Record Key's key.
     private static func symbol(_ name: String, side: CGFloat, ratio: CGFloat, largest: CGFloat) -> UIImage? {
-        UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: min((side * ratio).rounded(), largest), weight: .semibold))
+        UIImage(
+            systemName: name,
+            withConfiguration: UIImage.SymbolConfiguration(
+                pointSize: min((side * ratio).rounded(), largest), weight: .semibold))
     }
 
     /// The circle is smaller than a fingertip; taps a little around it still reach it.
@@ -199,7 +207,9 @@ public final class MicButton: UIControl {
         face.frame = bounds
         face.layer.cornerRadius = corner ?? bounds.height / 2
         let side = min(bounds.width, bounds.height)
-        let end = CGRect(x: bounds.width > bounds.height * 1.5 ? bounds.width - side : (bounds.width - side) / 2, y: (bounds.height - side) / 2, width: side, height: side)
+        let end = CGRect(
+            x: bounds.width > bounds.height * 1.5 ? bounds.width - side : (bounds.width - side) / 2,
+            y: (bounds.height - side) / 2, width: side, height: side)
         if glyphSide != side, side > 0 {
             glyphSide = side
             glyph.image = Self.symbol("waveform", side: side, ratio: 0.54, largest: 17)

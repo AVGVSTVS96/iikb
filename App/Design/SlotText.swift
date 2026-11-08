@@ -41,11 +41,13 @@ struct SlotText: View {
     }
 
     private var slots: some View {
-        let characters = Array(text), before = Array(previous)
-        let changed = characters.indices.first { index in
-            let place = characters.count - index
-            return place > before.count || before[before.count - place] != characters[index]
-        } ?? 0
+        let characters = Array(text)
+        let before = Array(previous)
+        let changed =
+            characters.indices.first { index in
+                let place = characters.count - index
+                return place > before.count || before[before.count - place] != characters[index]
+            } ?? 0
         return HStack(spacing: 0) {
             ForEach(characters.indices.map { characters.count - $0 }, id: \.self) { place in
                 let index = characters.count - place
@@ -76,14 +78,17 @@ private struct Slot: View {
                 .transition(Roll(tilt: 3 * jitter(3)))
         }
         .animation(
-            Self.curve(duration: Self.duration * (1 + 0.27 * jitter(1))).delay(0.045 * Double(order) * (1 + 0.15 * jitter(2))),
+            Self.curve(duration: Self.duration * (1 + 0.27 * jitter(1))).delay(
+                0.045 * Double(order) * (1 + 0.15 * jitter(2))),
             value: character
         )
     }
 
     /// slot-text's steady randomness, -1 to 1, the same for a place and character each time.
     private func jitter(_ channel: Double) -> Double {
-        let seed = sin(Double(place) * 12.9898 + Double(character.unicodeScalars.first?.value ?? 0) * 0.1 + channel * 78.233) * 43758.5453
+        let seed =
+            sin(Double(place) * 12.9898 + Double(character.unicodeScalars.first?.value ?? 0) * 0.1 + channel * 78.233)
+            * 43758.5453
         return (seed - seed.rounded(.down)) * 2 - 1
     }
 }
@@ -109,7 +114,8 @@ private struct Rolling: ViewModifier, Animatable {
     }
 
     func body(content: Content) -> some View {
-        let progress = progress, edge = Color.black.opacity(1 - min(1, abs(progress) * 4))
+        let progress = progress
+        let edge = Color.black.opacity(1 - min(1, abs(progress) * 4))
         content
             .rotationEffect(.degrees(-progress * tilt))
             .blur(radius: abs(progress) * 3)
@@ -118,8 +124,13 @@ private struct Rolling: ViewModifier, Animatable {
                 content.offset(y: -progress * proxy.size.height * 0.75)
             }
             .mask {
-                LinearGradient(stops: [.init(color: edge, location: 0), .init(color: .black, location: 0.3), .init(color: .black, location: 0.75), .init(color: edge, location: 1)], startPoint: .top, endPoint: .bottom)
-                    .padding(.horizontal, -8)
+                LinearGradient(
+                    stops: [
+                        .init(color: edge, location: 0), .init(color: .black, location: 0.3),
+                        .init(color: .black, location: 0.75), .init(color: edge, location: 1),
+                    ], startPoint: .top, endPoint: .bottom
+                )
+                .padding(.horizontal, -8)
             }
     }
 }

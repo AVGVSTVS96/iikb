@@ -1,5 +1,5 @@
-import KeyboardStore
 import KeyboardCore
+import KeyboardStore
 import KeyboardUI
 import UIKit
 
@@ -37,7 +37,9 @@ final class TranscriptsPanel: UIView, PanelContent, UICollectionViewDataSource, 
         list.dataSource = self
         list.delegate = self
         list.accessibilityIdentifier = "iikb.transcripts"
-        [list.topEdgeEffect, list.bottomEdgeEffect, list.leftEdgeEffect, list.rightEdgeEffect].forEach { $0.isHidden = true }
+        [list.topEdgeEffect, list.bottomEdgeEffect, list.leftEdgeEffect, list.rightEdgeEffect].forEach {
+            $0.isHidden = true
+        }
         list.register(ClipRow.self, forCellWithReuseIdentifier: "transcript")
         message.accessibilityIdentifier = "iikb.transcripts.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
@@ -75,30 +77,45 @@ final class TranscriptsPanel: UIView, PanelContent, UICollectionViewDataSource, 
         let query = shown.query.lowercased()
         entries = (all ?? []).filter { query.isEmpty || $0.text.lowercased().contains(query) }
         let missing: String? = fullAccess() ? nil : "Transcripts need Full Access."
-        let empty: String? = all == nil || !entries.isEmpty ? nil : query.isEmpty ? "What you dictate shows up here." : "No transcript with “\(shown.query)”"
+        let empty: String? =
+            all == nil || !entries.isEmpty
+            ? nil : query.isEmpty ? "What you dictate shows up here." : "No transcript with “\(shown.query)”"
         message.show(missing ?? empty, turnOn: missing != nil, oneRow: shown.compact, theme: shown.theme)
         layout.scrollDirection = shown.compact ? .horizontal : .vertical
         list.reloadData()
         setNeedsLayout()
     }
 
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int { entries.count }
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        entries.count
+    }
 
-    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell
+    {
         let row = collectionView.dequeueReusableCell(withReuseIdentifier: "transcript", for: indexPath) as! ClipRow
         let entry = entries[indexPath.item]
-        let detail = ClipboardHistory.length(of: entry.text, in: .words) + " · " + ClipboardHistory.age(of: entry.date, now: Date.now.timeIntervalSince1970)
-        row.show(text: entry.text, detail: detail, pinned: false, compact: shown?.compact == true, theme: shown?.theme ?? .lightCurrent)
+        let detail =
+            ClipboardHistory.length(of: entry.text, in: .words) + " · "
+            + ClipboardHistory.age(of: entry.date, now: Date.now.timeIntervalSince1970)
+        row.show(
+            text: entry.text, detail: detail, pinned: false, compact: shown?.compact == true,
+            theme: shown?.theme ?? .lightCurrent)
         row.accessibilityIdentifier = "iikb.transcript.\(indexPath.item)"
         return row
     }
 
-    func collectionView(_ collectionView: UICollectionView, contextMenuConfigurationForItemsAt indexPaths: [IndexPath], point: CGPoint) -> UIContextMenuConfiguration? {
+    func collectionView(
+        _ collectionView: UICollectionView, contextMenuConfigurationForItemsAt indexPaths: [IndexPath], point: CGPoint
+    ) -> UIContextMenuConfiguration? {
         guard let text = indexPaths.first.map({ entries[$0.item].text }) else { return nil }
-        return UIContextMenuConfiguration(identifier: nil) { ClipPreview(text: text) } actionProvider: { [unowned self] _ in
+        return UIContextMenuConfiguration(identifier: nil) {
+            ClipPreview(text: text)
+        } actionProvider: { [unowned self] _ in
             UIMenu(children: [
                 UIAction(title: "Paste", image: UIImage(systemName: "doc.on.clipboard")) { _ in self.onPaste(text) },
-                UIAction(title: "Copy", image: UIImage(systemName: "square.on.square")) { _ in UIPasteboard.general.string = text },
+                UIAction(title: "Copy", image: UIImage(systemName: "square.on.square")) { _ in
+                    UIPasteboard.general.string = text
+                },
             ])
         }
     }
@@ -111,12 +128,16 @@ final class TranscriptsPanel: UIView, PanelContent, UICollectionViewDataSource, 
     override func layoutSubviews() {
         super.layoutSubviews()
         list.frame = bounds
-        let compact = shown?.compact == true, gap = 6.0
+        let compact = shown?.compact == true
+        let gap = 6.0
         message.frame = bounds
         layout.sectionInset = .zero
         layout.minimumLineSpacing = compact ? gap : 2
         layout.minimumInteritemSpacing = 0
-        let size = compact ? CGSize(width: ((bounds.width - 2 * gap) / 3).rounded(.down), height: bounds.height) : CGSize(width: bounds.width, height: 44)
+        let size =
+            compact
+            ? CGSize(width: ((bounds.width - 2 * gap) / 3).rounded(.down), height: bounds.height)
+            : CGSize(width: bounds.width, height: 44)
         if layout.itemSize != size { layout.itemSize = size }
         layout.invalidateLayout()
     }

@@ -4,7 +4,9 @@ import XCTest
 /// split is matched against. IIKB_SPLIT_SHOTS names the files; the simulator types with Apple's keyboard (scripts/sim use).
 final class AppleSplitShots: XCTestCase {
     func testApplesSplitKeyboard() throws {
-        guard let prefix = ProcessInfo.processInfo.environment["IIKB_SPLIT_SHOTS"] else { throw XCTSkip("Run with IIKB_SPLIT_SHOTS") }
+        guard let prefix = ProcessInfo.processInfo.environment["IIKB_SPLIT_SHOTS"] else {
+            throw XCTSkip("Run with IIKB_SPLIT_SHOTS")
+        }
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES"]
         app.launch()
@@ -14,7 +16,8 @@ final class AppleSplitShots: XCTestCase {
             sleep(1)
             try app.debugDescription.write(toFile: "\(prefix)-\(name).txt", atomically: true, encoding: .utf8)
             for (index, screen) in XCUIScreen.screens.enumerated() {
-                try screen.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(prefix)-\(name)-\(index).png"))
+                try screen.screenshot().pngRepresentation.write(
+                    to: URL(fileURLWithPath: "\(prefix)-\(name)-\(index).png"))
             }
         }
         try shot("full")

@@ -25,31 +25,41 @@ import WidgetKit
 
     init() {
         let center = NotificationCenter.default
-        center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
+        center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) {
+            [weak self] note in
             let info = note.userInfo
-            let began = info?[AVAudioSessionInterruptionTypeKey] as? UInt == AVAudioSession.InterruptionType.began.rawValue
-            let resume = (info?[AVAudioSessionInterruptionOptionKey] as? UInt).map { AVAudioSession.InterruptionOptions(rawValue: $0).contains(.shouldResume) } ?? false
+            let began =
+                info?[AVAudioSessionInterruptionTypeKey] as? UInt == AVAudioSession.InterruptionType.began.rawValue
+            let resume =
+                (info?[AVAudioSessionInterruptionOptionKey] as? UInt).map {
+                    AVAudioSession.InterruptionOptions(rawValue: $0).contains(.shouldResume)
+                } ?? false
             Task { @MainActor in
                 if began { self?.onInterrupted() } else if resume { self?.onFreed() }
             }
         }
-        center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
-            let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt).flatMap(AVAudioSession.RouteChangeReason.init)
+        center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) {
+            [weak self] note in
+            let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt).flatMap(
+                AVAudioSession.RouteChangeReason.init)
             Task { @MainActor in
                 guard let self, self.isOn, let reason else { return }
-                if let picked = SettingsStore.microphone, picked.kind != .iPhone, reason == .newDeviceAvailable || reason == .oldDeviceUnavailable {
-                    self.restart() // restart: a picked microphone came or went
+                if let picked = SettingsStore.microphone, picked.kind != .iPhone,
+                    reason == .newDeviceAvailable || reason == .oldDeviceUnavailable
+                {
+                    self.restart()  // restart: a picked microphone came or went
                 }
             }
         }
         center.addObserver(forName: .AVAudioEngineConfigurationChange, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.isOn, !self.engine.isRunning else { return }
-                self.restart() // restart: iOS stopped it
+                self.restart()  // restart: iOS stopped it
             }
         }
-        center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.restart(rebuilding: true) } // restart: iOS stopped it
+        center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) {
+            [weak self] _ in
+            Task { @MainActor in self?.restart(rebuilding: true) }  // restart: iOS stopped it
         }
     }
 
@@ -98,17 +108,23 @@ import WidgetKit
         }
     }
 
-    static let options: AVAudioSession.CategoryOptions = [.mixWithOthers, .allowBluetoothA2DP, .allowAirPlay, .defaultToSpeaker]
+    static let options: AVAudioSession.CategoryOptions = [
+        .mixWithOthers, .allowBluetoothA2DP, .allowAirPlay, .defaultToSpeaker,
+    ]
 
     private func begin() throws {
         let session = AVAudioSession.sharedInstance()
         let picked = SettingsStore.microphone
         let bluetooth: AVAudioSession.CategoryOptions = [.allowBluetoothHFP, .bluetoothHighQualityRecording]
-        try session.setCategory(.playAndRecord, mode: .default, options: picked?.kind == .bluetooth ? Self.options.union(bluetooth) : Self.options)
+        try session.setCategory(
+            .playAndRecord, mode: .default,
+            options: picked?.kind == .bluetooth ? Self.options.union(bluetooth) : Self.options)
         try? session.setPrefersNoInterruptionsFromSystemAlerts(true)
         try session.setActive(true)
         var input = picked.flatMap { picked in session.availableInputs?.first(where: picked.matches) }
-        if picked?.kind == .bluetooth, input == nil { try session.setCategory(.playAndRecord, mode: .default, options: Self.options) }
+        if picked?.kind == .bluetooth, input == nil {
+            try session.setCategory(.playAndRecord, mode: .default, options: Self.options)
+        }
         if picked != nil, input == nil { input = session.availableInputs?.first { $0.portType == .builtInMic } }
         try? session.setPreferredInput(input)
         do {
@@ -122,10 +138,12 @@ import WidgetKit
         try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
         let heard = node.outputFormat(forBus: 0)
         guard heard.sampleRate > 0, heard.channelCount > 0 else { throw Unrecordable(format: heard.description) }
-        node.installTap(onBus: 0, bufferSize: 4096, format: nil, block: Self.tap(feed) { [weak self] level, recorded in
-            Dictation.publish(level: level, recorded: recorded)
-            Task { @MainActor in self?.onLevel(level, recorded) }
-        })
+        node.installTap(
+            onBus: 0, bufferSize: 4096, format: nil,
+            block: Self.tap(feed) { [weak self] level, recorded in
+                Dictation.publish(level: level, recorded: recorded)
+                Task { @MainActor in self?.onLevel(level, recorded) }
+            })
         engine.prepare()
         do {
             try engine.start()
@@ -135,7 +153,9 @@ import WidgetKit
         }
         let route = session.currentRoute.inputs.first
         let source = route?.selectedDataSource
-        HostApp.log.notice("hearing \(self.aimed?.rawValue ?? "as iOS picks", privacy: .public), from \(route?.portType.rawValue ?? "nothing", privacy: .public) \(source?.dataSourceName ?? "", privacy: .public) \(source?.selectedPolarPattern?.rawValue ?? "", privacy: .public), other audio \(session.isOtherAudioPlaying ? "playing" : "silent", privacy: .public)")
+        HostApp.log.notice(
+            "hearing \(self.aimed?.rawValue ?? "as iOS picks", privacy: .public), from \(route?.portType.rawValue ?? "nothing", privacy: .public) \(source?.dataSourceName ?? "", privacy: .public) \(source?.selectedPolarPattern?.rawValue ?? "", privacy: .public), other audio \(session.isOtherAudioPlaying ? "playing" : "silent", privacy: .public)"
+        )
     }
 
     /// iOS stops the engine when the hardware's format or route changes under it, and every audio object is dead after
@@ -191,12 +211,14 @@ import WidgetKit
 
     /// Runs on the audio thread: hands each buffer to the recording, if there is one, and says how loud it was and how
     /// long the recording is now.
-    nonisolated private static func tap(_ feed: Feed, level: @escaping @Sendable (Float, Double) -> Void) -> AVAudioNodeTapBlock {
+    nonisolated private static func tap(_ feed: Feed, level: @escaping @Sendable (Float, Double) -> Void)
+        -> AVAudioNodeTapBlock
+    {
         return { buffer, time in
             guard let samples = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return }
             let frames = Int(buffer.frameLength)
             var sum: Float = 0
-            for index in 0 ..< frames { sum += samples[index] * samples[index] }
+            for index in 0..<frames { sum += samples[index] * samples[index] }
             let loudness = (sum / Float(frames)).squareRoot()
             if let recorded = feed.yield(buffer, at: time, loudness: loudness) { level(loudness, recorded) }
         }
@@ -250,7 +272,7 @@ nonisolated private final class Feed: @unchecked Sendable {
         guard lock.withLock({ recording != nil }) else { return stop() }
         let stopped = mach_absolute_time()
         let loud = Task {
-            guard (try? await Task.sleep(for: .seconds(1))) != nil else { return } // timer: stop waits for quiet
+            guard (try? await Task.sleep(for: .seconds(1))) != nil else { return }  // timer: stop waits for quiet
             _ = self.stop()
         }
         defer { loud.cancel() }
@@ -266,11 +288,15 @@ nonisolated private final class Feed: @unchecked Sendable {
             if heard != buffer.format {
                 heard = buffer.format
                 recorder = nil
-                HostApp.log.notice("recording from \(buffer.format.channelCount) channels at \(buffer.format.sampleRate, format: .fixed(precision: 0)) Hz")
+                HostApp.log.notice(
+                    "recording from \(buffer.format.channelCount) channels at \(buffer.format.sampleRate, format: .fixed(precision: 0)) Hz"
+                )
             }
             let source = channelZero(of: buffer)
             if recorder == nil, let source { recorder = AVAudioConverter(from: source.format, to: Recording.format) }
-            if let source, let recorder, let converted = Self.convert(source, with: recorder), let channel = converted.floatChannelData?[0] {
+            if let source, let recorder, let converted = Self.convert(source, with: recorder),
+                let channel = converted.floatChannelData?[0]
+            {
                 let samples = UnsafeBufferPointer(start: channel, count: Int(converted.frameLength))
                 recording?.append(contentsOf: samples)
                 file?.append(samples)
@@ -278,7 +304,9 @@ nonisolated private final class Feed: @unchecked Sendable {
             loudness.append(level)
             let recorded = Double(recording?.count ?? 0) / Recording.format.sampleRate
             let length = AVAudioTime.hostTime(forSeconds: Double(buffer.frameLength) / buffer.format.sampleRate)
-            guard let stopped, !time.isHostTimeValid || time.hostTime + length >= stopped && isQuiet(level) else { return (recorded, nil) }
+            guard let stopped, !time.isHostTimeValid || time.hostTime + length >= stopped && isQuiet(level) else {
+                return (recorded, nil)
+            }
             return (recorded, take())
         }
         if let (recording, ended) = done { ended?.resume(returning: recording) }
@@ -295,7 +323,7 @@ nonisolated private final class Feed: @unchecked Sendable {
         }
         guard let mono, let from = buffer.floatChannelData?[0], let to = mono.floatChannelData?[0] else { return nil }
         let stride = buffer.stride
-        for index in 0 ..< Int(buffer.frameLength) { to[index] = from[index * stride] }
+        for index in 0..<Int(buffer.frameLength) { to[index] = from[index * stride] }
         mono.frameLength = buffer.frameLength
         return mono
     }

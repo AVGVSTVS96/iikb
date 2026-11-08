@@ -13,17 +13,18 @@ enum Words {
             if isWordCharacter(character) {
                 if start == nil { start = at }
             } else if let begun = start {
-                words.append(begun ..< at)
+                words.append(begun..<at)
                 start = nil
             }
         }
-        if let start { words.append(start ..< characters.count) }
+        if let start { words.append(start..<characters.count) }
         return words
     }
 
     /// Whether the period at `at` closes letters each with its own period, as "A.M.", "p.m." and "e.g." do.
     static func closesAbbreviation(_ text: [Character], at: Int) -> Bool {
-        at >= 3 && text[at] == "." && text[at - 1].isLetter && text[at - 2] == "." && text[at - 3].isLetter && (at == 3 || !text[at - 4].isLetter)
+        at >= 3 && text[at] == "." && text[at - 1].isLetter && text[at - 2] == "." && text[at - 3].isLetter
+            && (at == 3 || !text[at - 4].isLetter)
     }
 
     /// The word with straight apostrophes, as the lexicon and what you've typed are kept.

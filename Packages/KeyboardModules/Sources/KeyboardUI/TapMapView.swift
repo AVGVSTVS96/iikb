@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// The keyboard at its real size with what the touch model learned drawn over it: how densely your taps land across
 /// the keyboard (`heat`), where your taps for each key land (`aim`), or how many of them land on the key you meant
@@ -52,12 +52,15 @@ public final class TapMapView: UIView {
         size = board.size
         aims = board.aims
         selected = selected.flatMap { old in aims.first { $0.key == old.key } }
-        let faces = KeyFaceContext(device: context.device, layer: .letters, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
+        let faces = KeyFaceContext(
+            device: context.device, layer: .letters, kind: .text, shift: .off, returnKind: .default, returnEnabled: true
+        )
         canvas.transform = .identity
         canvas.frame = CGRect(origin: .zero, size: size)
         keyboard.frame = canvas.bounds
         marks.frame = canvas.bounds
-        keyboard.update(layout: board.layout, signature: context.signature, metrics: board.metrics, faces: faces, theme: theme)
+        keyboard.update(
+            layout: board.layout, signature: context.signature, metrics: board.metrics, faces: faces, theme: theme)
         keyboard.layoutIfNeeded()
         invalidateIntrinsicContentSize()
         setNeedsLayout()
@@ -77,7 +80,9 @@ public final class TapMapView: UIView {
     }
 
     override public var intrinsicContentSize: CGSize {
-        CGSize(width: UIView.noIntrinsicMetric, height: size.width > 0 ? size.height * scale(for: bounds.width > 0 ? bounds.width : size.width) : 0)
+        CGSize(
+            width: UIView.noIntrinsicMetric,
+            height: size.width > 0 ? size.height * scale(for: bounds.width > 0 ? bounds.width : size.width) : 0)
     }
 
     private func scale(for width: CGFloat) -> CGFloat {
@@ -100,7 +105,9 @@ public final class TapMapView: UIView {
     private var theme: KeyboardTheme { KeyboardTheme.current(for: traitCollection, appearance: nil) }
 
     private func refresh(animated: Bool) {
-        keyboard.update(layout: keyboard.layout, signature: keyboard.signature, metrics: keyboard.metrics, faces: keyboard.faceContext, theme: theme)
+        keyboard.update(
+            layout: keyboard.layout, signature: keyboard.signature, metrics: keyboard.metrics,
+            faces: keyboard.faceContext, theme: theme)
         for view in keyboard.keyViews { view.showsLabel = mode != .accuracy && view.key.label == nil }
         marks.draw(aims, keys: keys, mode: mode, selected: selected, theme: theme)
         guard animated else { return marks.setNeedsDisplay() }
@@ -129,9 +136,15 @@ final class TapMarksView: UIView {
     private var theme = KeyboardTheme.lightCurrent
     private var heat: (image: CGImage, isDark: Bool)?
 
-    func draw(_ aims: [Aim], keys: [(key: Key, frame: Rect)], mode: TapMapView.Mode, selected: Aim?, theme: KeyboardTheme) {
+    func draw(
+        _ aims: [Aim], keys: [(key: Key, frame: Rect)], mode: TapMapView.Mode, selected: Aim?, theme: KeyboardTheme
+    ) {
         let isDark = traitCollection.userInterfaceStyle == .dark
-        if mode == .heat, heat == nil || heat?.isDark != isDark || !self.aims.elementsEqual(aims, by: { $0.key == $1.key && $0.taps == $1.taps && $0.center == $1.center }) {
+        if mode == .heat,
+            heat == nil || heat?.isDark != isDark
+                || !self.aims.elementsEqual(
+                    aims, by: { $0.key == $1.key && $0.taps == $1.taps && $0.center == $1.center })
+        {
             heat = TapHeat.image(of: aims, size: bounds.size, isDark: isDark).map { ($0, isDark) }
         }
         self.aims = aims
@@ -167,15 +180,20 @@ final class TapMarksView: UIView {
         halo.shadowOffset = .zero
         for (key, frame) in keys where key.label != nil {
             let rect = CGRect(frame)
-            let name = NSAttributedString(string: TapMapPalette.name(of: key), attributes: [
-                .font: UIFont.systemFont(ofSize: (key.label == " " ? 13 : 17) * textScale, weight: .medium),
-                .foregroundColor: UIColor.label.withAlphaComponent(dark ? 0.9 : 0.62),
-                .strokeColor: UIColor.black.withAlphaComponent(dark ? 0.55 : 0),
-                .strokeWidth: dark ? -4 : 0,
-                .shadow: halo,
-            ])
+            let name = NSAttributedString(
+                string: TapMapPalette.name(of: key),
+                attributes: [
+                    .font: UIFont.systemFont(ofSize: (key.label == " " ? 13 : 17) * textScale, weight: .medium),
+                    .foregroundColor: UIColor.label.withAlphaComponent(dark ? 0.9 : 0.62),
+                    .strokeColor: UIColor.black.withAlphaComponent(dark ? 0.55 : 0),
+                    .strokeWidth: dark ? -4 : 0,
+                    .shadow: halo,
+                ])
             let size = name.size()
-            name.draw(at: CGPoint(x: rect.midX - size.width / 2, y: key.label == " " ? rect.maxY - size.height - 4 : rect.midY - size.height / 2))
+            name.draw(
+                at: CGPoint(
+                    x: rect.midX - size.width / 2,
+                    y: key.label == " " ? rect.maxY - size.height - 4 : rect.midY - size.height / 2))
             if key == selected?.key {
                 tintColor.setStroke()
                 let outline = UIBezierPath(roundedRect: rect.insetBy(dx: -1, dy: -1), cornerRadius: 9)
@@ -204,8 +222,11 @@ final class TapMarksView: UIView {
             }
 
             let (major, minor, angle) = Self.axes(of: aim.spread)
-            let ring = UIBezierPath(ovalIn: CGRect(x: -major * half, y: -minor * half, width: 2 * major * half, height: 2 * minor * half))
-            ring.apply(CGAffineTransform(rotationAngle: angle).concatenating(CGAffineTransform(translationX: center.x, y: center.y)))
+            let ring = UIBezierPath(
+                ovalIn: CGRect(x: -major * half, y: -minor * half, width: 2 * major * half, height: 2 * minor * half))
+            ring.apply(
+                CGAffineTransform(rotationAngle: angle).concatenating(
+                    CGAffineTransform(translationX: center.x, y: center.y)))
             tintColor.withAlphaComponent(0.12 * alpha).setFill()
             ring.fill()
             tintColor.withAlphaComponent(0.9 * alpha).setStroke()
@@ -254,7 +275,10 @@ final class TapMarksView: UIView {
                 label(key, in: frame, share: nil, emphasized: false)
                 continue
             }
-            let color = isTarget ? tintColor.withAlphaComponent(0.3) : TapMapPalette.miss.withAlphaComponent(0.12 + min(miss / 0.25, 1) * 0.73)
+            let color =
+                isTarget
+                ? tintColor.withAlphaComponent(0.3)
+                : TapMapPalette.miss.withAlphaComponent(0.12 + min(miss / 0.25, 1) * 0.73)
             color.setFill()
             UIBezierPath(roundedRect: CGRect(frame), cornerRadius: 8).fill()
             label(key, in: frame, share: shown, emphasized: miss >= 0.125)
@@ -263,26 +287,33 @@ final class TapMarksView: UIView {
 
     private func label(_ key: Key, in frame: Rect, share: Double?, emphasized: Bool) {
         let rect = CGRect(frame)
-        let name = NSAttributedString(string: TapMapPalette.name(of: key), attributes: [
-            .font: UIFont.systemFont(ofSize: (share == nil ? (key.label?.count == 1 && key.label != " " ? 20 : 13) : 11) * textScale),
-            .foregroundColor: share == nil ? UIColor.label.withAlphaComponent(0.3) : UIColor.secondaryLabel,
-        ])
+        let name = NSAttributedString(
+            string: TapMapPalette.name(of: key),
+            attributes: [
+                .font: UIFont.systemFont(
+                    ofSize: (share == nil ? (key.label?.count == 1 && key.label != " " ? 20 : 13) : 11) * textScale),
+                .foregroundColor: share == nil ? UIColor.label.withAlphaComponent(0.3) : UIColor.secondaryLabel,
+            ])
         guard let share else {
             name.draw(at: CGPoint(x: rect.midX - name.size().width / 2, y: rect.midY - name.size().height / 2))
             return
         }
         name.draw(at: CGPoint(x: rect.minX + 5 * textScale, y: rect.minY + 3 * textScale))
-        let number = NSAttributedString(string: TapMapPalette.percent(share), attributes: [
-            .font: UIFont.monospacedDigitSystemFont(ofSize: 13 * textScale, weight: emphasized ? .semibold : .medium),
-            .foregroundColor: UIColor.label,
-        ])
+        let number = NSAttributedString(
+            string: TapMapPalette.percent(share),
+            attributes: [
+                .font: UIFont.monospacedDigitSystemFont(
+                    ofSize: 13 * textScale, weight: emphasized ? .semibold : .medium),
+                .foregroundColor: UIColor.label,
+            ])
         let size = number.size()
         number.draw(at: CGPoint(x: rect.midX - size.width / 2, y: rect.maxY - size.height - 4 * textScale))
     }
 
     static func axes(of spread: (xx: Double, xy: Double, yy: Double)) -> (CGFloat, CGFloat, CGFloat) {
         let mid = (spread.xx + spread.yy) / 2
-        let radius = (((spread.xx - spread.yy) / 2) * ((spread.xx - spread.yy) / 2) + spread.xy * spread.xy).squareRoot()
+        let radius = (((spread.xx - spread.yy) / 2) * ((spread.xx - spread.yy) / 2) + spread.xy * spread.xy)
+            .squareRoot()
         let angle = atan2(2 * spread.xy, spread.xx - spread.yy) / 2
         return (CGFloat((mid + radius).squareRoot()), CGFloat(max(mid - radius, 0).squareRoot()), CGFloat(angle))
     }
@@ -300,7 +331,8 @@ public struct TapBoard {
     public var keys: [(key: Key, frame: Rect)] { Array(grid.rows.joined()) }
 
     public init(_ touches: TouchModel, on context: LayoutContext, screen: CGSize) {
-        let keys = KeyboardGeometry(context, screen: context.screen(on: Size(width: screen.width, height: screen.height)), style: .current)
+        let keys = KeyboardGeometry(
+            context, screen: context.screen(on: Size(width: screen.width, height: screen.height)), style: .current)
         self.context = context
         metrics = keys.metrics
         layout = keys.layout
@@ -312,7 +344,8 @@ public struct TapBoard {
 
 public enum TapMapPalette {
     public static let backdrop = UIColor {
-        $0.userInterfaceStyle == .dark ? UIColor(white: 32 / 255, alpha: 1) : UIColor(red: 226 / 255, green: 227 / 255, blue: 232 / 255, alpha: 1)
+        $0.userInterfaceStyle == .dark
+            ? UIColor(white: 32 / 255, alpha: 1) : UIColor(red: 226 / 255, green: 227 / 255, blue: 232 / 255, alpha: 1)
     }
 
     public static let miss = UIColor {

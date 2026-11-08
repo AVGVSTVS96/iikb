@@ -17,9 +17,10 @@ var read = 0
 @MainActor func matrix(_ rows: Int, _ columns: Int) -> [[Float]] { (0..<rows).map { _ in take(columns) } }
 let header = take(2).map(Int.init)
 let (width, hidden) = (header[0], header[1])
-let network = Network(vocabulary: vocabulary, embedding: matrix(vocabulary.count, width), input: matrix(4 * hidden, width),
-                      recurrent: matrix(4 * hidden, hidden), gates: take(4 * hidden), projection: matrix(width, hidden),
-                      projectionBias: take(width), output: take(vocabulary.count))
+let network = Network(
+    vocabulary: vocabulary, embedding: matrix(vocabulary.count, width), input: matrix(4 * hidden, width),
+    recurrent: matrix(4 * hidden, hidden), gates: take(4 * hidden), projection: matrix(width, hidden),
+    projectionBias: take(width), output: take(vocabulary.count))
 precondition(read == floats.count)
 try Data(network.bytes).write(to: URL(fileURLWithPath: arguments[3]))
 print("\(vocabulary.count) words, \(network.bytes.count) bytes")

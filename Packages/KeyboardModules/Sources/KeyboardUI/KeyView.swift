@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 final class KeyView: UIView {
     let key: Key
@@ -28,7 +28,8 @@ final class KeyView: UIView {
     var showsLabel = true { didSet { contentAlpha = showsLabel ? restingAlpha : 0 } }
     var isFlicked = false {
         didSet {
-            guard isFlicked != oldValue, let secondary = shown.secondary, case .letter(let primary) = shown.content else { return }
+            guard isFlicked != oldValue, let secondary = shown.secondary, case .letter(let primary) = shown.content
+            else { return }
             label.text = isFlicked ? secondary : primary
             secondaryLabel.isHidden = isFlicked
             setNeedsLayout()
@@ -47,7 +48,10 @@ final class KeyView: UIView {
         super.init(frame: .zero)
         isUserInteractionEnabled = false
         accessibilityTraits = .keyboardKey
-        let still: [String: CAAction] = ["bounds": NSNull(), "position": NSNull(), "colors": NSNull(), "locations": NSNull(), "frame": NSNull(), "path": NSNull()]
+        let still: [String: CAAction] = [
+            "bounds": NSNull(), "position": NSNull(), "colors": NSNull(), "locations": NSNull(), "frame": NSNull(),
+            "path": NSNull(),
+        ]
         for shape in [sides, glow, face, rim, rimShape] {
             shape.actions = still
         }
@@ -103,11 +107,13 @@ final class KeyView: UIView {
         }
         accessibilityLabel = accessibilityName
         contentAlpha = showsLabel ? restingAlpha : 0
-        accessibilityIdentifier = if case .character(let value) = key.action { "iikb.\(value)" } else { "iikb.\(accessibilityName)" }
+        accessibilityIdentifier =
+            if case .character(let value) = key.action { "iikb.\(value)" } else { "iikb.\(accessibilityName)" }
         secondaryLabel.text = shown.secondary
         cornerLabel.text = shown.corner
         let corner = (metrics.secondarySize + 3) * (shape?.labelScale ?? 1)
-        cornerLabel.font = UIFont(name: "HelveticaNeue-Bold", size: corner) ?? .systemFont(ofSize: corner, weight: .bold)
+        cornerLabel.font =
+            UIFont(name: "HelveticaNeue-Bold", size: corner) ?? .systemFont(ofSize: corner, weight: .bold)
         if shown.secondary != nil, !shown.secondaryIsDimmed {
             label.font = .systemFont(ofSize: metrics.pairSize, weight: .regular)
             secondaryLabel.font = label.font
@@ -133,7 +139,10 @@ final class KeyView: UIView {
 
         switch shown.alignment {
         case .center:
-            let offset = isLetter ? ((numberRow ? metrics.numberRowLetterOffset : nil) ?? metrics.letterOffset) : -(theme.keyShape?.labelLift ?? 0)
+            let offset =
+                isLetter
+                ? ((numberRow ? metrics.numberRowLetterOffset : nil) ?? metrics.letterOffset)
+                : -(theme.keyShape?.labelLift ?? 0)
             label.center = CGPoint(x: bounds.midX, y: bounds.midY + offset)
             icon.center = CGPoint(x: bounds.midX, y: bounds.midY)
         case .bottomLeading, .bottomTrailing:
@@ -159,11 +168,13 @@ final class KeyView: UIView {
             }
         }
         guard shown.secondary != nil, let font = label.font, let secondaryFont = secondaryLabel.font else {
-            return secondaryLabel.frame = .zero
+            secondaryLabel.frame = .zero
+            return
         }
         secondaryLabel.sizeToFit()
         let capTop = isPair ? bounds.height * metrics.pairCapTopRatio : metrics.secondaryCapTop
-        let baseline = isPair ? bounds.height * (1 - metrics.pairBaselineRatio) : bounds.height - metrics.letterBaselineInset
+        let baseline =
+            isPair ? bounds.height * (1 - metrics.pairBaselineRatio) : bounds.height - metrics.letterBaselineInset
         secondaryLabel.frame.origin = CGPoint(
             x: bounds.midX - secondaryLabel.bounds.width / 2,
             y: capTop - (secondaryFont.ascender - secondaryFont.capHeight)
@@ -186,7 +197,8 @@ final class KeyView: UIView {
     private func placeContentOnPixels() {
         let scale = traitCollection.displayScale
         for view in [label, secondaryLabel, cornerLabel, icon] {
-            view.frame.origin = CGPoint(x: view.frame.minX.rounded(scale: scale), y: view.frame.minY.rounded(scale: scale))
+            view.frame.origin = CGPoint(
+                x: view.frame.minX.rounded(scale: scale), y: view.frame.minY.rounded(scale: scale))
         }
     }
 
@@ -200,9 +212,11 @@ final class KeyView: UIView {
         glow.frame = CGRect(x: bounds.midX - reach, y: -reach, width: reach * 2, height: reach * 2)
         var faceFrame = bounds
         if paint.keycap != nil {
-            faceFrame = bounds.inset(by: UIEdgeInsets(
-                top: height * Keycap.faceTop, left: height * Keycap.faceSide, bottom: height * Keycap.faceBottom, right: height * Keycap.faceSide
-            ))
+            faceFrame = bounds.inset(
+                by: UIEdgeInsets(
+                    top: height * Keycap.faceTop, left: height * Keycap.faceSide, bottom: height * Keycap.faceBottom,
+                    right: height * Keycap.faceSide
+                ))
         }
         face.frame = faceFrame
         face.cornerRadius = paint.keycap == nil ? radius : radius * Keycap.faceCorner
@@ -210,7 +224,8 @@ final class KeyView: UIView {
         rim.frame = bounds
         if let line = paint.rim {
             rimShape.lineWidth = line.width
-            rimShape.path = Self.outline(bounds.insetBy(dx: line.width / 2, dy: line.width / 2), radius: radius - line.width / 2, curve: curve)
+            rimShape.path = Self.outline(
+                bounds.insetBy(dx: line.width / 2, dy: line.width / 2), radius: radius - line.width / 2, curve: curve)
         }
         layer.shadowPath = paint.drop.map { drop in
             Self.outline(bounds.insetBy(dx: drop.blur, dy: 0), radius: max(0, radius - drop.blur), curve: curve)
@@ -225,9 +240,13 @@ final class KeyView: UIView {
     }
 
     private func layoutCorner(inset: CGFloat) {
-        guard shown.corner != nil, let font = cornerLabel.font else { return cornerLabel.frame = .zero }
+        guard shown.corner != nil, let font = cornerLabel.font else {
+            cornerLabel.frame = .zero
+            return
+        }
         cornerLabel.sizeToFit()
-        cornerLabel.frame.origin = CGPoint(x: bounds.width - inset - cornerLabel.bounds.width, y: inset - (font.ascender - font.capHeight))
+        cornerLabel.frame.origin = CGPoint(
+            x: bounds.width - inset - cornerLabel.bounds.width, y: inset - (font.ascender - font.capHeight))
     }
 
     private var accessibilityName: String {

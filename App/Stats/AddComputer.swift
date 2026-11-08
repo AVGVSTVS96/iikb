@@ -15,7 +15,11 @@ struct AddComputer: View {
     var body: some View {
         NavigationStack {
             Column {
-                Box(header: "On your Mac", footer: "Run this in Terminal with Keystroke counting there. It shows a QR code: scan it with your \(ThisDevice.name)’s camera. With Tailscale on both, iikb reaches the Mac anywhere; without it, on the same Wi‑Fi.") {
+                Box(
+                    header: "On your Mac",
+                    footer:
+                        "Run this in Terminal with Keystroke counting there. It shows a QR code: scan it with your \(ThisDevice.name)’s camera. With Tailscale on both, iikb reaches the Mac anywhere; without it, on the same Wi‑Fi."
+                ) {
                     HStack(alignment: .center, spacing: 12) {
                         Text(Self.command)
                             .font(.footnote.monospaced())
@@ -25,7 +29,11 @@ struct AddComputer: View {
                     }
                     .row()
                 }
-                Box(footer: link.isEmpty || computer != nil ? "Or paste the link it shows." : "That isn’t a computer’s link: it starts with iikb://computer.") {
+                Box(
+                    footer: link.isEmpty || computer != nil
+                        ? "Or paste the link it shows."
+                        : "That isn’t a computer’s link: it starts with iikb://computer."
+                ) {
                     TextField("iikb://computer?…", text: $link)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)

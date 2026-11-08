@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import KeyboardCore
 
 /// Files on the iPhone as builds before this one wrote them. A type that stops reading one loses what it holds: the
@@ -11,7 +12,9 @@ struct SavedFormatTests {
     }
 
     @Test func typingMemoryAsSaved() throws {
-        let memory = try decode(TypingMemory.self, """
+        let memory = try decode(
+            TypingMemory.self,
+            """
             {"counts":{"hello":3,"world":2},"kept":["iikb"],"following":{"hello":{"world":2}},"total":5,\
             "spacesAfterSpace":1,"keysAfterSpace":4,"touches":{"layouts":{"standard":{"m":{\
             "all":{"count":2,"meanX":7.5,"meanY":2.5,"scatterXX":0.02,"scatterXY":0,"scatterYY":0.01},\
@@ -27,7 +30,9 @@ struct SavedFormatTests {
     }
 
     @Test func typingMemoryBeforeAppsStillLoads() throws {
-        let memory = try decode(TypingMemory.self, """
+        let memory = try decode(
+            TypingMemory.self,
+            """
             {"counts":{"hello":1},"kept":[],"following":{},"total":1,"spacesAfterSpace":0,"keysAfterSpace":0,\
             "touches":{"layouts":{}}}
             """)
@@ -36,7 +41,9 @@ struct SavedFormatTests {
     }
 
     @Test func emojiHistoryAsSaved() throws {
-        let history = try decode(EmojiHistory.self, """
+        let history = try decode(
+            EmojiHistory.self,
+            """
             {"scores":{"🍕":1.1},"tones":{"👍":"👍🏽"},"weight":1.21,"apps":{"com.apple.MobileSMS":{"🍕":1.1}}}
             """)
         #expect(history.scores["🍕"] == 1.1)
@@ -44,12 +51,15 @@ struct SavedFormatTests {
     }
 
     @Test func clipboardHistoryAsSaved() throws {
-        let history = try decode(ClipboardHistory.self, """
+        let history = try decode(
+            ClipboardHistory.self,
+            """
             {"saved":[{"content":{"text":{"_0":"hi"}},"found":1762000000,"pinned":true},\
             {"content":{"textFile":{"name":"a.txt","preview":"long"}},"found":1762000001,"pinned":false},\
             {"content":{"image":{"_0":"b.png"}},"found":1762000002,"pinned":false}]}
             """)
-        #expect(history.items.map(\.content) == [.text("hi"), .image("b.png"), .textFile(name: "a.txt", preview: "long")])
+        #expect(
+            history.items.map(\.content) == [.text("hi"), .image("b.png"), .textFile(name: "a.txt", preview: "long")])
         #expect(history.items.first?.pinned == true)
     }
 
@@ -66,7 +76,8 @@ struct SavedFormatTests {
 
     @Test func aKeyHoldingNaNStartsOverAlone() throws {
         let decoder = JSONDecoder()
-        decoder.nonConformingFloatDecodingStrategy = .convertFromString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+        decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+            positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
         let key = { (meanX: String) -> String in
             #"{"all":{"count":2,"meanX":"# + meanX + #","meanY":0.1,"scatterXX":0.02,"scatterXY":0,"scatterYY":0.01},"#
                 + #""lately":{"count":2,"x":0.1,"y":0.1},"now":{"count":2,"x":0.1,"y":0.1},"weights":[0.3,0.3,0.4]}"#
@@ -75,7 +86,9 @@ struct SavedFormatTests {
         let saved = try decoder.decode(TouchModel.self, from: Data(json.utf8))
         let grid = KeyGrid.standard
         let n = try #require(grid.frame(of: "n"))
-        #expect(saved.logLikelihood(x: n.midX, y: n.midY, for: "n", on: grid)?.isNaN == true, "one NaN reaches every letter")
+        #expect(
+            saved.logLikelihood(x: n.midX, y: n.midY, for: "n", on: grid)?.isNaN == true, "one NaN reaches every letter"
+        )
         let touches = saved.finite()
         #expect(touches.taps(for: "m", on: grid) == 0)
         #expect(touches.taps(for: "n", on: grid) == 2)
@@ -84,7 +97,9 @@ struct SavedFormatTests {
     }
 
     @Test func typingHourAsSaved() throws {
-        let hour = try decode(TypingHour.self, """
+        let hour = try decode(
+            TypingHour.self,
+            """
             {"day":"2026-11-04","hour":21,"app":"com.apple.MobileSMS","seconds":42.5,"tally":{"keys":120,"characters":118,\
             "deletes":4,"words":22,"corrected":2,"undone":1,"picked":3,"emoji":1}}
             """)

@@ -45,7 +45,9 @@ struct DeviceStats: View {
 
     private var empty: some View {
         ContentUnavailableView {
-            Label(kind == .typed ? "No Typing Yet" : "No Dictation Yet", systemImage: kind == .typed ? "keyboard" : "waveform")
+            Label(
+                kind == .typed ? "No Typing Yet" : "No Dictation Yet",
+                systemImage: kind == .typed ? "keyboard" : "waveform")
         } description: {
             Text(emptyText)
         } actions: {
@@ -64,20 +66,20 @@ struct DeviceStats: View {
                 ? "Type with the keyboard anywhere. Your typing shows up here each time it closes."
                 : "Type with the keyboard anywhere. Your typing shows up here each time it closes, once Allow Full Access is on."
         case (.iPhone, .said): "Tap the mic at the right end of the keyboard’s suggestions and talk."
-        case let (.computer(name), .typed): "Keystroke hasn’t counted any typing on \(name) yet."
-        case let (.computer(name), .said): "Keystroke hasn’t counted any dictation on \(name) yet."
+        case (.computer(let name), .typed): "Keystroke hasn’t counted any typing on \(name) yet."
+        case (.computer(let name), .said): "Keystroke hasn’t counted any dictation on \(name) yet."
         }
     }
 }
 
-private extension Activity.Kind {
-    var noun: String { self == .typed ? "typed" : "said" }
+extension Activity.Kind {
+    fileprivate var noun: String { self == .typed ? "typed" : "said" }
 }
 
-private extension Date {
-    var day: Date { Calendar.current.startOfDay(for: self) }
+extension Date {
+    fileprivate var day: Date { Calendar.current.startOfDay(for: self) }
 
-    func days(_ count: Int) -> Date { Calendar.current.date(byAdding: .day, value: count, to: day) ?? self }
+    fileprivate func days(_ count: Int) -> Date { Calendar.current.date(byAdding: .day, value: count, to: day) ?? self }
 }
 
 /// How fast you type or talk, large, with a chip for how the last week compares, then how much and for how long.
@@ -90,7 +92,9 @@ private struct Speed: View {
 
     /// How many words a minute the last week is above or below all of it, once it's a whole one.
     private var trend: Int? {
-        guard let speed = all.speed, let lately = activity.total(kind, since: Date.now.days(-6)).speed else { return nil }
+        guard let speed = all.speed, let lately = activity.total(kind, since: Date.now.days(-6)).speed else {
+            return nil
+        }
         let change = Int((lately - speed).rounded())
         return change == 0 ? nil : change
     }
@@ -103,7 +107,10 @@ private struct Speed: View {
     }
 
     var body: some View {
-        StatCard(symbol: kind == .typed ? "speedometer" : "waveform", color: kind.color, title: kind == .typed ? "Typing speed" : "Talking speed") {
+        StatCard(
+            symbol: kind == .typed ? "speedometer" : "waveform", color: kind.color,
+            title: kind == .typed ? "Typing speed" : "Talking speed"
+        ) {
             LeadNumber(value: all.speed.map { "\(Int($0.rounded())) wpm" } ?? "–", size: 52) {
                 if let trend { TrendChip(points: trend) }
             }
@@ -127,26 +134,38 @@ private struct Speed: View {
     }
 
     private var caption: String {
-        var lines = [kind == .typed
-            ? "Words of five letters a minute while you type, pauses over 4 seconds left out."
-            : device != .iPhone ? "Words of five letters a minute, over the dictations Keystroke timed." : "Words a minute while you talk."]
+        var lines = [
+            kind == .typed
+                ? "Words of five letters a minute while you type, pauses over 4 seconds left out."
+                : device != .iPhone
+                    ? "Words of five letters a minute, over the dictations Keystroke timed."
+                    : "Words a minute while you talk."
+        ]
         if kind == .said, let said = all.speed, let typed = activity.total(.typed).speed, typed > 0 {
             lines.append(String(format: "%.1f× as fast as you type.", said / typed))
         }
         if let fastest {
-            lines.append("Fastest day: \(Int(fastest.speed.rounded()))\u{00A0}wpm, \(fastest.date.formatted(.dateTime.month(.abbreviated).day())).")
+            lines.append(
+                "Fastest day: \(Int(fastest.speed.rounded()))\u{00A0}wpm, \(fastest.date.formatted(.dateTime.month(.abbreviated).day()))."
+            )
         }
         return lines.joined(separator: " ")
     }
 
     private var footer: String? {
-        guard case let .computer(name) = device else { return nil }
-        let asOf = Computers.shared.asOf[name].map { ", as of \($0.formatted(Calendar.current.isDateInToday($0) ? .dateTime.hour().minute() : .dateTime.month(.abbreviated).day().hour().minute()))" } ?? ""
+        guard case .computer(let name) = device else { return nil }
+        let asOf =
+            Computers.shared.asOf[name].map {
+                ", as of \($0.formatted(Calendar.current.isDateInToday($0) ? .dateTime.hour().minute() : .dateTime.month(.abbreviated).day().hour().minute()))"
+            } ?? ""
         return "From Keystroke on \(name)\(asOf)."
     }
 
     static func time(_ seconds: Double) -> String {
-        seconds < 60 ? "<1m" : Duration.seconds(seconds).formatted(.units(allowed: [.hours, .minutes], width: .narrow, maximumUnitCount: 2))
+        seconds < 60
+            ? "<1m"
+            : Duration.seconds(seconds).formatted(
+                .units(allowed: [.hours, .minutes], width: .narrow, maximumUnitCount: 2))
     }
 }
 
@@ -157,17 +176,22 @@ private struct WordSources: View {
 
     var body: some View {
         let words = max(channel.words, 1)
-        let corrected = min(channel.corrected, words), picked = min(channel.picked, words - corrected)
+        let corrected = min(channel.corrected, words)
+        let picked = min(channel.picked, words - corrected)
         let parts = [
-            SegmentedBar.Part(name: "As typed", share: Double(words - corrected - picked) / Double(words), color: TapColor.aim),
+            SegmentedBar.Part(
+                name: "As typed", share: Double(words - corrected - picked) / Double(words), color: TapColor.aim),
             SegmentedBar.Part(name: "Autocorrected", share: Double(corrected) / Double(words), color: TapColor.miss),
-            SegmentedBar.Part(name: "From the bar", share: Double(picked) / Double(words), color: Color.appSecondary.opacity(0.45)),
+            SegmentedBar.Part(
+                name: "From the bar", share: Double(picked) / Double(words), color: Color.appSecondary.opacity(0.45)),
         ]
         StatCard(symbol: "character.cursor.ibeam", color: .blue, title: "Your typed words") {
             SegmentedBar(parts: parts)
             Rectangle().fill(Color.appDivider).frame(height: 1)
             Figures {
-                Figure(value: channel.corrected > 0 ? share(channel.undone, of: channel.corrected) : "–", label: "taken back")
+                Figure(
+                    value: channel.corrected > 0 ? share(channel.undone, of: channel.corrected) : "–",
+                    label: "taken back")
                 Figure(value: channel.keys > 0 ? share(channel.deletes, of: channel.keys) : "–", label: "deleted")
                 Figure(value: channel.emoji.formatted(), label: "emoji")
             }
@@ -251,7 +275,10 @@ private struct Apps: View {
 
     var body: some View {
         let top = Double(max(rows.map(\.words).max() ?? 1, 1))
-        StatCard(symbol: "square.grid.2x2.fill", color: .purple, title: kind == .typed ? "Where you type" : "Where you dictate") {
+        StatCard(
+            symbol: "square.grid.2x2.fill", color: .purple,
+            title: kind == .typed ? "Where you type" : "Where you dictate"
+        ) {
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(rows, id: \.name) { app in
                     VStack(alignment: .leading, spacing: 6) {
@@ -282,7 +309,8 @@ private struct Dictations: View {
     var body: some View {
         let all = Transcripts.shared.all.filter { !$0.text.isEmpty }
         let lengths = all.map(\.seconds).sorted()
-        let models = Dictionary(grouping: all.compactMap(\.model), by: \.self).max { $0.value.count < $1.value.count }?.key
+        let models = Dictionary(grouping: all.compactMap(\.model), by: \.self).max { $0.value.count < $1.value.count }?
+            .key
         if !lengths.isEmpty {
             StatCard(symbol: "text.bubble.fill", color: .pink, title: "Your dictations") {
                 StatGrid {

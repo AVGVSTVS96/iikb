@@ -12,7 +12,8 @@ import KeyboardStore
     private var names: [String: String]
     @ObservationIgnored private var pending: Set<String> = []
     @ObservationIgnored private var asked: Set<String> = []
-    @ObservationIgnored private let file = StoredFile<[String: String]>(URL.cachesDirectory.appending(path: "app-names.json"))
+    @ObservationIgnored private let file = StoredFile<[String: String]>(
+        URL.cachesDirectory.appending(path: "app-names.json"))
 
     private init() {
         names = file.read().value ?? [:]
@@ -45,7 +46,7 @@ import KeyboardStore
             URLQueryItem(name: "country", value: Locale.current.region?.identifier ?? "US"),
         ]
         guard let (data, _) = try? await URLSession.shared.data(from: query.url!),
-              let found = try? JSONDecoder().decode(Lookup.self, from: data)
+            let found = try? JSONDecoder().decode(Lookup.self, from: data)
         else { return }
         var names = self.names
         for bundle in bundles { names[bundle] = "" }
@@ -58,7 +59,9 @@ import KeyboardStore
     static func short(_ name: String, by maker: String) -> String {
         let cut = [" - ", " – ", " — ", ": ", " | "].compactMap { name.range(of: $0)?.lowerBound }.min()
         let title = String(name[..<(cut ?? name.endIndex)]).trimmingCharacters(in: .whitespaces)
-        guard let by = title.range(of: " by ", options: .backwards), maker.hasPrefix(title[by.upperBound...]) else { return title }
+        guard let by = title.range(of: " by ", options: .backwards), maker.hasPrefix(title[by.upperBound...]) else {
+            return title
+        }
         return String(title[..<by.lowerBound])
     }
 

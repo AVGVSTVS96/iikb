@@ -32,12 +32,15 @@ public final class KeyHaptics {
         }
 
         func pattern(strength: Float) -> CHHapticPattern? {
-            try? CHHapticPattern(events: [
-                CHHapticEvent(eventType: .hapticTransient, parameters: [
-                    CHHapticEventParameter(parameterID: .hapticIntensity, value: min(1, intensity * strength)),
-                    CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness),
-                ], relativeTime: 0),
-            ], parameters: [])
+            try? CHHapticPattern(
+                events: [
+                    CHHapticEvent(
+                        eventType: .hapticTransient,
+                        parameters: [
+                            CHHapticEventParameter(parameterID: .hapticIntensity, value: min(1, intensity * strength)),
+                            CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness),
+                        ], relativeTime: 0)
+                ], parameters: [])
         }
     }
 
@@ -75,7 +78,9 @@ public final class KeyHaptics {
     }
 
     private func makeEngine() -> CHHapticEngine? {
-        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics, let engine = try? CHHapticEngine() else { return nil }
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics, let engine = try? CHHapticEngine() else {
+            return nil
+        }
         engine.playsHapticsOnly = true
         engine.isAutoShutdownEnabled = false
         engine.stoppedHandler = { @Sendable reason in
@@ -91,7 +96,9 @@ public final class KeyHaptics {
     private static func players(on engine: CHHapticEngine, strength: Float) -> [Kind: CHHapticPatternPlayer] {
         var players: [Kind: CHHapticPatternPlayer] = [:]
         for kind in Kind.allCases {
-            if let pattern = kind.pattern(strength: strength), let player = try? engine.makePlayer(with: pattern) { players[kind] = player }
+            if let pattern = kind.pattern(strength: strength), let player = try? engine.makePlayer(with: pattern) {
+                players[kind] = player
+            }
         }
         return players
     }

@@ -1,6 +1,6 @@
-import UIKit
 import KeyboardCore
 import KeyboardEnglish
+import UIKit
 
 /// The emoji panel's results: ten columns of emoji (more on a wide iPad) scrolling up and down, or one row scrolling
 /// sideways in the compact layout; what you pick most first, then every emoji in Apple's order, or what the search finds.
@@ -35,7 +35,9 @@ public final class EmojiPanel: UIView, PanelContent, UICollectionViewDataSource,
         grid.delegate = self
         grid.delaysContentTouches = false
         grid.accessibilityIdentifier = "iikb.emoji"
-        [grid.topEdgeEffect, grid.bottomEdgeEffect, grid.leftEdgeEffect, grid.rightEdgeEffect].forEach { $0.isHidden = true }
+        [grid.topEdgeEffect, grid.bottomEdgeEffect, grid.leftEdgeEffect, grid.rightEdgeEffect].forEach {
+            $0.isHidden = true
+        }
         grid.register(EmojiCell.self, forCellWithReuseIdentifier: "emoji")
         empty.font = .systemFont(ofSize: 15)
         empty.textAlignment = .center
@@ -89,9 +91,13 @@ public final class EmojiPanel: UIView, PanelContent, UICollectionViewDataSource,
         }
     }
 
-    public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int { shown.count }
+    public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        shown.count
+    }
 
-    public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+    public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath)
+        -> UICollectionViewCell
+    {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "emoji", for: indexPath) as! EmojiCell
         cell.show(shown[indexPath.item], size: size, pressed: theme.label.ui.withAlphaComponent(0.12))
         return cell
@@ -107,12 +113,19 @@ public final class EmojiPanel: UIView, PanelContent, UICollectionViewDataSource,
         let point = gesture.location(in: self)
         switch gesture.state {
         case .began:
-            guard let indexPath = grid.indexPathForItem(at: gesture.location(in: grid)), let cell = grid.cellForItem(at: indexPath),
-                  let base = EmojiSearch.english.base(of: shown[indexPath.item]), let toned = EmojiSearch.english.tones[base]
-            else { return gesture.state = .failed }
+            guard let indexPath = grid.indexPathForItem(at: gesture.location(in: grid)),
+                let cell = grid.cellForItem(at: indexPath),
+                let base = EmojiSearch.english.base(of: shown[indexPath.item]),
+                let toned = EmojiSearch.english.tones[base]
+            else {
+                gesture.state = .failed
+                return
+            }
             held = [base] + toned
             let key = cell.convert(cell.bounds, to: self)
-            tones.show(held, selected: held.firstIndex(of: shown[indexPath.item]) ?? 0, over: key, in: bounds.insetBy(dx: 0, dy: -8), metrics: metrics, theme: theme)
+            tones.show(
+                held, selected: held.firstIndex(of: shown[indexPath.item]) ?? 0, over: key,
+                in: bounds.insetBy(dx: 0, dy: -8), metrics: metrics, theme: theme)
             slide = tones.selectedMidX - point.x
         case .changed:
             tones.track(CGPoint(x: point.x + slide, y: point.y))

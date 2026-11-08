@@ -7,16 +7,22 @@
 /// three four", "five, four, three, two, one", "one two, one two").
 enum SpokenNumber {
     /// Words that ask for a code or number said after them, so four digits are one.
-    private static let cues: Set<String> = ["code", "pin", "number", "passcode", "password", "extension", "zip", "id", "digits", "otp"]
+    private static let cues: Set<String> = [
+        "code", "pin", "number", "passcode", "password", "extension", "zip", "id", "digits", "otp",
+    ]
     /// Words before "one point" that make it a point you make.
-    private static let determiners = Spoken.determiners.union(["at", "one", "each", "every", "any", "no", "some", "which", "what"])
+    private static let determiners = Spoken.determiners.union([
+        "at", "one", "each", "every", "any", "no", "some", "which", "what",
+    ])
 
     static func inline(_ text: String) -> String {
         var words = text.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
         var at = 0
         while at < words.count {
-            if let number = time(in: words, at: at) ?? money(in: words, at: at) ?? number(in: words, at: at) ?? digits(in: words, at: at) ?? phone(in: words, at: at) {
-                words.replaceSubrange(at ..< number.end, with: [number.written])
+            if let number = time(in: words, at: at) ?? money(in: words, at: at) ?? number(in: words, at: at) ?? digits(
+                in: words, at: at) ?? phone(in: words, at: at)
+            {
+                words.replaceSubrange(at..<number.end, with: [number.written])
             }
             at += 1
         }
@@ -27,7 +33,9 @@ enum SpokenNumber {
     /// "3:30pm", "nine A.M." "9am", "ten fifteen AM" "10:15am". Without one ("at three thirty") it stays.
     private static func time(in words: [String], at: Int) -> (written: String, end: Int)? {
         let first = words[at].lowercased()
-        var hour: Int?, minutes: String?, end = at + 1
+        var hour: Int?
+        var minutes: String?
+        var end = at + 1
         if let match = first.wholeMatch(of: /(\d{1,2})(?:[:.](\d\d))?/) {
             hour = Int(match.1)
             minutes = match.2.map(String.init)
@@ -39,7 +47,9 @@ enum SpokenNumber {
             minutes = said
             end = after
         }
-        guard end < words.count, let (meridiem, tail) = meridiem(words[end], next: end + 1 < words.count ? words[end + 1] : nil) else { return nil }
+        guard end < words.count,
+            let (meridiem, tail) = meridiem(words[end], next: end + 1 < words.count ? words[end + 1] : nil)
+        else { return nil }
         return ("\(hour)" + (minutes.map { ":" + $0 } ?? "") + meridiem + tail, end + 1)
     }
 
@@ -48,11 +58,14 @@ enum SpokenNumber {
         let (word, tail) = split(words[at])
         guard tail.isEmpty else { return nil }
         if word.count == 2, let value = Int(word), value < 60 { return (word, at + 1) }
-        if word == "oh", at + 1 < words.count, case let (next, "") = split(words[at + 1]), let digit = Spoken.digit(next), digit > 0 {
+        if word == "oh", at + 1 < words.count, case (let next, "") = split(words[at + 1]),
+            let digit = Spoken.digit(next), digit > 0
+        {
             return ("0\(digit)", at + 2)
         }
         guard let (value, end) = Spoken.cardinal(run(words, from: at), at: 0),
-              (10...59).contains(value) else { return nil }
+            (10...59).contains(value)
+        else { return nil }
         return (String(value), at + end)
     }
 
@@ -72,14 +85,18 @@ enum SpokenNumber {
     /// "five dollars and fifty cents" "$5.50", though not a guess ("two or three dollars").
     private static func money(in words: [String], at: Int) -> (written: String, end: Int)? {
         let said = run(words, from: at)
-        guard at == 0 || split(words[at - 1]).word != "or", let (dollars, used) = Spoken.cardinal(said, at: 0), used < said.count,
-              said[used] == "dollars" || said[used] == "dollar" && dollars == 1 else { return nil }
-        var end = at + used + 1, cents = ""
+        guard at == 0 || split(words[at - 1]).word != "or", let (dollars, used) = Spoken.cardinal(said, at: 0),
+            used < said.count,
+            said[used] == "dollars" || said[used] == "dollar" && dollars == 1
+        else { return nil }
+        var end = at + used + 1
+        var cents = ""
         if split(words[end - 1]).tail.isEmpty, end < words.count {
             let from = split(words[end]).word == "and" ? end + 1 : end
             let more = run(words, from: from)
             if let (value, used) = Spoken.cardinal(more, at: 0), (1...99).contains(value), used < more.count,
-               more[used] == "cents" || more[used] == "cent" && value == 1 {
+                more[used] == "cents" || more[used] == "cent" && value == 1
+            {
                 cents = "." + (value < 10 ? "0" : "") + String(value)
                 end = from + used + 1
             }
@@ -100,7 +117,8 @@ enum SpokenNumber {
         guard var (written, end) = whole(in: words, at: at), end < words.count else { return nil }
         if words[at].lowercased() == "one", at > 0, determiners.contains(split(words[at - 1]).word) { return nil }
         if words[end].lowercased() == "point" {
-            var fraction = "", tail = ""
+            var fraction = ""
+            var tail = ""
             end += 1
             while end < words.count, tail.isEmpty, let digit = digit(split(words[end]).word) {
                 fraction += digit
@@ -109,7 +127,9 @@ enum SpokenNumber {
             }
             guard !fraction.isEmpty else { return nil }
             written += "." + fraction
-            guard tail.isEmpty, end < words.count, split(words[end]).word == "percent" else { return (written + tail, end) }
+            guard tail.isEmpty, end < words.count, split(words[end]).word == "percent" else {
+                return (written + tail, end)
+            }
         }
         guard split(words[end]).word == "percent" else { return nil }
         return (written + "%" + split(words[end]).tail, end + 1)
@@ -121,9 +141,14 @@ enum SpokenNumber {
     /// the same ("two four six eight"), a group said again, or a pair said over and over.
     private static func digits(in words: [String], at: Int) -> (written: String, end: Int)? {
         if at > 0, spoken(split(words[at - 1]).word, first: true) != nil { return nil }
-        var groups = [""], end = at, tail = "", said = false
-        while end < words.count, case let (word, rest) = split(words[end]),
-              let digit = spoken(word, first: end == at, next: end + 1 < words.count && rest.isEmpty ? split(words[end + 1]).word : nil) {
+        var groups = [""]
+        var end = at
+        var tail = ""
+        var said = false
+        while end < words.count, case (let word, let rest) = split(words[end]),
+            let digit = spoken(
+                word, first: end == at, next: end + 1 < words.count && rest.isEmpty ? split(words[end + 1]).word : nil)
+        {
             said = said || word == "oh"
             groups[groups.count - 1] += digit
             end += 1
@@ -136,28 +161,42 @@ enum SpokenNumber {
             }
         }
         let all = groups.joined()
-        let steps = { (digits: String) in Set(zip(digits, digits.dropFirst()).map { $1.wholeNumberValue! - $0.wholeNumberValue! }) }
-        let asked = words[max(0, at - 3) ..< at].contains { cues.contains(split($0).word) }
-        guard all.count >= 5 || all.count == 4 && (said || asked), groups.count == 1 || groups.allSatisfy({ $0.count >= 3 }),
-              steps(all).count > 1, !groups.contains(where: { $0.count >= 3 && [[1], [-1]].contains(steps($0)) }),
-              Set(groups).count == groups.count, all.dropFirst(2) != all.dropLast(2) else { return nil }
-        let split = { (sizes: [Int]) in sizes.reduce(into: (parts: [String](), rest: Substring(all))) { $0.parts.append(String($0.rest.prefix($1))); $0.rest = $0.rest.dropFirst($1) }.parts.joined(separator: "-") }
-        let written = groups.count > 1 ? groups.joined(separator: "-")
+        let steps = { (digits: String) in
+            Set(zip(digits, digits.dropFirst()).map { $1.wholeNumberValue! - $0.wholeNumberValue! })
+        }
+        let asked = words[max(0, at - 3)..<at].contains { cues.contains(split($0).word) }
+        guard all.count >= 5 || all.count == 4 && (said || asked),
+            groups.count == 1 || groups.allSatisfy({ $0.count >= 3 }),
+            steps(all).count > 1, !groups.contains(where: { $0.count >= 3 && [[1], [-1]].contains(steps($0)) }),
+            Set(groups).count == groups.count, all.dropFirst(2) != all.dropLast(2)
+        else { return nil }
+        let split = { (sizes: [Int]) in
+            sizes.reduce(into: (parts: [String](), rest: Substring(all))) {
+                $0.parts.append(String($0.rest.prefix($1)))
+                $0.rest = $0.rest.dropFirst($1)
+            }.parts.joined(separator: "-")
+        }
+        let written =
+            groups.count > 1
+            ? groups.joined(separator: "-")
             : all.count == 10 ? split([3, 3, 4]) : all.count == 11 && all.first == "1" ? split([1, 3, 3, 4]) : all
         return (written + tail, end)
     }
 
     /// A phone number written in groups of digits with spaces, 3-3-4 after an optional 1 or +1.
     private static func phone(in words: [String], at: Int) -> (written: String, end: Int)? {
-        if case let (word, tail) = split(words[at]), word.allSatisfy(\.isNumber), let number = together(word) { return (number + tail, at + 1) }
+        if case (let word, let tail) = split(words[at]), word.allSatisfy(\.isNumber), let number = together(word) {
+            return (number + tail, at + 1)
+        }
         let sizes = words[at] == "1" || words[at] == "+1" ? [words[at].count, 3, 3, 4] : [3, 3, 4]
         guard at + sizes.count <= words.count else { return nil }
-        let groups = (0 ..< sizes.count).map { words[at + $0] }
+        let groups = (0..<sizes.count).map { words[at + $0] }
         let last = groups.last!.prefix { $0.isNumber }
         let digits = groups.dropLast() + [String(last)]
         guard zip(digits, sizes).allSatisfy({ $0.count == $1 && $0.allSatisfy { $0.isNumber || $0 == "+" } }),
-              at + sizes.count == words.count || !(words[at + sizes.count].first?.isNumber ?? false),
-              at == 0 || !(words[at - 1].last?.isNumber ?? false) else { return nil }
+            at + sizes.count == words.count || !(words[at + sizes.count].first?.isNumber ?? false),
+            at == 0 || !(words[at - 1].last?.isNumber ?? false)
+        else { return nil }
         return (digits.joined(separator: "-") + groups.last!.dropFirst(last.count), at + sizes.count)
     }
 
@@ -167,7 +206,8 @@ enum SpokenNumber {
         let digits = Array(digits)
         let local = digits.count == 11 && digits[0] == "1" ? Array(digits.dropFirst()) : digits
         guard local.count == 10, local[0] >= "2", local[3] >= "2" else { return nil }
-        return (digits.count == 11 ? "1-" : "") + [local[0..<3], local[3..<6], local[6...]].map { String($0) }.joined(separator: "-")
+        return (digits.count == 11 ? "1-" : "")
+            + [local[0..<3], local[3..<6], local[6...]].map { String($0) }.joined(separator: "-")
     }
 
     /// One digit said, with "oh" for 0 inside a run, before another digit.
@@ -183,12 +223,15 @@ enum SpokenNumber {
         guard !word.isEmpty, tail.isEmpty else { return nil }
         if word.allSatisfy(\.isNumber) { return (word, at + 1) }
         let parts = word.split(separator: "-").map(String.init)
-        if parts.count == 2, let tens = Spoken.value(of: parts[0]), let unit = Spoken.value(of: parts[1]), let number = Spoken.joined(tens, unit) {
+        if parts.count == 2, let tens = Spoken.value(of: parts[0]), let unit = Spoken.value(of: parts[1]),
+            let number = Spoken.joined(tens, unit)
+        {
             return (String(number), at + 1)
         }
         guard let value = Spoken.value(of: word) else { return nil }
-        if at + 1 < words.count, case let (next, "") = split(words[at + 1]), let unit = Spoken.value(of: next),
-           let number = Spoken.joined(value, unit) {
+        if at + 1 < words.count, case (let next, "") = split(words[at + 1]), let unit = Spoken.value(of: next),
+            let number = Spoken.joined(value, unit)
+        {
             return (String(number), at + 2)
         }
         return (String(value), at + 1)

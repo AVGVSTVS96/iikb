@@ -1,9 +1,12 @@
 import Testing
+
 @testable import KeyboardCore
 
 struct GifSearchTests {
     func gif(_ id: String) -> Gif {
-        Gif(id: id, title: id, preview: .init(url: "https://x/\(id)-sm.gif", width: 100, height: 80), full: .init(url: "https://x/\(id).gif", width: 400, height: 320))
+        Gif(
+            id: id, title: id, preview: .init(url: "https://x/\(id)-sm.gif", width: 100, height: 80),
+            full: .init(url: "https://x/\(id).gif", width: 400, height: 320))
     }
 
     @Test func aBlankFieldShowsTrendingAndSpacesDontMakeANewSearch() {
@@ -78,7 +81,7 @@ struct GifSearchTests {
 
     @Test func recentsKeepTheLast50NewestFirst() {
         var recents = GifRecents()
-        for i in 0 ..< 55 { recents.use("\(i)") }
+        for i in 0..<55 { recents.use("\(i)") }
         recents.use("10")
         #expect(recents.slugs.count == 50)
         #expect(recents.slugs.prefix(3) == ["10", "54", "53"])

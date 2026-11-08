@@ -1,14 +1,20 @@
 import Testing
+
 @testable import KeyboardCore
 
 struct SentencesTests {
     /// A text view's report: only the caret's paragraph.
     final class ParagraphDocument: TestDocument {
-        override var textBeforeInput: String? { super.textBeforeInput?.split(separator: "\n", omittingEmptySubsequences: false).last.map(String.init) }
-        override var textAfterInput: String? { super.textAfterInput?.split(separator: "\n", omittingEmptySubsequences: false).first.map(String.init) }
+        override var textBeforeInput: String? {
+            super.textBeforeInput?.split(separator: "\n", omittingEmptySubsequences: false).last.map(String.init)
+        }
+        override var textAfterInput: String? {
+            super.textAfterInput?.split(separator: "\n", omittingEmptySubsequences: false).first.map(String.init)
+        }
     }
 
-    private func move(_ text: String, from cursor: Int, _ counts: Int..., showing document: TestDocument? = nil) -> Int {
+    private func move(_ text: String, from cursor: Int, _ counts: Int..., showing document: TestDocument? = nil) -> Int
+    {
         var engine = TypingEngine()
         let document = document ?? TestDocument(text)
         document.text = text

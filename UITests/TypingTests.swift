@@ -95,7 +95,9 @@ final class TypingTests: XCTestCase {
         relaunch(with: paragraph)
         drag(rows: -2)
         type("q")
-        XCTAssert((field.value as? String ?? "").lowercased().hasSuffix("it. qsentence 5 has a few words in it. sentence 6 has a few words in it."))
+        XCTAssert(
+            (field.value as? String ?? "").lowercased().hasSuffix(
+                "it. qsentence 5 has a few words in it. sentence 6 has a few words in it."))
     }
 
     private func relaunch(with text: String) {
@@ -110,7 +112,9 @@ final class TypingTests: XCTestCase {
         let row = key("a").frame.minY - key("q").frame.minY
         let space = key("space").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         let dy = (rows + (rows < 0 ? -0.5 : 0.5)) * row
-        space.press(forDuration: 1, thenDragTo: space.withOffset(CGVector(dx: 0, dy: dy)), withVelocity: 100, thenHoldForDuration: 0.2)
+        space.press(
+            forDuration: 1, thenDragTo: space.withOffset(CGVector(dx: 0, dy: dy)), withVelocity: 100,
+            thenHoldForDuration: 0.2)
     }
 
     func testHoldingDeleteSpeedsUpToWords() {

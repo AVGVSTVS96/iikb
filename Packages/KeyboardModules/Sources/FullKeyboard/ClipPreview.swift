@@ -59,7 +59,13 @@ final class ClipPreview: UIViewController {
             let full = NSMutableAttributedString(attributedString: heading)
             let gap = NSMutableParagraphStyle()
             gap.paragraphSpacingBefore = 6
-            full.append(NSAttributedString(string: "\n" + text.trimmingCharacters(in: .whitespacesAndNewlines), attributes: [.font: UIFont.systemFont(ofSize: 15), .foregroundColor: UIColor.secondaryLabel, .paragraphStyle: gap]))
+            full.append(
+                NSAttributedString(
+                    string: "\n" + text.trimmingCharacters(in: .whitespacesAndNewlines),
+                    attributes: [
+                        .font: UIFont.systemFont(ofSize: 15), .foregroundColor: UIColor.secondaryLabel,
+                        .paragraphStyle: gap,
+                    ]))
             view.attributedText = full
         } else {
             view.text = text

@@ -12,10 +12,14 @@ enum Sentences {
 
     /// The move `count` sentences down, up when negative, in `before` + `after`.
     static func move(_ count: Int, before: String, after: String) -> Move {
-        let text = Array(before) + Array(after), caret = before.count, step = count.signum()
+        let text = Array(before) + Array(after)
+        let caret = before.count
+        let step = count.signum()
         var index = caret
         for _ in 0..<abs(count) {
-            guard let stop = stop(step, from: index, in: text) else { return Move(offset: index + step - caret, crossed: true) }
+            guard let stop = stop(step, from: index, in: text) else {
+                return Move(offset: index + step - caret, crossed: true)
+            }
             index = stop
         }
         return Move(offset: index - caret)

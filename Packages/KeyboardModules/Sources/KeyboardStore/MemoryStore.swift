@@ -22,7 +22,8 @@ public final class MemoryStore {
     nonisolated private static let touchesChanged = "com.shahidy.iikb.touches"
     nonisolated private static let log = Logger(subsystem: "com.shahidy.iikb", category: "memory")
 
-    nonisolated private static let file = StoredFile<Saved>(URL.applicationSupportDirectory.appending(path: "typing-memory.json"))
+    nonisolated private static let file = StoredFile<Saved>(
+        URL.applicationSupportDirectory.appending(path: "typing-memory.json"))
 
     private static var touches: StoredFile<TouchModel>? {
         AppGroup.library.map { StoredFile($0.appending(path: "touches.json")) }
@@ -50,13 +51,15 @@ public final class MemoryStore {
 
     /// Read from the file system each time: a URL caches its resource values, and `file.url` lives as long as the process.
     nonisolated private static var modified: Date? {
-        try? FileManager.default.attributesOfItem(atPath: file.url.path(percentEncoded: false))[.modificationDate] as? Date
+        try? FileManager.default.attributesOfItem(atPath: file.url.path(percentEncoded: false))[.modificationDate]
+            as? Date
     }
 
     /// Hands `use` the saved memory when it isn't the one this keyboard has: on its first appearance, after another
     /// app's keyboard saved, or after the app reset it. A file that's there but can't be read is never handed over.
     package func refresh(_ use: @escaping @MainActor (TypingMemory) -> Void) {
-        let base = base, resets = Self.resets
+        let base = base
+        let resets = Self.resets
         Self.queue.async { [self] in
             var version = Version(modified: Self.modified, resets: resets)
             guard version != base, version != written else { return }
@@ -87,7 +90,8 @@ public final class MemoryStore {
 
     package func save(_ memory: TypingMemory, sharing: Bool) {
         guard let base else { return }
-        let resets = Self.resets, touches = sharing ? Self.touches : nil
+        let resets = Self.resets
+        let touches = sharing ? Self.touches : nil
         Self.queue.async { [self] in
             let current = Version(modified: Self.modified, resets: resets)
             guard current == base || current == written else { return }
@@ -98,7 +102,8 @@ public final class MemoryStore {
         }
     }
 
-    private static let emoji = StoredFile<EmojiHistory>(URL.applicationSupportDirectory.appending(path: "emoji-history.json"))
+    private static let emoji = StoredFile<EmojiHistory>(
+        URL.applicationSupportDirectory.appending(path: "emoji-history.json"))
 
     package static func loadEmoji() -> EmojiHistory {
         emoji.read().value ?? EmojiHistory()

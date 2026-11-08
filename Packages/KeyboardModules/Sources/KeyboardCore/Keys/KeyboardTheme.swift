@@ -104,14 +104,18 @@ public struct KeyboardTheme: Hashable, Sendable {
     }
 
     private static func plain(
-        key: RGBA, keyPressed: RGBA, label: RGBA, secondaryLabel: RGBA, prominent: RGBA, prominentLabel: RGBA, selection: RGBA,
-        selectionLabel: RGBA, shadow: RGBA, candidate: RGBA, candidateHighlighted: RGBA, candidatePill: RGBA, candidateDivider: RGBA,
+        key: RGBA, keyPressed: RGBA, label: RGBA, secondaryLabel: RGBA, prominent: RGBA, prominentLabel: RGBA,
+        selection: RGBA,
+        selectionLabel: RGBA, shadow: RGBA, candidate: RGBA, candidateHighlighted: RGBA, candidatePill: RGBA,
+        candidateDivider: RGBA,
         expander: RGBA, mic: RGBA, micGlyph: RGBA, record: RGBA, searchField: RGBA
     ) -> KeyboardTheme {
         var theme = KeyboardTheme(
             key: key, keyPressed: keyPressed, label: label, secondaryLabel: secondaryLabel, prominent: prominent,
-            prominentLabel: prominentLabel, selection: selection, selectionLabel: selectionLabel, shadow: shadow, candidate: candidate,
-            candidateHighlighted: candidateHighlighted, candidatePill: candidatePill, candidateDivider: candidateDivider, expander: expander,
+            prominentLabel: prominentLabel, selection: selection, selectionLabel: selectionLabel, shadow: shadow,
+            candidate: candidate,
+            candidateHighlighted: candidateHighlighted, candidatePill: candidatePill,
+            candidateDivider: candidateDivider, expander: expander,
             mic: mic, micGlyph: micGlyph, record: record, searchField: searchField
         )
         theme.letterKey = .flat(key, pressed: keyPressed, label: label)

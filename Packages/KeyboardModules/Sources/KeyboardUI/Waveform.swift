@@ -73,9 +73,14 @@ public final class Waveform: UIView {
                 saved.alpha = counted ? 1 : 0
                 layoutContent()
             }
-            UIView.animate(withDuration: 0.25, delay: 0.05, options: [.curveEaseOut, .beginFromCurrentState, .allowUserInteraction]) { self.alpha = 1 }
+            UIView.animate(
+                withDuration: 0.25, delay: 0.05,
+                options: [.curveEaseOut, .beginFromCurrentState, .allowUserInteraction]
+            ) { self.alpha = 1 }
         } else if stopped {
-            UIView.animate(withDuration: 0.15, delay: 0, options: [.curveEaseOut, .beginFromCurrentState, .allowUserInteraction]) { self.alpha = 0 }
+            UIView.animate(
+                withDuration: 0.15, delay: 0, options: [.curveEaseOut, .beginFromCurrentState, .allowUserInteraction]
+            ) { self.alpha = 0 }
         } else if recounted {
             settle {
                 self.saved.alpha = counted ? 1 : 0
@@ -102,7 +107,9 @@ public final class Waveform: UIView {
             bar.transform = CGAffineTransform(scaleX: 1, y: 0.2)
         }
         follow { bar.transform = .identity }
-        UIView.animate(withDuration: interval, delay: 0, options: [.curveLinear, .beginFromCurrentState, .allowUserInteraction]) {
+        UIView.animate(
+            withDuration: interval, delay: 0, options: [.curveLinear, .beginFromCurrentState, .allowUserInteraction]
+        ) {
             self.strip.transform = self.slid
         }
         tick()
@@ -117,7 +124,9 @@ public final class Waveform: UIView {
     }
 
     private var fits: Int { Int(track.bounds.width / Self.pitch) }
-    private var slid: CGAffineTransform { CGAffineTransform(translationX: track.bounds.width - CGFloat(heard) * Self.pitch + Self.barWidth, y: 0) }
+    private var slid: CGAffineTransform {
+        CGAffineTransform(translationX: track.bounds.width - CGFloat(heard) * Self.pitch + Self.barWidth, y: 0)
+    }
 
     private func newBar() -> UIView {
         let bar = UIView()
@@ -146,7 +155,9 @@ public final class Waveform: UIView {
         let tallest = max(min(bounds.height - 12, 18), Self.barWidth)
         let height = (Self.barWidth + (tallest - Self.barWidth) * bars[index].level).rounded(scale: scale)
         let number = heard - bars.count + index
-        return CGRect(x: CGFloat(number) * Self.pitch, y: ((bounds.height - height) / 2).rounded(scale: scale), width: Self.barWidth, height: height)
+        return CGRect(
+            x: CGFloat(number) * Self.pitch, y: ((bounds.height - height) / 2).rounded(scale: scale),
+            width: Self.barWidth, height: height)
     }
 
     private func color(_ level: CGFloat) -> UIColor {

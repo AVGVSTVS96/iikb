@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import KeyboardCore
 
 /// The finger going over the keys of `word` on the standard grid, at 8 points a step and 8 ms apart.
@@ -10,13 +11,20 @@ private func path(_ word: String, on grid: KeyGrid = .standard) -> [SwipePoint] 
         let steps = max(Int((hypot(to.x - from.x, to.y - from.y) / 0.25).rounded(.up)), 1)
         for step in 1...steps {
             let share = Double(step) / Double(steps)
-            points.append(SwipePoint(x: from.x + (to.x - from.x) * share, y: from.y + (to.y - from.y) * share, time: points.last!.time + 0.008))
+            points.append(
+                SwipePoint(
+                    x: from.x + (to.x - from.x) * share, y: from.y + (to.y - from.y) * share,
+                    time: points.last!.time + 0.008))
         }
     }
     return points
 }
 
-private let vocabulary = Lexicon(counts: [("hello", 50), ("world", 30), ("the", 1000), ("a", 800), ("I'm", 100), ("men", 20), ("come", 30), ("home", 30), ("about", 40), ("hell", 5)].map { (word: $0.0, count: Double($0.1)) })
+private let vocabulary = Lexicon(
+    counts: [
+        ("hello", 50), ("world", 30), ("the", 1000), ("a", 800), ("I'm", 100), ("men", 20), ("come", 30), ("home", 30),
+        ("about", 40), ("hell", 5),
+    ].map { (word: $0.0, count: Double($0.1)) })
 
 private func engine() -> (engine: TypingEngine, document: TestDocument) {
     var engine = TypingEngine()
@@ -162,16 +170,22 @@ struct SwipeTypingTests {
     }
 
     @Test func aSplitKeyboardsRepeatedKeyIsTheOneNearTheSwipe() throws {
-        let width = Duo.Screen.openLandscape.keyboardWidth, height = Duo.Screen.openLandscape.size.height
-        let context = LayoutContext(device: .phone, layer: .letters, kind: .text, showsGlobe: true, isLandscape: true, isOpen: true, isSplit: true, showsEmoji: true)
+        let width = Duo.Screen.openLandscape.keyboardWidth
+        let height = Duo.Screen.openLandscape.size.height
+        let context = LayoutContext(
+            device: .phone, layer: .letters, kind: .text, showsGlobe: true, isLandscape: true, isOpen: true,
+            isSplit: true, showsEmoji: true)
         let metrics = KeyboardMetrics.for(.phone, width: width, height: height, split: true)
-        let grid = KeyGrid(Layouts.layout(for: context), width: width, metrics: metrics.grid, signature: context.signature)
+        let grid = KeyGrid(
+            Layouts.layout(for: context), width: width, metrics: metrics.grid, signature: context.signature)
         let copies = grid.rows.joined().filter { $0.key.label == "v" }.map(\.frame)
         try #require(copies.count == 2)
         let alphabet = (0..<26).map { String(UnicodeScalar(UInt8(97 + $0))) }
         let v = alphabet.firstIndex(of: "v")!
         for copy in copies {
-            let near = [SwipePoint(x: copy.midX, y: copy.midY, time: 0), SwipePoint(x: copy.midX + 1, y: copy.midY, time: 0.01)]
+            let near = [
+                SwipePoint(x: copy.midX, y: copy.midY, time: 0), SwipePoint(x: copy.midX + 1, y: copy.midY, time: 0.01),
+            ]
             let layout = try #require(grid.swipeLayout(near: near))
             let box = try #require(SwipeLayout(grid: grid)).frame
             #expect(abs(layout.centers[v].x * box.width + box.x - copy.midX) < 0.001)
@@ -191,10 +205,15 @@ struct SwipeTypingTests {
                 let start = clock.now
                 engine.handle(.swipe(path), in: document)
                 let spent = clock.now - start
-                if round > 0 { milliseconds.append(Double(spent.components.seconds) * 1000 + Double(spent.components.attoseconds) / 1e15) }
+                if round > 0 {
+                    milliseconds.append(
+                        Double(spent.components.seconds) * 1000 + Double(spent.components.attoseconds) / 1e15)
+                }
             }
         }
         milliseconds.sort()
-        print("EVAL latency swipe engine ms: median \(milliseconds[milliseconds.count / 2]) p95 \(milliseconds[milliseconds.count * 95 / 100])")
+        print(
+            "EVAL latency swipe engine ms: median \(milliseconds[milliseconds.count / 2]) p95 \(milliseconds[milliseconds.count * 95 / 100])"
+        )
     }
 }

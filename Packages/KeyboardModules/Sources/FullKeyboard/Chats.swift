@@ -46,7 +46,8 @@ final class Chats {
         stop()
         listed = false
         listing = Task { [weak self, services] in
-            var all: [Chat] = [], unreachable: [String] = []
+            var all: [Chat] = []
+            var unreachable: [String] = []
             for service in services {
                 if let chats = await Self.list(service) { all += chats } else { unreachable.append(service.name) }
             }
@@ -136,7 +137,9 @@ final class Chats {
 
     @concurrent nonisolated private static func list(_ service: Extension) async -> [Chat]? {
         guard let listed: Listed = await get(request(service.url, for: service)) else { return nil }
-        return listed.chats.map { Chat(service: service, id: $0.id, name: $0.name, line: $0.line, pinned: $0.pinned == true) }
+        return listed.chats.map {
+            Chat(service: service, id: $0.id, name: $0.name, line: $0.line, pinned: $0.pinned == true)
+        }
     }
 
     @concurrent nonisolated private static func read(_ chat: Chat, after version: String?) async -> Read? {
@@ -156,7 +159,7 @@ final class Chats {
 
     @concurrent nonisolated private static func get<Answer: Decodable>(_ request: URLRequest) async -> Answer? {
         guard let (data, response) = try? await session.data(for: request),
-              let status = (response as? HTTPURLResponse)?.statusCode, (200..<300).contains(status)
+            let status = (response as? HTTPURLResponse)?.statusCode, (200..<300).contains(status)
         else { return nil }
         return try? JSONDecoder().decode(Answer.self, from: data)
     }

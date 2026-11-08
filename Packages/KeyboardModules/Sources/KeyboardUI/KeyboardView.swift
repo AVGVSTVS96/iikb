@@ -1,10 +1,12 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 public final class KeyboardView: UIView {
     public var onEvent: (KeyboardEvent) -> Void = { _ in }
     public var onGrid: (KeyGrid) -> Void = { _ in }
-    public var resolve: (KeyGrid, CGPoint) -> (row: Int, key: Int)? = { grid, point in grid.index(atX: point.x, y: point.y) }
+    public var resolve: (KeyGrid, CGPoint) -> (row: Int, key: Int)? = { grid, point in
+        grid.index(atX: point.x, y: point.y)
+    }
     public var globeTarget: ((UIControl) -> Void)?
     /// The record button, placed over the record key where the layout has one, in the key's shape.
     public var micKey: MicButton? {
@@ -20,7 +22,8 @@ public final class KeyboardView: UIView {
     private(set) var layout = KeyboardLayout(rows: [])
     private(set) var signature = ""
     private(set) var metrics = KeyboardMetrics.phone(width: 390)
-    private(set) var faceContext = KeyFaceContext(device: .phone, layer: .letters, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
+    private(set) var faceContext = KeyFaceContext(
+        device: .phone, layer: .letters, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
     private(set) var theme = KeyboardTheme.lightCurrent
     private(set) var keyViews: [KeyView] = []
     private var grid = KeyGrid()
@@ -59,7 +62,9 @@ public final class KeyboardView: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    public func update(layout: KeyboardLayout, signature: String, metrics: KeyboardMetrics, faces: KeyFaceContext, theme: KeyboardTheme) {
+    public func update(
+        layout: KeyboardLayout, signature: String, metrics: KeyboardMetrics, faces: KeyFaceContext, theme: KeyboardTheme
+    ) {
         let rebuild = layout != self.layout
         let relayout = rebuild || metrics != self.metrics || signature != self.signature || theme != self.theme
         if rebuild {
@@ -126,7 +131,7 @@ public final class KeyboardView: UIView {
                 }
             }
         }
-        if case let (glyph, pointsRight)? = grid.expander {
+        if case (let glyph, let pointsRight)? = grid.expander {
             expander.place(CGRect(glyph), pointsRight: pointsRight, in: bounds, color: theme.expander.ui)
         }
         expander.isHidden = grid.expander == nil
@@ -137,7 +142,8 @@ public final class KeyboardView: UIView {
         let metrics = keyMetrics
         for view in keyViews {
             view.theme = theme
-            view.configure(KeyFace(view.key, trailing: view.center.x > bounds.midX, context: faceContext), metrics: metrics)
+            view.configure(
+                KeyFace(view.key, trailing: view.center.x > bounds.midX, context: faceContext), metrics: metrics)
         }
     }
 

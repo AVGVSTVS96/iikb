@@ -21,9 +21,12 @@ nonisolated enum Capture: String {
     /// one; else leaves iOS's own pick in `.default` mode. Returns `.cardioid` when it aimed them.
     @MainActor static func aim(_ session: AVAudioSession) throws -> Capture? {
         let port = session.availableInputs?.first { $0.portType == .builtInMic }
-        let ownHears = (SettingsStore.microphone.map { $0.kind == .iPhone } ?? true) && session.currentRoute.inputs.allSatisfy { $0.portType == .builtInMic }
+        let ownHears =
+            (SettingsStore.microphone.map { $0.kind == .iPhone } ?? true)
+            && session.currentRoute.inputs.allSatisfy { $0.portType == .builtInMic }
         let sources = port?.dataSources?.filter { $0.supportedPolarPatterns?.contains(.cardioid) == true } ?? []
-        guard ownHears, let port, let source = sources.first(where: { $0.orientation == .front }) ?? sources.first else {
+        guard ownHears, let port, let source = sources.first(where: { $0.orientation == .front }) ?? sources.first
+        else {
             try session.setMode(.default)
             return nil
         }

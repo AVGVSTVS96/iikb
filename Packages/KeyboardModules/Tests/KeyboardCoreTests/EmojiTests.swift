@@ -1,16 +1,18 @@
 import Testing
+
 @testable import KeyboardCore
 
 struct EmojiTests {
-    let catalog = EmojiCatalog(text: """
-    dog\t🐶 🐕 🌭
-    doe\t🦌
-    does\t
-    love\t❤️ 😍 💕
-    pizza\t🍕
-    box\t📦
-    with\t
-    """)
+    let catalog = EmojiCatalog(
+        text: """
+            dog\t🐶 🐕 🌭
+            doe\t🦌
+            does\t
+            love\t❤️ 😍 💕
+            pizza\t🍕
+            box\t📦
+            with\t
+            """)
 
     @Test func theBarFindsAWordsEmojiOrItsSingulars() {
         #expect(catalog.suggestions(for: "Pizza", history: EmojiHistory()) == ["🍕"])
@@ -18,7 +20,9 @@ struct EmojiTests {
         #expect(catalog.suggestions(for: "boxes", history: EmojiHistory()) == ["📦"])
         #expect(catalog.suggestions(for: "love", history: EmojiHistory(), limit: 2) == ["❤️", "😍"])
         #expect(catalog.suggestions(for: "with", history: EmojiHistory()).isEmpty)
-        #expect(catalog.suggestions(for: "does", history: EmojiHistory()).isEmpty, "a word that finds none doesn't fall back to its singular")
+        #expect(
+            catalog.suggestions(for: "does", history: EmojiHistory()).isEmpty,
+            "a word that finds none doesn't fall back to its singular")
         #expect(catalog.suggestions(for: "piz", history: EmojiHistory()).isEmpty, "the bar wants the whole word")
     }
 
@@ -26,9 +30,9 @@ struct EmojiTests {
         var history = EmojiHistory()
         history.use("🐕")
         #expect(catalog.suggestions(for: "dog", history: history) == ["🐕", "🐶", "🌭"])
-        for _ in 0 ..< 3 { history.use("🌭") }
+        for _ in 0..<3 { history.use("🌭") }
         #expect(catalog.suggestions(for: "dog", history: history) == ["🌭", "🐕", "🐶"])
-        for _ in 0 ..< 4 { history.use("🐕") }
+        for _ in 0..<4 { history.use("🐕") }
         #expect(catalog.suggestions(for: "dog", history: history) == ["🐕", "🌭", "🐶"])
     }
 

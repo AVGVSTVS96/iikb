@@ -15,12 +15,17 @@ final class HomeTests: XCTestCase {
             XCTAssertTrue(card.exists, "\(orientation.rawValue): Home's cards went while typing")
             let field = app.textViews["Try iikb"]
             field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1)).withOffset(CGVector(dx: 0, dy: 6)).tap()
-            XCTAssertTrue(space.waitForNonExistence(timeout: 5), "\(orientation.rawValue): a tap beside the field left the keys up")
+            XCTAssertTrue(
+                space.waitForNonExistence(timeout: 5),
+                "\(orientation.rawValue): a tap beside the field left the keys up")
             field.tap()
-            XCTAssertTrue(space.waitForExistence(timeout: 5), "\(orientation.rawValue): the field didn't take the keys back")
+            XCTAssertTrue(
+                space.waitForExistence(timeout: 5), "\(orientation.rawValue): the field didn't take the keys back")
             app.buttons["home-done"].tap()
             XCTAssertTrue(space.waitForNonExistence(timeout: 5), "\(orientation.rawValue): Done left the keys up")
-            XCTAssertTrue(app.buttons["home-done"].waitForNonExistence(timeout: 5), "\(orientation.rawValue): Done stayed once the keys went")
+            XCTAssertTrue(
+                app.buttons["home-done"].waitForNonExistence(timeout: 5),
+                "\(orientation.rawValue): Done stayed once the keys went")
             app.terminate()
         }
         XCUIDevice.shared.orientation = .portrait

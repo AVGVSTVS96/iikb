@@ -37,8 +37,8 @@ nonisolated enum JudgeProbe {
     private static let log = URL.documentsDirectory.appendingPathComponent("judge.log")
 
     private static func write(_ line: String) {
-        guard let file = try? FileHandle(forWritingTo: log) else { // file: probe log
-            try? Data((line + "\n").utf8).write(to: log) // file: probe log
+        guard let file = try? FileHandle(forWritingTo: log) else {  // file: probe log
+            try? Data((line + "\n").utf8).write(to: log)  // file: probe log
             return
         }
         file.seekToEndOfFile()
@@ -51,15 +51,22 @@ nonisolated enum JudgeProbe {
         var header = "availability \(model.availability) thermal \(ProcessInfo.processInfo.thermalState.rawValue)"
         if #available(iOS 27.0, *) { header += " variant \(model.variant.displayName) context \(model.contextSize)" }
         write(header)
-        guard model.isAvailable, let data = try? Data(contentsOf: .documentsDirectory.appendingPathComponent("judge.jsonl")) else { // file: probe input
+        guard model.isAvailable,
+            // file: probe input
+            let data = try? Data(contentsOf: .documentsDirectory.appendingPathComponent("judge.jsonl"))
+        else {
             return write("done")
         }
-        let questions = data.split(separator: UInt8(ascii: "\n")).compactMap { try? JSONDecoder().decode(Question.self, from: $0) }
+        let questions = data.split(separator: UInt8(ascii: "\n")).compactMap {
+            try? JSONDecoder().decode(Question.self, from: $0)
+        }
         guard let first = questions.first else { return write("done") }
         await ask(first, 0, phase: "cold")
         for (index, question) in questions.enumerated() { await ask(question, index, phase: "warm") }
-        for (index, question) in questions.prefix(5).enumerated() { await ask(question, index, phase: "prewarmed", prewarm: true) }
-        try? await Task.sleep(for: .seconds(30)) // timer: unlisted (the probe times a session left idle 30 s)
+        for (index, question) in questions.prefix(5).enumerated() {
+            await ask(question, index, phase: "prewarmed", prewarm: true)
+        }
+        try? await Task.sleep(for: .seconds(30))  // timer: unlisted (the probe times a session left idle 30 s)
         await ask(first, 0, phase: "idle 30 s")
         write("done")
     }
@@ -68,16 +75,21 @@ nonisolated enum JudgeProbe {
         let session = LanguageModelSession(instructions: question.instructions)
         if prewarm {
             session.prewarm()
-            try? await Task.sleep(for: .seconds(1)) // timer: unlisted (the probe times a session prewarmed 1 s before its question)
+            // timer: unlisted (the probe times a session prewarmed 1 s before its question)
+            try? await Task.sleep(for: .seconds(1))
         }
         let background = await UIApplication.shared.applicationState == .background
         let began = ContinuousClock.now
-        var pick: Int?, text: String?, failure: String?
+        var pick: Int?
+        var text: String?
+        var failure: String?
         do {
             let options = GenerationOptions(samplingMode: .greedy, maximumResponseTokens: question.maxTokens ?? 96)
             if let choices = question.choices {
-                let schema = try GenerationSchema(root: DynamicGenerationSchema(name: "Written", anyOf: choices), dependencies: [])
-                let response = try await session.respond(to: question.prompt, schema: schema, includeSchemaInPrompt: false, options: options)
+                let schema = try GenerationSchema(
+                    root: DynamicGenerationSchema(name: "Written", anyOf: choices), dependencies: [])
+                let response = try await session.respond(
+                    to: question.prompt, schema: schema, includeSchemaInPrompt: false, options: options)
                 text = try response.content.value(String.self)
                 pick = text.flatMap(choices.firstIndex(of:))
             } else {
@@ -87,8 +99,10 @@ nonisolated enum JudgeProbe {
             failure = "\(error)"
         }
         let elapsed = (ContinuousClock.now - began).components
-        let answer = Answer(question: index, phase: phase, pick: pick, text: text, ms: Int(elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000),
-                            background: background, error: failure)
+        let answer = Answer(
+            question: index, phase: phase, pick: pick, text: text,
+            ms: Int(elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000),
+            background: background, error: failure)
         if let line = try? JSONEncoder().encode(answer) { write(String(decoding: line, as: UTF8.self)) }
     }
 }

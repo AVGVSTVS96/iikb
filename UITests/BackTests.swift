@@ -15,8 +15,11 @@ final class BackTests: XCTestCase {
                 XCTAssertTrue(back.waitForExistence(timeout: 15), "\(page): no Back")
                 XCTAssertEqual(backs.count, 1, "\(page): more than one Back")
                 let tab = app.buttons["Stats"].firstMatch
-                XCTAssertTrue(tab.exists, "\(page): no Stats tab among \(app.buttons.allElementsBoundByIndex.map(\.label))")
-                XCTAssertLessThan(abs(back.frame.midX - tab.frame.midX), 12, "\(page) \(orientation.rawValue): Back at \(back.frame), tabs at \(tab.frame)")
+                XCTAssertTrue(
+                    tab.exists, "\(page): no Stats tab among \(app.buttons.allElementsBoundByIndex.map(\.label))")
+                XCTAssertLessThan(
+                    abs(back.frame.midX - tab.frame.midX), 12,
+                    "\(page) \(orientation.rawValue): Back at \(back.frame), tabs at \(tab.frame)")
                 back.tap()
                 XCTAssertTrue(back.waitForNonExistence(timeout: 5), "\(page): Back didn't go back")
                 app.terminate()
@@ -25,7 +28,9 @@ final class BackTests: XCTestCase {
                 XCTAssertTrue(back.waitForExistence(timeout: 15))
                 let window = app.windows.firstMatch
                 window.coordinate(withNormalizedOffset: CGVector(dx: 0.005, dy: 0.5))
-                    .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5)))
+                    .press(
+                        forDuration: 0.05,
+                        thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5)))
                 XCTAssertTrue(back.waitForNonExistence(timeout: 5), "\(page): a swipe from the edge didn't go back")
                 app.terminate()
             }

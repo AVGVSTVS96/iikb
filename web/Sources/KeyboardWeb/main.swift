@@ -31,7 +31,10 @@ import KeyboardCore
         render()
     }
 
-    @JS func configure(autoCapitalization: Bool, autoCorrection: Bool, capsLock: Bool, predictiveText: Bool, smartPunctuation: Bool, periodShortcut: Bool) {
+    @JS func configure(
+        autoCapitalization: Bool, autoCorrection: Bool, capsLock: Bool, predictiveText: Bool, smartPunctuation: Bool,
+        periodShortcut: Bool
+    ) {
         engine.settings.autoCapitalization = autoCapitalization
         engine.settings.autoCorrection = autoCorrection
         engine.settings.capsLock = capsLock
@@ -149,7 +152,9 @@ import KeyboardCore
     }
 
     private func key(at index: Int) -> Key? {
-        guard let row = offsets.lastIndex(where: { $0 <= index }), row < grid.rows.count, index - offsets[row] < grid.rows[row].count else { return nil }
+        guard let row = offsets.lastIndex(where: { $0 <= index }), row < grid.rows.count,
+            index - offsets[row] < grid.rows[row].count
+        else { return nil }
         return grid.rows[row][index - offsets[row]].key
     }
 }

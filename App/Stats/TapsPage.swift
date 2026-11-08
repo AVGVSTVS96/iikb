@@ -1,6 +1,6 @@
 import Charts
-import KeyboardStore
 import KeyboardCore
+import KeyboardStore
 import KeyboardUI
 import SwiftUI
 import notify
@@ -44,7 +44,9 @@ struct TapsPage: View {
                             }
                             VStack(alignment: .leading, spacing: 28) {
                                 Thumbs(board: board, summary: summary)
-                                Misses(summary: summary, selected: model.selected) { pick($0, reader: $1 ? reader : nil, anchor: "detail") }
+                                Misses(summary: summary, selected: model.selected) {
+                                    pick($0, reader: $1 ? reader : nil, anchor: "detail")
+                                }
                             }
                         }
                     }
@@ -61,8 +63,10 @@ struct TapsPage: View {
                     map(board, reader: reader)
                     detail(board)
                     Thumbs(board: board, summary: summary)
-                    Misses(summary: summary, selected: model.selected) { pick($0, reader: $1 ? reader : nil, anchor: "map") }
-                        .id("misses")
+                    Misses(summary: summary, selected: model.selected) {
+                        pick($0, reader: $1 ? reader : nil, anchor: "map")
+                    }
+                    .id("misses")
                 }
                 .onAppear { scrollForLaunch(reader) }
             }
@@ -74,8 +78,16 @@ struct TapsPage: View {
             let pills = SectionPills(sections: TapMapView.Mode.allCases, selection: $mode, title: \.title)
             if model.layouts.count > 1 {
                 ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) { pills; Spacer(minLength: 0); screens(named: true) }
-                    HStack(spacing: 8) { pills; Spacer(minLength: 0); screens(named: false) }
+                    HStack(spacing: 8) {
+                        pills
+                        Spacer(minLength: 0)
+                        screens(named: true)
+                    }
+                    HStack(spacing: 8) {
+                        pills
+                        Spacer(minLength: 0)
+                        screens(named: false)
+                    }
                 }
             } else {
                 pills
@@ -128,7 +140,9 @@ struct TapsPage: View {
                 }
             }
         } label: {
-            PillMenuLabel(symbol: "rectangle.on.rectangle", title: named ? model.signature.map(model.title(of:)) ?? "Screen" : nil)
+            PillMenuLabel(
+                symbol: "rectangle.on.rectangle", title: named ? model.signature.map(model.title(of:)) ?? "Screen" : nil
+            )
         }
         .accessibilityLabel(model.signature.map(model.title(of:)) ?? "Screen")
     }
@@ -137,9 +151,11 @@ struct TapsPage: View {
         ContentUnavailableView {
             Label("No Taps Yet", systemImage: "hand.tap")
         } description: {
-            Text(AppStatus.shared.fullAccess
-                ? "Type with the keyboard anywhere. Your taps show up here each time it closes."
-                : "Type with the keyboard anywhere. Your taps show up here each time it closes, once Allow Full Access is on.")
+            Text(
+                AppStatus.shared.fullAccess
+                    ? "Type with the keyboard anywhere. Your taps show up here each time it closes."
+                    : "Type with the keyboard anywhere. Your taps show up here each time it closes, once Allow Full Access is on."
+            )
         } actions: {
             if !AppStatus.shared.fullAccess {
                 Button("Allow Full Access") { AppStatus.openSettings() }
@@ -164,7 +180,9 @@ struct TapsPage: View {
 
     init() {
         token = MemoryStore.observeTouches { [weak self] in self?.reload() }
-        NotificationCenter.default.addObserver(forName: UIScene.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+        NotificationCenter.default.addObserver(
+            forName: UIScene.willEnterForegroundNotification, object: nil, queue: .main
+        ) { [weak self] _ in
             MainActor.assumeIsolated { self?.reload() }
         }
     }
@@ -175,11 +193,16 @@ struct TapsPage: View {
 
     private var isDuo: Bool { !ThisDevice.isPad && Duo.isDuo(short: min(screen.width, screen.height)) }
 
-    private var device: DeviceClass { DeviceClass(isPad: ThisDevice.isPad, shortSide: min(screen.width, screen.height)) }
+    private var device: DeviceClass {
+        DeviceClass(isPad: ThisDevice.isPad, shortSide: min(screen.width, screen.height))
+    }
 
     /// The letters of the screen the app is on now, whose taps show first.
     private var current: String {
-        LayoutContext(device: device, layer: .letters, isLandscape: screen.width > screen.height, isOpen: Duo.isOpen(short: min(screen.width, screen.height))).signature
+        LayoutContext(
+            device: device, layer: .letters, isLandscape: screen.width > screen.height,
+            isOpen: Duo.isOpen(short: min(screen.width, screen.height))
+        ).signature
     }
 
     /// Keyboards this device types on: its own, and on an iPad the floating one, which is an iPhone's.
@@ -215,23 +238,26 @@ struct TapsPage: View {
     /// an iPad the floating keyboard.
     func title(of signature: String) -> String {
         guard let context = LayoutContext(signature: signature) else { return signature }
-        let screen = if ThisDevice.isPad, context.device == .phone {
-            "Floating"
-        } else if isDuo {
-            Duo.Screen(open: context.isOpen, landscape: context.isLandscape).name
-        } else {
-            context.isLandscape ? "Landscape" : "Portrait"
-        }
-        let layer = switch context.layer {
-        case .letters: ""
-        case .numbers: ", numbers"
-        case .symbols: ", symbols"
-        }
-        let hand = switch context.oneHanded {
-        case .left: ", left hand"
-        case .right: ", right hand"
-        case .off: ""
-        }
+        let screen =
+            if ThisDevice.isPad, context.device == .phone {
+                "Floating"
+            } else if isDuo {
+                Duo.Screen(open: context.isOpen, landscape: context.isLandscape).name
+            } else {
+                context.isLandscape ? "Landscape" : "Portrait"
+            }
+        let layer =
+            switch context.layer {
+            case .letters: ""
+            case .numbers: ", numbers"
+            case .symbols: ", symbols"
+            }
+        let hand =
+            switch context.oneHanded {
+            case .left: ", left hand"
+            case .right: ", right hand"
+            case .off: ""
+            }
         return screen + layer + hand + (context.isSplit ? ", split" : "")
     }
 }
@@ -264,13 +290,24 @@ private struct TapSummary {
         let typed = letters.filter { $0.taps > 0 }
         let xs = typed.map(\.frame.midX)
         let middle = ((xs.max() ?? 0) + (xs.min() ?? 0)) / 2
-        halves = [("Left half", typed.filter { $0.frame.midX < middle }), ("Right half", typed.filter { $0.frame.midX >= middle })].map { name, aims in
+        halves = [
+            ("Left half", typed.filter { $0.frame.midX < middle }),
+            ("Right half", typed.filter { $0.frame.midX >= middle }),
+        ].map { name, aims in
             let taps = Double(max(aims.reduce(0) { $0 + $1.taps }, 1))
-            return (name, (aims.reduce(0.0) { $0 + Double($1.taps) * $1.drift.x } / taps, aims.reduce(0.0) { $0 + Double($1.taps) * $1.drift.y } / taps))
+            return (
+                name,
+                (
+                    aims.reduce(0.0) { $0 + Double($1.taps) * $1.drift.x } / taps,
+                    aims.reduce(0.0) { $0 + Double($1.taps) * $1.drift.y } / taps
+                )
+            )
         }
         space = board.aims.first { $0.key.label == " " && $0.taps >= 10 }?.drift
         misses = letters.filter { $0.taps >= 10 }
-            .map { aim in Miss(key: aim.key, share: 1 - aim.onTarget, onto: aim.landing.first { $0.key != aim.key }?.key) }
+            .map { aim in
+                Miss(key: aim.key, share: 1 - aim.onTarget, onto: aim.landing.first { $0.key != aim.key }?.key)
+            }
             .sorted { $0.share > $1.share }
     }
 
@@ -283,10 +320,10 @@ private struct TapSummary {
     }
 }
 
-private extension TapMapView.Mode {
-    static let allCases: [Self] = [.heat, .aim, .accuracy]
+extension TapMapView.Mode {
+    fileprivate static let allCases: [Self] = [.heat, .aim, .accuracy]
 
-    var title: String {
+    fileprivate var title: String {
         switch self {
         case .heat: "Heat"
         case .aim: "Aim"
@@ -323,7 +360,9 @@ private struct Numbers: View {
             Caption(caption)
             Rectangle().fill(Color.appDivider).frame(height: 1)
             Figures {
-                Figure(value: summary.taps.formatted(), label: perScreen ? "taps on this screen" : summary.taps == 1 ? "tap learned" : "taps learned")
+                Figure(
+                    value: summary.taps.formatted(),
+                    label: perScreen ? "taps on this screen" : summary.taps == 1 ? "tap learned" : "taps learned")
                 Figure(value: String(format: "%.1f pt", summary.offCenter), label: "aim off center")
             }
         }
@@ -391,7 +430,7 @@ private struct Legend: View {
             switch mode {
             case .heat:
                 scale(from: "Fewer taps", to: "More") {
-                    (0 ..< 24).map { Color(TapHeat.color(at: (Double($0) / 23).squareRoot(), isDark: scheme == .dark)) }
+                    (0..<24).map { Color(TapHeat.color(at: (Double($0) / 23).squareRoot(), isDark: scheme == .dark)) }
                 }
             case .aim:
                 HStack(spacing: 16) {
@@ -401,7 +440,7 @@ private struct Legend: View {
                 }
             case .accuracy:
                 scale(from: "1% missed", to: "25%") {
-                    (0 ..< 8).map { TapColor.miss.opacity(0.12 + Double($0) / 7 * 0.73) }
+                    (0..<8).map { TapColor.miss.opacity(0.12 + Double($0) / 7 * 0.73) }
                 }
             }
             Text(hasSelection ? about : about + " Tap a key to see it up close.")
@@ -417,7 +456,8 @@ private struct Legend: View {
         switch mode {
         case .heat: "Where your thumbs land most."
         case .aim: "Each key’s last taps, and where you aim for it."
-        case .accuracy: hasSelection ? "Where the picked key’s taps land." : "How often each key’s taps land on another."
+        case .accuracy:
+            hasSelection ? "Where the picked key’s taps land." : "How often each key’s taps land on another."
         }
     }
 
@@ -542,7 +582,9 @@ private struct KeyDetail: View {
                 .font(.subheadline)
                 .foregroundStyle(Color.appSecondary)
 
-            Drawing(make: { TapCloseUpView() }, update: { $0.show(aim, keys: keys) }, height: { _ in TapCloseUpView.height })
+            Drawing(
+                make: { TapCloseUpView() }, update: { $0.show(aim, keys: keys) }, height: { _ in TapCloseUpView.height }
+            )
             if !aim.recent.isEmpty { recent }
 
             section("Where its taps land") { SegmentedBar(parts: landing) }
@@ -589,9 +631,13 @@ private struct KeyDetail: View {
     private var landing: [SegmentedBar.Part] {
         let misses = aim.landing.filter { $0.key != aim.key }
         var parts = [SegmentedBar.Part(name: name, share: aim.onTarget, color: TapColor.aim)]
-        parts += misses.prefix(3).filter { $0.share >= 0.005 }.map { SegmentedBar.Part(name: TapMapPalette.name(of: $0.key), share: $0.share, color: TapColor.miss) }
+        parts += misses.prefix(3).filter { $0.share >= 0.005 }.map {
+            SegmentedBar.Part(name: TapMapPalette.name(of: $0.key), share: $0.share, color: TapColor.miss)
+        }
         let rest = 1 - parts.reduce(0) { $0 + $1.share }
-        if rest >= 0.005 { parts.append(SegmentedBar.Part(name: "other", share: rest, color: Color.appSecondary.opacity(0.45))) }
+        if rest >= 0.005 {
+            parts.append(SegmentedBar.Part(name: "other", share: rest, color: Color.appSecondary.opacity(0.45)))
+        }
         return parts
     }
 }
@@ -608,7 +654,8 @@ private struct MemoryBar: View {
                 let width = proxy.size.width - 2 * CGFloat(weights.count - 1)
                 HStack(spacing: 2) {
                     ForEach(weights.indices, id: \.self) { index in
-                        Capsule().fill(Color.primary.opacity(Self.strengths[index])).frame(width: max(width * weights[index], 4))
+                        Capsule().fill(Color.primary.opacity(Self.strengths[index])).frame(
+                            width: max(width * weights[index], 4))
                     }
                 }
             }
@@ -625,7 +672,8 @@ private struct MemoryBar: View {
             .foregroundStyle(Color.appSecondary)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(weights.indices.map { "\(Self.names[$0]) \(TapMapPalette.percent(weights[$0]))" }.joined(separator: ", "))
+        .accessibilityLabel(
+            weights.indices.map { "\(Self.names[$0]) \(TapMapPalette.percent(weights[$0]))" }.joined(separator: ", "))
     }
 }
 
@@ -652,7 +700,8 @@ private struct Thumbs: View {
 
     var body: some View {
         StatCard(symbol: "arrow.up.and.down.and.arrow.left.and.right", color: .blue, title: "How your thumbs pull") {
-            Drawing(make: { TapPullView() }, update: { $0.show(board.aims, keys: board.keys, size: board.size) }) { width in
+            Drawing(make: { TapPullView() }, update: { $0.show(board.aims, keys: board.keys, size: board.size) }) {
+                width in
                 board.size.height * width / board.size.width
             }
             let targets = summary.halves + (summary.space.map { [("Space bar", $0)] } ?? [])
@@ -676,7 +725,9 @@ private struct Thumbs: View {
                     .accessibilityElement(children: .combine)
                 }
             }
-            Caption("Each arrow runs from a key’s center to where you aim for it, drawn \(Int(TapPullView.magnification))× as long.")
+            Caption(
+                "Each arrow runs from a key’s center to where you aim for it, drawn \(Int(TapPullView.magnification))× as long."
+            )
         }
     }
 }
@@ -691,10 +742,15 @@ private struct Target: View {
             let radius = min(size.width, size.height) / 2
             let center = CGPoint(x: radius, y: size.height / 2)
             let scale = (radius - 7) / reach
-            context.fill(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)), with: .color(Color(TapMapPalette.backdrop)))
+            context.fill(
+                Path(
+                    ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+                ), with: .color(Color(TapMapPalette.backdrop)))
             for ring in [reach / 2, reach] {
                 let r = ring * scale
-                context.stroke(Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)), with: .color(Color.appSecondary.opacity(0.22)), lineWidth: 1)
+                context.stroke(
+                    Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)),
+                    with: .color(Color.appSecondary.opacity(0.22)), lineWidth: 1)
             }
             var cross = Path()
             cross.move(to: CGPoint(x: center.x - radius, y: center.y))
@@ -707,8 +763,12 @@ private struct Target: View {
             line.move(to: center)
             line.addLine(to: point)
             context.stroke(line, with: .color(TapColor.aim), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-            context.fill(Path(ellipseIn: CGRect(x: point.x - 6, y: point.y - 6, width: 12, height: 12)), with: .color(Color.appCard))
-            context.fill(Path(ellipseIn: CGRect(x: point.x - 4.5, y: point.y - 4.5, width: 9, height: 9)), with: .color(TapColor.aim))
+            context.fill(
+                Path(ellipseIn: CGRect(x: point.x - 6, y: point.y - 6, width: 12, height: 12)),
+                with: .color(Color.appCard))
+            context.fill(
+                Path(ellipseIn: CGRect(x: point.x - 4.5, y: point.y - 4.5, width: 9, height: 9)),
+                with: .color(TapColor.aim))
         }
         .frame(width: 76, height: 76)
         .accessibilityHidden(true)
@@ -744,9 +804,12 @@ private struct Misses: View {
         let typical = 1 - summary.onTarget
         return Chart {
             ForEach(shown, id: \.key) { miss in
-                BarMark(x: .value("Key", TapMapPalette.name(of: miss.key)), y: .value("Missed", miss.share), width: .ratio(0.62))
-                    .foregroundStyle(TapColor.miss.opacity(selected == nil || selected == miss.key ? 0.9 : 0.3).gradient)
-                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 3, topTrailingRadius: 3, style: .continuous))
+                BarMark(
+                    x: .value("Key", TapMapPalette.name(of: miss.key)), y: .value("Missed", miss.share),
+                    width: .ratio(0.62)
+                )
+                .foregroundStyle(TapColor.miss.opacity(selected == nil || selected == miss.key ? 0.9 : 0.3).gradient)
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 3, topTrailingRadius: 3, style: .continuous))
             }
             RuleMark(y: .value("All letters", typical))
                 .foregroundStyle(Color.appSecondary.opacity(0.7))
@@ -757,7 +820,7 @@ private struct Misses: View {
                         .foregroundStyle(Color.appSecondary)
                 }
         }
-        .chartYScale(domain: 0 ... max(peak, typical * 1.4))
+        .chartYScale(domain: 0...max(peak, typical * 1.4))
         .chartYAxis {
             AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(Color.appDivider)
@@ -771,14 +834,18 @@ private struct Misses: View {
         }
         .chartXSelection(value: $hovered)
         .onChange(of: hovered) { _, name in
-            if let name, let miss = shown.first(where: { TapMapPalette.name(of: $0.key) == name }) { pick(miss.key, false) }
+            if let name, let miss = shown.first(where: { TapMapPalette.name(of: $0.key) == name }) {
+                pick(miss.key, false)
+            }
         }
         .frame(height: 132)
         .accessibilityLabel("Misses by key")
     }
 
     private func row(_ miss: TapSummary.Miss) -> some View {
-        Button { pick(miss.key, true) } label: {
+        Button {
+            pick(miss.key, true)
+        } label: {
             HStack(spacing: 12) {
                 Keycap(key: miss.key, size: 34)
                 if let onto = miss.onto {
@@ -799,6 +866,8 @@ private struct Misses: View {
             .contentShape(.rect)
         }
         .buttonStyle(CardPress())
-        .accessibilityLabel("\(TapMapPalette.name(of: miss.key)), \(TapMapPalette.percent(miss.share)) missed\(miss.onto.map { ", mostly onto \(TapMapPalette.name(of: $0))" } ?? "")")
+        .accessibilityLabel(
+            "\(TapMapPalette.name(of: miss.key)), \(TapMapPalette.percent(miss.share)) missed\(miss.onto.map { ", mostly onto \(TapMapPalette.name(of: $0))" } ?? "")"
+        )
     }
 }

@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// Two keys, A and B, painted as a theme paints them, as Raycast's theme picker shows each choice. For Physical and
 /// Mechanical, Automatic shows A light and B dark.
@@ -24,7 +24,8 @@ public final class KeycapSwatchView: UIView {
         let split = theme.hasAppearance && appearance == .automatic
         for (index, key) in keys.enumerated() {
             let darkKey = split ? index == 1 : dark
-            key.theme = KeyboardTheme.named(theme, appearance: split ? (darkKey ? .dark : .light) : appearance, dark: darkKey, style: .current)
+            key.theme = KeyboardTheme.named(
+                theme, appearance: split ? (darkKey ? .dark : .light) : appearance, dark: darkKey, style: .current)
             var metrics = Self.metrics
             if let shape = key.theme.keyShape { metrics.cornerRadius = shape.cornerRadius(letterWidth: Self.key.width) }
             key.configure(KeyFace(content: .letter(index == 0 ? "A" : "B")), metrics: metrics)
@@ -45,7 +46,9 @@ public final class KeycapSwatchView: UIView {
             key.transform = .identity
             key.bounds = CGRect(origin: .zero, size: Self.key)
             key.transform = CGAffineTransform(scaleX: scale, y: scale)
-            key.center = CGPoint(x: bounds.midX - width / 2 + size.width / 2 + CGFloat(index) * (size.width + Self.gap * scale), y: bounds.midY)
+            key.center = CGPoint(
+                x: bounds.midX - width / 2 + size.width / 2 + CGFloat(index) * (size.width + Self.gap * scale),
+                y: bounds.midY)
         }
     }
 }

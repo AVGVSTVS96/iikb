@@ -41,17 +41,28 @@ struct LanguageModel {
     func predictor(after previous: String?, earlier: String?, expected: Network.Next?) -> (String) -> Double {
         { word in
             let below = unigram(word)
-            guard let expected else { return Math.log(probability(word, after: previous, earlier: earlier, over: below)) }
-            return Math.log(probability(word, after: previous, earlier: earlier, over: expected.probability(of: word, below: below), trusting: 8))
+            guard let expected else {
+                return Math.log(probability(word, after: previous, earlier: earlier, over: below))
+            }
+            return Math.log(
+                probability(
+                    word, after: previous, earlier: earlier, over: expected.probability(of: word, below: below),
+                    trusting: 8))
         }
     }
 
-    private func probability(_ word: String, after previous: String?, earlier: String?, over corpus: Double, trusting trust: Double = 1) -> Double {
+    private func probability(
+        _ word: String, after previous: String?, earlier: String?, over corpus: Double, trusting trust: Double = 1
+    ) -> Double {
         var p = corpus
         for context in TypingMemory.contexts(previous, earlier) {
             let (count, total, types) = memory.count(of: word, after: context)
             let below = trust * Double(types)
-            if total > 0 { p = (max(Double(count) - Self.discount, 0) + (below + Self.discount * Double(types)) * p) / (Double(total) + below) }
+            if total > 0 {
+                p =
+                    (max(Double(count) - Self.discount, 0) + (below + Self.discount * Double(types)) * p)
+                    / (Double(total) + below)
+            }
         }
         return app?.probability(of: word, after: previous, below: p) ?? p
     }

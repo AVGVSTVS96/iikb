@@ -41,10 +41,11 @@ nonisolated enum VoiceProbe {
     private static let log = URL.documentsDirectory.appendingPathComponent("probe.log")
 
     private static func say(_ line: String) {
-        let line = "[probe \(Date.now.formatted(date: .omitted, time: .standard))] \(line) · thermal \(ProcessInfo.processInfo.thermalState.rawValue)\n"
+        let line =
+            "[probe \(Date.now.formatted(date: .omitted, time: .standard))] \(line) · thermal \(ProcessInfo.processInfo.thermalState.rawValue)\n"
         print(line, terminator: "")
-        guard let file = try? FileHandle(forWritingTo: log) else { // file: probe log
-            try? Data(line.utf8).write(to: log) // file: probe log
+        guard let file = try? FileHandle(forWritingTo: log) else {  // file: probe log
+            try? Data(line.utf8).write(to: log)  // file: probe log
             return
         }
         file.seekToEndOfFile()
@@ -58,16 +59,21 @@ nonisolated enum VoiceProbe {
         if name == "clean" { return removeUnified() }
         if name.hasPrefix("unified") { return try await probeUnified(name, samples) }
         guard let version = VoiceModel.Model(rawValue: name)?.version else { return say("no Parakeet named \(name)") }
-        let units: MLComputeUnits = switch UserDefaults.standard.string(forKey: "iikbVoiceProbeUnits") {
-        case "cpu": .cpuOnly
-        case "gpu": .cpuAndGPU
-        default: .cpuAndNeuralEngine
-        }
+        let units: MLComputeUnits =
+            switch UserDefaults.standard.string(forKey: "iikbVoiceProbeUnits") {
+            case "cpu": .cpuOnly
+            case "gpu": .cpuAndGPU
+            default: .cpuAndNeuralEngine
+            }
         say("\(name), encoder on \(units.rawValue)")
         var began = Date.now
         let folder = try await AsrModels.download(to: version.folder, version: version)
         say("files there after \(seconds(since: began))")
-        let parts = [(ModelNames.ASR.preprocessorFile, MLComputeUnits.cpuOnly), (ModelNames.ASR.decoderFile, .cpuAndNeuralEngine), (ModelNames.ASR.jointV3File, .cpuAndNeuralEngine), (ModelNames.ASR.encoderFile, units)]
+        let parts = [
+            (ModelNames.ASR.preprocessorFile, MLComputeUnits.cpuOnly),
+            (ModelNames.ASR.decoderFile, .cpuAndNeuralEngine), (ModelNames.ASR.jointV3File, .cpuAndNeuralEngine),
+            (ModelNames.ASR.encoderFile, units),
+        ]
         for (file, unit) in parts {
             let config = MLModelConfiguration()
             config.computeUnits = unit
@@ -78,7 +84,8 @@ nonisolated enum VoiceProbe {
         began = .now
         let config = MLModelConfiguration()
         config.computeUnits = .cpuAndNeuralEngine
-        let models = try AsrModels.loadLocal(from: folder, version: version, configuration: config, encoderComputeUnits: units)
+        let models = try AsrModels.loadLocal(
+            from: folder, version: version, configuration: config, encoderComputeUnits: units)
         let manager = AsrManager(config: .default)
         try await manager.loadModels(models)
         say("all loaded again in \(seconds(since: began))")

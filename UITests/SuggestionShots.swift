@@ -9,7 +9,9 @@ final class SuggestionShots: XCTestCase {
         app.launch()
         XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10))
 
-        let steps = (environment["IIKB_STEPS"].flatMap { $0.isEmpty ? nil : $0 } ?? "empty:|hel:hel|helo:o|helo-space: |delete:⌫|clear:⌫⌫⌫⌫⌫⌫|omw:omw|omw-space: ").split(separator: "|")
+        let steps =
+            (environment["IIKB_STEPS"].flatMap { $0.isEmpty ? nil : $0 }
+            ?? "empty:|hel:hel|helo:o|helo-space: |delete:⌫|clear:⌫⌫⌫⌫⌫⌫|omw:omw|omw-space: ").split(separator: "|")
         for step in steps {
             let parts = step.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
             for character in parts[1] {

@@ -1,5 +1,5 @@
-import KeyboardCore
 import Foundation
+import KeyboardCore
 import KeyboardUI
 
 /// How much one device typed and said, a day at a time: the iPhone, from the keyboard's counts and Transcripts, or
@@ -83,11 +83,13 @@ extension Activity {
     init(hours: [TypingHour], transcripts: [Transcript]) {
         var apps: [String: Int] = [:]
         for hour in hours {
-            guard let date = Self.day(hour.day), (0 ..< 24).contains(hour.hour) else { continue }
+            guard let date = Self.day(hour.day), (0..<24).contains(hour.hour) else { continue }
             let tally = hour.tally
             var channel = Channel(
-                words: tally.words, characters: tally.characters, paced: Double(tally.characters) / 5, seconds: hour.seconds, keys: tally.keys,
-                deletes: tally.deletes, corrected: tally.corrected, undone: tally.undone, picked: tally.picked, emoji: tally.emoji
+                words: tally.words, characters: tally.characters, paced: Double(tally.characters) / 5,
+                seconds: hour.seconds, keys: tally.keys,
+                deletes: tally.deletes, corrected: tally.corrected, undone: tally.undone, picked: tally.picked,
+                emoji: tally.emoji
             )
             channel.hours[hour.hour] = Double(tally.characters)
             if hour.seconds >= 10, tally.characters >= 20 {
@@ -103,7 +105,9 @@ extension Activity {
         for transcript in transcripts where !transcript.text.isEmpty {
             let words = transcript.words
             if transcript.typed, let app = transcript.app { said[app, default: 0] += words }
-            var channel = Channel(words: words, characters: transcript.text.count, paced: Double(words), seconds: transcript.seconds, dictations: 1)
+            var channel = Channel(
+                words: words, characters: transcript.text.count, paced: Double(words), seconds: transcript.seconds,
+                dictations: 1)
             channel.hours[calendar.component(.hour, from: transcript.date)] = Double(transcript.text.count)
             let date = calendar.startOfDay(for: transcript.date)
             days[date, default: Day()].said = days[date, default: Day()].said + channel

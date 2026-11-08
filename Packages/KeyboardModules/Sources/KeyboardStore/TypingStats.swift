@@ -40,12 +40,18 @@ public enum TypingStats {
         }
         forgetIfDeleted()
         let manager = FileManager.default
-        if !manager.fileExists(atPath: keptURL.path(percentEncoded: false)), let shared = try? Data(contentsOf: sharedURL) { // file: append-only log
+        if !manager.fileExists(atPath: keptURL.path(percentEncoded: false)),
+            // file: append-only log
+            let shared = try? Data(contentsOf: sharedURL)
+        {
             create(shared, at: keptURL)
-        } else if !manager.fileExists(atPath: sharedURL.path(percentEncoded: false)), let kept = try? Data(contentsOf: keptURL) { // file: append-only log
+        } else if !manager.fileExists(atPath: sharedURL.path(percentEncoded: false)),
+            // file: append-only log
+            let kept = try? Data(contentsOf: keptURL)
+        {
             create(kept, at: sharedURL)
         }
-        if let pending = try? Data(contentsOf: ownURL), append(pending, to: sharedURL) { // file: append-only log
+        if let pending = try? Data(contentsOf: ownURL), append(pending, to: sharedURL) {  // file: append-only log
             append(pending, to: keptURL)
             try? manager.removeItem(at: ownURL)
         }
@@ -58,7 +64,7 @@ public enum TypingStats {
     /// Deletes this keyboard's copy once after each Delete Typing Stats.
     private static func forgetIfDeleted() {
         guard let deleted = SettingsStore.value(forKey: deletedKey, sharing: false) as? Int,
-              deleted != UserDefaults.standard.object(forKey: forgottenKey) as? Int
+            deleted != UserDefaults.standard.object(forKey: forgottenKey) as? Int
         else { return }
         try? FileManager.default.removeItem(at: keptURL)
         UserDefaults.standard.set(deleted, forKey: forgottenKey)
@@ -67,7 +73,8 @@ public enum TypingStats {
     /// Writes a file only when there's none, so of two keyboards putting one back only one does.
     nonisolated private static func create(_ data: Data, at url: URL) {
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let file = open(url.path(percentEncoded: false), O_WRONLY | O_APPEND | O_CREAT | O_EXCL, 0o644) // file: append-only log
+        // file: append-only log
+        let file = open(url.path(percentEncoded: false), O_WRONLY | O_APPEND | O_CREAT | O_EXCL, 0o644)
         guard file >= 0 else { return }
         defer { close(file) }
         _ = data.withUnsafeBytes { write(file, $0.baseAddress, $0.count) }
@@ -75,7 +82,7 @@ public enum TypingStats {
 
     @discardableResult nonisolated private static func append(_ data: Data, to url: URL) -> Bool {
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let file = open(url.path(percentEncoded: false), O_WRONLY | O_APPEND | O_CREAT, 0o644) // file: append-only log
+        let file = open(url.path(percentEncoded: false), O_WRONLY | O_APPEND | O_CREAT, 0o644)  // file: append-only log
         guard file >= 0 else { return false }
         defer { close(file) }
         return data.withUnsafeBytes { write(file, $0.baseAddress, $0.count) } == data.count
@@ -83,7 +90,7 @@ public enum TypingStats {
 
     /// Every hour the keyboard has shared, oldest first.
     nonisolated public static func shared() -> [TypingHour] {
-        guard let data = sharedURL.flatMap({ try? Data(contentsOf: $0) }) else { return [] } // file: append-only log
+        guard let data = sharedURL.flatMap({ try? Data(contentsOf: $0) }) else { return [] }  // file: append-only log
         let decoder = JSONDecoder()
         return data.split(separator: UInt8(ascii: "\n")).compactMap { try? decoder.decode(TypingHour.self, from: $0) }
     }

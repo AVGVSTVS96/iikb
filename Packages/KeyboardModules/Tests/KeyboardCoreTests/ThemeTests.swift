@@ -1,11 +1,14 @@
 import Testing
+
 @testable import KeyboardCore
 
 struct ThemeTests {
     @Test func physicalAndMechanicalKeysKeepTheirAppearanceWhileTheBarFollowsTheApp() {
         let lightKeysInDarkApp = KeyboardTheme.named(.physical, appearance: .light, dark: true, style: .ios27)
         #expect(lightKeysInDarkApp.letterKey.top == RGBA(white: 248 / 255))
-        #expect(lightKeysInDarkApp.candidateDivider == KeyboardTheme.dark(.ios27).candidateDivider, "the bar sits on iOS's dark card")
+        #expect(
+            lightKeysInDarkApp.candidateDivider == KeyboardTheme.dark(.ios27).candidateDivider,
+            "the bar sits on iOS's dark card")
         let automatic = KeyboardTheme.named(.mechanical, appearance: .automatic, dark: true, style: .ios27)
         #expect(automatic == KeyboardTheme.named(.mechanical, appearance: .dark, dark: true, style: .ios27))
         #expect(automatic.letterKey.keycap != nil)
@@ -27,7 +30,9 @@ struct ThemeTests {
 
     @Test func iOS5PressesLabelsIntoItsKeys() {
         let theme = KeyboardTheme.named(.classic, appearance: .dark, dark: false, style: .ios27)
-        #expect(theme.letterKey.labelShadow?.y == 1 && theme.functionKey.labelShadow?.y == -1, "light under dark letters, dark over light ones")
+        #expect(
+            theme.letterKey.labelShadow?.y == 1 && theme.functionKey.labelShadow?.y == -1,
+            "light under dark letters, dark over light ones")
         #expect(theme.functionKey.top != theme.letterKey.top && theme.functionKey.rim != nil)
     }
 
@@ -42,12 +47,17 @@ struct ThemeTests {
         var numbered = plain
         numbered.showsNumberRow = true
         let metrics = KeyboardMetrics.for(.phone, width: 466, height: 678, style: .ios27)
-        let without = Layouts.layout(for: plain), with = Layouts.layout(for: numbered)
+        let without = Layouts.layout(for: plain)
+        let with = Layouts.layout(for: numbered)
         #expect(with.hasNumberRow && with.rows.count == without.rows.count + 1)
-        let grow = metrics.height(rows: with.rows.count, hasNumberRow: true) - metrics.height(rows: without.rows.count, hasNumberRow: false)
+        let grow =
+            metrics.height(rows: with.rows.count, hasNumberRow: true)
+            - metrics.height(rows: without.rows.count, hasNumberRow: false)
         #expect(grow == metrics.numberRowHeight + metrics.rowGap)
-        let before = KeyGrid(without, width: 466, metrics: metrics.grid), after = KeyGrid(with, width: 466, metrics: metrics.grid)
-        let q = before.frame(of: "q")!, numberedQ = after.frame(of: "q")!
+        let before = KeyGrid(without, width: 466, metrics: metrics.grid)
+        let after = KeyGrid(with, width: 466, metrics: metrics.grid)
+        let q = before.frame(of: "q")!
+        let numberedQ = after.frame(of: "q")!
         #expect(numberedQ.x == q.x && numberedQ.y == q.y + grow, "q keeps its place above the bottom")
         #expect(after.frame(of: "1")!.height == metrics.numberRowHeight)
         #expect(!Layouts.layout(for: LayoutContext(device: .phone, layer: .numbers, showsNumberRow: true)).hasNumberRow)
@@ -55,11 +65,12 @@ struct ThemeTests {
     }
 
     @Test func emojiTakeThePreferredToneUntilYouPickOne() {
-        let search = EmojiSearch(text: """
-        # Smileys & People
-        👍 👍🏻 👍🏼 👍🏽 👍🏾 👍🏿\t2\tthumbs up|+1|hand|thumb|up|yes
-        😀\t52\tgrinning face|face|grin|happy|smile
-        """)
+        let search = EmojiSearch(
+            text: """
+                # Smileys & People
+                👍 👍🏻 👍🏼 👍🏽 👍🏾 👍🏿\t2\tthumbs up|+1|hand|thumb|up|yes
+                😀\t52\tgrinning face|face|grin|happy|smile
+                """)
         var history = EmojiHistory()
         history.skinTone = .medium
         #expect(search.search("thumb", history: history) == ["👍🏽"])

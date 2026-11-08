@@ -107,7 +107,8 @@ public struct TypingEngine {
         if panel != nil, deleteHeldInSearch { return }
         tally.keys += 1
 
-        let wasSpace = lastSpace == .typed, picked = lastSpace == .picked
+        let wasSpace = lastSpace == .typed
+        let picked = lastSpace == .picked
         let revert = self.revert
         lastSpace = nil
         self.revert = nil
@@ -141,7 +142,9 @@ public struct TypingEngine {
         case .space:
             if wasSpace, let tap, joinBack(space: tap, in: document) {
                 lastSpace = .typed
-            } else if wasSpace, settings.periodShortcut, traits.smartPunctuation, text.owned >= 1, Self.endsSentenceable(text.before) {
+            } else if wasSpace, settings.periodShortcut, traits.smartPunctuation, text.owned >= 1,
+                Self.endsSentenceable(text.before)
+            {
                 write(". ", replacing: 1, in: document)
                 stray = tap.map { StraySpace(tap: $0, swallowed: ". ", restored: " ", counted: true) }
             } else {
@@ -256,21 +259,28 @@ public struct TypingEngine {
             let traits = traits
             attach(document)
             if id != nil {
-                if draft?.isLost == true { draft?.place(before: text.before, selected: text.selected, after: text.after ?? "") }
+                if draft?.isLost == true {
+                    draft?.place(before: text.before, selected: text.selected, after: text.after ?? "")
+                }
                 if draft?.isLost != false {
                     finishDraft(sent: false)
                     draft = DictationDraft(text)
                 }
             }
             let words = corrector?.typedWords ?? Vocabulary.Typed()
-            var typed = "", before = ""
+            var typed = ""
+            var before = ""
             insertWhole(in: document) {
                 before = $0.before
                 let field = $0.before + " " + ($0.after ?? "")
                 let heard = Vocabulary().corrected(heard, lexicon: lexicon, field: field, typed: words)
-                typed = DictationReading.typed(plain.map { Vocabulary().corrected($0, lexicon: lexicon, field: field, typed: words) } ?? heard,
-                                               in: traits, after: $0.before)
-                    ?? Self.fitted(SpokenNumber.inline(SpokenAddress.inline(heard, lexicon: lexicon)), between: $0.before, and: $0.after, lexicon: lexicon, capitals: capitals)
+                typed =
+                    DictationReading.typed(
+                        plain.map { Vocabulary().corrected($0, lexicon: lexicon, field: field, typed: words) } ?? heard,
+                        in: traits, after: $0.before)
+                    ?? Self.fitted(
+                        SpokenNumber.inline(SpokenAddress.inline(heard, lexicon: lexicon)), between: $0.before,
+                        and: $0.after, lexicon: lexicon, capitals: capitals)
                 return typed
             }
             if let id { draft?.add(id, typed: typed, in: traits, after: before) }
@@ -438,7 +448,9 @@ public struct TypingEngine {
             sessionEnded = false
             forgetWord()
         }
-        if report == .changed || text.before != known.before || text.after != known.after || text.selected != known.selected {
+        if report == .changed || text.before != known.before || text.after != known.after
+            || text.selected != known.selected
+        {
             refreshShift()
             suggestionsChanged()
         }
@@ -452,7 +464,10 @@ public struct TypingEngine {
 
     mutating func refreshShift() {
         guard shift != .locked, shiftHold == nil else { return }
-        guard panel == nil else { return shift = .off }
+        guard panel == nil else {
+            shift = .off
+            return
+        }
         let mode = settings.autoCapitalization ? traits.autocapitalization : .none
         let capitalize = layer == .letters && Self.shouldCapitalize(text.before, mode: mode)
         shift = capitalize ? .on : .off
@@ -461,7 +476,11 @@ public struct TypingEngine {
     /// The one way text changes: deletes `count` characters before the caret, then inserts `string`, in the host and
     /// in `text` alike.
     mutating func write(_ string: String, replacing count: Int = 0, in document: some TextDocument) {
-        if !text.selected.isEmpty { history.clear() } else if !replaying { history.record(replacing: count, of: text.before, with: string) }
+        if !text.selected.isEmpty {
+            history.clear()
+        } else if !replaying {
+            history.record(replacing: count, of: text.before, with: string)
+        }
         sessionEnded = false
         crossing = nil
         beforeReturn = nil
@@ -489,9 +508,12 @@ public struct TypingEngine {
     @discardableResult
     private mutating func reconcile(_ document: some TextDocument) -> TextState.Report {
         let known = text
-        let report = text.reconcile(before: document.textBeforeInput, after: document.textAfterInput, selected: document.selectedText)
+        let report = text.reconcile(
+            before: document.textBeforeInput, after: document.textAfterInput, selected: document.selectedText)
         guard draft != nil else { return report }
-        if [document.textBeforeInput, document.selectedText, document.textAfterInput].contains(where: { !($0 ?? "").isEmpty }) {
+        if [document.textBeforeInput, document.selectedText, document.textAfterInput].contains(where: {
+            !($0 ?? "").isEmpty
+        }) {
             draft?.see(before: document.textBeforeInput?.count ?? 0, after: document.textAfterInput?.count ?? 0)
         }
         guard report != .behind else { return report }
@@ -593,7 +615,9 @@ extension TypingEngine {
     /// it. Its capitals follow the field's and Auto-Capitalization's, as typing's do: with none, a sentence's first word
     /// is lowered where the lexicon spells it lowercase, and so is "I", leaving names; with sentences, each sentence starts
     /// with a capital. It's spaced from the words on either side.
-    static func fitted(_ heard: String, between before: String, and after: String?, lexicon: Lexicon?, capitals: Autocapitalization) -> String {
+    static func fitted(
+        _ heard: String, between before: String, and after: String?, lexicon: Lexicon?, capitals: Autocapitalization
+    ) -> String {
         var heard = Array(heard)
         let last = before.last { $0 != " " && $0 != "\t" && !closers.contains($0) }
         let startsSentence = last.map { $0.isNewline || sentenceEnders.contains($0) } ?? true
@@ -634,8 +658,12 @@ extension TypingEngine {
             if expecting, Words.isWordCharacter(character) {
                 if character.isLetter { starts.append(at) }
                 expecting = false
-            } else if character.isNewline || sentenceEnders.contains(character) && (at + 1 == text.count || text[at + 1].isWhitespace) {
-                expecting = !Words.closesAbbreviation(text, at: at) || text[(at + 1)...].first { !$0.isWhitespace }?.isLowercase != true
+            } else if character.isNewline
+                || sentenceEnders.contains(character) && (at + 1 == text.count || text[at + 1].isWhitespace)
+            {
+                expecting =
+                    !Words.closesAbbreviation(text, at: at)
+                    || text[(at + 1)...].first { !$0.isWhitespace }?.isLowercase != true
             } else if expecting, !character.isWhitespace, !Words.openers.contains(character), character != "•" {
                 expecting = false
             }
@@ -646,7 +674,8 @@ extension TypingEngine {
     private static func spellsI(_ word: ArraySlice<Character>) -> Bool {
         guard word.first == "I" else { return false }
         let rest = word.dropFirst()
-        return rest.isEmpty || ["'", "’"].contains(rest.first) && ["m", "ll", "ve", "d"].contains(String(rest.dropFirst()))
+        return rest.isEmpty
+            || ["'", "’"].contains(rest.first) && ["m", "ll", "ve", "d"].contains(String(rest.dropFirst()))
     }
 
     static func endsSentenceable(_ text: String?) -> Bool {

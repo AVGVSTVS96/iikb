@@ -21,7 +21,8 @@ final class OneHandedTests: XCTestCase {
 
     private func holdNumbersAndPick(atX x: CGFloat) {
         let numbers = key("numbers")
-        let pick = numbers.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x - numbers.frame.minX, dy: -35))
+        let pick = numbers.coordinate(withNormalizedOffset: .zero).withOffset(
+            CGVector(dx: x - numbers.frame.minX, dy: -35))
         numbers.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 1, thenDragTo: pick)
     }
 
@@ -48,10 +49,12 @@ final class OneHandedTests: XCTestCase {
     func testHoldingEmojiOpensTheLayoutMenu() throws {
         let emoji = key("emoji")
         XCTAssertTrue(emoji.waitForExistence(timeout: 5), "the emoji key sits beside space")
-        let pick = emoji.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 0, dy: -45))
+        let pick = emoji.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(
+            CGVector(dx: 0, dy: -45))
         if let shots = ProcessInfo.processInfo.environment["IIKB_SHOTS"] {
             FileManager.default.createFile(atPath: shots + ".holding", contents: nil)
-            emoji.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 1, thenDragTo: pick, withVelocity: .slow, thenHoldForDuration: 10)
+            emoji.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(
+                forDuration: 1, thenDragTo: pick, withVelocity: .slow, thenHoldForDuration: 10)
         } else {
             emoji.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 1, thenDragTo: pick)
         }

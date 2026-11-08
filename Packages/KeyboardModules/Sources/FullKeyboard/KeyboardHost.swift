@@ -9,44 +9,47 @@ import UIKit
 /// it is API: a missing step answers nil, and the App Store build (`APP_STORE`, scripts/testflight) leaves it all out.
 enum KeyboardHost {
     #if APP_STORE
-    static func appeared() {}
-    static func harvest() {}
-    static func app(of keyboard: UIInputViewController) -> String? { nil }
+        static func appeared() {}
+        static func harvest() {}
+        static func app(of keyboard: UIInputViewController) -> String? { nil }
     #else
-    private static var names: [Int: String] = [:]
+        private static var names: [Int: String] = [:]
 
-    static func appeared() {
-        names = [:]
-        iikbEnableKeyboardArbiter()
-        if let client, value(client, "connection") == nil, client.responds(to: NSSelectorFromString("startConnection")) {
-            client.perform(NSSelectorFromString("startConnection"))
+        static func appeared() {
+            names = [:]
+            iikbEnableKeyboardArbiter()
+            if let client, value(client, "connection") == nil,
+                client.responds(to: NSSelectorFromString("startConnection"))
+            {
+                client.perform(NSSelectorFromString("startConnection"))
+            }
+            harvest()
         }
-        harvest()
-    }
 
-    /// Keeps the app the arbiter names now.
-    static func harvest() {
-        guard let state = client.flatMap({ value($0, "currentClientState") }) as? NSObject,
-              let name = value(state, "sourceBundleIdentifier") as? String, !name.isEmpty,
-              let id = (value(state, "processIdentifier") as? NSNumber)?.intValue, id > 0
-        else { return }
-        names[id] = name
-    }
+        /// Keeps the app the arbiter names now.
+        static func harvest() {
+            guard let state = client.flatMap({ value($0, "currentClientState") }) as? NSObject,
+                let name = value(state, "sourceBundleIdentifier") as? String, !name.isEmpty,
+                let id = (value(state, "processIdentifier") as? NSNumber)?.intValue, id > 0
+            else { return }
+            names[id] = name
+        }
 
-    static func app(of keyboard: UIInputViewController) -> String? {
-        harvest()
-        let id = (value(keyboard, "_hostProcessIdentifier") as? NSNumber)?.intValue ?? 0
-        return names[id]
-    }
+        static func app(of keyboard: UIInputViewController) -> String? {
+            harvest()
+            let id = (value(keyboard, "_hostProcessIdentifier") as? NSNumber)?.intValue ?? 0
+            return names[id]
+        }
 
-    private static var client: NSObject? {
-        let shared = NSSelectorFromString("automaticSharedArbiterClient")
-        guard let type = NSClassFromString("_UIKeyboardArbiterClient") as AnyObject?, type.responds(to: shared) else { return nil }
-        return type.perform(shared)?.takeUnretainedValue() as? NSObject
-    }
+        private static var client: NSObject? {
+            let shared = NSSelectorFromString("automaticSharedArbiterClient")
+            guard let type = NSClassFromString("_UIKeyboardArbiterClient") as AnyObject?, type.responds(to: shared)
+            else { return nil }
+            return type.perform(shared)?.takeUnretainedValue() as? NSObject
+        }
 
-    private static func value(_ object: NSObject, _ key: String) -> Any? {
-        object.responds(to: NSSelectorFromString(key)) ? object.value(forKey: key) : nil
-    }
+        private static func value(_ object: NSObject, _ key: String) -> Any? {
+            object.responds(to: NSSelectorFromString(key)) ? object.value(forKey: key) : nil
+        }
     #endif
 }

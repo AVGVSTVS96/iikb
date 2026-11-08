@@ -30,14 +30,21 @@ public struct SwipeLayout: Sendable, Equatable {
         var centers: [Character: (x: Double, y: Double)] = [:]
         var box: (minX: Double, minY: Double, maxX: Double, maxY: Double)?
         for (key, frame) in grid.rows.joined() {
-            guard let label = key.label?.lowercased(), label.utf8.count == 1, let letter = label.first, letter.isASCII, letter.isLowercase else { continue }
+            guard let label = key.label?.lowercased(), label.utf8.count == 1, let letter = label.first, letter.isASCII,
+                letter.isLowercase
+            else { continue }
             let cell = grid.cell(of: frame)
             centers[letter] = (frame.midX, frame.midY)
-            box = (min(box?.minX ?? cell.x, cell.x), min(box?.minY ?? cell.y, cell.y),
-                   max(box?.maxX ?? cell.x + cell.width, cell.x + cell.width), max(box?.maxY ?? cell.y + cell.height, cell.y + cell.height))
+            box = (
+                min(box?.minX ?? cell.x, cell.x), min(box?.minY ?? cell.y, cell.y),
+                max(box?.maxX ?? cell.x + cell.width, cell.x + cell.width),
+                max(box?.maxY ?? cell.y + cell.height, cell.y + cell.height)
+            )
         }
         guard let box else { return nil }
-        self.init(centers: centers, frame: Rect(x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY))
+        self.init(
+            centers: centers,
+            frame: Rect(x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY))
     }
 
     public static func == (a: SwipeLayout, b: SwipeLayout) -> Bool {
@@ -51,7 +58,8 @@ public struct SwipeLayout: Sendable, Equatable {
         let x = path.map { ($0.x - frame.x) / frame.width }
         let y = path.map { ($0.y - frame.y) / frame.height }
         let time = path.map { ($0.time - start) * 1000 }
-        var rx = x, ry = y
+        var rx = x
+        var ry = y
         if let end = time.last, end > 1e-3 {
             let count = max(2, Int((end / (1000.0 / 60)).rounded(.toNearestOrEven)) + 1)
             let grid = (0..<count).map { end * Double($0) / Double(count - 1) }

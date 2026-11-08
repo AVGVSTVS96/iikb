@@ -70,7 +70,8 @@ public struct KeyPaint: Hashable, Sendable {
     public var drop: Drop?
 
     public init(
-        top: RGBA, bottom: RGBA, pressedTop: RGBA, pressedBottom: RGBA, label: RGBA, labelShadow: LabelShadow? = nil, rim: Rim? = nil,
+        top: RGBA, bottom: RGBA, pressedTop: RGBA, pressedBottom: RGBA, label: RGBA, labelShadow: LabelShadow? = nil,
+        rim: Rim? = nil,
         keycap: Keycap? = nil, drop: Drop? = nil
     ) {
         self.top = top
@@ -145,7 +146,8 @@ public struct Drop: Hashable, Sendable {
 /// width (measured on the open Duo in portrait and landscape, and in its app's preview), letters, labels (`123`) and
 /// symbols at these shares of Apple's sizes, and labels `labelLift` points above the middle.
 public struct KeyShape: Hashable, Sendable {
-    public static let raycast = KeyShape(cornerBase: 3.9, cornerPerWidth: 0.143, letterScale: 1.08, labelScale: 0.67, symbolScale: 0.86, labelLift: 1.6)
+    public static let raycast = KeyShape(
+        cornerBase: 3.9, cornerPerWidth: 0.143, letterScale: 1.08, labelScale: 0.67, symbolScale: 0.86, labelLift: 1.6)
 
     public var cornerBase, cornerPerWidth, letterScale, labelScale, symbolScale, labelLift: Double
 
@@ -156,12 +158,15 @@ extension KeyboardTheme {
     /// The theme as the keyboard draws it in a host that's dark or light: the bar and panels sit on iOS's card and follow
     /// the host, while Physical and Mechanical keys follow their own appearance. Colors are Raycast's, read off its
     /// keyboard and its app's preview on the iPhone Duo (docs/design.md, "Themes").
-    public static func named(_ name: ThemeName, appearance: ThemeAppearance = .automatic, dark: Bool, style: KeyboardStyle) -> KeyboardTheme {
-        let darkKeys = switch appearance {
-        case .automatic: dark
-        case .dark: true
-        case .light: false
-        }
+    public static func named(
+        _ name: ThemeName, appearance: ThemeAppearance = .automatic, dark: Bool, style: KeyboardStyle
+    ) -> KeyboardTheme {
+        let darkKeys =
+            switch appearance {
+            case .automatic: dark
+            case .dark: true
+            case .light: false
+            }
         var theme = dark ? Self.dark(style) : Self.light(style)
         theme.keyShape = .raycast
         switch name {
@@ -175,25 +180,38 @@ extension KeyboardTheme {
             theme.letterKey = .flat(.clear, pressed: pressed, label: theme.label)
             theme.functionKey = theme.letterKey
         case .physical:
-            theme.letterKey = darkKeys
+            theme.letterKey =
+                darkKeys
                 ? KeyPaint(
-                    top: .rgb(11, 11, 11), bottom: .rgb(5, 5, 5), pressedTop: .rgb(58, 58, 60), pressedBottom: .rgb(52, 52, 54), label: .white,
+                    top: .rgb(11, 11, 11), bottom: .rgb(5, 5, 5), pressedTop: .rgb(58, 58, 60),
+                    pressedBottom: .rgb(52, 52, 54), label: .white,
                     rim: Rim(RGBA(white: 1, alpha: 0.15), width: 1 / 3, fade: 0.25)
                 )
                 : KeyPaint(
-                    top: .rgb(248, 248, 248), bottom: .rgb(248, 248, 248), pressedTop: .rgb(196, 198, 204), pressedBottom: .rgb(196, 198, 204),
+                    top: .rgb(248, 248, 248), bottom: .rgb(248, 248, 248), pressedTop: .rgb(196, 198, 204),
+                    pressedBottom: .rgb(196, 198, 204),
                     label: .rgb(44, 44, 44), rim: Rim(RGBA(white: 1, alpha: 0.6), width: 1 / 3, fade: 0.1)
                 )
             theme.functionKey = theme.letterKey
         case .mechanical:
-            theme.letterKey = darkKeys
+            theme.letterKey =
+                darkKeys
                 ? KeyPaint(
-                    top: .rgb(23, 23, 23), bottom: .rgb(32, 32, 32), pressedTop: .rgb(17, 17, 17), pressedBottom: .rgb(24, 24, 24), label: .white,
-                    keycap: Keycap(sides: [Stop(.rgb(23, 23, 23), at: 0), Stop(.rgb(14, 14, 14), at: 0.8), Stop(.rgb(13, 13, 13), at: 1)], glow: RGBA(white: 1, alpha: 0.12))
+                    top: .rgb(23, 23, 23), bottom: .rgb(32, 32, 32), pressedTop: .rgb(17, 17, 17),
+                    pressedBottom: .rgb(24, 24, 24), label: .white,
+                    keycap: Keycap(
+                        sides: [
+                            Stop(.rgb(23, 23, 23), at: 0), Stop(.rgb(14, 14, 14), at: 0.8),
+                            Stop(.rgb(13, 13, 13), at: 1),
+                        ], glow: RGBA(white: 1, alpha: 0.12))
                 )
                 : KeyPaint(
-                    top: .rgb(250, 250, 250), bottom: .rgb(229, 229, 229), pressedTop: .rgb(232, 232, 232), pressedBottom: .rgb(214, 214, 214),
-                    label: .rgb(42, 42, 41), keycap: Keycap(sides: [Stop(.rgb(224, 224, 224), at: 0), Stop(.rgb(219, 219, 219), at: 1)], glow: RGBA(white: 1, alpha: 0.23))
+                    top: .rgb(250, 250, 250), bottom: .rgb(229, 229, 229), pressedTop: .rgb(232, 232, 232),
+                    pressedBottom: .rgb(214, 214, 214),
+                    label: .rgb(42, 42, 41),
+                    keycap: Keycap(
+                        sides: [Stop(.rgb(224, 224, 224), at: 0), Stop(.rgb(219, 219, 219), at: 1)],
+                        glow: RGBA(white: 1, alpha: 0.23))
                 )
             theme.functionKey = theme.letterKey
         case .classic:
@@ -209,15 +227,18 @@ extension KeyboardTheme {
         let lit = { (alpha: Double) in Rim(RGBA(white: 1, alpha: alpha), width: 0.85, fade: 0.2) }
         let pressedIn = LabelShadow(RGBA(white: 0, alpha: 0.55), y: -1)
         letterKey = KeyPaint(
-            top: .rgb(245, 245, 245), bottom: .rgb(195, 197, 201), pressedTop: .rgb(196, 199, 205), pressedBottom: .rgb(172, 176, 184),
+            top: .rgb(245, 245, 245), bottom: .rgb(195, 197, 201), pressedTop: .rgb(196, 199, 205),
+            pressedBottom: .rgb(172, 176, 184),
             label: .black, labelShadow: LabelShadow(.white, y: 1), rim: lit(0.3), drop: drop
         )
         functionKey = KeyPaint(
-            top: .rgb(158, 166, 175), bottom: .rgb(109, 115, 124), pressedTop: .rgb(128, 134, 143), pressedBottom: .rgb(90, 95, 104),
+            top: .rgb(158, 166, 175), bottom: .rgb(109, 115, 124), pressedTop: .rgb(128, 134, 143),
+            pressedBottom: .rgb(90, 95, 104),
             label: .white, labelShadow: pressedIn, rim: lit(0.18), drop: drop
         )
         prominentKey = KeyPaint(
-            top: .rgb(96, 156, 245), bottom: .rgb(36, 98, 216), pressedTop: .rgb(70, 128, 222), pressedBottom: .rgb(26, 78, 190),
+            top: .rgb(96, 156, 245), bottom: .rgb(36, 98, 216), pressedTop: .rgb(70, 128, 222),
+            pressedBottom: .rgb(26, 78, 190),
             label: .white, labelShadow: pressedIn, drop: drop
         )
     }

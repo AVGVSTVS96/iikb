@@ -26,7 +26,8 @@ final class SourceTests: XCTestCase {
         XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
         type("i hate", in: app)
         let hint = app.descendants(matching: .any).matching(identifier: "iikb.notice").firstMatch
-        XCTAssertTrue(wait { hint.exists && hint.label == "Careful" }, "the source's hint stands in for the suggestions")
+        XCTAssertTrue(
+            wait { hint.exists && hint.label == "Careful" }, "the source's hint stands in for the suggestions")
         try shot("\(shots)-hint")
 
         hint.tap()

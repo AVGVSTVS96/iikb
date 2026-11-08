@@ -10,10 +10,15 @@ final class DictationEditTests: XCTestCase {
     private var text: String { field.value as? String ?? "" }
 
     func testWhatDictationsBecomeIsKeptWithTheirTranscripts() throws {
-        guard let ended = ProcessInfo.processInfo.environment["IIKB_ENDED"] else { throw XCTSkip("Run through scripts/edittest") }
+        guard let ended = ProcessInfo.processInfo.environment["IIKB_ENDED"] else {
+            throw XCTSkip("Run through scripts/edittest")
+        }
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-iikbFocus", "YES", "-iikbSends", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off", "-iikbMicKey", "NO"]
+        app.launchArguments = [
+            "-iikbFocus", "YES", "-iikbSends", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off",
+            "-iikbMicKey", "NO",
+        ]
         app.launch()
         if !key("space").waitForExistence(timeout: 10) {
             app.terminate()

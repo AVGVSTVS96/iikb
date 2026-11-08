@@ -1,5 +1,5 @@
-import KeyboardStore
 import KeyboardCore
+import KeyboardStore
 import KeyboardUI
 import SwiftUI
 import UIKit
@@ -14,7 +14,8 @@ final class HomeViewController: UIHostingController<AnyView>, UIGestureRecognize
     private let state: HomeState
 
     init() {
-        let field = UITextView(), state = HomeState()
+        let field = UITextView()
+        let state = HomeState()
         self.field = field
         self.state = state
         super.init(rootView: AnyView(NavigationStack { HomeView(state: state, field: field) }.readsWindow()))
@@ -35,10 +36,14 @@ final class HomeViewController: UIHostingController<AnyView>, UIGestureRecognize
         field.inputAssistantItem.trailingBarButtonGroups = []
         LaunchOptions.configure(field)
         state.typed = !field.text.isEmpty
-        NotificationCenter.default.addObserver(self, selector: #selector(refresh), name: UIApplication.didBecomeActiveNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(edited), name: UITextView.textDidChangeNotification, object: field)
-        NotificationCenter.default.addObserver(self, selector: #selector(focused), name: UITextView.textDidBeginEditingNotification, object: field)
-        NotificationCenter.default.addObserver(self, selector: #selector(focused), name: UITextView.textDidEndEditingNotification, object: field)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(refresh), name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(edited), name: UITextView.textDidChangeNotification, object: field)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(focused), name: UITextView.textDidBeginEditingNotification, object: field)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(focused), name: UITextView.textDidEndEditingNotification, object: field)
         let tap = UITapGestureRecognizer(target: self, action: #selector(endTyping))
         tap.cancelsTouchesInView = false
         tap.delegate = self
@@ -117,7 +122,8 @@ struct HomeView: View {
     var body: some View {
         let side = arrangement == .side
         let beside = side && window.width > window.height
-        let layout = beside ? AnyLayout(HStackLayout(alignment: .top, spacing: 12)) : AnyLayout(VStackLayout(spacing: 12))
+        let layout =
+            beside ? AnyLayout(HStackLayout(alignment: .top, spacing: 12)) : AnyLayout(VStackLayout(spacing: 12))
         ScrollView {
             layout {
                 VStack(spacing: side ? 12 : 28) {
@@ -138,7 +144,9 @@ struct HomeView: View {
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
         .ignoresSafeArea(.keyboard)
-        .onGeometryChange(for: [CGFloat].self) { [$0.size.height + $0.safeAreaInsets.bottom, $0.safeAreaInsets.bottom] } action: { page in
+        .onGeometryChange(for: [CGFloat].self) {
+            [$0.size.height + $0.safeAreaInsets.bottom, $0.safeAreaInsets.bottom]
+        } action: { page in
             reach = page[0]
             if !state.typing { bars = page[1] }
         }
@@ -170,7 +178,8 @@ struct HomeView: View {
                 }
             }
             .background(Color.appCard, in: .rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
     }
 
     private var setUp: some View {
@@ -178,17 +187,29 @@ struct HomeView: View {
     }
 
     /// The settings pages Home links straight to, each showing what it's set to.
-    private static let shortcuts: [SettingsPage.Page] = [.dictionary, .writing, .voice, .appearance, .typing, .feedback]
+    private static let shortcuts: [SettingsPage.Page] = [
+        .dictionary, .writing, .voice, .appearance, .typing, .feedback,
+    ]
 
     /// What iikb has gathered, in one card inset as the tiles under it are: a count for each tab that keeps it, opening
     /// that tab. Three across while every count fits at full size, then smaller, then a row each, so a count never runs
     /// out of its card.
     private var stats: some View {
-        let today = Transcripts.shared.all.prefix { Calendar.current.isDateInToday($0.date) }.reduce(0) { $0 + $1.words }
+        let today = Transcripts.shared.all.prefix { Calendar.current.isDateInToday($0.date) }.reduce(0) {
+            $0 + $1.words
+        }
         let counts = [
-            Count(symbol: "text.bubble.fill", color: .pink, value: today, label: "said today", title: today == 1 ? "Word said today" : "Words said today", open: { Router.shared.show(.transcripts) }),
-            Count(symbol: "list.clipboard.fill", color: .orange, value: state.copied, label: "in clipboard", title: "In clipboard", open: { Router.shared.show(.clipboard) }),
-            Count(symbol: "hand.tap.fill", color: .blue, value: state.taps, label: state.taps == 1 ? "tap learned" : "taps learned", title: state.taps == 1 ? "Tap learned" : "Taps learned", open: { Router.shared.show(StatsPage.Section.taps) }),
+            Count(
+                symbol: "text.bubble.fill", color: .pink, value: today, label: "said today",
+                title: today == 1 ? "Word said today" : "Words said today", open: { Router.shared.show(.transcripts) }),
+            Count(
+                symbol: "list.clipboard.fill", color: .orange, value: state.copied, label: "in clipboard",
+                title: "In clipboard", open: { Router.shared.show(.clipboard) }),
+            Count(
+                symbol: "hand.tap.fill", color: .blue, value: state.taps,
+                label: state.taps == 1 ? "tap learned" : "taps learned",
+                title: state.taps == 1 ? "Tap learned" : "Taps learned",
+                open: { Router.shared.show(StatsPage.Section.taps) }),
         ]
         return ViewThatFits(in: .horizontal) {
             CountColumns(counts: counts, size: 28)
@@ -203,12 +224,16 @@ struct HomeView: View {
 
     /// The cards `across` a row; filling, their rows share the height they're given.
     private func shortcutCards(across: Int, fills: Bool = false) -> some View {
-        let rows = stride(from: 0, to: Self.shortcuts.count, by: across).map { Array(Self.shortcuts[$0 ..< min($0 + across, Self.shortcuts.count)]) }
+        let rows = stride(from: 0, to: Self.shortcuts.count, by: across).map {
+            Array(Self.shortcuts[$0..<min($0 + across, Self.shortcuts.count)])
+        }
         return VStack(spacing: 12) {
             ForEach(rows, id: \.self) { row in
                 HStack(spacing: 12) {
                     ForEach(row, id: \.self) { page in
-                        Button { Router.shared.show(.settings, settings: page) } label: {
+                        Button {
+                            Router.shared.show(.settings, settings: page)
+                        } label: {
                             Tile(symbol: page.glyph.0, color: page.glyph.1, title: page.title, detail: page.value)
                         }
                         .buttonStyle(CardPress())

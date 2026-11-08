@@ -41,7 +41,9 @@ extension PickedMicrophone {
     private(set) var picked = SettingsStore.microphone
 
     private init() {
-        NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { _ in
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main
+        ) { _ in
             MainActor.assumeIsolated { MicrophoneChoices.shared.reload() }
         }
         reload()
@@ -55,9 +57,13 @@ extension PickedMicrophone {
     func reload() {
         let session = AVAudioSession.sharedInstance()
         if session.category != .playAndRecord { try? session.setCategory(.playAndRecord, options: Microphone.options) }
-        let ports = (session.availableInputs ?? []) + session.currentRoute.inputs + session.currentRoute.outputs.filter { PickedMicrophone.kind(of: $0) == .bluetooth }
+        let ports =
+            (session.availableInputs ?? []) + session.currentRoute.inputs
+            + session.currentRoute.outputs.filter { PickedMicrophone.kind(of: $0) == .bluetooth }
         connected = ports.map(PickedMicrophone.init)
-            .reduce(into: []) { found, microphone in if !found.contains(where: microphone.isSame) { found.append(microphone) } }
+            .reduce(into: []) { found, microphone in
+                if !found.contains(where: microphone.isSame) { found.append(microphone) }
+            }
             .sorted { ($0.kind == .iPhone ? 0 : 1, $0.name) < ($1.kind == .iPhone ? 0 : 1, $1.name) }
         picked = SettingsStore.microphone
     }

@@ -12,15 +12,23 @@ enum Kernel {
     }
 
     /// `out[r] = bias + x[r] · weights` for each row, where `weights` holds a row of `outputs` per input.
-    static func matmul(_ x: UnsafePointer<Float>, rows: Int, inputs: Int, _ weights: UnsafeRawPointer, _ bias: UnsafeRawPointer,
-                       outputs: Int, into out: UnsafeMutablePointer<Float>) {
+    static func matmul(
+        _ x: UnsafePointer<Float>, rows: Int, inputs: Int, _ weights: UnsafeRawPointer, _ bias: UnsafeRawPointer,
+        outputs: Int, into out: UnsafeMutablePointer<Float>
+    ) {
         let stride = outputs * 4
         for o in Swift.stride(from: 0, to: outputs, by: 8) {
             let start = bias.loadUnaligned(fromByteOffset: o * 4, as: Vector.self)
             var r = 0
             while r + 4 <= rows {
-                var a0 = start, a1 = start, a2 = start, a3 = start
-                let x0 = x + r * inputs, x1 = x0 + inputs, x2 = x1 + inputs, x3 = x2 + inputs
+                var a0 = start
+                var a1 = start
+                var a2 = start
+                var a3 = start
+                let x0 = x + r * inputs
+                let x1 = x0 + inputs
+                let x2 = x1 + inputs
+                let x3 = x2 + inputs
                 var w = weights + o * 4
                 for i in 0..<inputs {
                     let wv = w.loadUnaligned(as: Vector.self)
@@ -59,14 +67,18 @@ enum Kernel {
     }
 
     /// A convolution of each channel by its own taps along the steps, zero-padded to keep their number.
-    static func depthwise(_ x: UnsafePointer<Float>, steps: Int, channels: Int, taps: Int, dilation: Int, _ weights: UnsafePointer<Float>,
-                          _ bias: UnsafePointer<Float>?, into out: UnsafeMutablePointer<Float>) {
+    static func depthwise(
+        _ x: UnsafePointer<Float>, steps: Int, channels: Int, taps: Int, dilation: Int, _ weights: UnsafePointer<Float>,
+        _ bias: UnsafePointer<Float>?, into out: UnsafeMutablePointer<Float>
+    ) {
         for t in 0..<steps {
             for c in Swift.stride(from: 0, to: channels, by: 8) {
                 var sum = bias.map { load($0, c) } ?? Vector()
                 for k in 0..<taps {
                     let source = t + (k - taps / 2) * dilation
-                    if source >= 0 && source < steps { sum += load(weights, k * channels + c) * load(x, source * channels + c) }
+                    if source >= 0 && source < steps {
+                        sum += load(weights, k * channels + c) * load(x, source * channels + c)
+                    }
                 }
                 store(sum, out, t * channels + c)
             }
@@ -83,8 +95,11 @@ enum Kernel {
     }
 
     /// Global response normalization: each channel scaled by how strong it is over the steps next to the mean strength.
-    static func normalize(_ x: UnsafeMutablePointer<Float>, steps: Int, width: Int, gamma: UnsafePointer<Float>, beta: UnsafePointer<Float>,
-                          scratch: UnsafeMutablePointer<Float>) {
+    static func normalize(
+        _ x: UnsafeMutablePointer<Float>, steps: Int, width: Int, gamma: UnsafePointer<Float>,
+        beta: UnsafePointer<Float>,
+        scratch: UnsafeMutablePointer<Float>
+    ) {
         for c in Swift.stride(from: 0, to: width, by: 8) {
             var energy = Vector()
             for t in 0..<steps {
@@ -97,7 +112,8 @@ enum Kernel {
         for c in 0..<width { mean += scratch[c] }
         mean = mean / Float(width) + 1e-6
         for c in Swift.stride(from: 0, to: width, by: 8) {
-            let factor = load(gamma, c) * load(scratch, c) / mean + 1, shift = load(beta, c)
+            let factor = load(gamma, c) * load(scratch, c) / mean + 1
+            let shift = load(beta, c)
             for t in 0..<steps { store(load(x, t * width + c) * factor + shift, x, t * width + c) }
         }
     }
@@ -111,8 +127,10 @@ enum Kernel {
     }
 
     /// `x * scale + residual`, the scale one per channel.
-    static func scaleAndAdd(_ x: UnsafePointer<Float>, steps: Int, width: Int, scale: UnsafePointer<Float>, residual: UnsafePointer<Float>,
-                            into out: UnsafeMutablePointer<Float>) {
+    static func scaleAndAdd(
+        _ x: UnsafePointer<Float>, steps: Int, width: Int, scale: UnsafePointer<Float>, residual: UnsafePointer<Float>,
+        into out: UnsafeMutablePointer<Float>
+    ) {
         for t in 0..<steps {
             for c in Swift.stride(from: 0, to: width, by: 8) {
                 store(load(x, t * width + c) * load(scale, c) + load(residual, t * width + c), out, t * width + c)
@@ -120,7 +138,10 @@ enum Kernel {
         }
     }
 
-    static func layerNorm(_ x: UnsafeMutablePointer<Float>, steps: Int, width: Int, _ weight: UnsafePointer<Float>, _ bias: UnsafePointer<Float>) {
+    static func layerNorm(
+        _ x: UnsafeMutablePointer<Float>, steps: Int, width: Int, _ weight: UnsafePointer<Float>,
+        _ bias: UnsafePointer<Float>
+    ) {
         for t in 0..<steps {
             let row = x + t * width
             var sum = Vector()
@@ -132,7 +153,9 @@ enum Kernel {
                 spread += d * d
             }
             let scale = 1 / (spread.sum() / Float(width) + 1e-5).squareRoot()
-            for c in Swift.stride(from: 0, to: width, by: 8) { store((load(row, c) - mean) * scale * load(weight, c) + load(bias, c), row, c) }
+            for c in Swift.stride(from: 0, to: width, by: 8) {
+                store((load(row, c) - mean) * scale * load(weight, c) + load(bias, c), row, c)
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// The chevron in a one-handed keyboard's margin that brings both hands back.
 final class ExpanderView: UIControl {
@@ -31,7 +31,8 @@ final class ExpanderView: UIControl {
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
         chevron.strokeColor = color.cgColor
-        let local = glyph.offsetBy(dx: -frame.minX, dy: -frame.minY).insetBy(dx: chevron.lineWidth / 2, dy: chevron.lineWidth / 2)
+        let local = glyph.offsetBy(dx: -frame.minX, dy: -frame.minY).insetBy(
+            dx: chevron.lineWidth / 2, dy: chevron.lineWidth / 2)
         guard local != drawn else { return }
         drawn = local
         let path = UIBezierPath()

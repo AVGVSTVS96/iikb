@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import KeyboardCore
 
 struct MemoryCodingTests {
@@ -18,7 +19,8 @@ struct MemoryCodingTests {
 
     @Test func keysSavedBeforeTheyRememberedRecentAimStillLoad() throws {
         var memory = TypingMemory()
-        memory.touches.learn((0..<40).map { _ in TapSample(tap: Tap(x: 7.3, y: 2.5, key: "m"), intended: "m") }, on: .standard)
+        memory.touches.learn(
+            (0..<40).map { _ in TapSample(tap: Tap(x: 7.3, y: 2.5, key: "m"), intended: "m") }, on: .standard)
         let center = memory.touches.center(of: "m", on: .standard)
         var json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(memory)) as? [String: Any])
         var touches = try #require(json["touches"] as? [String: Any])
@@ -60,4 +62,3 @@ struct MemoryCodingTests {
         #expect(memory.following.values.allSatisfy { $0.keys.allSatisfy { memory.counts[$0] != nil } })
     }
 }
-

@@ -1,11 +1,14 @@
 import Testing
+
 @testable import KeyboardCore
 
 struct SplitTests {
     private let width = Duo.Screen.openLandscape.keyboardWidth, height = Duo.Screen.openLandscape.size.height
 
     private func grid(_ layer: KeyboardLayer = .letters, kind: InputKind = .text) -> KeyGrid {
-        let context = LayoutContext(device: .phone, layer: layer, kind: kind, showsGlobe: true, isLandscape: true, isOpen: true, isSplit: true, showsEmoji: true)
+        let context = LayoutContext(
+            device: .phone, layer: layer, kind: kind, showsGlobe: true, isLandscape: true, isOpen: true, isSplit: true,
+            showsEmoji: true)
         let metrics = KeyboardMetrics.for(.phone, width: width, height: height, split: context.isSplit)
         return KeyGrid(Layouts.layout(for: context), width: width, metrics: metrics.grid, signature: context.signature)
     }
@@ -32,11 +35,13 @@ struct SplitTests {
         let grid = grid()
         let middle = width / 2
         for row in grid.rows {
-            let left = row.filter { $0.frame.midX < middle }, right = row.filter { $0.frame.midX > middle }
+            let left = row.filter { $0.frame.midX < middle }
+            let right = row.filter { $0.frame.midX > middle }
             #expect(!left.isEmpty && !right.isEmpty)
             let gap = right.map(\.frame.x).min()! - left.map { $0.frame.x + $0.frame.width }.max()!
             #expect(gap > 60, "at least a key's room between the halves")
-            let leftEdge = left.map(\.frame.x).min()!, rightEdge = width - right.map { $0.frame.x + $0.frame.width }.max()!
+            let leftEdge = left.map(\.frame.x).min()!
+            let rightEdge = width - right.map { $0.frame.x + $0.frame.width }.max()!
             #expect(abs(leftEdge - rightEdge) < 0.01, "the halves mirror each other")
         }
     }
@@ -45,7 +50,9 @@ struct SplitTests {
     /// keyboard's edge with two keys' room between the hands.
     @Test func theSplitFillsTheKeyboard() {
         let full = KeyboardMetrics.for(.phone, width: Duo.Screen.openLandscape.size.width, height: height)
-        let letters = KeyGrid(Layouts.layout(for: LayoutContext(device: .phone, layer: .letters, isLandscape: true, isOpen: true)), width: width, metrics: full.grid, signature: "")
+        let letters = KeyGrid(
+            Layouts.layout(for: LayoutContext(device: .phone, layer: .letters, isLandscape: true, isOpen: true)),
+            width: width, metrics: full.grid, signature: "")
         let split = grid()
         let pitch = split.frame(of: "w")!.x - split.frame(of: "q")!.x
         #expect(abs(pitch - (width - 2 * full.sideInset + full.keyGap) / 12) < 0.01)
@@ -54,8 +61,9 @@ struct SplitTests {
         let between = split.frame(of: "y")!.x - (split.frame(of: "t")!.x + split.frame(of: "t")!.width)
         #expect(abs(between - (2 * pitch + full.keyGap)) < 0.01, "two keys' room between T and Y")
         let keys = grid().rows.joined()
-        #expect(keys.map(\.frame.x).min()! < 10 && keys.map { $0.frame.x + $0.frame.width }.max()! > width - 10,
-                "the halves start at the keyboard's edges, where the full keyboard's keys do")
+        #expect(
+            keys.map(\.frame.x).min()! < 10 && keys.map { $0.frame.x + $0.frame.width }.max()! > width - 10,
+            "the halves start at the keyboard's edges, where the full keyboard's keys do")
     }
 
     @Test func gAndVSitOnBothHalves() {
@@ -74,7 +82,10 @@ struct SplitTests {
         let left = grid.frame(of: "g", nearX: 0, y: grid.frame(of: "g")!.midY)!
         let right = grid.frame(of: "g", nearX: width, y: left.midY)!
         var model = TouchModel()
-        model.learn((0..<20).map { _ in TapSample(tap: Tap(x: right.midX - right.width * 0.3, y: right.midY, key: "g"), intended: "g") }, on: grid)
+        model.learn(
+            (0..<20).map { _ in
+                TapSample(tap: Tap(x: right.midX - right.width * 0.3, y: right.midY, key: "g"), intended: "g")
+            }, on: grid)
         #expect(model.center(of: "g", on: grid).x < -0.2, "taps on the right G move the key's learned center")
         let near = model.logLikelihood(x: left.midX - left.width * 0.3, y: left.midY, for: "g", on: grid)!
         let far = model.logLikelihood(x: left.midX + left.width * 0.3, y: left.midY, for: "g", on: grid)!
@@ -97,7 +108,9 @@ struct SplitTests {
         engine.handle(.split(true), in: document)
         #expect(engine.layout(on: .phone, screen: Duo.Screen.openLandscape.size).isSplit)
         #expect(engine.layout(on: .phone, screen: Duo.Screen.openLandscape.size).menuPick == .split(true))
-        #expect(!engine.layout(on: .phone, screen: Duo.Screen.openPortrait.size).isSplit, "in portrait, the same setting keeps one keyboard")
+        #expect(
+            !engine.layout(on: .phone, screen: Duo.Screen.openPortrait.size).isSplit,
+            "in portrait, the same setting keeps one keyboard")
         engine.handle(.split(false), in: document)
         #expect(!engine.layout(on: .phone, screen: Duo.Screen.openLandscape.size).isSplit)
     }

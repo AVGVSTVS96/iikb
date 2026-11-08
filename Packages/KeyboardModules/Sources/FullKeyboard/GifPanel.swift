@@ -1,6 +1,6 @@
-import KeyboardStore
 import ImageIO
 import KeyboardCore
+import KeyboardStore
 import KeyboardUI
 import UIKit
 import UniformTypeIdentifiers
@@ -49,13 +49,17 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
         message.onTurnOn = { [unowned self] in onTurnOn() }
         clock.accessibilityIdentifier = "iikb.gifs.recents"
         clock.accessibilityLabel = "Recent GIFs"
-        clock.setImage(UIImage(systemName: "clock", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)), for: .normal)
-        clock.addAction(UIAction { [unowned self] _ in
-            showsRecents.toggle()
-            query = nil
-            notice = nil
-            showsRecents ? clearSearch() : changed()
-        }, for: .touchUpInside)
+        clock.setImage(
+            UIImage(
+                systemName: "clock", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)),
+            for: .normal)
+        clock.addAction(
+            UIAction { [unowned self] _ in
+                showsRecents.toggle()
+                query = nil
+                notice = nil
+                showsRecents ? clearSearch() : changed()
+            }, for: .touchUpInside)
         [scroll, message].forEach(addSubview)
     }
 
@@ -82,7 +86,11 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
         if self.query != nil, !query.isEmpty { showsRecents = false }
         self.query = query
         notice = nil
-        if fullAccess(), let request = search.want(showsRecents ? .recents(recents.slugs(in: app())) : GifSearch.feed(for: query)) { fetch(request) }
+        if fullAccess(),
+            let request = search.want(showsRecents ? .recents(recents.slugs(in: app())) : GifSearch.feed(for: query))
+        {
+            fetch(request)
+        }
         refresh()
     }
 
@@ -90,7 +98,9 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
         Task { [weak self, klipy] in
             let answer = await klipy.gifs(feed, page: page)
             guard let self else { return }
-            if let next = search.received(answer?.gifs, for: feed, page: page, hasNext: answer?.hasNext == true) { fetch(next) }
+            if let next = search.received(answer?.gifs, for: feed, page: page, hasNext: answer?.hasNext == true) {
+                fetch(next)
+            }
             refresh()
         }
     }
@@ -98,13 +108,14 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
     /// Lays the results out again only when they changed, so GIFs never move under a finger.
     private func refresh() {
         let results: GifSearch.Results = fullAccess() ? search.results : .failed
-        let text: String? = switch results {
-        case _ where !fullAccess(): "GIF search needs Full Access."
-        case .failed: "Couldn't reach KLIPY."
-        case .gifs([]) where showsRecents: "GIFs you send show up here."
-        case .gifs([]): "No GIFs for “\(GifSearch.feed(for: query ?? "").words)”"
-        default: nil
-        }
+        let text: String? =
+            switch results {
+            case _ where !fullAccess(): "GIF search needs Full Access."
+            case .failed: "Couldn't reach KLIPY."
+            case .gifs([]) where showsRecents: "GIFs you send show up here."
+            case .gifs([]): "No GIFs for “\(GifSearch.feed(for: query ?? "").words)”"
+            default: nil
+            }
         message.show(text, turnOn: !fullAccess(), oneRow: rows == 1, theme: theme)
         guard results != shown else { return }
         let had = if case .gifs(let gifs)? = shown { gifs } else { [Gif]() }
@@ -172,7 +183,9 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         animateVisible()
         let left = scroll.contentSize.width - scroll.bounds.maxX
-        if fullAccess(), !tiles.isEmpty, left < scroll.bounds.width, let more = search.more() { fetch(more.feed, page: more.page) }
+        if fullAccess(), !tiles.isEmpty, left < scroll.bounds.width, let more = search.more() {
+            fetch(more.feed, page: more.page)
+        }
     }
 
     /// Only the tiles on screen load and animate; the rest drop their frames, since a keyboard's memory is small.
@@ -186,11 +199,12 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
         animateVisible()
     }
 
-    private static let recentsFile = StoredFile<GifRecents>(URL.applicationSupportDirectory.appending(path: "gif-recents.json"))
+    private static let recentsFile = StoredFile<GifRecents>(
+        URL.applicationSupportDirectory.appending(path: "gif-recents.json"))
 }
 
-private extension GifSearch.Feed {
-    var words: String {
+extension GifSearch.Feed {
+    fileprivate var words: String {
         if case .search(let words) = self { return words }
         return ""
     }
@@ -233,7 +247,6 @@ private final class GifTile: UIControl, UIDragInteractionDelegate {
         addInteraction(UIContextMenuInteraction(delegate: peek))
     }
 
-
     func dragInteraction(_ interaction: UIDragInteraction, itemsForBeginning session: UIDragSession) -> [UIDragItem] {
         let provider = NSItemProvider()
         provider.registerDataRepresentation(forTypeIdentifier: UTType.gif.identifier, visibility: .all) { [gif] done in
@@ -243,7 +256,9 @@ private final class GifTile: UIControl, UIDragInteractionDelegate {
         return [UIDragItem(itemProvider: provider)]
     }
 
-    func dragInteraction(_ interaction: UIDragInteraction, session: UIDragSession, didEndWith operation: UIDropOperation) {
+    func dragInteraction(
+        _ interaction: UIDragInteraction, session: UIDragSession, didEndWith operation: UIDropOperation
+    ) {
         if operation == .copy { dropped() }
     }
 
@@ -302,11 +317,17 @@ private final class Peek: NSObject, UIContextMenuInteractionDelegate {
     var preview: () -> UIViewController? = { nil }
     var picked: () -> Void = {}
 
-    func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
+    func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint
+    ) -> UIContextMenuConfiguration? {
         UIContextMenuConfiguration(identifier: nil, previewProvider: preview)
     }
 
-    func contextMenuInteraction(_ interaction: UIContextMenuInteraction, willPerformPreviewActionForMenuWith configuration: UIContextMenuConfiguration, animator: any UIContextMenuInteractionCommitAnimating) {
+    func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willPerformPreviewActionForMenuWith configuration: UIContextMenuConfiguration,
+        animator: any UIContextMenuInteractionCommitAnimating
+    ) {
         animator.addCompletion { [picked] in picked() }
     }
 }

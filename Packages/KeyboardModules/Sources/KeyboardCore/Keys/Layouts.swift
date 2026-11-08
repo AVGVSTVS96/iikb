@@ -38,7 +38,12 @@ public struct LayoutContext: Hashable, Sendable {
     public var keyRoundness = KeyRoundness.standard
     public var keyboardMenu: KeyboardMenu
 
-    public init(device: DeviceClass, layer: KeyboardLayer, kind: InputKind = .text, showsGlobe: Bool = false, isLandscape: Bool = false, isOpen: Bool = false, oneHanded: OneHanded = .off, isSplit: Bool = false, showsEmoji: Bool = false, showsGlobeKey: Bool = false, globeIsSpacer: Bool = false, showsMicKey: Bool = false, showsNumberRow: Bool = false, keyboardMenu: KeyboardMenu = .both) {
+    public init(
+        device: DeviceClass, layer: KeyboardLayer, kind: InputKind = .text, showsGlobe: Bool = false,
+        isLandscape: Bool = false, isOpen: Bool = false, oneHanded: OneHanded = .off, isSplit: Bool = false,
+        showsEmoji: Bool = false, showsGlobeKey: Bool = false, globeIsSpacer: Bool = false, showsMicKey: Bool = false,
+        showsNumberRow: Bool = false, keyboardMenu: KeyboardMenu = .both
+    ) {
         self.device = device
         self.layer = layer
         self.kind = kind
@@ -58,10 +63,14 @@ public struct LayoutContext: Hashable, Sendable {
     }
 
     /// The layout on a `screen`-sized device as `settings` set it up: the keyboard's, and the app's preview of it.
-    public init(device: DeviceClass, layer: KeyboardLayer, kind: InputKind = .text, showsGlobe: Bool = false, screen: Size, settings: KeyboardSettings) {
+    public init(
+        device: DeviceClass, layer: KeyboardLayer, kind: InputKind = .text, showsGlobe: Bool = false, screen: Size,
+        settings: KeyboardSettings
+    ) {
         self.init(
             device: device, layer: layer, kind: kind, showsGlobe: showsGlobe, isLandscape: screen.width > screen.height,
-            isOpen: Duo.isOpen(short: min(screen.width, screen.height)), oneHanded: settings.oneHanded, isSplit: settings.split,
+            isOpen: Duo.isOpen(short: min(screen.width, screen.height)), oneHanded: settings.oneHanded,
+            isSplit: settings.split,
             showsEmoji: settings.emojiKey, showsGlobeKey: settings.globeKey != .hidden,
             globeIsSpacer: settings.globeKey == .spacer, showsMicKey: settings.micKey,
             showsNumberRow: settings.numberRow, keyboardMenu: settings.keyboardMenu
@@ -96,7 +105,9 @@ public struct LayoutContext: Hashable, Sendable {
     /// iPhone in portrait, Full and Split on the open Duo in landscape), the next keyboard where an iPhone needs one
     /// and its keys carry no globe that switches, then iikb's settings.
     public var moreMenu: [KeyboardEvent] {
-        layoutPicks + (showsGlobe && device == .phone && (!showsGlobeKey || globeIsSpacer) ? [.nextKeyboard] : []) + [.settings]
+        layoutPicks + (showsGlobe && device == .phone && (!showsGlobeKey || globeIsSpacer) ? [.nextKeyboard] : []) + [
+            .settings
+        ]
     }
 
     /// What holding an iPhone's layer key offers, left to right, on every screen: the More button's items, after the
@@ -111,9 +122,13 @@ public struct LayoutContext: Hashable, Sendable {
 
     /// The layouts that apply here.
     public var layoutPicks: [KeyboardEvent] {
-        if allowsSplit { [.split(false), .split(true)] }
-        else if allowsOneHanded { OneHanded.menuOrder.map(KeyboardEvent.pick) }
-        else { [] }
+        if allowsSplit {
+            [.split(false), .split(true)]
+        } else if allowsOneHanded {
+            OneHanded.menuOrder.map(KeyboardEvent.pick)
+        } else {
+            []
+        }
     }
 
     /// The layout in use, as the menu offers it.
@@ -126,7 +141,8 @@ extension LayoutContext {
     /// What a touch model is kept per: the same keys under the same hands, so the open Duo's wider keys learn apart
     /// from its cover's.
     public var signature: String {
-        "\(device)-\(isLandscape ? "landscape" : "portrait")-\(layer)" + (isOpen ? "-open" : "") + (oneHanded == .off ? "" : "-\(oneHanded)") + (isSplit ? "-split" : "")
+        "\(device)-\(isLandscape ? "landscape" : "portrait")-\(layer)" + (isOpen ? "-open" : "")
+            + (oneHanded == .off ? "" : "-\(oneHanded)") + (isSplit ? "-split" : "")
     }
 
     /// The layout a touch model's signature was kept for.
@@ -136,7 +152,11 @@ extension LayoutContext {
                 [false, true].flatMap { landscape in
                     [false, true].flatMap { open in
                         OneHanded.allCases.flatMap { hand in
-                            [false, true].map { LayoutContext(device: device, layer: layer, isLandscape: landscape, isOpen: open, oneHanded: hand, isSplit: $0) }
+                            [false, true].map {
+                                LayoutContext(
+                                    device: device, layer: layer, isLandscape: landscape, isOpen: open, oneHanded: hand,
+                                    isSplit: $0)
+                            }
                         }
                     }
                 }
@@ -156,12 +176,13 @@ public enum Duo {
         case foldedPortrait, foldedLandscape, openPortrait, openLandscape
 
         public init(open: Bool, landscape: Bool) {
-            self = switch (open, landscape) {
-            case (false, false): .foldedPortrait
-            case (false, true): .foldedLandscape
-            case (true, false): .openPortrait
-            case (true, true): .openLandscape
-            }
+            self =
+                switch (open, landscape) {
+                case (false, false): .foldedPortrait
+                case (false, true): .foldedLandscape
+                case (true, false): .openPortrait
+                case (true, true): .openLandscape
+                }
         }
 
         /// The Duo's screen of that size, or nil on any other device.
@@ -223,12 +244,13 @@ extension RowItem {
         let secondaries = secondaries.map { $0 == " " ? nil : String($0) }
         return primary.enumerated().map { index, character in
             let value = String(character)
-            return .key(Key(
-                .character(value),
-                alternates: Alternates.for(value),
-                secondary: index < secondaries.count ? secondaries[index] : nil,
-                isPair: pairs
-            ))
+            return .key(
+                Key(
+                    .character(value),
+                    alternates: Alternates.for(value),
+                    secondary: index < secondaries.count ? secondaries[index] : nil,
+                    isPair: pairs
+                ))
         }
     }
 

@@ -15,31 +15,36 @@ import UIKit
 
     private init() {
         refresh()
-        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { _ in
             MainActor.assumeIsolated { AppStatus.shared.refresh() }
         }
     }
 
     func refresh() {
-        isAdded = (UserDefaults.standard.array(forKey: "AppleKeyboards") as? [String] ?? []).contains("com.shahidy.iikb.keyboard")
+        isAdded = (UserDefaults.standard.array(forKey: "AppleKeyboards") as? [String] ?? []).contains(
+            "com.shahidy.iikb.keyboard")
         #if APP_STORE
-        // TCC isn't API: the keyboard can write the shared clipboard history only with Full Access.
-        fullAccess = ClipboardStore().started
-        pasteAllowed = fullAccess
+            // TCC isn't API: the keyboard can write the shared clipboard history only with Full Access.
+            fullAccess = ClipboardStore().started
+            pasteAllowed = fullAccess
         #else
-        fullAccess = Self.allowed("kTCCServiceKeyboardNetwork")
-        pasteAllowed = Self.allowed("kTCCServicePasteboard")
+            fullAccess = Self.allowed("kTCCServiceKeyboardNetwork")
+            pasteAllowed = Self.allowed("kTCCServicePasteboard")
         #endif
     }
 
     #if !APP_STORE
-    /// Asks TCC, where iOS keeps privacy switches, through its private `TCCAccessPreflight`. iOS files the keyboard's Full
-    /// Access under the app, and Paste from Other Apps is only granted at Allow, never at Ask.
-    private static func allowed(_ service: String) -> Bool {
-        typealias Preflight = @convention(c) (CFString, CFDictionary?) -> Int32
-        guard let tcc = dlopen("/System/Library/PrivateFrameworks/TCC.framework/TCC", RTLD_LAZY), let preflight = dlsym(tcc, "TCCAccessPreflight") else { return false }
-        return unsafeBitCast(preflight, to: Preflight.self)(service as CFString, nil) == 0
-    }
+        /// Asks TCC, where iOS keeps privacy switches, through its private `TCCAccessPreflight`. iOS files the keyboard's Full
+        /// Access under the app, and Paste from Other Apps is only granted at Allow, never at Ask.
+        private static func allowed(_ service: String) -> Bool {
+            typealias Preflight = @convention(c) (CFString, CFDictionary?) -> Int32
+            guard let tcc = dlopen("/System/Library/PrivateFrameworks/TCC.framework/TCC", RTLD_LAZY),
+                let preflight = dlsym(tcc, "TCCAccessPreflight")
+            else { return false }
+            return unsafeBitCast(preflight, to: Preflight.self)(service as CFString, nil) == 0
+        }
     #endif
 
     static func openSettings() {

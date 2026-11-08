@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 extension CGFloat {
     func rounded(scale: CGFloat) -> CGFloat { (self * scale).rounded() / scale }
@@ -7,8 +7,10 @@ extension CGFloat {
 
 extension CGRect {
     func rounded(scale: CGFloat) -> CGRect {
-        let left = minX.rounded(scale: scale), top = minY.rounded(scale: scale)
-        return CGRect(x: left, y: top, width: maxX.rounded(scale: scale) - left, height: maxY.rounded(scale: scale) - top)
+        let left = minX.rounded(scale: scale)
+        let top = minY.rounded(scale: scale)
+        return CGRect(
+            x: left, y: top, width: maxX.rounded(scale: scale) - left, height: maxY.rounded(scale: scale) - top)
     }
 }
 

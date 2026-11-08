@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 @MainActor
 final class TextCheckerSource {
@@ -9,7 +9,9 @@ final class TextCheckerSource {
     init(language: String) {
         let available = UITextChecker.availableLanguages
         let language = language.replacingOccurrences(of: "-", with: "_")
-        self.language = available.contains(language) ? language
+        self.language =
+            available.contains(language)
+            ? language
             : available.first { $0.hasPrefix(language.prefix(2)) } ?? "en_US"
     }
 
@@ -20,7 +22,8 @@ final class TextCheckerSource {
 
 extension TextCheckerSource: @MainActor CandidateSource {
     func isWord(_ word: String) -> Bool {
-        checker.rangeOfMisspelledWord(in: word, range: range(word), startingAt: 0, wrap: false, language: language).location == NSNotFound
+        checker.rangeOfMisspelledWord(in: word, range: range(word), startingAt: 0, wrap: false, language: language)
+            .location == NSNotFound
     }
 
     func guesses(for word: TypedWord) -> [String] {

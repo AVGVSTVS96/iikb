@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// The cancel button beside the recording: an x in a gray circle the mic's size, which gives under your finger as the
 /// mic does. `SuggestionBar` moves it, out of the mic and back.
@@ -40,7 +40,10 @@ final class CancelButton: UIControl {
     override var isHighlighted: Bool {
         didSet {
             guard isHighlighted != oldValue else { return }
-            UIView.animate(springDuration: isHighlighted ? 0.16 : 0.3, bounce: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
+            UIView.animate(
+                springDuration: isHighlighted ? 0.16 : 0.3, bounce: 0,
+                options: [.beginFromCurrentState, .allowUserInteraction]
+            ) {
                 self.face.transform = self.isHighlighted ? CGAffineTransform(scaleX: 0.9, y: 0.9) : .identity
             }
         }
@@ -60,6 +63,8 @@ final class CancelButton: UIControl {
         let side = min(bounds.width, bounds.height)
         guard side != glyphSide, side > 0 else { return }
         glyphSide = side
-        glyph.image = UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: (side * 0.39).rounded(), weight: .semibold))
+        glyph.image = UIImage(
+            systemName: "xmark",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: (side * 0.39).rounded(), weight: .semibold))
     }
 }

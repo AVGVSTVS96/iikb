@@ -1,11 +1,15 @@
 import Testing
+
 @testable import KeyboardCore
 
-let testLexicon = Lexicon(counts: [
-    ("the", 1000), ("a", 800), ("to", 850), ("I", 900), ("of", 500), ("in", 400), ("is", 300), ("on", 300), ("if", 100),
-    ("no", 200), ("go", 100), ("I'm", 100), ("don't", 80), ("done", 20), ("work", 60), ("word", 50), ("world", 30),
-    ("hello", 50), ("help", 40), ("about", 40), ("out", 50), ("man", 30), ("men", 20), ("come", 30), ("home", 30), ("job", 300),
-].map { (word: $0.0, count: Double($0.1)) })
+let testLexicon = Lexicon(
+    counts: [
+        ("the", 1000), ("a", 800), ("to", 850), ("I", 900), ("of", 500), ("in", 400), ("is", 300), ("on", 300),
+        ("if", 100),
+        ("no", 200), ("go", 100), ("I'm", 100), ("don't", 80), ("done", 20), ("work", 60), ("word", 50), ("world", 30),
+        ("hello", 50), ("help", 40), ("about", 40), ("out", 50), ("man", 30), ("men", 20), ("come", 30), ("home", 30),
+        ("job", 300),
+    ].map { (word: $0.0, count: Double($0.1)) })
 
 private let grid = KeyGrid.standard
 
@@ -42,7 +46,8 @@ struct MathTests {
 struct TouchModelTests {
     @Test func priorIsTheDrawnKeySoItAgreesWithNearestKey() {
         let model = TouchModel()
-        let n = grid.frame(of: "n")!, m = grid.frame(of: "m")!
+        let n = grid.frame(of: "n")!
+        let m = grid.frame(of: "m")!
         let boundary = (n.midX + m.midX) / 2
         let left = model.logLikelihood(x: boundary - 0.01, y: n.midY, for: "n", on: grid)!
         let right = model.logLikelihood(x: boundary - 0.01, y: n.midY, for: "m", on: grid)!
@@ -61,10 +66,15 @@ struct TouchModelTests {
 
     @Test func theSameMissThreeTimesRunningMovesTheKeyAndTwoGoodTapsMoveItBack() {
         var model = TouchModel()
-        let steady = { (label: String, i: Int) in TapSample(tap: tap(label, dx: Double(i % 5 - 2) * 0.06, dy: Double(i % 3 - 1) * 0.06), intended: label) }
+        let steady = { (label: String, i: Int) in
+            TapSample(tap: tap(label, dx: Double(i % 5 - 2) * 0.06, dy: Double(i % 3 - 1) * 0.06), intended: label)
+        }
         model.learn((0..<300).flatMap { [steady("m", $0), steady("n", $0)] }, on: grid)
         let miss = tap("m", dx: -0.7)
-        let favorsM = { model.logLikelihood(x: miss.x, y: miss.y, for: "m", on: grid)! - model.logLikelihood(x: miss.x, y: miss.y, for: "n", on: grid)! }
+        let favorsM = {
+            model.logLikelihood(x: miss.x, y: miss.y, for: "m", on: grid)! - model.logLikelihood(
+                x: miss.x, y: miss.y, for: "n", on: grid)!
+        }
         #expect(favorsM() < -20)
         model.learn([TapSample(tap: miss, intended: "m")], on: grid)
         #expect(favorsM() < -5)
@@ -78,10 +88,12 @@ struct TouchModelTests {
         var model = TouchModel()
         let w = grid.frame(of: "w")!
         let before = model.logLikelihood(x: w.midX, y: w.midY, for: "q", on: grid)!
-        model.learn((0..<200).map { i -> TapSample in
-            let dx = Double(i % 5 - 2) * 0.02, dy = Double(i % 3 - 1) * 0.02
-            return TapSample(tap: tap("e", dx: dx, dy: dy), intended: "e")
-        }, on: grid)
+        model.learn(
+            (0..<200).map { i -> TapSample in
+                let dx = Double(i % 5 - 2) * 0.02
+                let dy = Double(i % 3 - 1) * 0.02
+                return TapSample(tap: tap("e", dx: dx, dy: dy), intended: "e")
+            }, on: grid)
         let after = model.logLikelihood(x: w.midX, y: w.midY, for: "q", on: grid)!
         #expect(after < before - 5)
         #expect(model.center(of: "q", on: grid) == (0, 0))
@@ -148,9 +160,11 @@ struct TouchModelTests {
 
     @Test func layoutsLearnSeparately() {
         var model = TouchModel()
-        let landscape = KeyGrid(Layouts.layout(for: LayoutContext(device: .phone, layer: .letters)), width: 20,
-                                metrics: GridMetrics(columns: 10, sideInset: 0, keyGap: 0, rowGap: 0, keyHeight: 1, numberRowHeight: 1, topInset: 0),
-                                signature: "landscape")
+        let landscape = KeyGrid(
+            Layouts.layout(for: LayoutContext(device: .phone, layer: .letters)), width: 20,
+            metrics: GridMetrics(
+                columns: 10, sideInset: 0, keyGap: 0, rowGap: 0, keyHeight: 1, numberRowHeight: 1, topInset: 0),
+            signature: "landscape")
         model.learn(samples("m", dx: -0.4), on: grid)
         #expect(model.center(of: "m", on: landscape) == (0, 0))
     }
@@ -176,18 +190,29 @@ struct TouchModelTests {
         let corrector = Corrector(source: testLexicon)
         let m = grid.frame(of: "m")!
         let between = (x: m.midX - 0.6, y: m.midY)
-        #expect(corrector.keyMap(after: nil).key(atX: between.x, y: between.y, in: grid).map { grid.rows[$0.row][$0.key].key.label } == "n")
+        #expect(
+            corrector.keyMap(after: nil).key(atX: between.x, y: between.y, in: grid).map {
+                grid.rows[$0.row][$0.key].key.label
+            } == "n")
         corrector.learn(samples("m", dx: -0.4))
-        #expect(corrector.keyMap(after: nil).key(atX: between.x, y: between.y, in: grid).map { grid.rows[$0.row][$0.key].key.label } == "m")
+        #expect(
+            corrector.keyMap(after: nil).key(atX: between.x, y: between.y, in: grid).map {
+                grid.rows[$0.row][$0.key].key.label
+            } == "m")
         corrector.learn(samples("m", dx: -0.8, count: 300))
-        #expect(corrector.keyMap(after: nil).key(atX: m.midX - 1, y: m.midY, in: grid).map { grid.rows[$0.row][$0.key].key.label } == "n")
+        #expect(
+            corrector.keyMap(after: nil).key(atX: m.midX - 1, y: m.midY, in: grid).map {
+                grid.rows[$0.row][$0.key].key.label
+            } == "n")
     }
 
     @Test func nextLetterOddsResizeKeysInsideWords() {
         let corrector = Corrector(source: testLexicon)
         let o = grid.frame(of: "o")!
         let label = { (prefix: String?) in
-            corrector.keyMap(after: prefix).key(atX: o.midX - 0.55, y: o.midY, in: grid).map { grid.rows[$0.row][$0.key].key.label }
+            corrector.keyMap(after: prefix).key(atX: o.midX - 0.55, y: o.midY, in: grid).map {
+                grid.rows[$0.row][$0.key].key.label
+            }
         }
         #expect(label(nil) == "i")
         #expect(label("hell") == "o")
@@ -436,7 +461,10 @@ struct LabelTests {
 }
 
 struct DecoderTests {
-    private func correct(_ text: String, taps: [Tap]? = nil, after previous: String? = nil, _ corrector: Corrector = Corrector(source: testLexicon)) -> String? {
+    private func correct(
+        _ text: String, taps: [Tap]? = nil, after previous: String? = nil,
+        _ corrector: Corrector = Corrector(source: testLexicon)
+    ) -> String? {
         correct(text, taps: taps, after: previous, corrector: corrector)
     }
 
@@ -490,11 +518,14 @@ struct DecoderTests {
     }
 
     @Test func missedExtraAndDoubledLettersAreSlipsLikeWrongKeys() {
-        let lexicon = Lexicon(counts: [
-            ("help", 9000), ("hello", 1000), ("helo", 6), ("really", 3000), ("realty", 40), ("office", 2000), ("good", 8000),
-            ("better", 4000), ("writing", 1500), ("beginning", 1200), ("coming", 3000), ("dinner", 2000), ("diner", 300),
-            ("it's", 9000), ("its", 5000),
-        ].map { (word: $0.0, count: Double($0.1)) })
+        let lexicon = Lexicon(
+            counts: [
+                ("help", 9000), ("hello", 1000), ("helo", 6), ("really", 3000), ("realty", 40), ("office", 2000),
+                ("good", 8000),
+                ("better", 4000), ("writing", 1500), ("beginning", 1200), ("coming", 3000), ("dinner", 2000),
+                ("diner", 300),
+                ("it's", 9000), ("its", 5000),
+            ].map { (word: $0.0, count: Double($0.1)) })
         let corrector = Corrector(source: lexicon)
         #expect(correct("helo", corrector: corrector) == "hello")
         #expect(correct("realy", corrector: corrector) == "really")
@@ -509,7 +540,10 @@ struct DecoderTests {
     }
 
     @Test func aWordKeepsTheCaseYouTypedUnlessTheLexiconOnlyCapitalizesIt() {
-        let lexicon = Lexicon(counts: [("the", 900), ("quick", 50), ("fox", 40), ("London", 60), ("I", 800)].map { (word: $0.0, count: Double($0.1)) })
+        let lexicon = Lexicon(
+            counts: [("the", 900), ("quick", 50), ("fox", 40), ("London", 60), ("I", 800)].map {
+                (word: $0.0, count: Double($0.1))
+            })
         let corrector = Corrector(source: lexicon)
         #expect(correct("fox", after: "quick", corrector) == nil)
         #expect(correct("Fox", after: "quick", corrector) == nil)
@@ -519,12 +553,17 @@ struct DecoderTests {
 
     @Test func aDoubledLetterTypedOnceCountsBothWays() {
         let letters = { (word: String) in Array(word.utf8).compactMap(Lexicon.index(of:)) }
-        #expect(Decoder.readings(of: letters("hello"), taps: 4, completing: false).filter { $0.letters == letters("helo") }.count == 2)
+        #expect(
+            Decoder.readings(of: letters("hello"), taps: 4, completing: false).filter { $0.letters == letters("helo") }
+                .count == 2)
     }
 
     @Test func deadCenterTapsMakeAFarTapCountForLess() {
-        let taps = Corrector(source: testLexicon).evidence(for: TypedWord("helo", taps: "helo".map { tap(String($0)) }), touches: TouchModel())
-        let alone = taps.map { $0.letters[Lexicon.index(of: UInt8(ascii: "p"))!] }.last! + taps.dropLast().map(\.best).reduce(0, +)
+        let taps = Corrector(source: testLexicon).evidence(
+            for: TypedWord("helo", taps: "helo".map { tap(String($0)) }), touches: TouchModel())
+        let alone =
+            taps.map { $0.letters[Lexicon.index(of: UInt8(ascii: "p"))!] }.last!
+            + taps.dropLast().map(\.best).reduce(0, +)
         #expect(Decoder.logLikelihood(of: "help", given: taps, touches: TouchModel(), on: grid) < alone)
     }
 

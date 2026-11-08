@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import KeyboardCore
 
 /// scripts/gate: everyday text typed through the engine over the shipped lexicon and network, each key tapped at its
@@ -9,10 +10,13 @@ struct GateTests {
     private struct Saved: Decodable { var memory: TypingMemory }
 
     private static let environment = ProcessInfo.processInfo.environment
-    private static let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+    private static let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent()
         .appending(path: "Sources/KeyboardEnglish/Resources")
-    private static let names = ["M3", "M5", "A1", "B2", "Mo", "Mya", "Myles", "Meg", "Mel", "Yu", "Yousef", "Yvonne", "Ana", "Andy",
-                                "Hana", "Kenji", "Tom", "Will", "Mark", "May", "Grace", "Joy", "Art", "Sunny", "Iris", "Theo", "Ian", "Pat"]
+    private static let names = [
+        "M3", "M5", "A1", "B2", "Mo", "Mya", "Myles", "Meg", "Mel", "Yu", "Yousef", "Yvonne", "Ana", "Andy",
+        "Hana", "Kenji", "Tom", "Will", "Mark", "May", "Grace", "Joy", "Art", "Sunny", "Iris", "Theo", "Ian", "Pat",
+    ]
 
     private static func bytes(_ path: String) -> [UInt8] { [UInt8](FileManager.default.contents(atPath: path)!) }
 
@@ -21,23 +25,35 @@ struct GateTests {
         let phone = condition == "phone"
         if phone, Self.environment["GATE_MEMORY"] == nil { return print("GATE phone: no phone state here") }
         let lexicon = Lexicon(bytes: Bytes(Self.bytes(Self.resources.appending(path: "en.lexicon").path)))!
-        let network = Network(bytes: Self.bytes(phone ? Self.environment["GATE_NETWORK"]! : Self.resources.appending(path: "en.network").path))!
-        let emoji = try EmojiCatalog(text: String(contentsOf: Self.resources.appending(path: "emoji.txt"), encoding: .utf8))
+        let network = Network(
+            bytes: Self.bytes(
+                phone ? Self.environment["GATE_NETWORK"]! : Self.resources.appending(path: "en.network").path))!
+        let emoji = try EmojiCatalog(
+            text: String(contentsOf: Self.resources.appending(path: "emoji.txt"), encoding: .utf8))
         let corrector = Corrector(source: lexicon, network: network)
         if condition != "fresh" { corrector.setNames(Self.names) }
         var memory = TypingMemory()
         if phone {
             let decoder = JSONDecoder()
-            decoder.nonConformingFloatDecodingStrategy = .convertFromString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
-            memory = try decoder.decode(Saved.self, from: Data(contentsOf: URL(fileURLWithPath: Self.environment["GATE_MEMORY"]!))).memory
+            decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+                positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+            memory = try decoder.decode(
+                Saved.self, from: Data(contentsOf: URL(fileURLWithPath: Self.environment["GATE_MEMORY"]!))
+            ).memory
         }
-        let cases = try String(contentsOfFile: Self.environment["GATE"]!, encoding: .utf8).split(separator: "\n").filter { !$0.hasPrefix("#") }
-        var failed: [String] = [], missing: [String] = []
+        let cases = try String(contentsOfFile: Self.environment["GATE"]!, encoding: .utf8).split(separator: "\n").filter
+        { !$0.hasPrefix("#") }
+        var failed: [String] = []
+        var missing: [String] = []
         for line in cases {
             let parts = line.split(separator: "|", omittingEmptySubsequences: false)
-            let required = !parts[0].hasPrefix("?"), field = parts[0].hasPrefix("=")
+            let required = !parts[0].hasPrefix("?")
+            let field = parts[0].hasPrefix("=")
             let text = String(parts[0].drop { $0 == "?" || $0 == "=" })
-            let wanted = field ? [String(parts[1])] : parts[1].split(separator: " ").map { $0.replacingOccurrences(of: "_", with: " ") }
+            let wanted =
+                field
+                ? [String(parts[1])]
+                : parts[1].split(separator: " ").map { $0.replacingOccurrences(of: "_", with: " ") }
             corrector.changeMemory { $0 = memory }
             var engine = TypingEngine()
             engine.corrector = corrector
@@ -46,9 +62,13 @@ struct GateTests {
             let document = TestDocument()
             engine.documentChanged(document)
             for character in text {
-                let key = String(character), center = corrector.grid.frame(of: key).map { Tap(x: $0.midX, y: $0.midY, key: key) }
+                let key = String(character)
+                let center = corrector.grid.frame(of: key).map { Tap(x: $0.midX, y: $0.midY, key: key) }
                 engine.perform(character == " " ? .space : .character(key), in: document, tap: center)
-                if var job = engine.suggestionJob() { job.run(); engine.finish(job) }
+                if var job = engine.suggestionJob() {
+                    job.run()
+                    engine.finish(job)
+                }
             }
             if field {
                 guard document.text.lowercased().replacingOccurrences(of: "’", with: "'") != wanted[0] else { continue }
@@ -56,11 +76,19 @@ struct GateTests {
                 continue
             }
             let shown = engine.suggestions.prefix(engine.emojiSuggestions.isEmpty ? 3 : 2)
-            let words = shown.filter { $0.kind != .literal }.map { $0.text.lowercased().replacingOccurrences(of: "’", with: "'") }
+            let words = shown.filter { $0.kind != .literal }.map {
+                $0.text.lowercased().replacingOccurrences(of: "’", with: "'")
+            }
             guard !wanted.allSatisfy(words.contains) else { continue }
             let bar = shown.map(\.title) + engine.emojiSuggestions.prefix(1)
-            let line = "\"\(text)\" wants \(wanted.joined(separator: " "))" + (phone ? "" : ", bar: \(bar.joined(separator: " "))")
-            if required { failed.append("GATE \(condition) FAIL " + line) } else { missing.append("GATE \(condition) NOT YET " + line) }
+            let line =
+                "\"\(text)\" wants \(wanted.joined(separator: " "))"
+                + (phone ? "" : ", bar: \(bar.joined(separator: " "))")
+            if required {
+                failed.append("GATE \(condition) FAIL " + line)
+            } else {
+                missing.append("GATE \(condition) NOT YET " + line)
+            }
         }
         let passed = cases.count - failed.count - missing.count
         print((["GATE \(condition): \(passed)/\(cases.count) pass"] + failed + missing).joined(separator: "\n"))

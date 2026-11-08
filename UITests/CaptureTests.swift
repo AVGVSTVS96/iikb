@@ -4,15 +4,18 @@ final class CaptureTests: XCTestCase {
     func testHoldKeysForScreenshots() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["IIKB_CAPTURE"] != nil)
         let app = XCUIApplication()
-        app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", "portrait"]
+        app.launchArguments =
+            ["-iikbFocus", "YES", "-iikbOrientation", "portrait"]
             + (ProcessInfo.processInfo.environment["IIKB_ARGS"] ?? "").split(separator: " ").map(String.init)
         app.launch()
         let g = key("g", in: app)
         XCTAssertTrue(g.waitForExistence(timeout: 10))
         if ProcessInfo.processInfo.environment["IIKB_CAPTURE"] == "menu" {
             let numbers = key("numbers", in: app)
-            let top = numbers.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0)).withOffset(CGVector(dx: 0, dy: -85))
-            numbers.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 4, thenDragTo: top, withVelocity: .slow, thenHoldForDuration: 4)
+            let top = numbers.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0)).withOffset(
+                CGVector(dx: 0, dy: -85))
+            numbers.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(
+                forDuration: 4, thenDragTo: top, withVelocity: .slow, thenHoldForDuration: 4)
             return
         }
         guard ProcessInfo.processInfo.environment["IIKB_CAPTURE"] == "bar" else {
@@ -21,10 +24,12 @@ final class CaptureTests: XCTestCase {
             return
         }
         for letter in "hel" { key(String(letter), in: app).tap() }
-        let q = key("q", in: app).frame, p = key("p", in: app).frame
+        let q = key("q", in: app).frame
+        let p = key("p", in: app).frame
         let window = app.windows.firstMatch.frame
         for x in [q.minX + 30, window.width / 2, p.maxX - 30] {
-            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: q.minY - 26)).press(forDuration: 4)
+            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: q.minY - 26)).press(
+                forDuration: 4)
             for letter in "hel" { key(String(letter), in: app).tap() }
         }
     }

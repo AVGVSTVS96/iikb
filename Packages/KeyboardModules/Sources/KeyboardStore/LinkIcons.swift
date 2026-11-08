@@ -29,31 +29,38 @@ public final class LinkIcons {
     }
 
     nonisolated private static func load(_ site: String, folder: URL) async -> UIImage? {
-        let file = folder.appending(path: "\(site).png"), none = folder.appending(path: "\(site).none")
-        if let data = try? Data(contentsOf: file), let image = UIImage(data: data, scale: 3) { return image } // file: link icon cache
+        let file = folder.appending(path: "\(site).png")
+        let none = folder.appending(path: "\(site).none")
+        // file: link icon cache
+        if let data = try? Data(contentsOf: file), let image = UIImage(data: data, scale: 3) { return image }
         let tried = (try? none.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
         if let tried, tried.timeIntervalSinceNow > -7 * 24 * 3600 { return nil }
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         var answered = false
         func fetch(_ url: URL?) async -> UIImage? {
-            guard let url, let (data, response) = try? await session.data(from: url), let response = response as? HTTPURLResponse else { return nil }
+            guard let url, let (data, response) = try? await session.data(from: url),
+                let response = response as? HTTPURLResponse
+            else { return nil }
             answered = true
             return response.statusCode == 200 ? tile(data) : nil
         }
         var image = await fetch(URL(string: "https://\(site)/apple-touch-icon.png"))
-        if image == nil, let page = URL(string: "https://\(site)/"), let (html, _) = try? await session.data(from: page) {
+        if image == nil, let page = URL(string: "https://\(site)/"), let (html, _) = try? await session.data(from: page)
+        {
             answered = true
-            for url in linkedIcons(String(decoding: html.prefix(500_000), as: UTF8.self), page: page).prefix(2) where image == nil {
+            for url in linkedIcons(String(decoding: html.prefix(500_000), as: UTF8.self), page: page).prefix(2)
+            where image == nil {
                 image = await fetch(url)
             }
         }
         if image == nil { image = await fetch(URL(string: "https://\(site)/favicon.ico")) }
         if let image {
-            try? image.pngData()?.write(to: file, options: .atomic) // file: link icon cache
+            try? image.pngData()?.write(to: file, options: .atomic)  // file: link icon cache
             try? FileManager.default.removeItem(at: none)
             return image
         }
-        if answered { try? Data().write(to: none, options: .atomic) } // file: marker that a site has no icon, so it's asked weekly at most
+        // file: marker that a site has no icon, so it's asked weekly at most
+        if answered { try? Data().write(to: none, options: .atomic) }
         return nil
     }
 
@@ -63,10 +70,14 @@ public final class LinkIcons {
             let tag = tag.output
             let rel = tag.firstMatch(of: /rel\s*=\s*["']([^"']*)["']/.ignoresCase()).map { $0.1.lowercased() } ?? ""
             guard rel.contains("icon"), !rel.contains("mask"),
-                  let href = tag.firstMatch(of: /href\s*=\s*["']([^"']*)["']/.ignoresCase()).map({ String($0.1).replacingOccurrences(of: "&amp;", with: "&") }),
-                  !href.lowercased().hasSuffix(".svg"), let url = URL(string: href, relativeTo: page)?.absoluteURL
+                let href = tag.firstMatch(of: /href\s*=\s*["']([^"']*)["']/.ignoresCase()).map({
+                    String($0.1).replacingOccurrences(of: "&amp;", with: "&")
+                }),
+                !href.lowercased().hasSuffix(".svg"), let url = URL(string: href, relativeTo: page)?.absoluteURL
             else { return nil }
-            let size = tag.firstMatch(of: /sizes\s*=\s*["'](\d+)/.ignoresCase()).flatMap { Int($0.1) } ?? (rel.contains("apple") ? 180 : 32)
+            let size =
+                tag.firstMatch(of: /sizes\s*=\s*["'](\d+)/.ignoresCase()).flatMap { Int($0.1) }
+                ?? (rel.contains("apple") ? 180 : 32)
             return (size, url)
         }
         .sorted { $0.size > $1.size }
@@ -77,10 +88,16 @@ public final class LinkIcons {
     /// sizes, so the largest is drawn.
     nonisolated private static func tile(_ data: Data) -> UIImage? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
-        let width = { (index: Int) in (CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any])?[kCGImagePropertyPixelWidth] as? Int ?? 0 }
+        let width = { (index: Int) in
+            (CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any])?[kCGImagePropertyPixelWidth]
+                as? Int ?? 0
+        }
         guard let largest = (0..<CGImageSourceGetCount(source)).max(by: { width($0) < width($1) }),
-              let icon = CGImageSourceCreateThumbnailAtIndex(source, largest, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 180] as CFDictionary),
-              icon.width >= 16
+            let icon = CGImageSourceCreateThumbnailAtIndex(
+                source, largest,
+                [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 180]
+                    as CFDictionary),
+            icon.width >= 16
         else { return nil }
         let side: CGFloat = 60
         let format = UIGraphicsImageRendererFormat()

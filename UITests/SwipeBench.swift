@@ -14,7 +14,8 @@ final class SwipeBench: XCTestCase {
 
     private static func load(_ path: String) throws -> [(String, [Point])] {
         var swipes: [(String, [Point])] = []
-        for line in try String(contentsOfFile: path, encoding: .utf8).split(separator: "\n") where !line.hasPrefix("#") {
+        for line in try String(contentsOfFile: path, encoding: .utf8).split(separator: "\n") where !line.hasPrefix("#")
+        {
             let fields = line.split(separator: "\t")
             var points: [Point] = []
             for triple in fields[1].split(separator: ";") {
@@ -46,7 +47,9 @@ final class SwipeBench: XCTestCase {
 
     func testSwipes() throws {
         let environment = ProcessInfo.processInfo.environment
-        guard let input = environment["IIKB_SWIPE_IN"], let output = environment["IIKB_SWIPE_OUT"] else { throw XCTSkip("Run through scripts/swipebench") }
+        guard let input = environment["IIKB_SWIPE_IN"], let output = environment["IIKB_SWIPE_OUT"] else {
+            throw XCTSkip("Run through scripts/swipebench")
+        }
         let first = Int(environment["IIKB_SWIPE_FIRST"] ?? "") ?? 0
         let count = Int(environment["IIKB_SWIPE_COUNT"] ?? "") ?? .max
         let landscape = environment["IIKB_SWIPE_ORIENTATION"] == "landscape"
@@ -65,7 +68,9 @@ final class SwipeBench: XCTestCase {
             let name = key.identifier.hasPrefix("iikb.") ? String(key.identifier.dropFirst(4)) : key.label.lowercased()
             if name.count == 1, name.first!.isLowercase { frames[name] = key.frame }
         }
-        let fit = try XCTUnwrap(Fit(frames: frames, rows: Self.rows, start: Self.rowStart, center: Self.rowCenter), "letter keys: \(frames.keys.sorted())")
+        let fit = try XCTUnwrap(
+            Fit(frames: frames, rows: Self.rows, start: Self.rowStart, center: Self.rowCenter),
+            "letter keys: \(frames.keys.sorted())")
         let orientation: UIInterfaceOrientation = landscape ? .landscapeRight : .portrait
 
         func bar() -> [String] {
@@ -78,7 +83,9 @@ final class SwipeBench: XCTestCase {
                 walk(snapshot)
                 return labels
             }
-            return (0..<3).map { app.descendants(matching: .any).matching(identifier: "iikb.suggestion.\($0)").firstMatch }.filter(\.exists).map(\.label)
+            return (0..<3).map {
+                app.descendants(matching: .any).matching(identifier: "iikb.suggestion.\($0)").firstMatch
+            }.filter(\.exists).map(\.label)
         }
         func text() -> String { field.value as? String ?? "" }
         func clear() {
@@ -131,7 +138,8 @@ private struct Fit {
     let scaleX, offsetX, scaleY, offsetY: Double
 
     init?(frames: [String: CGRect], rows: [String], start: [Double], center: [Double]) {
-        var xs: [(Double, Double)] = [], ys: [(Double, Double)] = []
+        var xs: [(Double, Double)] = []
+        var ys: [(Double, Double)] = []
         for (row, letters) in rows.enumerated() {
             for (column, letter) in letters.enumerated() {
                 guard let frame = frames[String(letter)] else { return nil }
@@ -141,8 +149,10 @@ private struct Fit {
         }
         func line(_ pairs: [(Double, Double)]) -> (Double, Double) {
             let n = Double(pairs.count)
-            let sx = pairs.map(\.0).reduce(0, +), sy = pairs.map(\.1).reduce(0, +)
-            let sxx = pairs.map { $0.0 * $0.0 }.reduce(0, +), sxy = pairs.map { $0.0 * $0.1 }.reduce(0, +)
+            let sx = pairs.map(\.0).reduce(0, +)
+            let sy = pairs.map(\.1).reduce(0, +)
+            let sxx = pairs.map { $0.0 * $0.0 }.reduce(0, +)
+            let sxy = pairs.map { $0.0 * $0.1 }.reduce(0, +)
             let slope = (n * sxy - sx * sy) / (n * sxx - sx * sx)
             return (slope, (sy - slope * sx) / n)
         }

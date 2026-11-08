@@ -22,7 +22,9 @@ final class SwipeTests: XCTestCase {
         XCTAssertEqual(settled().lowercased(), "world")
         XCTAssertTrue(suggestion(0).waitForExistence(timeout: 5))
         let others = (0..<3).map(suggestion).filter(\.exists).map(\.label)
-        XCTAssertFalse(others.map { $0.lowercased() }.contains("world"), "the bar offers other words, as Apple's does after a swipe")
+        XCTAssertFalse(
+            others.map { $0.lowercased() }.contains("world"),
+            "the bar offers other words, as Apple's does after a swipe")
         let alternative = try XCTUnwrap(others.first, "no alternative offered")
         suggestion(0).tap()
         XCTAssertEqual(settled().trimmingCharacters(in: .whitespaces).lowercased(), alternative.lowercased())
@@ -55,7 +57,9 @@ final class SwipeTests: XCTestCase {
     func testADragFromKeyToKeyTypesAWordOnEveryScreen() {
         let middle = CGVector(dx: 0.5, dy: 0.5)
         key("t").coordinate(withNormalizedOffset: middle)
-            .press(forDuration: 0.05, thenDragTo: key("o").coordinate(withNormalizedOffset: middle), withVelocity: 600, thenHoldForDuration: 0)
+            .press(
+                forDuration: 0.05, thenDragTo: key("o").coordinate(withNormalizedOffset: middle), withVelocity: 600,
+                thenHoldForDuration: 0)
         XCTAssertEqual(settled().lowercased(), "to")
     }
 
@@ -69,7 +73,9 @@ final class SwipeTests: XCTestCase {
             for step in 1...steps {
                 time += 0.01
                 let share = Double(step) / Double(steps)
-                finger.move(to: CGPoint(x: from.x + (to.x - from.x) * share, y: from.y + (to.y - from.y) * share), atOffset: time)
+                finger.move(
+                    to: CGPoint(x: from.x + (to.x - from.x) * share, y: from.y + (to.y - from.y) * share),
+                    atOffset: time)
             }
         }
         finger.liftUp(atOffset: time + 0.02)

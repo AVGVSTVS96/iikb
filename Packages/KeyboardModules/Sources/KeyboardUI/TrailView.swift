@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// The line a swipe leaves behind the finger: thin, each stretch fading as it ages, and gone a moment after the finger
 /// lifts.

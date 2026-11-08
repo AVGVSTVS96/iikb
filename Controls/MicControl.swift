@@ -1,8 +1,8 @@
 import AppIntents
 import Foundation
-import notify
 import SwiftUI
 import WidgetKit
+import notify
 
 @main
 struct Controls: WidgetBundle {
@@ -55,8 +55,11 @@ nonisolated enum Mic {
 
     /// The app holds a lock on this file while its microphone is on, which the kernel lets go of however the app ends.
     static var isOn: Bool {
-        guard let lock = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.shahidy.iikb")?
-            .appending(path: "Library").appending(path: "mic.lock") else { return false }
+        guard
+            let lock = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: "group.com.shahidy.iikb")?
+                .appending(path: "Library").appending(path: "mic.lock")
+        else { return false }
         let descriptor = open(lock.path, O_RDONLY)
         guard descriptor >= 0 else { return false }
         defer { close(descriptor) }

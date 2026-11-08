@@ -26,7 +26,8 @@ extension LayoutContext {
     /// The screen these keys are laid out on, on a device whose screen is `display`-sized in either orientation: that
     /// screen held this way, or on the iPhone Duo the screen these keys are for, folded or open.
     public func screen(on display: Size) -> Size {
-        let short = min(display.width, display.height), long = max(display.width, display.height)
+        let short = min(display.width, display.height)
+        let long = max(display.width, display.height)
         if device == .phone, Duo.isDuo(short: short) { return Duo.Screen(open: isOpen, landscape: isLandscape).size }
         return isLandscape ? Size(width: long, height: short) : Size(width: short, height: long)
     }

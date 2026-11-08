@@ -30,7 +30,8 @@ extension Math {
             sign = -1
         }
         let x2 = x * x
-        var term = 1.0, sum = 1.0
+        var term = 1.0
+        var sum = 1.0
         for n in stride(from: 2.0, through: 18, by: 2) {
             term *= -x2 / (n * (n - 1))
             sum += term
@@ -44,7 +45,8 @@ extension Math {
         let reduce = z > 0.414_213_562_373_095
         let t = reduce ? (z - 1) / (z + 1) : z
         let t2 = t * t
-        var term = t, sum = 0.0
+        var term = t
+        var sum = 0.0
         for n in stride(from: 1.0, through: 31, by: 2) {
             sum += term / n
             term *= -t2

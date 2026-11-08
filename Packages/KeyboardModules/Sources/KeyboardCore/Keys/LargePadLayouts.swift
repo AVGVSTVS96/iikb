@@ -2,25 +2,30 @@ enum LargePadLayouts {
     static func layout(for context: LayoutContext) -> KeyboardLayout {
         switch context.layer {
         case .letters:
-            KeyboardLayout(rows: [
-                numberRow,
-                [tab] + RowItem.keys("qwertyuiop[]\\", secondaries: "          {}|", pairs: true),
-                [capsLock] + RowItem.keys("asdfghjkl;'", secondaries: "         :\"", pairs: true) + [returnKey],
-                [shift] + RowItem.keys("zxcvbnm,./", secondaries: "       <>?", pairs: true) + [trailingShift],
-                bottomRow(context, layerKey: .numbers),
-            ], hasNumberRow: true)
+            KeyboardLayout(
+                rows: [
+                    numberRow,
+                    [tab] + RowItem.keys("qwertyuiop[]\\", secondaries: "          {}|", pairs: true),
+                    [capsLock] + RowItem.keys("asdfghjkl;'", secondaries: "         :\"", pairs: true) + [returnKey],
+                    [shift] + RowItem.keys("zxcvbnm,./", secondaries: "       <>?", pairs: true) + [trailingShift],
+                    bottomRow(context, layerKey: .numbers),
+                ], hasNumberRow: true)
         case .numbers, .symbols:
-            KeyboardLayout(rows: [
-                RowItem.keys("`1234567890<>") + [.key(Key(.delete, width: .fill))],
-                [tab] + RowItem.keys("[]{}#%^*+=\\|~"),
-                [.key(Key(.undo, width: .pitch(1.77)))] + RowItem.keys("-/:;()$&@£¥") + [returnKey],
-                [.key(Key(.redo, width: .pitch(2.27))), .spacer(.input)] + RowItem.keys("….,?!'\"_€") + [.spacer(.fill)],
-                bottomRow(context, layerKey: .letters),
-            ], hasNumberRow: true)
+            KeyboardLayout(
+                rows: [
+                    RowItem.keys("`1234567890<>") + [.key(Key(.delete, width: .fill))],
+                    [tab] + RowItem.keys("[]{}#%^*+=\\|~"),
+                    [.key(Key(.undo, width: .pitch(1.77)))] + RowItem.keys("-/:;()$&@£¥") + [returnKey],
+                    [.key(Key(.redo, width: .pitch(2.27))), .spacer(.input)] + RowItem.keys("….,?!'\"_€") + [
+                        .spacer(.fill)
+                    ],
+                    bottomRow(context, layerKey: .letters),
+                ], hasNumberRow: true)
         }
     }
 
-    private static let numberRow: [RowItem] = RowItem.keys("`1234567890-=", secondaries: "~!@#$%^&*()_+", pairs: true) + [.key(Key(.delete, width: .fill))]
+    private static let numberRow: [RowItem] =
+        RowItem.keys("`1234567890-=", secondaries: "~!@#$%^&*()_+", pairs: true) + [.key(Key(.delete, width: .fill))]
     private static let tab = RowItem.key(Key(.tab, width: .pitch(1.54)))
     private static let capsLock = RowItem.key(Key(.capsLock, width: .pitch(1.77)))
     private static let returnKey = RowItem.key(Key(.return, width: .fill))

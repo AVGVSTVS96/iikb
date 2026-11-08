@@ -40,7 +40,8 @@ public struct BarLayout: Hashable, Sendable {
     ) {
         let row = (y: toolbar.top, height: toolbar.bar)
         let side = toolbar.button
-        let left = keys.first?.minX ?? 0, right = keys.last?.maxX ?? 0
+        let left = keys.first?.minX ?? 0
+        let right = keys.last?.maxX ?? 0
         let cell = max(min(keys.map { $0.maxX - $0.minX }.min() ?? row.height, row.height), side)
         let pitch = cell + (keys.count > 1 ? keys[1].minX - keys[0].maxX : 0)
         self.pitch = pitch

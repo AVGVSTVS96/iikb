@@ -5,7 +5,9 @@ import XCTest
 final class AppleBar: XCTestCase {
     func testBars() throws {
         let environment = ProcessInfo.processInfo.environment
-        guard let input = environment["IIKB_APPLEBAR_IN"], let output = environment["IIKB_APPLEBAR_OUT"] else { throw XCTSkip("Run through scripts/applebar") }
+        guard let input = environment["IIKB_APPLEBAR_IN"], let output = environment["IIKB_APPLEBAR_OUT"] else {
+            throw XCTSkip("Run through scripts/applebar")
+        }
         let first = Int(environment["IIKB_APPLEBAR_FIRST"] ?? "") ?? 0
         let count = Int(environment["IIKB_APPLEBAR_COUNT"] ?? "") ?? .max
         let lines = try String(contentsOfFile: input, encoding: .utf8).split(separator: "\n").map(String.init)
@@ -14,10 +16,12 @@ final class AppleBar: XCTestCase {
         app.launch()
         let field = app.textViews.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.keys.matching(NSPredicate(format: "label ==[c] 'a'")).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            app.keys.matching(NSPredicate(format: "label ==[c] 'a'")).firstMatch.waitForExistence(timeout: 10))
         let origin = app.coordinate(withNormalizedOffset: .zero)
         var keys: [String: CGPoint] = [:]
-        for key in app.keyboards.firstMatch.descendants(matching: .any).allElementsBoundByIndex where key.frame.width > 0 && !key.label.isEmpty {
+        for key in app.keyboards.firstMatch.descendants(matching: .any).allElementsBoundByIndex
+        where key.frame.width > 0 && !key.label.isEmpty {
             let frame = key.frame
             keys[key.label.lowercased()] = CGPoint(x: frame.midX, y: frame.midY)
         }
@@ -71,7 +75,9 @@ final class AppleBar: XCTestCase {
                 }
                 tap(keys["space"]!)
                 last = bars.last ?? []
-                out += "\(index)|\(position)|\(word)|" + bars.map { $0.joined(separator: ",") }.joined(separator: "|") + "\n"
+                out +=
+                    "\(index)|\(position)|\(word)|" + bars.map { $0.joined(separator: ",") }.joined(separator: "|")
+                    + "\n"
             }
             try out.write(toFile: output, atomically: true, encoding: .utf8)
         }

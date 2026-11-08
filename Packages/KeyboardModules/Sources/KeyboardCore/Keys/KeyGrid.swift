@@ -22,7 +22,10 @@ public struct GridMetrics: Hashable, Sendable {
     public var columns, sideInset, keyGap, rowGap, keyHeight, numberRowHeight, topInset: Double
     public var margin: Margin
 
-    public init(columns: Double, sideInset: Double, keyGap: Double, rowGap: Double, keyHeight: Double, numberRowHeight: Double, topInset: Double, margin: Margin = .none) {
+    public init(
+        columns: Double, sideInset: Double, keyGap: Double, rowGap: Double, keyHeight: Double, numberRowHeight: Double,
+        topInset: Double, margin: Margin = .none
+    ) {
         self.columns = columns
         self.sideInset = sideInset
         self.keyGap = keyGap
@@ -54,7 +57,8 @@ public struct KeyGrid: Sendable {
     public private(set) var signature = ""
     public private(set) var width = 0.0
     private var bands: [ClosedRange<Double>] = []
-    private var metrics = GridMetrics(columns: 1, sideInset: 0, keyGap: 0, rowGap: 0, keyHeight: 1, numberRowHeight: 1, topInset: 0)
+    private var metrics = GridMetrics(
+        columns: 1, sideInset: 0, keyGap: 0, rowGap: 0, keyHeight: 1, numberRowHeight: 1, topInset: 0)
     private var labels: [String: [(row: Int, key: Int)]] = [:]
 
     public init() {}
@@ -76,7 +80,8 @@ public struct KeyGrid: Sendable {
             for item in row {
                 let span = (item.width.span ?? fillSpan) * pitch
                 if case .key(let key) = item {
-                    keys.append((key, Rect(x: x + metrics.keyGap / 2, y: y, width: span - metrics.keyGap, height: height)))
+                    keys.append(
+                        (key, Rect(x: x + metrics.keyGap / 2, y: y, width: span - metrics.keyGap, height: height)))
                 }
                 x += span
             }
@@ -93,12 +98,15 @@ public struct KeyGrid: Sendable {
 
     /// Whether the two lay out the same keys in the same places.
     func isSame(as other: KeyGrid) -> Bool {
-        signature == other.signature && metrics == other.metrics && rows.elementsEqual(other.rows) { $0.elementsEqual($1) { $0.key == $1.key && $0.frame == $1.frame } }
+        signature == other.signature && metrics == other.metrics
+            && rows.elementsEqual(other.rows) { $0.elementsEqual($1) { $0.key == $1.key && $0.frame == $1.frame } }
     }
 
     public func index(atX x: Double, y: Double) -> (row: Int, key: Int)? {
         guard let row = bands.firstIndex(where: { $0.contains(y) }),
-              let key = rows[row].indices.min(by: { rows[row][$0].frame.distanceSquared(toX: x, y: y) < rows[row][$1].frame.distanceSquared(toX: x, y: y) })
+            let key = rows[row].indices.min(by: {
+                rows[row][$0].frame.distanceSquared(toX: x, y: y) < rows[row][$1].frame.distanceSquared(toX: x, y: y)
+            })
         else { return nil }
         return (row, key)
     }
@@ -106,11 +114,17 @@ public struct KeyGrid: Sendable {
     /// The chevron a one-handed keyboard draws in its margin to bring both hands back, as Apple places it: 40pt in from
     /// the screen's edge (27.67pt toward the right hand) and 13/3pt below the middle of the keys.
     public var expander: (frame: Rect, pointsRight: Bool)? {
-        guard metrics.margin != .none, metrics.margin.leading == 0 || metrics.margin.trailing == 0, let top = rows.first?.first?.frame.y, let bottom = rows.last?.first?.frame else { return nil }
+        guard metrics.margin != .none, metrics.margin.leading == 0 || metrics.margin.trailing == 0,
+            let top = rows.first?.first?.frame.y, let bottom = rows.last?.first?.frame
+        else { return nil }
         let size = Size(width: 34.0 / 3, height: 107.0 / 3)
         let pointsRight = metrics.margin.trailing > 0
         let midY = (top + bottom.y + bottom.height) / 2 + 13.0 / 3
-        return (Rect(x: pointsRight ? width - 40 : 83.0 / 3, y: midY - size.height / 2, width: size.width, height: size.height), pointsRight)
+        return (
+            Rect(
+                x: pointsRight ? width - 40 : 83.0 / 3, y: midY - size.height / 2, width: size.width,
+                height: size.height), pointsRight
+        )
     }
 
     public func key(atX x: Double, y: Double) -> Key? {
@@ -128,7 +142,9 @@ public struct KeyGrid: Sendable {
     /// The key with this label nearest a tap: the split keyboard has a G and a V on each half, and a tap means the
     /// one under its thumb.
     public func frame(of label: String, nearX x: Double, y: Double) -> Rect? {
-        labels[label]?.lazy.map { rows[$0.row][$0.key].frame }.min { $0.distanceSquared(toX: x, y: y) < $1.distanceSquared(toX: x, y: y) }
+        labels[label]?.lazy.map { rows[$0.row][$0.key].frame }.min {
+            $0.distanceSquared(toX: x, y: y) < $1.distanceSquared(toX: x, y: y)
+        }
     }
 
     /// Whether a tap is close enough to a key to have been meant for it: within a quarter key of its cell.
@@ -145,14 +161,18 @@ public struct KeyGrid: Sendable {
     }
 
     func cell(of frame: Rect) -> Rect {
-        Rect(x: frame.x - metrics.keyGap / 2, y: frame.y - metrics.rowGap / 2, width: frame.width + metrics.keyGap, height: frame.height + metrics.rowGap)
+        Rect(
+            x: frame.x - metrics.keyGap / 2, y: frame.y - metrics.rowGap / 2, width: frame.width + metrics.keyGap,
+            height: frame.height + metrics.rowGap)
     }
 
     var bounds: Rect {
         let cells = rows.joined().map { cell(of: $0.frame) }
         guard let first = cells.first else { return Rect(x: 0, y: 0, width: 1, height: 1) }
-        let minX = cells.map(\.x).min() ?? first.x, minY = cells.map(\.y).min() ?? first.y
-        let maxX = cells.map { $0.x + $0.width }.max() ?? 1, maxY = cells.map { $0.y + $0.height }.max() ?? 1
+        let minX = cells.map(\.x).min() ?? first.x
+        let minY = cells.map(\.y).min() ?? first.y
+        let maxX = cells.map { $0.x + $0.width }.max() ?? 1
+        let maxY = cells.map { $0.y + $0.height }.max() ?? 1
         return Rect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 }
@@ -162,7 +182,8 @@ extension KeyGrid {
     public static let standard = KeyGrid(
         Layouts.layout(for: LayoutContext(device: .phone, layer: .letters)),
         width: 10,
-        metrics: GridMetrics(columns: 10, sideInset: 0, keyGap: 0, rowGap: 0, keyHeight: 1, numberRowHeight: 1, topInset: 0),
+        metrics: GridMetrics(
+            columns: 10, sideInset: 0, keyGap: 0, rowGap: 0, keyHeight: 1, numberRowHeight: 1, topInset: 0),
         signature: "standard"
     )
 }

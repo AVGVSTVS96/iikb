@@ -1,6 +1,6 @@
+import Charts
 import KeyboardCore
 import KeyboardUI
-import Charts
 import SwiftUI
 
 /// Every dictation, newest first by day, under how much and how fast you talk. Wide, the picked transcript takes the
@@ -23,7 +23,11 @@ struct TranscriptsPage: View {
         var days: [(day: Date, transcripts: [Transcript])] = []
         for transcript in shown {
             let day = calendar.startOfDay(for: transcript.date)
-            if days.last?.day == day { days[days.count - 1].transcripts.append(transcript) } else { days.append((day, [transcript])) }
+            if days.last?.day == day {
+                days[days.count - 1].transcripts.append(transcript)
+            } else {
+                days.append((day, [transcript]))
+            }
         }
         return days
     }
@@ -96,7 +100,11 @@ struct TranscriptsPage: View {
         let picked = beside && transcript.id == (selected ?? store.all.first?.id)
         Group {
             if beside {
-                Button { selected = transcript.id } label: { Row(transcript: transcript) }
+                Button {
+                    selected = transcript.id
+                } label: {
+                    Row(transcript: transcript)
+                }
             } else {
                 NavigationLink(value: transcript.id) { Row(transcript: transcript) }
             }
@@ -111,7 +119,9 @@ struct TranscriptsPage: View {
         ContentUnavailableView {
             Label("No Transcripts", systemImage: "waveform")
         } description: {
-            Text("Tap the mic at the right end of the keyboard’s suggestions and talk. Everything you dictate is kept here, on this \(ThisDevice.name).")
+            Text(
+                "Tap the mic at the right end of the keyboard’s suggestions and talk. Everything you dictate is kept here, on this \(ThisDevice.name)."
+            )
         }
     }
 
@@ -119,9 +129,12 @@ struct TranscriptsPage: View {
         let calendar = Calendar.current
         if calendar.isDateInToday(day) { return "Today" }
         if calendar.isDateInYesterday(day) { return "Yesterday" }
-        if let days = calendar.dateComponents([.day], from: day, to: .now).day, days < 7 { return day.formatted(.dateTime.weekday(.wide)) }
+        if let days = calendar.dateComponents([.day], from: day, to: .now).day, days < 7 {
+            return day.formatted(.dateTime.weekday(.wide))
+        }
         let thisYear = calendar.isDate(day, equalTo: .now, toGranularity: .year)
-        return thisYear ? day.formatted(.dateTime.weekday(.wide).month(.wide).day()) : day.formatted(date: .long, time: .omitted)
+        return thisYear
+            ? day.formatted(.dateTime.weekday(.wide).month(.wide).day()) : day.formatted(date: .long, time: .omitted)
     }
 }
 
@@ -167,8 +180,12 @@ private struct Actions: View {
         ShareLink(item: transcript.text) { Label("Share Text", systemImage: "square.and.arrow.up") }
         if Transcripts.shared.hasRecording(transcript.id) {
             Section("Recording") {
-                Button("Send in Messages", systemImage: "message") { try? RecordingShare.send(transcript, as: .message) }
-                Button("Share Recording", systemImage: "square.and.arrow.up") { try? RecordingShare.send(transcript, as: .memo) }
+                Button("Send in Messages", systemImage: "message") {
+                    try? RecordingShare.send(transcript, as: .message)
+                }
+                Button("Share Recording", systemImage: "square.and.arrow.up") {
+                    try? RecordingShare.send(transcript, as: .memo)
+                }
             }
         }
         Button("Delete", systemImage: "trash", role: .destructive) { Transcripts.shared.delete([transcript.id]) }
@@ -197,14 +214,19 @@ private struct Summary: View {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         var words: [Date: Int] = [:]
-        for transcript in transcripts { words[calendar.startOfDay(for: transcript.date), default: 0] += transcript.words }
-        return (0 ..< 14).reversed().compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }.map { Day(date: $0, words: words[$0] ?? 0) }
+        for transcript in transcripts {
+            words[calendar.startOfDay(for: transcript.date), default: 0] += transcript.words
+        }
+        return (0..<14).reversed().compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }.map {
+            Day(date: $0, words: words[$0] ?? 0)
+        }
     }
 
     /// How many percent more or fewer words the last seven days hold than the seven before, once both have some; from
     /// ten times as many, the chip says how many times, up to twenty, past which the week before was too little to say.
     private func trend(_ days: [Day]) -> Int? {
-        let before = days.prefix(7).reduce(0) { $0 + $1.words }, lately = days.suffix(7).reduce(0) { $0 + $1.words }
+        let before = days.prefix(7).reduce(0) { $0 + $1.words }
+        let lately = days.suffix(7).reduce(0) { $0 + $1.words }
         guard before > 0, lately > 0 else { return nil }
         let change = Int((Double(lately - before) / Double(before) * 100).rounded())
         return change == 0 ? nil : change
@@ -213,7 +235,9 @@ private struct Summary: View {
     var body: some View {
         let days = fortnight
         let today = days.last?.words ?? 0
-        Button { Router.shared.show(StatsPage.Section.dictation) } label: {
+        Button {
+            Router.shared.show(StatsPage.Section.dictation)
+        } label: {
             VStack(alignment: .leading, spacing: 18) {
                 HStack(spacing: 10) {
                     Glyph(symbol: "waveform", color: .pink, size: 26)
@@ -243,18 +267,27 @@ private struct Summary: View {
                         }
                     }
                 }
-                if arrangement == .single || window.height >= 760 { FortnightChart(days: days.map { ($0.date, $0.words) }) }
+                if arrangement == .single || window.height >= 760 {
+                    FortnightChart(days: days.map { ($0.date, $0.words) })
+                }
                 Rectangle().fill(Color.appDivider).frame(height: 1)
                 Figures(size: 22) {
-                    Figure(value: Duration.seconds(seconds).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .narrow, maximumUnitCount: 2)), label: "talking")
-                    Figure(value: seconds >= 1 ? "\(Int((Double(words) / seconds * 60).rounded())) wpm" : "–", label: "pace")
+                    Figure(
+                        value: Duration.seconds(seconds).formatted(
+                            .units(allowed: [.hours, .minutes, .seconds], width: .narrow, maximumUnitCount: 2)),
+                        label: "talking")
+                    Figure(
+                        value: seconds >= 1 ? "\(Int((Double(words) / seconds * 60).rounded())) wpm" : "–",
+                        label: "pace")
                     Figure(value: today.formatted(), label: "today")
                 }
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.appCard, in: .rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge)
+            )
             .contentShape(.rect(cornerRadius: AppStyle.cardRadius))
         }
         .buttonStyle(CardPress())
@@ -271,12 +304,19 @@ private struct FortnightChart: View {
         let active = days.filter { $0.words > 0 }
         let average = active.isEmpty ? 0 : active.reduce(0) { $0 + $1.words } / active.count
         let best = days.max { $0.words < $1.words }
-        let labeled = stride(from: 0, to: days.count, by: 7).compactMap { Calendar.current.date(byAdding: .hour, value: 12, to: days[$0].date) }
+        let labeled = stride(from: 0, to: days.count, by: 7).compactMap {
+            Calendar.current.date(byAdding: .hour, value: 12, to: days[$0].date)
+        }
         Chart {
             ForEach(days, id: \.date) { day in
                 let marked = Calendar.current.isDateInToday(day.date) || day.date == best?.date
                 BarMark(x: .value("Day", day.date, unit: .day), y: .value("Words", day.words), width: .ratio(0.64))
-                    .foregroundStyle(marked ? AnyShapeStyle(LinearGradient(colors: [.pink, .purple], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Color.pink.opacity(0.8)))
+                    .foregroundStyle(
+                        marked
+                            ? AnyShapeStyle(
+                                LinearGradient(colors: [.pink, .purple], startPoint: .top, endPoint: .bottom))
+                            : AnyShapeStyle(Color.pink.opacity(0.8))
+                    )
                     .clipShape(UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4, style: .continuous))
                     .annotation(position: .top, spacing: 4) {
                         if day.date == best?.date, day.words > 0 {
@@ -342,22 +382,34 @@ private struct TranscriptDetail: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(Color.appCard, in: .rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
             TranscriptActions(transcript: transcript)
             Box {
-                Fact(title: "Length", value: Duration.seconds(transcript.seconds).formatted(.time(pattern: .minuteSecond)))
+                Fact(
+                    title: "Length",
+                    value: Duration.seconds(transcript.seconds).formatted(.time(pattern: .minuteSecond)))
                 Fact(title: "Words", value: transcript.words.formatted())
                 if transcript.seconds >= 1 {
-                    Fact(title: "Pace", value: "\(Int((Double(transcript.words) / transcript.seconds * 60).rounded())) wpm")
+                    Fact(
+                        title: "Pace",
+                        value: "\(Int((Double(transcript.words) / transcript.seconds * 60).rounded())) wpm")
                 }
-                Fact(title: "Typed", value: transcript.typed ? transcript.app.map { "In \(AppName.of($0))" } ?? "Yes" : transcript.recovered == true ? "No, iikb closed during it" : "No")
+                Fact(
+                    title: "Typed",
+                    value: transcript.typed
+                        ? transcript.app.map { "In \(AppName.of($0))" } ?? "Yes"
+                        : transcript.recovered == true ? "No, iikb closed during it" : "No")
                 if let model = transcript.model { Fact(title: "Written by", value: model) }
             }
             if let replaced = transcript.replaced {
                 Box(header: "First Written") {
-                    RowText(title: replaced.text.isEmpty ? "Nothing heard" : replaced.text, detail: replaced.model.map { "Written by \($0)" })
-                        .textSelection(.enabled)
-                        .row()
+                    RowText(
+                        title: replaced.text.isEmpty ? "Nothing heard" : replaced.text,
+                        detail: replaced.model.map { "Written by \($0)" }
+                    )
+                    .textSelection(.enabled)
+                    .row()
                 }
             }
             RecordingSection(transcript: transcript)

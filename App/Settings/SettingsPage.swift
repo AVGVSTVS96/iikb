@@ -1,5 +1,5 @@
-import KeyboardStore
 import KeyboardCore
+import KeyboardStore
 import KeyboardUI
 import SwiftUI
 
@@ -7,7 +7,8 @@ import SwiftUI
 /// takes the first pane and the picked page the second; elsewhere a page opens on its own.
 struct SettingsPage: View {
     enum Page: String, CaseIterable, Hashable {
-        case appearance, typing, feedback, voice, writing, dictionary, extensions, sources, access, privacy, changelog, about
+        case appearance, typing, feedback, voice, writing, dictionary, extensions, sources, access, privacy, changelog,
+            about
 
         static let sections: [(title: String, pages: [Page])] = [
             ("Keyboard", [.appearance, .typing, .feedback]),
@@ -51,7 +52,9 @@ struct SettingsPage: View {
 
         /// What the page is set to, beside it in the list and on Home's card for it.
         @MainActor var value: String? {
-            let model = SettingsModel.shared, settings = model.settings, words = VoiceVocabulary.shared.vocabulary.terms.count
+            let model = SettingsModel.shared
+            let settings = model.settings
+            let words = VoiceVocabulary.shared.vocabulary.terms.count
             return switch self {
             case .appearance: settings.theme.title
             case .typing: settings.autoCorrection ? "Auto-Correction On" : "Auto-Correction Off"
@@ -128,12 +131,16 @@ private struct SettingsList: View {
             ForEach(Page.sections, id: \.title) { section in
                 Box(header: section.title) {
                     ForEach(section.pages, id: \.self) { page in
-                        Button { open(page) } label: { row(page) }
-                            .buttonStyle(.plain)
-                            .hoverEffect(.highlight)
-                            .background(page == picked ? Color.appPicked : .clear)
-                            .accessibilityIdentifier(page.rawValue)
-                            .accessibilityAddTraits(page == picked ? .isSelected : [])
+                        Button {
+                            open(page)
+                        } label: {
+                            row(page)
+                        }
+                        .buttonStyle(.plain)
+                        .hoverEffect(.highlight)
+                        .background(page == picked ? Color.appPicked : .clear)
+                        .accessibilityIdentifier(page.rawValue)
+                        .accessibilityAddTraits(page == picked ? .isSelected : [])
                     }
                 }
             }

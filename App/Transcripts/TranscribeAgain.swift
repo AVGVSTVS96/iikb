@@ -49,13 +49,27 @@ struct RecordingSection: View {
     var body: some View {
         let kept = Transcripts.shared.hasRecording(transcript.id)
         if kept || transcript.mic != nil {
-            Box(footer: kept ? "iikb keeps the sound of each dictation on this \(ThisDevice.name), so it can be sent or written again with \(VoiceModel.shared.model.title)." : nil) {
+            Box(
+                footer: kept
+                    ? "iikb keeps the sound of each dictation on this \(ThisDevice.name), so it can be sent or written again with \(VoiceModel.shared.model.title)."
+                    : nil
+            ) {
                 if let mic = transcript.mic { Fact(title: "Microphone", value: mic) }
-                if let voiceProcessing = transcript.voiceProcessing { Fact(title: "Voice Processing", value: voiceProcessing ? "On" : "Off") }
-                if let capture = transcript.capture.flatMap(Capture.init) { Fact(title: "Heard As", value: capture.title) }
+                if let voiceProcessing = transcript.voiceProcessing {
+                    Fact(title: "Voice Processing", value: voiceProcessing ? "On" : "Off")
+                }
+                if let capture = transcript.capture.flatMap(Capture.init) {
+                    Fact(title: "Heard As", value: capture.title)
+                }
                 if kept {
-                    ActionRow(title: writing ? VoiceModel.shared.state == .ready ? "Transcribing Again…" : "Transcribing Again once \(VoiceModel.shared.model.title) is ready…" : "Transcribe Again", symbol: "arrow.clockwise") { Task { await write() } }
-                        .disabled(writing)
+                    ActionRow(
+                        title: writing
+                            ? VoiceModel.shared.state == .ready
+                                ? "Transcribing Again…"
+                                : "Transcribing Again once \(VoiceModel.shared.model.title) is ready…"
+                            : "Transcribe Again", symbol: "arrow.clockwise"
+                    ) { Task { await write() } }
+                    .disabled(writing)
                 }
                 if let again, again.text.isEmpty {
                     RowText(title: "Nothing heard", detail: "Written by \(again.model)").row()
@@ -64,7 +78,8 @@ struct RecordingSection: View {
                         .textSelection(.enabled)
                         .row()
                     ActionRow(title: "Use This Transcript") {
-                        Transcripts.shared.replace(transcript.id, with: again.text, heard: again.heard, model: again.model)
+                        Transcripts.shared.replace(
+                            transcript.id, with: again.text, heard: again.heard, model: again.model)
                         self.again = nil
                     }
                     CopyRow(text: again.text)
@@ -79,7 +94,8 @@ struct RecordingSection: View {
         failure = nil
         defer { writing = false }
         do {
-            again = try await VoiceModel.shared.write(try Recording.read(Transcripts.shared.recording(of: transcript.id)), for: transcript.app)
+            again = try await VoiceModel.shared.write(
+                try Recording.read(Transcripts.shared.recording(of: transcript.id)), for: transcript.app)
         } catch {
             failure = error.localizedDescription
         }

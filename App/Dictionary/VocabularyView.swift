@@ -15,23 +15,32 @@ struct VocabularyView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
-            Box(footer: "iikb types each word as you spell it here, in place of what the voice model wrote, or of the same word with other spaces, hyphens or capitals. Only whole words change.") {
+            Box(
+                footer:
+                    "iikb types each word as you spell it here, in place of what the voice model wrote, or of the same word with other spaces, hyphens or capitals. Only whole words change."
+            ) {
                 ActionRow(title: "Add Word", symbol: "plus") { editing = Edited(index: nil) }
             }
             if !words.isEmpty {
                 Box(header: words.count == 1 ? "1 Word" : "\(words.count.formatted()) Words") {
                     ForEach(words, id: \.index) { word in
-                        Button { editing = Edited(index: word.index) } label: { row(word.term) }
-                            .buttonStyle(.plain)
-                            .contextMenu {
-                                Button("Delete", systemImage: "trash", role: .destructive) { delete(word.index) }
-                            }
+                        Button {
+                            editing = Edited(index: word.index)
+                        } label: {
+                            row(word.term)
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button("Delete", systemImage: "trash", role: .destructive) { delete(word.index) }
+                        }
                     }
                 }
             }
         }
         .sheet(item: $editing) { edited in
-            TermEditor(term: edited.index.map { store.vocabulary.terms[$0] } ?? Vocabulary.Term(""), isNew: edited.index == nil) { term in
+            TermEditor(
+                term: edited.index.map { store.vocabulary.terms[$0] } ?? Vocabulary.Term(""), isNew: edited.index == nil
+            ) { term in
                 var terms = store.vocabulary.terms
                 if let index = edited.index { terms[index] = term } else { terms.append(term) }
                 store.set(terms)
@@ -43,7 +52,9 @@ struct VocabularyView: View {
 
     private func row(_ term: Vocabulary.Term) -> some View {
         HStack(spacing: 12) {
-            RowText(title: term.term, detail: term.heardAs.isEmpty ? nil : "Written as " + term.heardAs.joined(separator: ", "))
+            RowText(
+                title: term.term,
+                detail: term.heardAs.isEmpty ? nil : "Written as " + term.heardAs.joined(separator: ", "))
             Image(systemName: "chevron.right")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.appSecondary)
@@ -83,7 +94,11 @@ private struct TermEditor: View {
                         .textInputAutocapitalization(.never)
                         .row()
                 }
-                Box(header: "Written Instead", footer: "What the voice model writes when you say it, separated by commas. Leave it empty to fix only spaces, hyphens and capitals.") {
+                Box(
+                    header: "Written Instead",
+                    footer:
+                        "What the voice model writes when you say it, separated by commas. Leave it empty to fix only spaces, hyphens and capitals."
+                ) {
                     TextField("clawed, clod", text: $heardAs)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
@@ -104,7 +119,8 @@ private struct TermEditor: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         term.term = term.term.trimmingCharacters(in: .whitespaces)
-                        term.heardAs = heardAs.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                        term.heardAs = heardAs.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                            .filter { !$0.isEmpty }
                         save(term)
                         dismiss()
                     }

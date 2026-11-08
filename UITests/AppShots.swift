@@ -1,5 +1,5 @@
-import XCTest
 import UIKit
+import XCTest
 
 /// The app's pages on an iPad, upright or sideways, in a window of the size asked, for scripts/sim ipadapp: each page
 /// in `IIKB_PAGES` (lines of a name and its launch arguments) is launched, the window dragged by its corner to
@@ -13,7 +13,9 @@ final class AppShots: XCTestCase {
             let parts = spec.split(separator: "x").compactMap { Double($0) }
             return parts.count == 2 ? CGSize(width: parts[0], height: parts[1]) : nil
         }
-        let pages = (environment["IIKB_PAGES"] ?? "").split(separator: "\n").map { $0.split(separator: " ").map(String.init) }
+        let pages = (environment["IIKB_PAGES"] ?? "").split(separator: "\n").map {
+            $0.split(separator: " ").map(String.init)
+        }
         XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
         for page in pages where !page.isEmpty {
             let app = XCUIApplication()
@@ -25,7 +27,8 @@ final class AppShots: XCTestCase {
             Thread.sleep(forTimeInterval: 2.5)
             let frame = window.frame
             print("SHOT \(page[0]) window \(frame.debugDescription)")
-            try png(of: frame).write(to: URL(fileURLWithPath: "\(prefix)-\(page[0])-\(Int(frame.width))x\(Int(frame.height)).png"))
+            try png(of: frame).write(
+                to: URL(fileURLWithPath: "\(prefix)-\(page[0])-\(Int(frame.width))x\(Int(frame.height)).png"))
             app.terminate()
         }
     }
@@ -35,7 +38,9 @@ final class AppShots: XCTestCase {
     private func png(of frame: CGRect) -> Data {
         let image = XCUIScreen.main.screenshot().image
         let board = XCUIApplication(bundleIdentifier: "com.apple.springboard").frame.size
-        let screen = (image.size.width > image.size.height) == (board.width > board.height) ? board : CGSize(width: board.height, height: board.width)
+        let screen =
+            (image.size.width > image.size.height) == (board.width > board.height)
+            ? board : CGSize(width: board.height, height: board.width)
         let format = UIGraphicsImageRendererFormat()
         format.scale = image.size.width * image.scale / screen.width
         return UIGraphicsImageRenderer(size: frame.size, format: format).pngData { _ in
@@ -47,12 +52,13 @@ final class AppShots: XCTestCase {
     /// of `size` or over it, again until it's within a few points: a drag sideways resizes it by about twice the drag.
     private func resize(_ window: XCUIElement, to size: CGSize) {
         let screen = XCUIApplication(bundleIdentifier: "com.apple.springboard").coordinate(withNormalizedOffset: .zero)
-        for _ in 0 ..< 10 {
+        for _ in 0..<10 {
             let frame = window.frame
             let change = CGVector(dx: (size.width - frame.width) / 2, dy: (size.height - frame.height) / 2)
             guard abs(change.dx) > 3 || abs(change.dy) > 3 else { return }
             let corner = screen.withOffset(CGVector(dx: frame.maxX - 6, dy: frame.maxY - 6))
-            corner.press(forDuration: 0.5, thenDragTo: corner.withOffset(change), withVelocity: .slow, thenHoldForDuration: 0.5)
+            corner.press(
+                forDuration: 0.5, thenDragTo: corner.withOffset(change), withVelocity: .slow, thenHoldForDuration: 0.5)
             Thread.sleep(forTimeInterval: 1)
             print("RESIZE to \(size) now \(window.frame.size)")
         }

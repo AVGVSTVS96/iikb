@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// Once you stop, the dictations recorded while the model gets ready, as a stack of cards beside what it's doing: the
 /// next to be typed in front with its length, up to three more tucked behind it and peeking out 6 to its right, each a
@@ -60,7 +60,9 @@ final class PendingStack: UIView {
                         $0.alpha = 0
                         $0.transform = CGAffineTransform(translationX: 0, y: -8).scaledBy(x: 0.94, y: 0.94)
                     }
-                } completion: { _ in gone.forEach { $0.removeFromSuperview() } }
+                } completion: { _ in
+                    gone.forEach { $0.removeFromSuperview() }
+                }
             } else {
                 gone.forEach { $0.removeFromSuperview() }
             }
@@ -104,7 +106,8 @@ final class PendingStack: UIView {
         for (depth, card) in cards.enumerated() {
             let place = min(depth, Self.shades.count - 1)
             let shrink = 1 - 0.08 * CGFloat(place)
-            let size = CGSize(width: (width * shrink).rounded(scale: scale), height: (height * shrink).rounded(scale: scale))
+            let size = CGSize(
+                width: (width * shrink).rounded(scale: scale), height: (height * shrink).rounded(scale: scale))
             let center = CGPoint(x: minX + width + CGFloat(place) * Self.peek - size.width / 2, y: bounds.midY)
             if !card.placed {
                 card.placed = true
@@ -112,7 +115,8 @@ final class PendingStack: UIView {
                     card.bounds.size = size
                     card.center = center
                     card.alpha = 0
-                    card.backgroundColor = theme.candidatePill.mixed(with: theme.candidateDivider, Self.shades[place]).ui
+                    card.backgroundColor =
+                        theme.candidatePill.mixed(with: theme.candidateDivider, Self.shades[place]).ui
                     card.transform = CGAffineTransform(translationX: 12, y: 0).scaledBy(x: 0.9, y: 0.9)
                 }
             }
@@ -165,8 +169,8 @@ private final class Card: UIView {
     }
 }
 
-private extension RGBA {
-    func mixed(with other: RGBA, _ amount: Double) -> RGBA {
+extension RGBA {
+    fileprivate func mixed(with other: RGBA, _ amount: Double) -> RGBA {
         RGBA(
             red: red + (other.red - red) * amount, green: green + (other.green - green) * amount,
             blue: blue + (other.blue - blue) * amount, alpha: alpha + (other.alpha - alpha) * amount

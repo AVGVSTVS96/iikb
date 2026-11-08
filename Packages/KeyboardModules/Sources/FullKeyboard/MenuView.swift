@@ -32,7 +32,10 @@ final class MenuView: UIView {
     }
 
     /// `footer` are the More button's items, `picked` the layout in use among them.
-    func show(footer events: [KeyboardEvent], picked: KeyboardEvent, theme: KeyboardTheme, metrics: KeyboardMetrics, block: (minX: CGFloat, maxX: CGFloat)) {
+    func show(
+        footer events: [KeyboardEvent], picked: KeyboardEvent, theme: KeyboardTheme, metrics: KeyboardMetrics,
+        block: (minX: CGFloat, maxX: CGFloat)
+    ) {
         if events != footer.map(\.event) {
             footer.forEach { $0.button.removeFromSuperview() }
             footer = events.map { event in
@@ -71,7 +74,9 @@ final class MenuView: UIView {
         var y = Self.gap
         for shelf in shelves {
             shelf.head.frame = CGRect(x: block.minX, y: y, width: Self.headWidth, height: height)
-            shelf.content.frame = CGRect(x: block.minX + Self.headWidth + Self.gap, y: y, width: block.maxX - block.minX - Self.headWidth - Self.gap, height: height)
+            shelf.content.frame = CGRect(
+                x: block.minX + Self.headWidth + Self.gap, y: y,
+                width: block.maxX - block.minX - Self.headWidth - Self.gap, height: height)
             y += height + Self.gap
         }
         let wide = block.maxX - block.minX > 600
@@ -97,7 +102,8 @@ final class MenuView: UIView {
     /// Each layout says its name and shows filled while it's the one in use; Next Keyboard and Settings say theirs where
     /// the bar is wide.
     private func style(_ button: UIButton, event: KeyboardEvent, titled: Bool, on: Bool) {
-        let image = UIImage(systemName: event.symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .medium))
+        let image = UIImage(
+            systemName: event.symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .medium))
         button.setImage(image, for: .normal)
         button.setTitle(titled ? " " + event.title : nil, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
@@ -130,7 +136,9 @@ private final class ShelfHead: UIControl {
         name.font = .systemFont(ofSize: 15, weight: .semibold)
         name.adjustsFontSizeToFitWidth = true
         name.minimumScaleFactor = 0.75
-        more.image = UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold))
+        more.image = UIImage(
+            systemName: "chevron.right",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold))
         more.contentMode = .center
         [tile, name, more].forEach {
             $0.isUserInteractionEnabled = false
@@ -165,9 +173,9 @@ private final class ShelfHead: UIControl {
     }
 }
 
-private extension Panel {
+extension Panel {
     /// Its tile's color, the one Home's card for it has.
-    var color: UIColor {
+    fileprivate var color: UIColor {
         switch self {
         case .clipboard: .systemOrange
         case .transcripts: .systemPink

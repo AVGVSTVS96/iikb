@@ -29,18 +29,24 @@ public enum SettingsStore {
     private static let theme = Choice(key: "theme", path: \.theme)
     private static let themeAppearance = Choice(key: "themeAppearance", path: \.themeAppearance)
     private static let stopAnimation = Choice(key: "stopAnimation", path: \.stopAnimation)
-    private static let characterPreview = Choice(key: "characterPreviewStyle", path: \.characterPreview, switchKey: "characterPreview", on: .attached, off: CharacterPreview.none)
-    private static let haptics = Choice(key: "hapticFeedback", path: \.haptics, switchKey: "haptics", on: .standard, off: .off)
+    private static let characterPreview = Choice(
+        key: "characterPreviewStyle", path: \.characterPreview, switchKey: "characterPreview", on: .attached,
+        off: CharacterPreview.none)
+    private static let haptics = Choice(
+        key: "hapticFeedback", path: \.haptics, switchKey: "haptics", on: .standard, off: .off)
     private static let keySpacing = Choice(key: "keySpacing", path: \.keySpacing)
     private static let keyRoundness = Choice(key: "keyRoundness", path: \.keyRoundness)
     private static let dictationStyle = Choice(key: "writingStyle", path: \.dictationStyle)
-    private static let dictationEditing = Choice(key: "dictationEditing", path: \.dictationEditing, switchKey: "keepsUmAndUh", on: .asSaid, off: .light)
-    private static let dictationLists = Choice(key: "spokenLists", path: \.dictationLists, switchKey: "dictationLists", on: .numbered, off: .off)
+    private static let dictationEditing = Choice(
+        key: "dictationEditing", path: \.dictationEditing, switchKey: "keepsUmAndUh", on: .asSaid, off: .light)
+    private static let dictationLists = Choice(
+        key: "spokenLists", path: \.dictationLists, switchKey: "dictationLists", on: .numbered, off: .off)
     private static let dictationTextMode = Choice(key: "textMode", path: \.dictationTextMode)
     private static let keyboardMenu = Choice(key: "keyboardMenu", path: \.keyboardMenu)
     private static let clipboardLength = Choice(key: "clipboardLength", path: \.clipboardLength)
     /// Globe Key was a switch, turned off to stop taps landing on the globe, which Spacer now does with the globe kept.
-    private static let globeKey = Choice(key: "globe", path: \.globeKey, switchKey: "globeKey", on: .switches, off: .spacer)
+    private static let globeKey = Choice(
+        key: "globe", path: \.globeKey, switchKey: "globeKey", on: .switches, off: .spacer)
     private static let skinToneKey = "skinTone"
     private static let appWritingStylesKey = "appWritingStyles"
 
@@ -72,7 +78,8 @@ public enum SettingsStore {
         clipboardLength.load(into: &settings, sharing: sharing)
         globeKey.load(into: &settings, sharing: sharing)
         settings.skinTone = (value(forKey: skinToneKey, sharing: sharing) as? String).flatMap(SkinTone.init)
-        settings.appDictationStyles = (value(forKey: appWritingStylesKey, sharing: sharing) as? [String: String] ?? [:]).compactMapValues(DictationStyle.init)
+        settings.appDictationStyles = (value(forKey: appWritingStylesKey, sharing: sharing) as? [String: String] ?? [:])
+            .compactMapValues(DictationStyle.init)
         return settings
     }
 
@@ -166,7 +173,10 @@ private struct Choice<Value: RawRepresentable<String>> {
     var switchKey: String?
     var on, off: Value?
 
-    init(key: String, path: WritableKeyPath<KeyboardSettings, Value>, switchKey: String? = nil, on: Value? = nil, off: Value? = nil) {
+    init(
+        key: String, path: WritableKeyPath<KeyboardSettings, Value>, switchKey: String? = nil, on: Value? = nil,
+        off: Value? = nil
+    ) {
         self.key = key
         self.path = path
         self.switchKey = switchKey
@@ -177,7 +187,9 @@ private struct Choice<Value: RawRepresentable<String>> {
     func load(into settings: inout KeyboardSettings, sharing: Bool) {
         if let raw = SettingsStore.value(forKey: key, sharing: sharing) as? String {
             if let value = Value(rawValue: raw) { settings[keyPath: path] = value }
-        } else if let switchKey, let old = SettingsStore.value(forKey: switchKey, sharing: sharing) as? Bool, let value = old ? on : off {
+        } else if let switchKey, let old = SettingsStore.value(forKey: switchKey, sharing: sharing) as? Bool,
+            let value = old ? on : off
+        {
             settings[keyPath: path] = value
         }
     }

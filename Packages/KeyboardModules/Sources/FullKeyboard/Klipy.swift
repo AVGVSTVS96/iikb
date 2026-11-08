@@ -12,7 +12,9 @@ nonisolated public struct Klipy: Sendable {
 
     public static let shared: Klipy? = {
         guard let url = Bundle.module.url(forResource: "klipy", withExtension: "key", subdirectory: "Keys"),
-              let key = try? String(contentsOf: url, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty // file: bundled key
+            // file: bundled key
+            let key = try? String(contentsOf: url, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
+            !key.isEmpty
         else { return nil }
         return Klipy(key: key, customer: customerID())
     }()
@@ -34,8 +36,8 @@ nonisolated public struct Klipy: Sendable {
         case .recents(let slugs): request = get("gifs/items", ["slugs": slugs.joined(separator: ",")])
         }
         guard let (data, response) = try? await URLSession.shared.data(for: request),
-              (response as? HTTPURLResponse)?.statusCode == 200,
-              let page = try? JSONDecoder().decode(Page.self, from: data), page.result
+            (response as? HTTPURLResponse)?.statusCode == 200,
+            let page = try? JSONDecoder().decode(Page.self, from: data), page.result
         else { return nil }
         let gifs = page.data.data.compactMap(\.gif)
         guard case .recents(let slugs) = feed else { return (gifs, page.data.hasNext == true) }
@@ -63,7 +65,8 @@ nonisolated public struct Klipy: Sendable {
 
     private func url(_ path: String, _ query: [String: String]) -> URL {
         var components = URLComponents(string: "https://api.klipy.com/api/v1/\(key)/\(path)")!
-        components.queryItems = query.isEmpty ? nil : query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
+        components.queryItems =
+            query.isEmpty ? nil : query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         return components.url!
     }
 
@@ -96,9 +99,13 @@ nonisolated public struct Klipy: Sendable {
         /// The grid shows the small WebP; the clipboard gets the medium GIF, the format every app pastes. Ads and items
         /// missing either are left out.
         var gif: Gif? {
-            guard type == nil || type == "gif", let slug, let preview = file?["sm"]?["webp"] ?? file?["sm"]?["gif"], let full = file?["md"]?["gif"] ?? file?["hd"]?["gif"] else { return nil }
-            return Gif(id: slug, title: title ?? "", preview: .init(url: preview.url, width: preview.width, height: preview.height),
-                       full: .init(url: full.url, width: full.width, height: full.height))
+            guard type == nil || type == "gif", let slug, let preview = file?["sm"]?["webp"] ?? file?["sm"]?["gif"],
+                let full = file?["md"]?["gif"] ?? file?["hd"]?["gif"]
+            else { return nil }
+            return Gif(
+                id: slug, title: title ?? "",
+                preview: .init(url: preview.url, width: preview.width, height: preview.height),
+                full: .init(url: full.url, width: full.width, height: full.height))
         }
     }
 }
@@ -110,7 +117,7 @@ enum GifClipboard {
     /// The GIF's file, or nil when the download failed.
     static func download(_ gif: Gif) async -> Data? {
         guard let url = URL(string: gif.full.url), let (data, response) = try? await URLSession.shared.data(from: url),
-              (response as? HTTPURLResponse)?.statusCode == 200
+            (response as? HTTPURLResponse)?.statusCode == 200
         else { return nil }
         return data
     }

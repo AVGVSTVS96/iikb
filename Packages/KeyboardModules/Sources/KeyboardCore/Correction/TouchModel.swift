@@ -167,8 +167,11 @@ struct KeyTouches: Codable, Hashable, Sendable {
     var count: Double { all.count }
 
     var isFinite: Bool {
-        [all.count, all.meanX, all.meanY, all.scatterXX, all.scatterXY, all.scatterYY, lately.count, lately.x, lately.y,
-         now.count, now.x, now.y, weights.x, weights.y, weights.z].allSatisfy(\.isFinite)
+        [
+            all.count, all.meanX, all.meanY, all.scatterXX, all.scatterXY, all.scatterYY, lately.count, lately.x,
+            lately.y,
+            now.count, now.x, now.y, weights.x, weights.y, weights.z,
+        ].allSatisfy(\.isFinite)
     }
 
     init() {}
@@ -267,7 +270,8 @@ struct Touches: Codable, Hashable, Sendable {
 
     mutating func add(_ x: Double, _ y: Double) {
         count += 1
-        let dx = x - meanX, dy = y - meanY
+        let dx = x - meanX
+        let dy = y - meanY
         meanX += dx / count
         meanY += dy / count
         scatterXX += dx * (x - meanX)
@@ -283,7 +287,8 @@ struct Posterior {
 
     init(_ touches: Touches, spread: Spread) {
         let n = touches.count
-        let kappa = 1 + n, nu = TouchModel.priorWeight + n
+        let kappa = 1 + n
+        let nu = TouchModel.priorWeight + n
         let weight = TouchModel.priorWeight - 3
         let shrink = n / kappa
         mean = (shrink * touches.meanX, shrink * touches.meanY)
@@ -302,13 +307,18 @@ struct Posterior {
 
     /// One posterior with the weighted mean and spread of three that share their degrees of freedom.
     init(blending a: Posterior, _ b: Posterior, _ c: Posterior, by weights: SIMD3<Double>) {
-        let mean = (x: (weights * SIMD3(a.mean.x, b.mean.x, c.mean.x)).sum(), y: (weights * SIMD3(a.mean.y, b.mean.y, c.mean.y)).sum())
-        let dx = SIMD3(a.mean.x, b.mean.x, c.mean.x) - mean.x, dy = SIMD3(a.mean.y, b.mean.y, c.mean.y) - mean.y
+        let mean = (
+            x: (weights * SIMD3(a.mean.x, b.mean.x, c.mean.x)).sum(),
+            y: (weights * SIMD3(a.mean.y, b.mean.y, c.mean.y)).sum()
+        )
+        let dx = SIMD3(a.mean.x, b.mean.x, c.mean.x) - mean.x
+        let dy = SIMD3(a.mean.y, b.mean.y, c.mean.y) - mean.y
         let toScale = (a.dof - 2) / a.dof
-        self.init(mean: mean, kappa: a.kappa, dof: a.dof,
-                  xx: (weights * (SIMD3(a.xx, b.xx, c.xx) + toScale * dx * dx)).sum(),
-                  xy: (weights * (SIMD3(a.xy, b.xy, c.xy) + toScale * dx * dy)).sum(),
-                  yy: (weights * (SIMD3(a.yy, b.yy, c.yy) + toScale * dy * dy)).sum())
+        self.init(
+            mean: mean, kappa: a.kappa, dof: a.dof,
+            xx: (weights * (SIMD3(a.xx, b.xx, c.xx) + toScale * dx * dx)).sum(),
+            xy: (weights * (SIMD3(a.xy, b.xy, c.xy) + toScale * dx * dy)).sum(),
+            yy: (weights * (SIMD3(a.yy, b.yy, c.yy) + toScale * dy * dy)).sum())
     }
 
     /// The same steadiness around where your latest taps center, with this posterior's mean as their prior (one tap).
@@ -321,7 +331,8 @@ struct Posterior {
 
     func logPredictive(_ u: Double, _ v: Double) -> Double {
         let determinant = xx * yy - xy * xy
-        let du = u - mean.x, dv = v - mean.y
+        let du = u - mean.x
+        let dv = v - mean.y
         let distance = (yy * du * du - 2 * xy * du * dv + xx * dv * dv) / determinant
         return -Math.log(2 * Double.pi) - Math.log(determinant) / 2 - (dof / 2 + 1) * Math.log1p(distance / dof)
     }

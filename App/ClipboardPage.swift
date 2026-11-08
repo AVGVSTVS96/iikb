@@ -1,5 +1,5 @@
-import KeyboardStore
 import KeyboardCore
+import KeyboardStore
 import KeyboardUI
 import SwiftUI
 
@@ -35,7 +35,11 @@ struct ClipboardPage: View {
         var groups: [(day: Date?, items: [ClipboardHistory.Item])] = []
         for item in shown {
             let day = item.pinned ? nil : calendar.startOfDay(for: Date(timeIntervalSince1970: item.found))
-            if let last = groups.last, last.day == day { groups[groups.count - 1].items.append(item) } else { groups.append((day, [item])) }
+            if let last = groups.last, last.day == day {
+                groups[groups.count - 1].items.append(item)
+            } else {
+                groups.append((day, [item]))
+            }
         }
         return groups.map { ($0.day.map(TranscriptsPage.title) ?? "Pinned", $0.items) }
     }
@@ -55,7 +59,9 @@ struct ClipboardPage: View {
                         list
                     } second: {
                         if let item = shownInFull {
-                            ClipDetail(item: item, copied: item.content == copied, store: store, copy: { copy(item) }, changed: refresh)
+                            ClipDetail(
+                                item: item, copied: item.content == copied, store: store, copy: { copy(item) },
+                                changed: refresh)
                         } else {
                             empty
                         }
@@ -85,7 +91,8 @@ struct ClipboardPage: View {
                     SearchField(text: $query)
                     if shown.isEmpty, links.isEmpty {
                         if linksOnly, query.trimmingCharacters(in: .whitespaces).isEmpty {
-                            ContentUnavailableView("No Links Yet", systemImage: "link", description: Text("Links you copy show up here."))
+                            ContentUnavailableView(
+                                "No Links Yet", systemImage: "link", description: Text("Links you copy show up here."))
                         } else {
                             ContentUnavailableView.search(text: query)
                         }
@@ -160,7 +167,9 @@ struct ClipboardPage: View {
 
     private func setup(_ text: String) -> some View {
         Box {
-            Button { Router.shared.show(.settings, settings: .access) } label: {
+            Button {
+                Router.shared.show(.settings, settings: .access)
+            } label: {
                 HStack {
                     RowText(title: "Keyboard Access", detail: text)
                     Image(systemName: "chevron.right")
@@ -174,23 +183,34 @@ struct ClipboardPage: View {
     }
 
     private func row(_ item: ClipboardHistory.Item) -> some View {
-        Button { copy(item) } label: { ClipRow(item: item, copied: item.content == copied, thumbnail: { store.thumbnail($0, side: 128) }) }
-            .buttonStyle(.plain)
-            .hoverEffect(.highlight)
-            .background(beside && item.content == shownInFull?.content ? Color.appPicked : .clear)
-            .contextMenu { actions(item) }
+        Button {
+            copy(item)
+        } label: {
+            ClipRow(item: item, copied: item.content == copied, thumbnail: { store.thumbnail($0, side: 128) })
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .background(beside && item.content == shownInFull?.content ? Color.appPicked : .clear)
+        .contextMenu { actions(item) }
     }
 
     private func badge(_ item: ClipboardHistory.Item) -> some View {
-        Button { copy(item) } label: { LinkBadge(item: item, copied: item.content == copied, picked: beside && item.content == shownInFull?.content) }
-            .buttonStyle(.plain)
-            .hoverEffect(.highlight)
-            .contextMenu { actions(item) }
+        Button {
+            copy(item)
+        } label: {
+            LinkBadge(
+                item: item, copied: item.content == copied, picked: beside && item.content == shownInFull?.content)
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .contextMenu { actions(item) }
     }
 
     @ViewBuilder private func actions(_ item: ClipboardHistory.Item) -> some View {
         Button("Copy", systemImage: "doc.on.doc") { copy(item) }
-        if case .link = item.content.kind, let url = URL(string: item.content.preview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "") {
+        if case .link = item.content.kind,
+            let url = URL(string: item.content.preview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
+        {
             Link(destination: url) { Label("Open", systemImage: "safari") }
         }
         if case .text(let text) = item.content { ShareLink(item: text) }
@@ -231,9 +251,10 @@ struct ClipboardPage: View {
         ContentUnavailableView {
             Label("Nothing Copied Yet", systemImage: "list.clipboard")
         } description: {
-            Text(store.started
-                ? "Everything you copy shows up here and in the keyboard’s clipboard, kept on this \(ThisDevice.name)."
-                : "Type with iikb in any app, and what it keeps of what you copy shows up here.")
+            Text(
+                store.started
+                    ? "Everything you copy shows up here and in the keyboard’s clipboard, kept on this \(ThisDevice.name)."
+                    : "Type with iikb in any app, and what it keeps of what you copy shows up here.")
         }
     }
 }
@@ -248,13 +269,16 @@ private struct ClipDetail: View {
     @State private var fullText: String?
 
     private var time: String {
-        Date(timeIntervalSince1970: item.found).formatted(.dateTime.weekday(.wide).month(.abbreviated).day().hour().minute())
+        Date(timeIntervalSince1970: item.found).formatted(
+            .dateTime.weekday(.wide).month(.abbreviated).day().hour().minute())
     }
 
     /// When it was copied, and how long all of it is, once a text kept in a file is read.
     private var detail: String {
         let unit = SettingsModel.shared.settings.clipboardLength
-        let length = fullText.map { ClipboardHistory.length(of: $0, in: unit) } ?? ClipboardHistory.length(of: item.content, in: unit)
+        let length =
+            fullText.map { ClipboardHistory.length(of: $0, in: unit) }
+            ?? ClipboardHistory.length(of: item.content, in: unit)
         return length.map { "\(time) · \($0)" } ?? time
     }
 
@@ -279,7 +303,9 @@ private struct ClipDetail: View {
                         .frame(width: 34, height: 34)
                 }
                 .accessibilityLabel(copied ? "Copied" : "Copy")
-                if case .link = item.content.kind, let url = URL(string: item.content.preview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "") {
+                if case .link = item.content.kind,
+                    let url = URL(string: item.content.preview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
+                {
                     Link(destination: url) { Image(systemName: "safari").frame(width: 34, height: 34) }
                         .accessibilityLabel("Open")
                 }
@@ -323,7 +349,8 @@ private struct ClipDetail: View {
             }
             .background(Color.appCard, in: .rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
             .clipShape(.rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
             Box {
                 ActionRow(title: "Delete Item", role: .destructive) {
                     store.remove(item.content)
@@ -387,9 +414,14 @@ private struct ClipRow: View {
                     if copied {
                         Label("Copied", systemImage: "checkmark")
                     } else {
-                        let time = Date(timeIntervalSince1970: item.found).formatted(item.pinned ? .dateTime.month(.abbreviated).day().hour().minute() : .dateTime.hour().minute())
-                        Text(ClipboardHistory.length(of: item.content, in: SettingsModel.shared.settings.clipboardLength).map { "\(time) · \($0)" } ?? time)
-                            .monospacedDigit()
+                        let time = Date(timeIntervalSince1970: item.found).formatted(
+                            item.pinned
+                                ? .dateTime.month(.abbreviated).day().hour().minute() : .dateTime.hour().minute())
+                        Text(
+                            ClipboardHistory.length(of: item.content, in: SettingsModel.shared.settings.clipboardLength)
+                                .map { "\(time) · \($0)" } ?? time
+                        )
+                        .monospacedDigit()
                     }
                 }
                 .font(.footnote)
@@ -422,7 +454,8 @@ private struct LinkBadge: View {
                     if copied {
                         Image(systemName: "checkmark").accessibilityLabel("Copied")
                     } else {
-                        Text("· " + ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)).monospacedDigit()
+                        Text("· " + ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970))
+                            .monospacedDigit()
                     }
                 }
                 .foregroundStyle(Color.appSecondary)
@@ -456,19 +489,25 @@ private struct Flow: Layout {
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         for (subview, frame) in zip(subviews, frames(subviews, width: bounds.width)) {
-            subview.place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), proposal: ProposedViewSize(frame.size))
+            subview.place(
+                at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                proposal: ProposedViewSize(frame.size))
         }
     }
 
     private func frames(_ subviews: Subviews, width: CGFloat) -> [CGRect] {
-        var point = CGPoint.zero, line = 0.0
+        var point = CGPoint.zero
+        var line = 0.0
         return subviews.map { subview in
             let size = subview.sizeThatFits(ProposedViewSize(width: width, height: nil))
             if point.x > 0, point.x + size.width > width {
                 point = CGPoint(x: 0, y: point.y + line + spacing)
                 line = 0
             }
-            defer { point.x += size.width + spacing; line = max(line, size.height) }
+            defer {
+                point.x += size.width + spacing
+                line = max(line, size.height)
+            }
             return CGRect(origin: point, size: CGSize(width: min(size.width, width), height: size.height))
         }
     }
@@ -538,6 +577,6 @@ private struct SiteIcon: View {
     }
 }
 
-private extension ClipboardHistory.Item {
-    var isLink: Bool { if case .link = content.kind { true } else { false } }
+extension ClipboardHistory.Item {
+    fileprivate var isLink: Bool { if case .link = content.kind { true } else { false } }
 }

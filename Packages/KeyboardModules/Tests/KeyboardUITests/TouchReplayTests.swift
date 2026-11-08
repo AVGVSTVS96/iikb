@@ -1,7 +1,8 @@
+import KeyboardEnglish
 import Testing
 import UIKit
+
 @testable import KeyboardCore
-import KeyboardEnglish
 @testable import KeyboardUI
 
 /// Replays typing as UIKit delivers it, frame by frame, with fingers that overlap: the second (third, fourth…) finger
@@ -9,10 +10,10 @@ import KeyboardEnglish
 @MainActor
 struct TouchReplayTests {
     private static let passage = """
-    noticing that some letters miss when typing very fast at least one letter per word testing should ensure it can \
-    handle inputs of two hundred words per minute sustained but ideally should not even trip up with one thousand \
-    how much processing is happening in between letters
-    """
+        noticing that some letters miss when typing very fast at least one letter per word testing should ensure it can \
+        handle inputs of two hundred words per minute sustained but ideally should not even trip up with one thousand \
+        how much processing is happening in between letters
+        """
 
     @Test(arguments: [(200.0, 0.09), (1000.0, 0.06), (1000.0, 0.2)])
     func everyKeyLandsInOrder(wordsPerMinute: Double, dwell: Double) {
@@ -20,7 +21,9 @@ struct TouchReplayTests {
         let keyboard = Self.keyboard()
         var typed = ""
         keyboard.onEvent = { if case .type(_, let tap) = $0 { typed += tap.key } }
-        let taps = Self.taps(Self.passage, wordsPerMinute: wordsPerMinute, dwell: dwell, centers: Self.centers(keyboard), random: &random)
+        let taps = Self.taps(
+            Self.passage, wordsPerMinute: wordsPerMinute, dwell: dwell, centers: Self.centers(keyboard), random: &random
+        )
         for frame in Self.frames(taps) {
             if !frame.began.isEmpty { keyboard.touchesBegan(frame.began, with: nil) }
             if !frame.ended.isEmpty { keyboard.touchesEnded(frame.ended, with: nil) }
@@ -52,12 +55,17 @@ struct TouchReplayTests {
             engine.handle(event, in: document)
         }
         let layout = Layouts.layout(for: LayoutContext(device: .phone, layer: .letters))
-        let faces = KeyFaceContext(device: .phone, layer: .letters, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
-        view.update(layout: layout, signature: "replay", metrics: .phone(width: 402), faces: faces, theme: .lightCurrent)
+        let faces = KeyFaceContext(
+            device: .phone, layer: .letters, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
+        view.update(
+            layout: layout, signature: "replay", metrics: .phone(width: 402), faces: faces, theme: .lightCurrent)
         view.layoutIfNeeded()
         let pitch = view.keyViews.first { $0.key.action == .character("q") }!.frame.size
-        let taps = taps(passage, wordsPerMinute: wordsPerMinute, dwell: dwell, centers: centers(view), random: &random) { point, random in
-            CGPoint(x: point.x + random.gaussian() * 0.2 * (pitch.width + 6), y: point.y + (0.15 + random.gaussian() * 0.2) * (pitch.height + 11))
+        let taps = taps(passage, wordsPerMinute: wordsPerMinute, dwell: dwell, centers: centers(view), random: &random)
+        { point, random in
+            CGPoint(
+                x: point.x + random.gaussian() * 0.2 * (pitch.width + 6),
+                y: point.y + (0.15 + random.gaussian() * 0.2) * (pitch.height + 11))
         }
         for frame in frames(taps) {
             if !frame.began.isEmpty { view.touchesBegan(frame.began, with: nil) }
@@ -74,8 +82,10 @@ struct TouchReplayTests {
     private static func keyboard() -> KeyboardView {
         let view = KeyboardView(frame: CGRect(x: 0, y: 0, width: 402, height: 226))
         let layout = Layouts.layout(for: LayoutContext(device: .phone, layer: .letters))
-        let faces = KeyFaceContext(device: .phone, layer: .letters, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
-        view.update(layout: layout, signature: "replay", metrics: .phone(width: 402), faces: faces, theme: .lightCurrent)
+        let faces = KeyFaceContext(
+            device: .phone, layer: .letters, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
+        view.update(
+            layout: layout, signature: "replay", metrics: .phone(width: 402), faces: faces, theme: .lightCurrent)
         view.layoutIfNeeded()
         return view
     }
@@ -94,17 +104,24 @@ struct TouchReplayTests {
 
     /// One tap per character every `60 / (wpm × 5)` s, ±30% jitter, held for `dwell` (also jittered) but released
     /// before the same key is pressed again, landing within 3 pt of the key's center.
-    private static func taps(_ text: String, wordsPerMinute: Double, dwell: Double, centers: [Character: CGPoint], random: inout SeededRandom,
-                             aim: (CGPoint, inout SeededRandom) -> CGPoint = { center, random in
-                                 CGPoint(x: center.x + random.next(in: -3...3), y: center.y + random.next(in: -3...3))
-                             }) -> [Press] {
+    private static func taps(
+        _ text: String, wordsPerMinute: Double, dwell: Double, centers: [Character: CGPoint],
+        random: inout SeededRandom,
+        aim: (CGPoint, inout SeededRandom) -> CGPoint = { center, random in
+            CGPoint(x: center.x + random.next(in: -3...3), y: center.y + random.next(in: -3...3))
+        }
+    ) -> [Press] {
         let interval = 60 / (wordsPerMinute * 5)
-        let downs = text.indices.enumerated().map { index, _ in Double(index) * interval + random.next(in: -0.3...0.3) * interval }
+        let downs = text.indices.enumerated().map { index, _ in
+            Double(index) * interval + random.next(in: -0.3...0.3) * interval
+        }
         let characters = Array(text)
         return characters.indices.map { index in
             let down = max(downs[index], index > 0 ? downs[index - 1] + 0.0005 : 0)
             var up = down + dwell * (1 + random.next(in: -0.3...0.3))
-            if let again = characters[(index + 1)...].firstIndex(of: characters[index]) { up = min(up, downs[again] - 0.001) }
+            if let again = characters[(index + 1)...].firstIndex(of: characters[index]) {
+                up = min(up, downs[again] - 0.001)
+            }
             let point = aim(centers[characters[index]]!, &random)
             return Press(touch: FakeTouch(at: point, time: down), up: max(up, down + 0.001))
         }
@@ -116,7 +133,8 @@ struct TouchReplayTests {
         let frame = 1.0 / 120
         var frames: [Int: (began: Set<UITouch>, ended: Set<UITouch>)] = [:]
         for press in presses {
-            let down = Int(press.touch.timestamp / frame), up = max(Int(press.up / frame), down + 1)
+            let down = Int(press.touch.timestamp / frame)
+            let up = max(Int(press.up / frame), down + 1)
             frames[down, default: ([], [])].began.insert(press.touch)
             frames[up, default: ([], [])].ended.insert(press.touch)
         }
@@ -145,7 +163,7 @@ private struct SeededRandom {
     init(seed: UInt64) { state = seed }
 
     mutating func next(in range: ClosedRange<Double>) -> Double {
-        state = state &* 6364136223846793005 &+ 1442695040888963407
+        state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
         return range.lowerBound + Double(state >> 11) / Double(1 << 53) * (range.upperBound - range.lowerBound)
     }
 

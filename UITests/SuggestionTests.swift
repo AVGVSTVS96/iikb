@@ -74,7 +74,10 @@ final class SuggestionTests: XCTestCase {
         while back.waitForExistence(timeout: 2) { tapCenter(back) }
         tapCenter(settings.buttons["General"].firstMatch, in: settings)
         tapCenter(settings.buttons["Keyboard"].firstMatch, in: settings)
-        tapCenter(settings.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'USER_DICTIONARY' OR label == 'Text Replacement'")).firstMatch, in: settings)
+        tapCenter(
+            settings.descendants(matching: .any).matching(
+                NSPredicate(format: "identifier == 'USER_DICTIONARY' OR label == 'Text Replacement'")
+            ).firstMatch, in: settings)
         if settings.staticTexts[shortcut].waitForExistence(timeout: 2) { return settings.terminate() }
         settings.buttons["Add"].firstMatch.tap()
         let fields = settings.textFields

@@ -28,8 +28,12 @@ public final class Swipe: Sendable {
 
     static let entries: [Entry] = {
         var entries: [Entry] = []
-        func add(_ name: String, _ shape: [Int], matrix: Bool = false) { entries.append(Entry(name: name, shape: shape, isMatrix: matrix)) }
-        for name in ["d1_x", "d1_y", "d2_x", "d2_y", "d1_curv"] { add("encoder.savgol_\(name)_weight", [1, kernel, 1]) }
+        func add(_ name: String, _ shape: [Int], matrix: Bool = false) {
+            entries.append(Entry(name: name, shape: shape, isMatrix: matrix))
+        }
+        for name in ["d1_x", "d1_y", "d2_x", "d2_y", "d1_curv"] {
+            add("encoder.savgol_\(name)_weight", [1, kernel, 1])
+        }
         add("encoder.backbone_input_conv_weight", [hidden, kernel, 8], matrix: true)
         add("encoder.backbone_input_conv_bias", [hidden])
         for b in 0..<blocks {
@@ -71,7 +75,8 @@ public final class Swipe: Sendable {
     }()
 
     static let offsets: [String: Int] = {
-        var offsets: [String: Int] = [:], at = dataOffset
+        var offsets: [String: Int] = [:]
+        var at = dataOffset
         for entry in entries {
             offsets[entry.name] = at
             at += entry.count * 4
@@ -100,14 +105,18 @@ extension Swipe {
     /// shape it has there: a matrix as (outputs, taps, inputs) or (outputs, inputs).
     public convenience init(tensors: [String: [Float]]) {
         var bytes = Self.header
-        for shift in stride(from: 0, to: 32, by: 8) { bytes.append(UInt8(truncatingIfNeeded: ((Self.size - Self.dataOffset) / 4) >> shift)) }
+        for shift in stride(from: 0, to: 32, by: 8) {
+            bytes.append(UInt8(truncatingIfNeeded: ((Self.size - Self.dataOffset) / 4) >> shift))
+        }
         bytes += Array(repeating: 0, count: 8)
         for entry in Self.entries {
             let values = tensors[entry.name]!
             precondition(values.count == entry.shape.reduce(1, *), entry.name)
             var floats = values + Array(repeating: 0, count: entry.count - values.count)
             if entry.isMatrix {
-                let outputs = entry.shape[0], inputs = values.count / outputs, padded = Entry.padded(outputs)
+                let outputs = entry.shape[0]
+                let inputs = values.count / outputs
+                let padded = Entry.padded(outputs)
                 floats = Array(repeating: 0, count: inputs * padded)
                 for o in 0..<outputs {
                     for i in 0..<inputs { floats[i * padded + o] = values[o * inputs + i] }
@@ -115,7 +124,9 @@ extension Swipe {
             }
             for value in floats {
                 let bits = value.bitPattern
-                for shift in stride(from: 0, to: 32, by: 8) { bytes.append(UInt8(truncatingIfNeeded: bits >> UInt32(shift))) }
+                for shift in stride(from: 0, to: 32, by: 8) {
+                    bytes.append(UInt8(truncatingIfNeeded: bits >> UInt32(shift)))
+                }
             }
         }
         self.init(bytes: bytes)!

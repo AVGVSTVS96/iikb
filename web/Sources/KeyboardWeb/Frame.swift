@@ -75,12 +75,17 @@ extension Look {
             secondarySize: m.secondarySize, symbolSize: m.symbolSize, letterOffset: m.letterOffset,
             edgeInsetX: m.edgeInset.width, edgeInsetY: m.edgeInset.height, textBaselineInset: m.textBaselineInset,
             letterBaselineInset: m.letterBaselineInset, secondaryCapTop: m.secondaryCapTop, pairSize: m.pairSize,
-            pairCapTop: m.pairCapTop, pairBaselineRatio: m.pairBaselineRatio, dimsKeyUnderAccents: style.dimsKeyUnderAccents,
+            pairCapTop: m.pairCapTop, pairBaselineRatio: m.pairBaselineRatio,
+            dimsKeyUnderAccents: style.dimsKeyUnderAccents,
             key: t.key.css, keyPressed: t.keyPressed.css, label: t.label.css, secondaryLabel: t.secondaryLabel.css,
-            cornerLabel: RGBA(red: t.label.red, green: t.label.green, blue: t.label.blue, alpha: t.label.alpha * t.secondaryLabel.alpha).css,
+            cornerLabel: RGBA(
+                red: t.label.red, green: t.label.green, blue: t.label.blue,
+                alpha: t.label.alpha * t.secondaryLabel.alpha
+            ).css,
             prominent: t.prominent.css, prominentLabel: t.prominentLabel.css, selection: t.selection.css,
             selectionLabel: t.selectionLabel.css, shadow: t.shadow.css, candidate: t.candidate.css,
-            candidateHighlighted: t.candidateHighlighted.css, candidatePill: t.candidatePill.css, candidateDivider: t.candidateDivider.css
+            candidateHighlighted: t.candidateHighlighted.css, candidatePill: t.candidatePill.css,
+            candidateDivider: t.candidateDivider.css
         )
     }
 }

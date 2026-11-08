@@ -3,7 +3,8 @@ import AVFoundation
 /// A dictation's sound as iikb keeps it, beside its transcript: 16 kHz mono, which is what a Parakeet reads, saved as a
 /// 16-bit WAV.
 nonisolated enum Recording {
-    static let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false)!
+    static let format = AVAudioFormat(
+        commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false)!
 
     /// The recording with its speech brought up toward -20 dBFS, but its quietest stretches (the room) to no more than
     /// -55 dBFS, and never clipped. FluidAudio's Parakeets drop whole stretches of quiet speech: on 170 of Bassim's
@@ -23,7 +24,7 @@ nonisolated enum Recording {
         let frame = 320
         guard samples.count >= frame else { return nil }
         let levels = stride(from: 0, to: samples.count - frame + 1, by: frame).map { start in
-            let slice = samples[start ..< start + frame]
+            let slice = samples[start..<start + frame]
             let mean = slice.reduce(0, +) / Float(frame)
             return (slice.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Float(frame)).squareRoot()
         }.sorted()
@@ -31,12 +32,14 @@ nonisolated enum Recording {
     }
 
     static func write(_ samples: [Float], to url: URL) throws {
-        try (header(bytes: samples.count * 2) + pcm(samples)).write(to: url, options: .atomic) // file: recording audio
+        try (header(bytes: samples.count * 2) + pcm(samples)).write(to: url, options: .atomic)  // file: recording audio
     }
 
     private static func header(bytes: Int) -> Data {
         var data = Data(capacity: 44)
-        func append<T: FixedWidthInteger>(_ value: T) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
+        func append<T: FixedWidthInteger>(_ value: T) {
+            withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) }
+        }
         data.append(contentsOf: Array("RIFF".utf8))
         append(UInt32(36 + bytes))
         data.append(contentsOf: Array("WAVEfmt ".utf8))
@@ -54,7 +57,11 @@ nonisolated enum Recording {
 
     private static func pcm(_ samples: some Collection<Float>) -> Data {
         var data = Data(capacity: samples.count * 2)
-        for sample in samples { withUnsafeBytes(of: Int16(max(-1, min(1, sample)) * Float(Int16.max)).littleEndian) { data.append(contentsOf: $0) } }
+        for sample in samples {
+            withUnsafeBytes(of: Int16(max(-1, min(1, sample)) * Float(Int16.max)).littleEndian) {
+                data.append(contentsOf: $0)
+            }
+        }
         return data
     }
 
@@ -65,9 +72,11 @@ nonisolated enum Recording {
         private var bytes = 0
 
         init?(_ url: URL) {
-            try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            guard FileManager.default.createFile(atPath: url.path, contents: Recording.header(bytes: 0)), // file: recording audio, written as it's heard
-                  let handle = try? FileHandle(forWritingTo: url) // file: recording audio, written as it's heard
+            try? FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            // file: recording audio, written as it's heard
+            guard FileManager.default.createFile(atPath: url.path, contents: Recording.header(bytes: 0)),
+                let handle = try? FileHandle(forWritingTo: url)  // file: recording audio, written as it's heard
             else { return nil }
             _ = try? handle.seekToEnd()
             self.handle = handle
@@ -97,14 +106,17 @@ nonisolated enum Recording {
         let samples = try read(url)
         let rate: Double = kind == .memo ? 16_000 : 24_000
         guard !samples.isEmpty,
-              let target = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false),
-              let buffer = converted(samples, to: target)
+            let target = AVAudioFormat(
+                commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false),
+            let buffer = converted(samples, to: target)
         else { throw CocoaError(.fileReadCorruptFile) }
         let folder = URL.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let out = folder.appending(path: kind == .memo ? "\(name).m4a" : "\(name).caf")
         let codec = kind == .memo ? kAudioFormatMPEG4AAC : kAudioFormatOpus
-        let file = try AVAudioFile(forWriting: out, settings: [AVFormatIDKey: codec, AVSampleRateKey: rate, AVNumberOfChannelsKey: 1], commonFormat: .pcmFormatFloat32, interleaved: false) // file: recording export
+        let file = try AVAudioFile(
+            forWriting: out, settings: [AVFormatIDKey: codec, AVSampleRateKey: rate, AVNumberOfChannelsKey: 1],
+            commonFormat: .pcmFormatFloat32, interleaved: false)  // file: recording export
         try file.write(from: buffer)
         file.close()
         return out
@@ -112,12 +124,17 @@ nonisolated enum Recording {
 
     /// `samples` at 16 kHz in `format`.
     static func converted(_ samples: [Float], to format: AVAudioFormat) -> AVAudioPCMBuffer? {
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: Recording.format, frameCapacity: AVAudioFrameCount(samples.count)),
-              let converter = AVAudioConverter(from: Recording.format, to: format),
-              let converted = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(Double(samples.count) * format.sampleRate / 16_000) + 1)
+        guard
+            let buffer = AVAudioPCMBuffer(pcmFormat: Recording.format, frameCapacity: AVAudioFrameCount(samples.count)),
+            let converter = AVAudioConverter(from: Recording.format, to: format),
+            let converted = AVAudioPCMBuffer(
+                pcmFormat: format,
+                frameCapacity: AVAudioFrameCount(Double(samples.count) * format.sampleRate / 16_000) + 1)
         else { return nil }
         buffer.frameLength = buffer.frameCapacity
-        samples.withUnsafeBufferPointer { buffer.floatChannelData?[0].update(from: $0.baseAddress!, count: samples.count) }
+        samples.withUnsafeBufferPointer {
+            buffer.floatChannelData?[0].update(from: $0.baseAddress!, count: samples.count)
+        }
         nonisolated(unsafe) var fed = false
         converter.convert(to: converted, error: nil) { _, status in
             status.pointee = fed ? .endOfStream : .haveData
@@ -129,10 +146,13 @@ nonisolated enum Recording {
 
     /// A recording `write` saved.
     static func read(_ url: URL) throws -> [Float] {
-        let data = try Data(contentsOf: url) // file: recording audio
+        let data = try Data(contentsOf: url)  // file: recording audio
         let count = max(0, (data.count - 44) / 2)
         return data.withUnsafeBytes { raw in
-            (0 ..< count).map { Float(Int16(littleEndian: raw.loadUnaligned(fromByteOffset: 44 + $0 * 2, as: Int16.self))) / Float(Int16.max) }
+            (0..<count).map {
+                Float(Int16(littleEndian: raw.loadUnaligned(fromByteOffset: 44 + $0 * 2, as: Int16.self)))
+                    / Float(Int16.max)
+            }
         }
     }
 }

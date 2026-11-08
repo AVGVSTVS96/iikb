@@ -17,7 +17,10 @@ public struct FieldUpdate: Hashable, Sendable {
     /// Seconds since 1970.
     public var at: Double
 
-    public init(field: String, before: String, after: String, by: Author, traits: InputTraits, at: Double = 0, app: String? = nil) {
+    public init(
+        field: String, before: String, after: String, by: Author, traits: InputTraits, at: Double = 0,
+        app: String? = nil
+    ) {
         self.app = app
         self.field = field
         self.before = before
@@ -72,7 +75,9 @@ public struct SourceFeed: Sendable {
     public mutating func answered(_ update: FieldUpdate, hint text: String?) {
         link = .ready
         hint = text.map { (update.app, update.field, $0) }
-        if text != dismissed?.text || update.app != dismissed?.app || update.field != dismissed?.field { dismissed = nil }
+        if text != dismissed?.text || update.app != dismissed?.app || update.field != dismissed?.field {
+            dismissed = nil
+        }
     }
 
     /// The source couldn't be reached with `update`. It keeps its place, unless newer typing already stands in for it,

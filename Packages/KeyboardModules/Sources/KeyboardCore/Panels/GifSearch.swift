@@ -82,7 +82,9 @@ public struct GifSearch: Sendable {
         if inFlight == feed { inFlight = nil }
         next[feed] = gifs != nil && hasNext ? page + 1 : nil
         if page > 1 {
-            if let gifs, case .gifs(let shown) = answers[feed] { answers[feed] = .gifs(shown + gifs.filter { !shown.contains($0) }) }
+            if let gifs, case .gifs(let shown) = answers[feed] {
+                answers[feed] = .gifs(shown + gifs.filter { !shown.contains($0) })
+            }
         } else {
             answers[feed] = gifs.map(Results.gifs) ?? .failed
         }

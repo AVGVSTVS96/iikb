@@ -20,7 +20,10 @@ public struct KeyFace: Hashable, Sendable {
     /// A key with nothing to do now, as undo with nothing to undo: its glyph dimmed, as Apple's are.
     public var isDimmed = false
 
-    public init(content: Content, secondary: String? = nil, secondaryIsDimmed: Bool = true, alignment: Alignment = .center, isProminent: Bool = false) {
+    public init(
+        content: Content, secondary: String? = nil, secondaryIsDimmed: Bool = true, alignment: Alignment = .center,
+        isProminent: Bool = false
+    ) {
         self.content = content
         self.secondary = secondary
         self.secondaryIsDimmed = secondaryIsDimmed
@@ -39,7 +42,10 @@ public struct KeyFaceContext: Hashable, Sendable {
     public var canUndo = false
     public var canRedo = false
 
-    public init(device: DeviceClass, layer: KeyboardLayer, kind: InputKind, shift: ShiftState, returnKind: ReturnKind, returnEnabled: Bool) {
+    public init(
+        device: DeviceClass, layer: KeyboardLayer, kind: InputKind, shift: ShiftState, returnKind: ReturnKind,
+        returnEnabled: Bool
+    ) {
         self.device = device
         self.layer = layer
         self.kind = kind
@@ -55,7 +61,8 @@ extension KeyFace {
         let edge: Alignment = corners ? (trailing ? .bottomTrailing : .bottomLeading) : .center
         switch key.action {
         case .character(let value):
-            let shown = context.shift.isUppercase && value.count == 1 ? value.uppercased() : Self.glyphs[value, default: value]
+            let shown =
+                context.shift.isUppercase && value.count == 1 ? value.uppercased() : Self.glyphs[value, default: value]
             self.init(content: value.count == 1 ? .letter(shown) : .text(shown))
             secondary = key.secondary.map { Self.glyphs[$0, default: $0] }
             secondaryIsDimmed = !key.isPair
@@ -65,11 +72,12 @@ extension KeyFace {
         case .delete:
             self.init(content: .symbol("delete.left"), alignment: edge)
         case .shift:
-            let name = switch context.shift {
-            case .off: "shift"
-            case .on: "shift.fill"
-            case .locked: "capslock.fill"
-            }
+            let name =
+                switch context.shift {
+                case .off: "shift"
+                case .on: "shift.fill"
+                case .locked: "capslock.fill"
+                }
             self.init(content: .symbol(name), alignment: edge)
         case .capsLock:
             self.init(content: .symbol(context.shift == .locked ? "capslock.fill" : "capslock"), alignment: edge)
@@ -83,7 +91,9 @@ extension KeyFace {
         case .tab:
             self.init(content: .symbol("arrow.right.to.line"), alignment: edge)
         case .layer(let layer):
-            let title = context.kind == .url && layer == .numbers && context.device == .phone ? ".?123" : Self.title(for: layer, from: context.layer, device: context.device)
+            let title =
+                context.kind == .url && layer == .numbers && context.device == .phone
+                ? ".?123" : Self.title(for: layer, from: context.layer, device: context.device)
             let small = context.device == .phone && context.layer != .letters && layer != .letters
             self.init(content: small ? .smallText(title) : .text(title), alignment: edge)
         case .nextKeyboard, .globeSpacer:

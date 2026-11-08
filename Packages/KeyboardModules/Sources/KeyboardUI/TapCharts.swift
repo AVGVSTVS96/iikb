@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// How densely taps land across the keyboard: each key's learned Gaussian, weighted by its taps, summed, drawn on a
 /// ramp from indigo through the system blue to cyan, which ends near white in dark and deepens to navy in light, on a
@@ -8,8 +8,12 @@ import KeyboardCore
 public enum TapHeat {
     static let pixelsPerPoint = 2.0
 
-    private static let dark: [(Double, Double, Double)] = [(52, 40, 170), (10, 110, 255), (64, 200, 255), (226, 246, 255)]
-    private static let light: [(Double, Double, Double)] = [(150, 200, 255), (10, 122, 255), (36, 64, 214), (24, 22, 120)]
+    private static let dark: [(Double, Double, Double)] = [
+        (52, 40, 170), (10, 110, 255), (64, 200, 255), (226, 246, 255),
+    ]
+    private static let light: [(Double, Double, Double)] = [
+        (150, 200, 255), (10, 122, 255), (36, 64, 214), (24, 22, 120),
+    ]
 
     public static func color(at value: Double, isDark: Bool) -> UIColor {
         let (r, g, b, a) = rgba(at: value, isDark: isDark)
@@ -28,7 +32,8 @@ public enum TapHeat {
     }
 
     static func image(of aims: [Aim], size: CGSize, isDark: Bool) -> CGImage? {
-        let width = Int(size.width * pixelsPerPoint), height = Int(size.height * pixelsPerPoint)
+        let width = Int(size.width * pixelsPerPoint)
+        let height = Int(size.height * pixelsPerPoint)
         guard width > 0, height > 0 else { return nil }
         var density = [Double](repeating: 0, count: width * height)
         for aim in aims where aim.taps > 0 {
@@ -36,9 +41,16 @@ public enum TapHeat {
             let determinant = xx * yy - xy * xy
             guard determinant > 0 else { continue }
             let weight = Double(aim.taps) / (2 * .pi * determinant.squareRoot())
-            let reachX = 4 * xx.squareRoot(), reachY = 4 * yy.squareRoot()
-            let columns = max(0, Int((aim.center.x - reachX) * pixelsPerPoint))...min(width - 1, Int((aim.center.x + reachX) * pixelsPerPoint))
-            let rows = max(0, Int((aim.center.y - reachY) * pixelsPerPoint))...min(height - 1, Int((aim.center.y + reachY) * pixelsPerPoint))
+            let reachX = 4 * xx.squareRoot()
+            let reachY = 4 * yy.squareRoot()
+            let columns =
+                max(
+                    0, Int((aim.center.x - reachX) * pixelsPerPoint))...min(
+                    width - 1, Int((aim.center.x + reachX) * pixelsPerPoint))
+            let rows =
+                max(
+                    0, Int((aim.center.y - reachY) * pixelsPerPoint))...min(
+                    height - 1, Int((aim.center.y + reachY) * pixelsPerPoint))
             guard !columns.isEmpty, !rows.isEmpty else { continue }
             for row in rows {
                 let dy = (Double(row) + 0.5) / pixelsPerPoint - aim.center.y
@@ -61,9 +73,11 @@ public enum TapHeat {
             pixels[index * 4 + 3] = UInt8(a * 255)
         }
         guard let provider = CGDataProvider(data: Data(pixels) as CFData) else { return nil }
-        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
-                       space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-                       provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+        return CGImage(
+            width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+            provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
     }
 }
 
@@ -111,7 +125,8 @@ public final class TapCloseUpView: UIView {
         let origin = CGPoint(x: bounds.midX - source.midX * scale, y: bounds.midY - source.midY * scale)
         let map = { (x: Double, y: Double) in CGPoint(x: origin.x + x * scale, y: origin.y + y * scale) }
         let keyRect = { (frame: Rect) in
-            CGRect(origin: map(frame.x, frame.y), size: CGSize(width: frame.width * scale, height: frame.height * scale))
+            CGRect(
+                origin: map(frame.x, frame.y), size: CGSize(width: frame.width * scale, height: frame.height * scale))
         }
 
         context.saveGState()
@@ -125,10 +140,12 @@ public final class TapCloseUpView: UIView {
             let isTarget = key == aim.key
             (key.label == nil ? theme.key.ui.withAlphaComponent(0.55) : theme.key.ui).setFill()
             UIBezierPath(roundedRect: rect, cornerRadius: min(8.5 * scale, 18)).fill()
-            let name = NSAttributedString(string: TapMapPalette.name(of: key), attributes: [
-                .font: UIFont.systemFont(ofSize: isTarget ? 17 : 15, weight: isTarget ? .semibold : .regular),
-                .foregroundColor: isTarget ? UIColor.label : UIColor.secondaryLabel,
-            ])
+            let name = NSAttributedString(
+                string: TapMapPalette.name(of: key),
+                attributes: [
+                    .font: UIFont.systemFont(ofSize: isTarget ? 17 : 15, weight: isTarget ? .semibold : .regular),
+                    .foregroundColor: isTarget ? UIColor.label : UIColor.secondaryLabel,
+                ])
             name.draw(at: CGPoint(x: max(rect.minX, bounds.minX) + 9, y: max(rect.minY, bounds.minY) + 6))
         }
 
@@ -141,8 +158,11 @@ public final class TapCloseUpView: UIView {
         let center = map(aim.center.x, aim.center.y)
         let (major, minor, angle) = TapMarksView.axes(of: aim.spread)
         let half = (2 * log(2.0)).squareRoot() * scale
-        let ring = UIBezierPath(ovalIn: CGRect(x: -major * half, y: -minor * half, width: 2 * major * half, height: 2 * minor * half))
-        ring.apply(CGAffineTransform(rotationAngle: angle).concatenating(CGAffineTransform(translationX: center.x, y: center.y)))
+        let ring = UIBezierPath(
+            ovalIn: CGRect(x: -major * half, y: -minor * half, width: 2 * major * half, height: 2 * minor * half))
+        ring.apply(
+            CGAffineTransform(rotationAngle: angle).concatenating(
+                CGAffineTransform(translationX: center.x, y: center.y)))
         tintColor.withAlphaComponent(0.1).setFill()
         ring.fill()
         tintColor.withAlphaComponent(0.55).setStroke()
@@ -188,10 +208,14 @@ public final class TapCloseUpView: UIView {
 
 /// The marks the close-up and its legend share, so each legend entry is drawn exactly as on the keyboard.
 public enum TapGlyph {
-    case memory(Int), aim, hit, miss
+    case memory(Int)
+    case aim, hit, miss
 
     public func draw(at point: CGPoint, color: UIColor, surface: UIColor) {
-        let circle = { (radius: CGFloat) in UIBezierPath(ovalIn: CGRect(x: point.x - radius, y: point.y - radius, width: 2 * radius, height: 2 * radius)) }
+        let circle = { (radius: CGFloat) in
+            UIBezierPath(
+                ovalIn: CGRect(x: point.x - radius, y: point.y - radius, width: 2 * radius, height: 2 * radius))
+        }
         switch self {
         case .memory(0), .memory(1):
             let ring = circle(self == .memory(0) ? 6 : 4)
@@ -251,7 +275,10 @@ public final class TapPullView: UIView {
     }
 
     override public var intrinsicContentSize: CGSize {
-        CGSize(width: UIView.noIntrinsicMetric, height: size.width > 0 ? size.height * min(1, (bounds.width > 0 ? bounds.width : size.width) / size.width) : 0)
+        CGSize(
+            width: UIView.noIntrinsicMetric,
+            height: size.width > 0
+                ? size.height * min(1, (bounds.width > 0 ? bounds.width : size.width) / size.width) : 0)
     }
 
     override public func layoutSubviews() {
@@ -266,13 +293,16 @@ public final class TapPullView: UIView {
         TapMapPalette.backdrop.setFill()
         UIBezierPath(roundedRect: bounds, cornerRadius: 16).fill()
         for (key, frame) in keys {
-            let rect = CGRect(x: frame.x * scale, y: frame.y * scale, width: frame.width * scale, height: frame.height * scale)
+            let rect = CGRect(
+                x: frame.x * scale, y: frame.y * scale, width: frame.width * scale, height: frame.height * scale)
             (key.label == nil ? theme.key.ui.withAlphaComponent(0.45) : theme.key.ui).setFill()
             UIBezierPath(roundedRect: rect, cornerRadius: 6 * scale).fill()
         }
         for aim in aims where aim.taps >= 10 && aim.key.label != " " {
             let start = CGPoint(x: aim.frame.midX * scale, y: aim.frame.midY * scale)
-            let end = CGPoint(x: start.x + aim.drift.x * Self.magnification * scale, y: start.y + aim.drift.y * Self.magnification * scale)
+            let end = CGPoint(
+                x: start.x + aim.drift.x * Self.magnification * scale,
+                y: start.y + aim.drift.y * Self.magnification * scale)
             UIColor.secondaryLabel.setFill()
             UIBezierPath(ovalIn: CGRect(x: start.x - 1.75, y: start.y - 1.75, width: 3.5, height: 3.5)).fill()
             let length = hypot(end.x - start.x, end.y - start.y)
@@ -280,7 +310,8 @@ public final class TapPullView: UIView {
             let arrow = UIBezierPath()
             arrow.move(to: start)
             arrow.addLine(to: end)
-            let angle = atan2(end.y - start.y, end.x - start.x), head = min(6, length * 0.45)
+            let angle = atan2(end.y - start.y, end.x - start.x)
+            let head = min(6, length * 0.45)
             for side in [CGFloat.pi * 0.8, -.pi * 0.8] {
                 arrow.move(to: end)
                 arrow.addLine(to: CGPoint(x: end.x + head * cos(angle + side), y: end.y + head * sin(angle + side)))

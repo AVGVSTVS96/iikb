@@ -4,7 +4,10 @@ import UIKit
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
         guard !VoiceProbe.asked, !RankingProbe.asked, !JudgeProbe.asked else { return true }
         if VoiceModel.hasNeuralEngine { VoiceModel.shared.prepare() }
         Task {
@@ -22,7 +25,7 @@ enum Probe {
     /// have, so the microphone stays on.
     @MainActor static func end() {
         guard !Listener.shared.isMicOn else { return }
-        exit(0) // exit: a probe's launch is done
+        exit(0)  // exit: a probe's launch is done
     }
 }
 
@@ -81,7 +84,11 @@ private final class Tabs: UITabBarController {
         super.viewWillLayoutSubviews()
         let narrow = traitCollection.userInterfaceIdiom == .pad && view.bounds.width < Arrangement.wide
         guard narrow != traitOverrides.contains(UITraitHorizontalSizeClass.self) else { return }
-        if narrow { traitOverrides.horizontalSizeClass = .compact } else { traitOverrides.remove(UITraitHorizontalSizeClass.self) }
+        if narrow {
+            traitOverrides.horizontalSizeClass = .compact
+        } else {
+            traitOverrides.remove(UITraitHorizontalSizeClass.self)
+        }
     }
 }
 
@@ -99,17 +106,31 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         RankingProbe.runIfAsked()
         JudgeProbe.runIfAsked()
         let tabs = Tabs(tabs: [
-            UITab(title: "iikb", image: UIImage(systemName: "house"), identifier: Router.Destination.home.rawValue) { _ in HomeViewController() },
-            UITab(title: "Transcripts", image: UIImage(systemName: "waveform"), identifier: Router.Destination.transcripts.rawValue) { _ in
+            UITab(title: "iikb", image: UIImage(systemName: "house"), identifier: Router.Destination.home.rawValue) {
+                _ in HomeViewController()
+            },
+            UITab(
+                title: "Transcripts", image: UIImage(systemName: "waveform"),
+                identifier: Router.Destination.transcripts.rawValue
+            ) { _ in
                 Self.hosting(TranscriptsPage())
             },
-            UITab(title: "Clipboard", image: UIImage(systemName: "list.clipboard"), identifier: Router.Destination.clipboard.rawValue) { _ in
+            UITab(
+                title: "Clipboard", image: UIImage(systemName: "list.clipboard"),
+                identifier: Router.Destination.clipboard.rawValue
+            ) { _ in
                 Self.hosting(ClipboardPage())
             },
-            UITab(title: "Stats", image: UIImage(systemName: "chart.bar.xaxis"), identifier: Router.Destination.stats.rawValue) { _ in
+            UITab(
+                title: "Stats", image: UIImage(systemName: "chart.bar.xaxis"),
+                identifier: Router.Destination.stats.rawValue
+            ) { _ in
                 Self.hosting(StatsPage())
             },
-            UITab(title: "Settings", image: UIImage(systemName: "gearshape"), identifier: Router.Destination.settings.rawValue) { _ in
+            UITab(
+                title: "Settings", image: UIImage(systemName: "gearshape"),
+                identifier: Router.Destination.settings.rawValue
+            ) { _ in
                 Self.hosting(SettingsPage())
             },
         ])
@@ -158,17 +179,21 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let asked = Date.now
         await Listener.shared.start()
         guard Listener.shared.isListening else {
-            return HostApp.log.notice("not listening after \(Date.now.timeIntervalSince(asked), format: .fixed(precision: 2))s")
+            return HostApp.log.notice(
+                "not listening after \(Date.now.timeIntervalSince(asked), format: .fixed(precision: 2))s")
         }
         let opened = if let host { await HostApp.open(host) } else { false }
-        HostApp.log.notice("back to \(host ?? "none", privacy: .public) \(opened ? "opened" : "failed", privacy: .public) after \(Date.now.timeIntervalSince(asked), format: .fixed(precision: 2))s")
+        HostApp.log.notice(
+            "back to \(host ?? "none", privacy: .public) \(opened ? "opened" : "failed", privacy: .public) after \(Date.now.timeIntervalSince(asked), format: .fixed(precision: 2))s"
+        )
     }
 
     /// An extension's link asks before its chats open from the bar.
     private func offer(_ added: Extension) {
         let alert = UIAlertController(
             title: "Add “\(added.name)”?",
-            message: "With Allow Full Access on, its chats open from the keyboard’s bar, and what you write in them goes to \(added.url.host() ?? "it").",
+            message:
+                "With Allow Full Access on, its chats open from the keyboard’s bar, and what you write in them goes to \(added.url.host() ?? "it").",
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
@@ -185,14 +210,16 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private func offer(_ source: Source) {
         let alert = UIAlertController(
             title: "Add “\(source.name)”?",
-            message: "With Allow Full Access on, iikb will send \(source.url.host() ?? "it") the text of the field you’re typing in, except passwords and codes, and show the hints it answers with above the keys.",
+            message:
+                "With Allow Full Access on, iikb will send \(source.url.host() ?? "it") the text of the field you’re typing in, except passwords and codes, and show the hints it answers with above the keys.",
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Add", style: .default) { _ in
-            SourceStore.add(source)
-            SettingsModel.shared.reload()
-        })
+        alert.addAction(
+            UIAlertAction(title: "Add", style: .default) { _ in
+                SourceStore.add(source)
+                SettingsModel.shared.reload()
+            })
         present(alert)
     }
 

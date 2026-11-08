@@ -82,7 +82,8 @@ struct Decoder {
         var found: [Result] = []
         var seen: Set<Lexicon.Node> = []
         var trail = Trail()
-        var exact = 0, pops = 0
+        var exact = 0
+        var pops = 0
 
         func push(_ state: State) {
             let bound = state.terminal ? state.score : state.score + lexicon.logMass(state.node)
@@ -95,7 +96,10 @@ struct Decoder {
             terminal.score += word
             push(terminal)
         }
-        push(State(node: lexicon.root, tap: 0, edits: 0, completing: false, score: 0, spelling: Trail.empty, terminal: false))
+        push(
+            State(
+                node: lexicon.root, tap: 0, edits: 0, completing: false, score: 0, spelling: Trail.empty,
+                terminal: false))
 
         while found.count < count || exact == 0, pops < budget, let state = heap.pop() {
             pops += 1
@@ -103,7 +107,10 @@ struct Decoder {
                 guard seen.insert(state.node).inserted else { continue }
                 let word = trail.word(state.spelling)
                 let logPrior = lexicon.logWord(state.node) ?? 0
-                found.append(Result(word: lexicon.canonical(word) ?? word, logLikelihood: state.score - logPrior + offset, logPrior: logPrior, isCompletion: state.completing))
+                found.append(
+                    Result(
+                        word: lexicon.canonical(word) ?? word, logLikelihood: state.score - logPrior + offset,
+                        logPrior: logPrior, isCompletion: state.completing))
                 if !state.completing { exact += 1 }
                 continue
             }
@@ -112,32 +119,48 @@ struct Decoder {
                 if !state.completing { emit(state) }
             }
             if i < taps.count, state.edits == 0 {
-                push(State(node: state.node, tap: i + 1, edits: 1, completing: false,
-                           score: state.score + taps[i].stray - best[i] + Self.editLogProbability, spelling: state.spelling, terminal: false))
+                push(
+                    State(
+                        node: state.node, tap: i + 1, edits: 1, completing: false,
+                        score: state.score + taps[i].stray - best[i] + Self.editLogProbability,
+                        spelling: state.spelling, terminal: false))
             }
             for child in lexicon.children(state.node) {
                 let letter = lexicon.letter(child)
                 guard let index = Lexicon.index(of: letter) else { continue }
                 let spelling = trail.extend(state.spelling, with: letter)
                 if i == taps.count {
-                    let next = State(node: child, tap: i, edits: state.edits, completing: true, score: state.score, spelling: spelling, terminal: false)
+                    let next = State(
+                        node: child, tap: i, edits: state.edits, completing: true, score: state.score,
+                        spelling: spelling, terminal: false)
                     if lexicon.logWord(child) != nil { emit(next) }
                     push(next)
                     continue
                 }
                 guard !state.completing else { continue }
-                push(State(node: child, tap: i + 1, edits: state.edits, completing: false,
-                           score: state.score + taps[i].letters[index] - best[i], spelling: spelling, terminal: false))
+                push(
+                    State(
+                        node: child, tap: i + 1, edits: state.edits, completing: false,
+                        score: state.score + taps[i].letters[index] - best[i], spelling: spelling, terminal: false))
                 if letter == 39 || state.edits == 0 {
-                    push(State(node: child, tap: i, edits: state.edits + (letter == 39 ? 0 : 1), completing: false,
-                               score: state.score + (letter == 39 ? Self.apostropheLogProbability : Self.editLogProbability), spelling: spelling, terminal: false))
+                    push(
+                        State(
+                            node: child, tap: i, edits: state.edits + (letter == 39 ? 0 : 1), completing: false,
+                            score: state.score
+                                + (letter == 39 ? Self.apostropheLogProbability : Self.editLogProbability),
+                            spelling: spelling, terminal: false))
                 }
                 if state.edits == 0, i + 1 < taps.count {
                     for grandchild in lexicon.children(child) {
-                        guard let second = Lexicon.index(of: lexicon.letter(grandchild)), second != index else { continue }
+                        guard let second = Lexicon.index(of: lexicon.letter(grandchild)), second != index else {
+                            continue
+                        }
                         let swapped = taps[i].letters[second] + taps[i + 1].letters[index] - best[i] - best[i + 1]
-                        push(State(node: grandchild, tap: i + 2, edits: 1, completing: false,
-                                   score: state.score + swapped + Self.editLogProbability, spelling: trail.extend(spelling, with: lexicon.letter(grandchild)), terminal: false))
+                        push(
+                            State(
+                                node: grandchild, tap: i + 2, edits: 1, completing: false,
+                                score: state.score + swapped + Self.editLogProbability,
+                                spelling: trail.extend(spelling, with: lexicon.letter(grandchild)), terminal: false))
                     }
                 }
             }
@@ -151,7 +174,9 @@ struct Decoder {
     /// the touch model what they meant (the joint predictive): taps that land dead center on their keys say how
     /// steady you are, so a tap far from the key it supposedly meant counts for less. `completing` lets the taps cover
     /// only the start of the word.
-    static func logLikelihood(of word: String, given taps: [TapEvidence], touches: TouchModel, on grid: KeyGrid, completing: Bool = false) -> Double {
+    static func logLikelihood(
+        of word: String, given taps: [TapEvidence], touches: TouchModel, on grid: KeyGrid, completing: Bool = false
+    ) -> Double {
         let lower = word.lowercased()
         let letters = Array(lower.utf8).compactMap(Lexicon.index(of:))
         guard letters.count == lower.utf8.count else { return -.infinity }
@@ -161,7 +186,10 @@ struct Decoder {
             var model = start
             var score = reading.logPenalty
             for (tap, letter) in zip(taps, reading.letters) {
-                guard let letter else { score += tap.stray; continue }
+                guard let letter else {
+                    score += tap.stray
+                    continue
+                }
                 let label = Lexicon.labels[letter]
                 if let point = tap.point, let likelihood = model.logLikelihood(x: point.x, y: point.y, for: label) {
                     score += likelihood
@@ -189,17 +217,30 @@ struct Decoder {
                 if completing { return }
             }
             if i < letters.count, j < taps {
-                walk(i + 1, j + 1, edited, Reading(letters: reading.letters + [letters[i]], logPenalty: reading.logPenalty))
+                walk(
+                    i + 1, j + 1, edited,
+                    Reading(letters: reading.letters + [letters[i]], logPenalty: reading.logPenalty))
             }
             if i < letters.count, letters[i] == 26 || !edited {
-                walk(i + 1, j, edited || letters[i] != 26, Reading(letters: reading.letters, logPenalty: reading.logPenalty + (letters[i] == 26 ? apostropheLogProbability : editLogProbability)))
+                walk(
+                    i + 1, j, edited || letters[i] != 26,
+                    Reading(
+                        letters: reading.letters,
+                        logPenalty: reading.logPenalty
+                            + (letters[i] == 26 ? apostropheLogProbability : editLogProbability)))
             }
             guard !edited else { return }
             if j < taps {
-                walk(i, j + 1, true, Reading(letters: reading.letters + [nil], logPenalty: reading.logPenalty + editLogProbability))
+                walk(
+                    i, j + 1, true,
+                    Reading(letters: reading.letters + [nil], logPenalty: reading.logPenalty + editLogProbability))
             }
             if i + 1 < letters.count, j + 1 < taps, letters[i] != letters[i + 1] {
-                walk(i + 2, j + 2, true, Reading(letters: reading.letters + [letters[i + 1], letters[i]], logPenalty: reading.logPenalty + editLogProbability))
+                walk(
+                    i + 2, j + 2, true,
+                    Reading(
+                        letters: reading.letters + [letters[i + 1], letters[i]],
+                        logPenalty: reading.logPenalty + editLogProbability))
             }
         }
         walk(0, 0, false, Reading(letters: [], logPenalty: 0))
@@ -227,7 +268,8 @@ struct Heap<Element> {
         let top = items.removeLast()
         var parent = 0
         while true {
-            let left = parent * 2 + 1, right = left + 1
+            let left = parent * 2 + 1
+            let right = left + 1
             var largest = parent
             if left < items.count, items[left].priority > items[largest].priority { largest = left }
             if right < items.count, items[right].priority > items[largest].priority { largest = right }

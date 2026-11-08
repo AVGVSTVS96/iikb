@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// What a panel shows above its search field. Each panel (emoji, GIFs, the clipboard) brings its own; `PanelView`
 /// draws the search row under it and the keys type into the field.
@@ -42,7 +42,10 @@ public final class PanelView: UIView {
         super.init(frame: frame)
         back.accessibilityIdentifier = "iikb.panel.back"
         back.accessibilityLabel = "Back"
-        back.setImage(UIImage(systemName: "chevron.left", withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)), for: .normal)
+        back.setImage(
+            UIImage(
+                systemName: "chevron.left",
+                withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)), for: .normal)
         back.addAction(UIAction { [unowned self] _ in onClose() }, for: .touchUpInside)
         field.onClear = { [unowned self] in onClear() }
         addSubview(back)
@@ -70,16 +73,20 @@ public final class PanelView: UIView {
         }
         back.tintColor = theme.label.ui
         content?.show(query: query, theme: theme, metrics: metrics)
-        field.show(query, caretAt: caret ?? query.count, placeholder: content?.placeholder ?? "", glyph: content?.glyph, notice: content?.notice, clears: content?.clears ?? true, theme: theme)
+        field.show(
+            query, caretAt: caret ?? query.count, placeholder: content?.placeholder ?? "", glyph: content?.glyph,
+            notice: content?.notice, clears: content?.clears ?? true, theme: theme)
     }
 
     override public func layoutSubviews() {
         super.layoutSubviews()
         let width = block.maxX - block.minX
         content?.frame = CGRect(x: block.minX, y: toolbar.top, width: width, height: toolbar.results)
-        let row = CGRect(x: block.minX, y: toolbar.top + toolbar.results + Toolbar.fieldGap, width: width, height: toolbar.field)
+        let row = CGRect(
+            x: block.minX, y: toolbar.top + toolbar.results + Toolbar.fieldGap, width: width, height: toolbar.field)
         back.frame = CGRect(x: row.minX, y: row.minY, width: 36, height: row.height)
-        field.frame = CGRect(x: back.frame.maxX + 4, y: row.minY, width: row.maxX - back.frame.maxX - 4, height: row.height)
+        field.frame = CGRect(
+            x: back.frame.maxX + 4, y: row.minY, width: row.maxX - back.frame.maxX - 4, height: row.height)
     }
 }
 
@@ -127,7 +134,10 @@ private final class SearchField: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func show(_ query: String, caretAt: Int, placeholder: String, glyph image: UIImage?, notice: String?, clears: Bool, theme: KeyboardTheme) {
+    func show(
+        _ query: String, caretAt: Int, placeholder: String, glyph image: UIImage?, notice: String?, clears: Bool,
+        theme: KeyboardTheme
+    ) {
         if query != self.query || caretAt != self.caretAt || notice != self.notice { setNeedsLayout() }
         self.query = query
         self.caretAt = caretAt
@@ -146,8 +156,10 @@ private final class SearchField: UIView {
         clear.isHidden = query.isEmpty || notice != nil || !clears
         guard theme != clearTheme else { return }
         clearTheme = theme
-        let mark = UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .bold))
-        clear.setImage(Self.clearImage(mark: mark, circle: theme.candidate.ui, field: theme.searchField.ui), for: .normal)
+        let mark = UIImage(
+            systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .bold))
+        clear.setImage(
+            Self.clearImage(mark: mark, circle: theme.candidate.ui, field: theme.searchField.ui), for: .normal)
     }
 
     /// The caret blinks the way UIKit's does, on Core Animation's clock rather than a timer.
@@ -197,8 +209,12 @@ private final class SearchField: UIView {
         let start = query.isEmpty && notice == nil ? text + 4 : text
         let width = min(label.intrinsicContentSize.width, right - start - 4)
         label.frame = CGRect(x: start, y: 0, width: max(width, 0), height: bounds.height)
-        let typed = query.isEmpty ? 0 : max(label.frame.width - Self.width(of: String(query.dropFirst(caretAt)), in: label.font), 0)
-        caret.frame = CGRect(x: (text + typed + 1).rounded(scale: scale), y: ((bounds.height - 22) / 2).rounded(scale: scale), width: 2, height: 22)
+        let typed =
+            query.isEmpty
+            ? 0 : max(label.frame.width - Self.width(of: String(query.dropFirst(caretAt)), in: label.font), 0)
+        caret.frame = CGRect(
+            x: (text + typed + 1).rounded(scale: scale), y: ((bounds.height - 22) / 2).rounded(scale: scale), width: 2,
+            height: 22)
     }
 }
 
@@ -224,10 +240,21 @@ package final class PanelNotice: UIButton {
     package func show(_ text: String?, turnOn: Bool, oneRow: Bool, theme: KeyboardTheme) {
         turnsOn = turnOn && text != nil
         isHidden = text == nil
-        setAttributedTitle(text.map { text in
-            let title = NSMutableAttributedString(string: text, attributes: [.foregroundColor: theme.candidate.ui, .font: UIFont.systemFont(ofSize: 15)])
-            if turnsOn { title.append(NSAttributedString(string: (oneRow ? " " : "\n") + "Turn On", attributes: [.foregroundColor: theme.prominent.ui, .font: UIFont.systemFont(ofSize: 15, weight: .semibold)])) }
-            return title
-        }, for: .normal)
+        setAttributedTitle(
+            text.map { text in
+                let title = NSMutableAttributedString(
+                    string: text,
+                    attributes: [.foregroundColor: theme.candidate.ui, .font: UIFont.systemFont(ofSize: 15)])
+                if turnsOn {
+                    title.append(
+                        NSAttributedString(
+                            string: (oneRow ? " " : "\n") + "Turn On",
+                            attributes: [
+                                .foregroundColor: theme.prominent.ui,
+                                .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
+                            ]))
+                }
+                return title
+            }, for: .normal)
     }
 }

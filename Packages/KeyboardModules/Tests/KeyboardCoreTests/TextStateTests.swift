@@ -1,4 +1,5 @@
 import Testing
+
 @testable import KeyboardCore
 
 /// A host whose view of the text is set by the test, while the keyboard's edits land on `truth` in order.

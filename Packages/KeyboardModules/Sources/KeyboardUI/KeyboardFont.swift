@@ -12,6 +12,8 @@ enum KeyboardFont {
         let root = ProcessInfo.processInfo.environment["IPHONE_SIMULATOR_ROOT"] ?? ""
         let url = URL(fileURLWithPath: root + "/System/Library/Fonts/Core/SFCompact.ttf") as CFURL
         let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url) as? [CTFontDescriptor]
-        return descriptors?.first { CTFontDescriptorCopyAttribute($0, kCTFontNameAttribute) as? String == ".SFCompact-Regular" }
+        return descriptors?.first {
+            CTFontDescriptorCopyAttribute($0, kCTFontNameAttribute) as? String == ".SFCompact-Regular"
+        }
     }()
 }

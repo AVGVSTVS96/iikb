@@ -75,10 +75,12 @@ public struct TypingLog: Sendable {
         guard tally != last.tally else { return }
         self.last = (tally, time)
         let gap = time - last.time
-        let index = hours.firstIndex { $0.day == day && $0.hour == hour && $0.app == app } ?? {
-            hours.append(TypingHour(day: day, hour: hour, app: app))
-            return hours.count - 1
-        }()
+        let index =
+            hours.firstIndex { $0.day == day && $0.hour == hour && $0.app == app }
+            ?? {
+                hours.append(TypingHour(day: day, hour: hour, app: app))
+                return hours.count - 1
+            }()
         hours[index].tally = hours[index].tally + (tally - last.tally)
         if gap > 0, gap <= Self.pause { hours[index].seconds += gap }
     }

@@ -27,14 +27,20 @@ final class SwipeShots: XCTestCase {
             for step in 1...steps {
                 time += 0.01
                 let share = Double(step) / Double(steps)
-                finger.move(to: CGPoint(x: from.x + (to.x - from.x) * share, y: from.y + (to.y - from.y) * share), atOffset: time)
+                finger.move(
+                    to: CGPoint(x: from.x + (to.x - from.x) * share, y: from.y + (to.y - from.y) * share),
+                    atOffset: time)
             }
         }
         finger.liftUp(atOffset: time + 0.02)
-        let record = XCSynthesizedEventRecord(name: "keyboard", interfaceOrientation: landscape ? .landscapeRight : .portrait)
+        let record = XCSynthesizedEventRecord(
+            name: "keyboard", interfaceOrientation: landscape ? .landscapeRight : .portrait)
         record.add(finger)
         try record.synthesize()
-        let screen = (environment["IIKB_SWIPE_OPEN"] ?? "").isEmpty ? XCUIScreen.main : XCUIScreen.screens.max { $0.screenshot().image.size.width < $1.screenshot().image.size.width }!
+        let screen =
+            (environment["IIKB_SWIPE_OPEN"] ?? "").isEmpty
+            ? XCUIScreen.main
+            : XCUIScreen.screens.max { $0.screenshot().image.size.width < $1.screenshot().image.size.width }!
         Thread.sleep(forTimeInterval: 0.12)
         try screen.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(prefix)-trail.png"))
         Thread.sleep(forTimeInterval: 1.5)

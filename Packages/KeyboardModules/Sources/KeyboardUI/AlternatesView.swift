@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// The panel a held key opens, picked by sliding: a key's accents, or the layer key's one-handed layouts.
 final class AlternatesView: UIView {
@@ -27,25 +27,43 @@ final class AlternatesView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     /// `selected` sits right above `key`, so letting go without sliding picks it.
-    func show(_ options: [String], selected: Int, over key: CGRect, in area: CGRect, metrics: KeyboardMetrics, theme: KeyboardTheme) {
+    func show(
+        _ options: [String], selected: Int, over key: CGRect, in area: CGRect, metrics: KeyboardMetrics,
+        theme: KeyboardTheme
+    ) {
         let font = KeyboardFont.letter(metrics.letterSize)
         let cell = CGSize(width: key.width + 4, height: key.height * 1.57)
-        present(options.map { NSAttributedString(string: $0, attributes: [.font: font]) }, selected: selected, cell: cell,
-                highlightHeight: key.height + 4, over: key, in: area, metrics: metrics, theme: theme)
+        present(
+            options.map { NSAttributedString(string: $0, attributes: [.font: font]) }, selected: selected, cell: cell,
+            highlightHeight: key.height + 4, over: key, in: area, metrics: metrics, theme: theme)
     }
 
-    func show(symbols: [String], selected: Int, over key: CGRect, in area: CGRect, metrics: KeyboardMetrics, theme: KeyboardTheme) {
+    func show(
+        symbols: [String], selected: Int, over key: CGRect, in area: CGRect, metrics: KeyboardMetrics,
+        theme: KeyboardTheme
+    ) {
         let configuration = UIImage.SymbolConfiguration(pointSize: metrics.symbolSize, weight: .regular)
-        let images = symbols.map { NSAttributedString(attachment: NSTextAttachment(image: UIImage(systemName: $0, withConfiguration: configuration) ?? UIImage())) }
+        let images = symbols.map {
+            NSAttributedString(
+                attachment: NSTextAttachment(
+                    image: UIImage(systemName: $0, withConfiguration: configuration) ?? UIImage()))
+        }
         let cell = CGSize(width: 50, height: key.height + 18)
-        present(images, selected: selected, cell: cell, highlightHeight: key.height + 2, over: key, in: area, metrics: metrics, theme: theme)
+        present(
+            images, selected: selected, cell: cell, highlightHeight: key.height + 2, over: key, in: area,
+            metrics: metrics, theme: theme)
     }
 
-    private func present(_ contents: [NSAttributedString], selected: Int, cell: CGSize, highlightHeight: CGFloat, over key: CGRect, in area: CGRect, metrics: KeyboardMetrics, theme: KeyboardTheme) {
+    private func present(
+        _ contents: [NSAttributedString], selected: Int, cell: CGSize, highlightHeight: CGFloat, over key: CGRect,
+        in area: CGRect, metrics: KeyboardMetrics, theme: KeyboardTheme
+    ) {
         labels.forEach { $0.removeFromSuperview() }
         let width = cell.width * CGFloat(contents.count) + padding * 2
         let x = key.midX - padding - cell.width * (CGFloat(selected) + 0.5)
-        frame = CGRect(x: min(max(x, area.minX + 7), area.maxX - width - 7), y: max(key.minY - cell.height - 3, area.minY + 1), width: width, height: cell.height)
+        frame = CGRect(
+            x: min(max(x, area.minX + 7), area.maxX - width - 7), y: max(key.minY - cell.height - 3, area.minY + 1),
+            width: width, height: cell.height)
         self.highlightHeight = highlightHeight
         panel.frame = bounds
         panel.layer.cornerRadius = metrics.cornerRadius * 2
@@ -57,7 +75,8 @@ final class AlternatesView: UIView {
         labelColor = theme.bubbleLabel.ui
         selectedLabelColor = theme.selectionLabel.ui
         labels = contents.enumerated().map { index, content in
-            let label = UILabel(frame: CGRect(x: padding + CGFloat(index) * cell.width, y: 0, width: cell.width, height: cell.height))
+            let label = UILabel(
+                frame: CGRect(x: padding + CGFloat(index) * cell.width, y: 0, width: cell.width, height: cell.height))
             label.attributedText = content
             label.textAlignment = .center
             panel.addSubview(label)
@@ -88,6 +107,7 @@ final class AlternatesView: UIView {
             label.textColor = other == index ? selectedLabelColor : labelColor
         }
         let cell = labels[index].frame
-        highlight.frame = CGRect(x: cell.minX, y: cell.midY - highlightHeight / 2, width: cell.width, height: highlightHeight)
+        highlight.frame = CGRect(
+            x: cell.minX, y: cell.midY - highlightHeight / 2, width: cell.width, height: highlightHeight)
     }
 }

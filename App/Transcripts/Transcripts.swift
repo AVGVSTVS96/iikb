@@ -86,21 +86,26 @@ struct Transcript: Codable, Identifiable, Hashable {
         load()
         _ = Dictation.observe(.edited) { Transcripts.shared.takeEdits() }
         DispatchQueue.main.async { Transcripts.shared.takeEdits() }
-        _ = NotificationCenter.default.addObserver(forName: UIApplication.protectedDataDidBecomeAvailableNotification, object: nil, queue: .main) { _ in
+        _ = NotificationCenter.default.addObserver(
+            forName: UIApplication.protectedDataDidBecomeAvailableNotification, object: nil, queue: .main
+        ) { _ in
             MainActor.assumeIsolated { Transcripts.shared.takeEdits() }
         }
         guard loaded else { return }
         share()
         let ids = Set(all.map(\.id)).union(unread.compactMap { try? JSONDecoder().decode(Named.self, from: $0).id })
-        unwritten = ((try? FileManager.default.contentsOfDirectory(at: recordings, includingPropertiesForKeys: nil)) ?? []).filter { file in
-            UUID(uuidString: file.deletingPathExtension().lastPathComponent).map { !ids.contains($0) } ?? false
-        }
+        unwritten =
+            ((try? FileManager.default.contentsOfDirectory(at: recordings, includingPropertiesForKeys: nil)) ?? [])
+            .filter { file in
+                UUID(uuidString: file.deletingPathExtension().lastPathComponent).map { !ids.contains($0) } ?? false
+            }
     }
 
     /// Reads the file once it can be, keeping what was added before then. Whether it's read, or there's none.
     @discardableResult private func load() -> Bool {
         guard !loaded else { return true }
-        guard let data = try? Data(contentsOf: url) else { // file: transcripts.jsonl, read whole once it can be; until then `save` leaves it alone
+        // file: transcripts.jsonl, read whole once it can be; until then `save` leaves it alone
+        guard let data = try? Data(contentsOf: url) else {
             loaded = !FileManager.default.fileExists(atPath: url.path(percentEncoded: false))
             return loaded
         }
@@ -122,7 +127,9 @@ struct Transcript: Codable, Identifiable, Hashable {
     /// One that can't be written now waits for the next launch.
     func recover() async {
         for file in unwritten {
-            guard let id = UUID(uuidString: file.deletingPathExtension().lastPathComponent), let samples = try? Recording.read(file) else { continue }
+            guard let id = UUID(uuidString: file.deletingPathExtension().lastPathComponent),
+                let samples = try? Recording.read(file)
+            else { continue }
             guard !samples.isEmpty else {
                 try? FileManager.default.removeItem(at: file)
                 continue
@@ -131,10 +138,14 @@ struct Transcript: Codable, Identifiable, Hashable {
             do {
                 let written = try await VoiceModel.shared.write(samples, for: nil)
                 try? Recording.write(samples, to: file)
-                add(written.text, heard: written.heard, id: id, at: date, seconds: Double(samples.count) / 16_000, typed: false, model: written.model, mic: nil, recovered: true)
+                add(
+                    written.text, heard: written.heard, id: id, at: date, seconds: Double(samples.count) / 16_000,
+                    typed: false, model: written.model, mic: nil, recovered: true)
                 Dictation.leave(.notice("A dictation cut off when iikb closed is in iikb › Transcripts"))
             } catch {
-                HostApp.log.error("couldn't write down \(file.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                HostApp.log.error(
+                    "couldn't write down \(file.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                )
             }
         }
         unwritten = []
@@ -148,17 +159,23 @@ struct Transcript: Codable, Identifiable, Hashable {
     }
 
     /// out), and the sound is the only copy, to write again.
-    func add(_ text: String, heard: String, id: Transcript.ID, at date: Date, seconds: Double, typed: Bool, model: String, mic: String?, voiceProcessing: Bool? = nil, capture: Capture? = nil, levels: (room: Float, speech: Float)? = nil, app: String? = nil, recovered: Bool = false) {
+    func add(
+        _ text: String, heard: String, id: Transcript.ID, at date: Date, seconds: Double, typed: Bool, model: String,
+        mic: String?, voiceProcessing: Bool? = nil, capture: Capture? = nil,
+        levels: (room: Float, speech: Float)? = nil, app: String? = nil, recovered: Bool = false
+    ) {
         let transcript = Transcript(
-            id: id, date: date, text: text, seconds: seconds, typed: typed, recovered: recovered ? true : nil, model: model, mic: mic, voiceProcessing: voiceProcessing,
-            capture: capture?.rawValue, room: levels.map { Self.decibels($0.room) }, speech: levels.map { Self.decibels($0.speech) },
+            id: id, date: date, text: text, seconds: seconds, typed: typed, recovered: recovered ? true : nil,
+            model: model, mic: mic, voiceProcessing: voiceProcessing,
+            capture: capture?.rawValue, room: levels.map { Self.decibels($0.room) },
+            speech: levels.map { Self.decibels($0.speech) },
             heard: heard == text ? nil : heard, app: app
         )
         all.insert(transcript, at: all.firstIndex { $0.date < date } ?? all.endIndex)
         trim()
         guard let line = try? JSONEncoder().encode(transcript) else { return }
         do {
-            let file = try FileHandle(forWritingTo: url) // file: append-only log (transcripts.jsonl)
+            let file = try FileHandle(forWritingTo: url)  // file: append-only log (transcripts.jsonl)
             defer { try? file.close() }
             try file.seekToEnd()
             try file.write(contentsOf: line + [UInt8(ascii: "\n")])
@@ -176,8 +193,9 @@ struct Transcript: Codable, Identifiable, Hashable {
         var taken: [URL] = []
         for (file, edit) in Dictation.edits {
             if let index = all.firstIndex(where: { $0.id.uuidString == edit.id }) {
-                all[index].field = Transcript.Field(typed: edit.typed, final: edit.final, sent: edit.sent, uncertain: edit.uncertain ? true : nil,
-                                                     kind: edit.kind?.rawValue, content: edit.content?.rawValue, before: edit.before)
+                all[index].field = Transcript.Field(
+                    typed: edit.typed, final: edit.final, sent: edit.sent, uncertain: edit.uncertain ? true : nil,
+                    kind: edit.kind?.rawValue, content: edit.content?.rawValue, before: edit.before)
             } else if waiting.contains(edit.id) {
                 continue
             }
@@ -218,7 +236,11 @@ struct Transcript: Codable, Identifiable, Hashable {
         guard VoiceModel.shared.model != .apple else { return }
         for transcript in all where transcript.model?.hasPrefix("Apple, while") == true && hasRecording(transcript.id) {
             guard !Listener.shared.isListening, !Listener.shared.isWriting else { return }
-            guard let written = try? await VoiceModel.shared.write(Recording.read(recording(of: transcript.id)), for: transcript.app), written.model != VoiceModel.Model.apple.title else { continue }
+            guard
+                let written = try? await VoiceModel.shared.write(
+                    Recording.read(recording(of: transcript.id)), for: transcript.app),
+                written.model != VoiceModel.Model.apple.title
+            else { continue }
             replace(transcript.id, with: written.text, heard: written.heard, model: written.model)
         }
     }
@@ -239,8 +261,14 @@ struct Transcript: Codable, Identifiable, Hashable {
         Task.detached(priority: .utility) {
             let files = FileManager.default
             let keys: [URLResourceKey] = [.fileSizeKey, .creationDateKey]
-            let kept = ((try? files.contentsOfDirectory(at: folder, includingPropertiesForKeys: keys)) ?? []).compactMap { url in
-                (try? url.resourceValues(forKeys: Set(keys))).map { (url, $0.fileSize ?? 0, said[url.deletingPathExtension().lastPathComponent] ?? $0.creationDate ?? .distantPast) }
+            let kept = ((try? files.contentsOfDirectory(at: folder, includingPropertiesForKeys: keys)) ?? []).compactMap
+            { url in
+                (try? url.resourceValues(forKeys: Set(keys))).map {
+                    (
+                        url, $0.fileSize ?? 0,
+                        said[url.deletingPathExtension().lastPathComponent] ?? $0.creationDate ?? .distantPast
+                    )
+                }
             }.sorted { $0.2 > $1.2 }
             var bytes = 0
             for (url, size, _) in kept {
@@ -257,14 +285,17 @@ struct Transcript: Codable, Identifiable, Hashable {
         let kept = unread.map { $0 + [UInt8(ascii: "\n")] }
         let lines = kept + all.reversed().compactMap { try? encoder.encode($0) + [UInt8(ascii: "\n")] }
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? Data(lines.joined()).write(to: url, options: .atomic) // file: transcripts.jsonl rewritten whole, only once read or set aside
+        // file: transcripts.jsonl rewritten whole, only once read or set aside
+        try? Data(lines.joined()).write(to: url, options: .atomic)
         Backup.syncApp()
         share()
     }
 
     /// The keyboard's copy, for its Transcripts panel, written in order off the main thread.
     private func share() {
-        let entries = all.filter { !$0.text.isEmpty }.map { TranscriptFeed.Entry(id: $0.id.uuidString, date: $0.date.timeIntervalSince1970, text: $0.text) }
+        let entries = all.filter { !$0.text.isEmpty }.map {
+            TranscriptFeed.Entry(id: $0.id.uuidString, date: $0.date.timeIntervalSince1970, text: $0.text)
+        }
         Self.sharing.async { TranscriptFeed.share(entries) }
     }
 
@@ -274,14 +305,17 @@ struct Transcript: Codable, Identifiable, Hashable {
     /// does, so the backup still sends it. Whether the file can now be written.
     private func setAside() -> Bool {
         guard UIApplication.shared.isProtectedDataAvailable else { return false }
-        let aside = url.deletingLastPathComponent().appending(path: "transcripts-unread-\(Int(Date.now.timeIntervalSince1970)).jsonl")
+        let aside = url.deletingLastPathComponent().appending(
+            path: "transcripts-unread-\(Int(Date.now.timeIntervalSince1970)).jsonl")
         do {
             try FileManager.default.moveItem(at: url, to: aside)
         } catch {
-            HostApp.log.fault("transcripts.jsonl can't be read or set aside: \(error.localizedDescription, privacy: .public)")
+            HostApp.log.fault(
+                "transcripts.jsonl can't be read or set aside: \(error.localizedDescription, privacy: .public)")
             return false
         }
-        HostApp.log.fault("transcripts.jsonl couldn't be read; set aside as \(aside.lastPathComponent, privacy: .public)")
+        HostApp.log.fault(
+            "transcripts.jsonl couldn't be read; set aside as \(aside.lastPathComponent, privacy: .public)")
         loaded = true
         return true
     }

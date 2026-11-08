@@ -7,16 +7,22 @@ import XCTest
 final class PadShots: XCTestCase {
     func testEveryState() throws {
         let prefix = try XCTUnwrap(ProcessInfo.processInfo.environment["IIKB_SHOTS"])
-        let only = ProcessInfo.processInfo.environment["IIKB_STATES"].flatMap { $0.isEmpty ? nil : Set($0.split(separator: " ").map(String.init)) }
+        let only = ProcessInfo.processInfo.environment["IIKB_STATES"].flatMap {
+            $0.isEmpty ? nil : Set($0.split(separator: " ").map(String.init))
+        }
         func wanted(_ state: String) -> Bool { only?.contains(state) ?? true }
         func shot(_ name: String) throws {
             Thread.sleep(forTimeInterval: 0.8)
             try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(prefix)-\(name).png"))
         }
         let app = XCUIApplication()
-        app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", ProcessInfo.processInfo.environment["IIKB_ORIENTATION"] ?? "portrait", "-iikbOneHanded", "off"]
+        app.launchArguments = [
+            "-iikbFocus", "YES", "-iikbOrientation",
+            ProcessInfo.processInfo.environment["IIKB_ORIENTATION"] ?? "portrait", "-iikbOneHanded", "off",
+        ]
         app.launch()
-        XCUIDevice.shared.orientation = ProcessInfo.processInfo.environment["IIKB_ORIENTATION"] == "landscape" ? .landscapeLeft : .portrait
+        XCUIDevice.shared.orientation =
+            ProcessInfo.processInfo.environment["IIKB_ORIENTATION"] == "landscape" ? .landscapeLeft : .portrait
         let space = key("space", in: app)
         XCTAssertTrue(space.waitForExistence(timeout: 30), "iikb is not the active keyboard")
         try shot("empty")
@@ -60,7 +66,9 @@ final class PadShots: XCTestCase {
             if field.exists { field.tap() }
             Thread.sleep(forTimeInterval: 2)
             try shot("window")
-            print("WINDOW \(app.windows.firstMatch.frame.debugDescription) space \(space.exists ? space.frame.debugDescription : "gone") keyboard \(app.keyboards.firstMatch.exists ? app.keyboards.firstMatch.frame.debugDescription : "none")")
+            print(
+                "WINDOW \(app.windows.firstMatch.frame.debugDescription) space \(space.exists ? space.frame.debugDescription : "gone") keyboard \(app.keyboards.firstMatch.exists ? app.keyboards.firstMatch.frame.debugDescription : "none")"
+            )
         }
         if wanted("floating"), key("g", in: app).exists {
             let keyboard = app.keyboards.firstMatch
@@ -80,12 +88,13 @@ final class PadShots: XCTestCase {
     /// Stage Manager window: by half the gap each time, since iPadOS resizes by about twice a drag.
     private func resize(_ window: XCUIElement, to size: CGSize) {
         let screen = XCUIApplication(bundleIdentifier: "com.apple.springboard").coordinate(withNormalizedOffset: .zero)
-        for _ in 0 ..< 10 {
+        for _ in 0..<10 {
             let frame = window.frame
             let change = CGVector(dx: (size.width - frame.width) / 2, dy: (size.height - frame.height) / 2)
             guard abs(change.dx) > 3 || abs(change.dy) > 3 else { return }
             let corner = screen.withOffset(CGVector(dx: frame.maxX - 6, dy: frame.maxY - 6))
-            corner.press(forDuration: 0.5, thenDragTo: corner.withOffset(change), withVelocity: .slow, thenHoldForDuration: 0.5)
+            corner.press(
+                forDuration: 0.5, thenDragTo: corner.withOffset(change), withVelocity: .slow, thenHoldForDuration: 0.5)
             Thread.sleep(forTimeInterval: 1)
         }
     }

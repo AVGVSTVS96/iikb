@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// iikb as it looks with some settings, for the app's "Tap to try": the bar and the letter keys the keyboard lays out
 /// on the device and screen the app is on (the Duo's folded or open screen, split or one-handed as set), drawn by the keyboard's
@@ -18,7 +18,10 @@ public final class KeyboardPreviewView: UIView {
 
     /// The card behind the keys: Raycast's preview in a dark app (its photos, Nov 3), iOS's card behind a third-party
     /// keyboard in a light one (docs/design.md, Colors).
-    private static let card = (dark: RGBA(red: 0x10 / 255.0, green: 0x10 / 255.0, blue: 0x10 / 255.0), light: RGBA(red: 0xE2 / 255.0, green: 0xE3 / 255.0, blue: 0xE8 / 255.0))
+    private static let card = (
+        dark: RGBA(red: 0x10 / 255.0, green: 0x10 / 255.0, blue: 0x10 / 255.0),
+        light: RGBA(red: 0xE2 / 255.0, green: 0xE3 / 255.0, blue: 0xE8 / 255.0)
+    )
 
     override public init(frame: CGRect) {
         super.init(frame: frame)
@@ -30,7 +33,9 @@ public final class KeyboardPreviewView: UIView {
         addSubview(content)
         isAccessibilityElement = true
         accessibilityLabel = "Keyboard preview"
-        show(settings, dark: traitCollection.userInterfaceStyle == .dark, screen: CGSize(width: screen.width, height: screen.height))
+        show(
+            settings, dark: traitCollection.userInterfaceStyle == .dark,
+            screen: CGSize(width: screen.width, height: screen.height))
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -40,9 +45,12 @@ public final class KeyboardPreviewView: UIView {
         self.settings = settings
         self.dark = dark
         self.screen = Size(width: screen.width, height: screen.height)
-        let theme = KeyboardTheme.named(settings.theme, appearance: settings.themeAppearance, dark: dark, style: .current)
+        let theme = KeyboardTheme.named(
+            settings.theme, appearance: settings.themeAppearance, dark: dark, style: .current)
         let keys = Self.keys(settings, on: self.screen)
-        let faces = KeyFaceContext(device: keys.context.device, layer: .letters, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
+        let faces = KeyFaceContext(
+            device: keys.context.device, layer: .letters, kind: .text, shift: .off, returnKind: .default,
+            returnEnabled: true)
         keyboard.characterPreview = .none
         keyboard.slidesToType = false
         keyboard.update(layout: keys.layout, signature: "preview", metrics: keys.metrics, faces: faces, theme: theme)
@@ -50,7 +58,9 @@ public final class KeyboardPreviewView: UIView {
         bar.keys = (keys.grid.rows.first ?? []).map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
         bar.update(more: true)
         bar.update(mic: .off, recorded: 0, saved: [], waitingFor: nil, notice: nil, theme: theme)
-        bar.update([Suggestion("The", .candidate), Suggestion("I", .candidate), Suggestion("And", .candidate)], emoji: [], enabled: true, theme: theme)
+        bar.update(
+            [Suggestion("The", .candidate), Suggestion("I", .candidate), Suggestion("And", .candidate)], emoji: [],
+            enabled: true, theme: theme)
         backgroundColor = (dark ? Self.card.dark : Self.card.light).ui
         setNeedsLayout()
     }
@@ -77,8 +87,11 @@ public final class KeyboardPreviewView: UIView {
 
     /// The keyboard's own keys on `screen`, at the width iOS gives it there, down to their bottom edge.
     private static func keys(_ settings: KeyboardSettings, on screen: Size) -> KeyboardGeometry {
-        let device = DeviceClass(isPad: UIDevice.current.userInterfaceIdiom == .pad, shortSide: min(screen.width, screen.height))
-        var keys = KeyboardGeometry(LayoutContext(device: device, layer: .letters, showsGlobe: true, screen: screen, settings: settings), screen: screen, style: .current)
+        let device = DeviceClass(
+            isPad: UIDevice.current.userInterfaceIdiom == .pad, shortSide: min(screen.width, screen.height))
+        var keys = KeyboardGeometry(
+            LayoutContext(device: device, layer: .letters, showsGlobe: true, screen: screen, settings: settings),
+            screen: screen, style: .current)
         keys.metrics.bottomInset = 0
         return keys
     }

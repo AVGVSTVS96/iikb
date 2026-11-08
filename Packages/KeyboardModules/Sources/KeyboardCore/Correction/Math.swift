@@ -7,7 +7,9 @@ enum Math {
         guard x.isFinite else { return x }
         let s = (x.significand - 1) / (x.significand + 1)
         let s2 = s * s
-        var term = s, sum = 0.0, k = 1.0
+        var term = s
+        var sum = 0.0
+        var k = 1.0
         while abs(term) > 1e-17 {
             sum += term / k
             term *= s2
@@ -21,7 +23,9 @@ enum Math {
         guard x < 709.8 else { return .infinity }
         let k = (x / ln2).rounded()
         let r = x - k * ln2
-        var term = 1.0, sum = 1.0, n = 1.0
+        var term = 1.0
+        var sum = 1.0
+        var n = 1.0
         while abs(term) > 1e-17 {
             term *= r / n
             sum += term

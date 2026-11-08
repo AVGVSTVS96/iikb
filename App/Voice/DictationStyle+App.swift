@@ -7,7 +7,8 @@ extension DictationWriting {
     /// your vocabulary's words and the made-up words that sound like them, so a term keeps its own spelling. The keyboard
     /// sets its capitals.
     static func typed(_ heard: String, in app: String?) -> String {
-        VoiceVocabulary.shared.vocabulary.corrected(SettingsStore.load().dictation(in: app).written(heard), lexicon: .english)
+        VoiceVocabulary.shared.vocabulary.corrected(
+            SettingsStore.load().dictation(in: app).written(heard), lexicon: .english)
     }
 
     /// What the voice model wrote, with your vocabulary's words and nothing of the style or lists.

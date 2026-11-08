@@ -20,7 +20,8 @@ extension Bytes {
     }
 
     public static func mapped(_ url: URL) -> Bytes? {
-        guard let file = try? NSData(contentsOf: url, options: .alwaysMapped) else { return nil } // file: mapped model data
+        // file: mapped model data
+        guard let file = try? NSData(contentsOf: url, options: .alwaysMapped) else { return nil }
         return Bytes(UnsafeRawBufferPointer(start: file.bytes, count: file.length), owner: file)
     }
 }
@@ -28,13 +29,14 @@ extension Bytes {
 extension EmojiCatalog {
     public static let english: EmojiCatalog = {
         let url = Bundle.module.url(forResource: "emoji", withExtension: "txt")!
-        return EmojiCatalog(text: try! String(contentsOf: url, encoding: .utf8), search: .english) // file: bundled resource
+        // file: bundled resource
+        return EmojiCatalog(text: try! String(contentsOf: url, encoding: .utf8), search: .english)
     }()
 }
 
 extension EmojiSearch {
     public static let english: EmojiSearch = {
         let url = Bundle.module.url(forResource: "emoji-search", withExtension: "txt")!
-        return EmojiSearch(text: try! String(contentsOf: url, encoding: .utf8)) // file: bundled resource
+        return EmojiSearch(text: try! String(contentsOf: url, encoding: .utf8))  // file: bundled resource
     }()
 }

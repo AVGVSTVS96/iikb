@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import KeyboardCore
 
 /// Fast, random typing against a host that behaves like an iOS text field seen from a keyboard extension: the proxy's
@@ -12,8 +13,10 @@ import Testing
 /// reports at the same moments as the iOS-like one, and one on the iOS-like host. All three must end with the same text
 /// after every event: what the host shows, and when, must never change what the taps produce.
 struct TextStateStressTests {
-    static let words = ["the", "a", "to", "i", "of", "in", "is", "on", "if", "no", "go", "i'm", "don't", "done", "work",
-                        "word", "world", "hello", "help", "about", "out", "man", "men", "come", "home", "job", "teh", "wrld"]
+    static let words = [
+        "the", "a", "to", "i", "of", "in", "is", "on", "if", "no", "go", "i'm", "don't", "done", "work",
+        "word", "world", "hello", "help", "about", "out", "man", "men", "come", "home", "job", "teh", "wrld",
+    ]
 
     @Test func lateTruncatedReportsNeverChangeWhatTapsType() {
         let runs = 3000
@@ -23,12 +26,14 @@ struct TextStateStressTests {
         for seed in 0..<UInt64(runs) where only == nil || only == seed {
             if let failure = Self.run(seed: seed, stats: &stats) { failures.append(failure) }
         }
-        print("STRESS runs=\(runs) events=\(stats.events) keys=\(stats.keys) reports=\(stats.reports) behind=\(stats.behind) "
-              + "phantom=\(stats.phantoms) jobs=\(stats.jobs) taps=\(stats.suggestionTaps) external=\(stats.external) "
-              + "failed=\(failures.count)")
+        print(
+            "STRESS runs=\(runs) events=\(stats.events) keys=\(stats.keys) reports=\(stats.reports) behind=\(stats.behind) "
+                + "phantom=\(stats.phantoms) jobs=\(stats.jobs) taps=\(stats.suggestionTaps) external=\(stats.external) "
+                + "failed=\(failures.count)")
         for (index, name) in ["perfect host reporting", "iOS-like host"].enumerated() {
-            print("STRESS \(name), final text vs ideal: \(stats.lostLetters[index]) letters lost in \(stats.runsLosingLetters[index]) runs, "
-                  + "\(stats.caseOnly[index]) runs differ only in case, \(stats.otherwise[index]) differ otherwise")
+            print(
+                "STRESS \(name), final text vs ideal: \(stats.lostLetters[index]) letters lost in \(stats.runsLosingLetters[index]) runs, "
+                    + "\(stats.caseOnly[index]) runs differ only in case, \(stats.otherwise[index]) differ otherwise")
         }
         for failure in failures.prefix(5) { print("STRESS \(failure)") }
         for example in stats.examples { print("STRESS lost: \(example)") }
@@ -54,9 +59,12 @@ struct TextStateStressTests {
 
     static func run(seed: UInt64, stats: inout Stats) -> String? {
         var random = Random(seed: seed &* 0x9E37_79B9_7F4A_7C15 &+ 1)
-        let passage = (0..<random.int(4...12)).map { _ in words[random.int(0...(words.count - 1))] }.joined(separator: " ") + " "
+        let passage =
+            (0..<random.int(4...12)).map { _ in words[random.int(0...(words.count - 1))] }.joined(separator: " ") + " "
         let grid = KeyGrid.standard
-        let ideal = TestDocument(), confirmed = TestDocument(), host = LateHost()
+        let ideal = TestDocument()
+        let confirmed = TestDocument()
+        let host = LateHost()
         var keyboards = [Keyboard(), Keyboard(), Keyboard()]
         let documents: [any TextDocument] = [ideal, confirmed, host]
         var log: [String] = []
@@ -92,13 +100,16 @@ struct TextStateStressTests {
             } else if roll < 0.045 {
                 log.append("⌫word")
                 each { keyboard, document in keyboard.engine.deleteWord(in: document) }
-                position = passage[..<position].dropLast().lastIndex(of: " ").map(passage.index(after:)) ?? passage.startIndex
+                position =
+                    passage[..<position].dropLast().lastIndex(of: " ").map(passage.index(after:)) ?? passage.startIndex
             } else if roll < 0.08 {
                 let choice = random.int(0...2)
                 log.append("pick\(choice)")
                 stats.suggestionTaps += 1
                 each { keyboard, document in
-                    if choice < keyboard.engine.suggestions.count { keyboard.engine.accept(keyboard.engine.suggestions[choice], in: document) }
+                    if choice < keyboard.engine.suggestions.count {
+                        keyboard.engine.accept(keyboard.engine.suggestions[choice], in: document)
+                    }
                 }
                 position = passage[position...].firstIndex(of: " ").map(passage.index(after:)) ?? passage.endIndex
             } else if roll < 0.083 {
@@ -107,7 +118,9 @@ struct TextStateStressTests {
                 log.append(change == 3 ? "caret\(tapped)" : "external\(change)")
                 for document in [ideal, confirmed] as [TestDocument] {
                     switch change {
-                    case 0: document.text = ""; document.cursor = 0
+                    case 0:
+                        document.text = ""
+                        document.cursor = 0
                     case 1: document.insert("ok ")
                     case 2: document.cursor = document.text.count
                     default: document.cursor = tapped
@@ -120,9 +133,12 @@ struct TextStateStressTests {
                 default: host.place(cursor: tapped)
                 }
                 changedExternally()
-                for (index, document) in [ideal, confirmed].enumerated() where change == 3 && divergence == nil
-                    && keyboards[index].engine.text.before != document.textBeforeInput {
-                    divergence = "seed \(seed): \(log.joined(separator: " ")) → keyboard \(index) thinks \"\(keyboards[index].engine.text.before)\" is before the caret, but it's \"\(document.textBeforeInput ?? "")\""
+                for (index, document) in [ideal, confirmed].enumerated()
+                where change == 3 && divergence == nil
+                    && keyboards[index].engine.text.before != document.textBeforeInput
+                {
+                    divergence =
+                        "seed \(seed): \(log.joined(separator: " ")) → keyboard \(index) thinks \"\(keyboards[index].engine.text.before)\" is before the caret, but it's \"\(document.textBeforeInput ?? "")\""
                 }
             } else {
                 let character = passage[position]
@@ -130,7 +146,8 @@ struct TextStateStressTests {
                 stats.keys += 1
                 let target = grid.frame(of: String(character == "'" ? " " : character))!
                 let noise = character == " " ? 0.15 : 0.3
-                let x = target.midX + random.gaussian() * noise * min(target.width, 1), y = target.midY + random.gaussian() * noise
+                let x = target.midX + random.gaussian() * noise * min(target.width, 1)
+                let y = target.midY + random.gaussian() * noise
                 log.append(String(character))
                 each { keyboard, document in
                     if character == "'" {
@@ -139,7 +156,8 @@ struct TextStateStressTests {
                     }
                     let hit = keyboard.engine.key(atX: x, y: y, in: grid)!
                     let label = grid.rows[hit.row][hit.key].key.label ?? String(character)
-                    keyboard.engine.perform(label == " " ? .space : .character(label), in: document, tap: Tap(x: x, y: y, key: label))
+                    keyboard.engine.perform(
+                        label == " " ? .space : .character(label), in: document, tap: Tap(x: x, y: y, key: label))
                 }
             }
 
@@ -158,7 +176,9 @@ struct TextStateStressTests {
                 }
             }
             if random.unit() < 0.35 {
-                let lag = random.int(0...4), window = random.int(1...40), phantom = random.unit() < 0.2
+                let lag = random.int(0...4)
+                let window = random.int(1...40)
+                let phantom = random.unit() < 0.2
                 stats.reports += 1
                 if lag > 0 { stats.behind += 1 }
                 if host.report(lag: lag, window: window, phantom: phantom) { stats.phantoms += 1 }
@@ -167,7 +187,8 @@ struct TextStateStressTests {
             }
 
             if divergence == nil, confirmed.text != ideal.text || host.text != ideal.text {
-                divergence = "seed \(seed): \(log.joined(separator: " ")) → ideal \"\(ideal.text)\" confirmed \"\(confirmed.text)\" iOS \"\(host.text)\""
+                divergence =
+                    "seed \(seed): \(log.joined(separator: " ")) → ideal \"\(ideal.text)\" confirmed \"\(confirmed.text)\" iOS \"\(host.text)\""
             }
         }
         for (index, text) in [confirmed.text, host.text].enumerated() where text != ideal.text {
@@ -175,7 +196,10 @@ struct TextStateStressTests {
             if letters > 0 {
                 stats.runsLosingLetters[index] += 1
                 stats.lostLetters[index] += letters
-                if stats.examples.count < 12 { stats.examples.append("[\(index)] \(log.joined(separator: " ")) → ideal \"\(ideal.text)\" got \"\(text)\"") }
+                if stats.examples.count < 12 {
+                    stats.examples.append(
+                        "[\(index)] \(log.joined(separator: " ")) → ideal \"\(ideal.text)\" got \"\(text)\"")
+                }
             } else if text.lowercased() == ideal.text.lowercased() {
                 stats.caseOnly[index] += 1
             } else {

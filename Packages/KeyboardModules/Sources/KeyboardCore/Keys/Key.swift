@@ -46,7 +46,10 @@ public struct Key: Hashable, Sendable {
     public var secondary: String?
     public var isPair: Bool
 
-    public init(_ action: KeyAction, width: KeyWidth = .input, alternates: [String] = [], secondary: String? = nil, isPair: Bool = false) {
+    public init(
+        _ action: KeyAction, width: KeyWidth = .input, alternates: [String] = [], secondary: String? = nil,
+        isPair: Bool = false
+    ) {
         self.action = action
         self.width = width
         self.alternates = alternates

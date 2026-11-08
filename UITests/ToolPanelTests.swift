@@ -31,7 +31,8 @@ final class ToolPanelTests: XCTestCase {
         let id = picked.identifier.components(separatedBy: "--")[0]
         picked.tap()
         XCTAssertTrue(wait(15) { (search.value as? String)?.hasPrefix("Copied") == true }, "a tap says it was copied")
-        XCTAssertTrue(UIPasteboard.general.contains(pasteboardTypes: [UTType.gif.identifier]), "the GIF is on the clipboard")
+        XCTAssertTrue(
+            UIPasteboard.general.contains(pasteboardTypes: [UTType.gif.identifier]), "the GIF is on the clipboard")
         try shot("gif-copied")
 
         app.buttons["iikb.gifs.recents"].tap()
@@ -43,7 +44,10 @@ final class ToolPanelTests: XCTestCase {
     }
 
     func testAHeldGifDragsIntoTheMessage() throws {
-        guard FileManager.default.fileExists(atPath: (ProcessInfo.processInfo.environment["SIMULATOR_ROOT"] ?? "") + "/Applications/MobileSMS.app") else {
+        guard
+            FileManager.default.fileExists(
+                atPath: (ProcessInfo.processInfo.environment["SIMULATOR_ROOT"] ?? "") + "/Applications/MobileSMS.app")
+        else {
             throw XCTSkip("this simulator has no Messages: iOS 27.1, the only one with the iPhone Duo, leaves it out")
         }
         let messages = XCUIApplication(bundleIdentifier: "com.apple.MobileSMS")
@@ -56,7 +60,8 @@ final class ToolPanelTests: XCTestCase {
         field.tap()
         XCTAssertTrue(key("space", in: messages).waitForExistence(timeout: 20), "iikb is not the active keyboard")
         open(.gif, in: messages)
-        let tile = messages.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'iikb.gif.'"))
+        let tile = messages.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'iikb.gif.'"))
         XCTAssertTrue(tile.firstMatch.waitForExistence(timeout: 15), "an empty search shows KLIPY's trending GIFs")
         try shot("gif-drag")
 
@@ -86,16 +91,21 @@ final class ToolPanelTests: XCTestCase {
             app = launch()
             open(.clipboard, in: app)
         }
-        let row = app.descendants(matching: .any).matching(identifier: "iikb.clip.Meet at Sightglass on 7th, 4pm?").firstMatch
+        let row = app.descendants(matching: .any).matching(identifier: "iikb.clip.Meet at Sightglass on 7th, 4pm?")
+            .firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5), "what you copied in another app is kept")
-        XCTAssertTrue(row.staticTexts["iikb.clip.detail"].label.hasPrefix("31 chars · "), "a row says how long its text is, then how long ago")
+        XCTAssertTrue(
+            row.staticTexts["iikb.clip.detail"].label.hasPrefix("31 chars · "),
+            "a row says how long its text is, then how long ago")
         try shot("clipboard")
 
         for letter in "sight" { key(String(letter), in: app).tap() }
         XCTAssertTrue(row.exists, "the search finds it by its text")
         row.tap()
         let field = app.textViews.firstMatch
-        XCTAssertTrue(wait { (field.value as? String)?.contains("Meet at Sightglass on 7th, 4pm?") == true }, "a tap types it into the app")
+        XCTAssertTrue(
+            wait { (field.value as? String)?.contains("Meet at Sightglass on 7th, 4pm?") == true },
+            "a tap types it into the app")
         app.buttons["iikb.panel.clear"].tap()
 
         row.press(forDuration: 1.2)
@@ -113,10 +123,13 @@ final class ToolPanelTests: XCTestCase {
     }
 
     func testThePreviewOfAHeldClipShowsAllOfIt() throws {
-        UIPasteboard.general.string = "Meet at Sightglass on 7th, 4pm? Bring the deck and both printouts, and ask Sam about Thursday."
+        UIPasteboard.general.string =
+            "Meet at Sightglass on 7th, 4pm? Bring the deck and both printouts, and ask Sam about Thursday."
         let app = launch()
         open(.clipboard, in: app)
-        let row = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.Meet'")).firstMatch
+        let row = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.Meet'")
+        ).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.press(forDuration: 1.2)
         Thread.sleep(forTimeInterval: 1)
@@ -124,12 +137,15 @@ final class ToolPanelTests: XCTestCase {
     }
 
     func testHoldingAShelfItemShowsAllOfIt() throws {
-        UIPasteboard.general.string = "Meet at Sightglass on 7th, 4pm? Bring the deck and both printouts, and ask Sam about Thursday."
+        UIPasteboard.general.string =
+            "Meet at Sightglass on 7th, 4pm? Bring the deck and both printouts, and ask Sam about Thursday."
         let app = launch()
         let more = app.buttons["iikb.more"]
         XCTAssertTrue(more.waitForExistence(timeout: 10), "the bar's More button shows")
         more.tap()
-        let item = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.Meet'")).firstMatch
+        let item = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.Meet'")
+        ).firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 5), "the clipboard's shelf shows what you copied")
         item.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 3), "holding it shows all of it with its menu")
@@ -139,7 +155,8 @@ final class ToolPanelTests: XCTestCase {
     /// Made-up and public items of every kind, oldest first.
     private static let kinds = [
         "Meet at Sightglass on 7th, 4pm?", "https://en.wikipedia.org/wiki/International_Typographic_Style", "#FF6B00",
-        "https://www.youtube.com/watch?v=aircAruvnKk", "https://github.com/swiftlang/swift/pull/80000", "(415) 555-0132",
+        "https://www.youtube.com/watch?v=aircAruvnKk", "https://github.com/swiftlang/swift/pull/80000",
+        "(415) 555-0132",
         "hello@example.com", "https://x.com/vercel/status/1985000000000000001?s=46",
     ]
 
@@ -164,7 +181,9 @@ final class ToolPanelTests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.5)
         }
         more.tap()
-        let link = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.https://x.com/vercel'")).firstMatch
+        let link = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.https://x.com/vercel'")
+        ).firstMatch
         XCTAssertTrue(link.waitForExistence(timeout: 5), "the shelf shows the link")
         Thread.sleep(forTimeInterval: 3)
         try shot("menu-kinds")
@@ -180,7 +199,9 @@ final class ToolPanelTests: XCTestCase {
         list.swipeDown()
         list.swipeDown()
         app.buttons["iikb.clipboard.links"].tap()
-        XCTAssertTrue(wait { !app.descendants(matching: .any)["iikb.clip.Meet at Sightglass on 7th, 4pm?"].exists }, "the link button shows only links")
+        XCTAssertTrue(
+            wait { !app.descendants(matching: .any)["iikb.clip.Meet at Sightglass on 7th, 4pm?"].exists },
+            "the link button shows only links")
         XCTAssertTrue(link.waitForExistence(timeout: 3))
         try shot("clipboard-links")
         link.press(forDuration: 1.2)
@@ -191,7 +212,9 @@ final class ToolPanelTests: XCTestCase {
         let page = XCUIApplication()
         page.launchArguments = ["-iikbTab", "clipboard", "-iikbOrientation", orientation]
         page.launch()
-        XCTAssertTrue(page.staticTexts["x.com"].waitForExistence(timeout: 10), "the app's Clipboard writes a link by its site's name")
+        XCTAssertTrue(
+            page.staticTexts["x.com"].waitForExistence(timeout: 10),
+            "the app's Clipboard writes a link by its site's name")
         Thread.sleep(forTimeInterval: 2)
         try shot("app-clipboard-kinds")
         page.buttons["Links"].firstMatch.tap()
@@ -205,7 +228,8 @@ final class ToolPanelTests: XCTestCase {
         let more = app.buttons["iikb.more"]
         XCTAssertTrue(more.waitForExistence(timeout: 3), "the bar's More button shows")
         more.tap()
-        XCTAssertTrue(app.buttons["iikb.shelf.clipboard"].waitForExistence(timeout: 3), "the menu has the clipboard's shelf")
+        XCTAssertTrue(
+            app.buttons["iikb.shelf.clipboard"].waitForExistence(timeout: 3), "the menu has the clipboard's shelf")
         XCTAssertTrue(app.buttons["iikb.shelf.transcripts"].exists, "and Transcripts'")
         XCTAssertFalse(key("space", in: app).isHittable, "the menu is in the keys' place")
         Thread.sleep(forTimeInterval: ProcessInfo.processInfo.environment["IIKB_SETTLE"].flatMap(Double.init) ?? 3)
@@ -222,7 +246,8 @@ final class ToolPanelTests: XCTestCase {
         XCTAssertTrue(tool.waitForExistence(timeout: 10))
         for letter in "hi" { key(String(letter), in: app).tap() }
         key("space", in: app).tap()
-        let paste = app.buttons["iikb.edit.paste"], cut = app.buttons["iikb.edit.cut"]
+        let paste = app.buttons["iikb.edit.paste"]
+        let cut = app.buttons["iikb.edit.cut"]
         XCTAssertFalse(paste.isHittable, "the edits are tucked into the More button")
         tool.tap()
         XCTAssertTrue(wait { paste.isHittable }, "the More button lets them out")
@@ -232,9 +257,13 @@ final class ToolPanelTests: XCTestCase {
         let notice = app.staticTexts["iikb.notice"]
         if notice.waitForExistence(timeout: 2), notice.label.contains("Paste from Other Apps") {
             try shot("edits-refused")
-            throw XCTSkip("iOS refused the paste and the bar said why: Paste from Other Apps is still Ask (the clipboard panel's test turns it on)")
+            throw XCTSkip(
+                "iOS refused the paste and the bar said why: Paste from Other Apps is still Ask (the clipboard panel's test turns it on)"
+            )
         }
-        XCTAssertTrue(wait { (field.value as? String)?.lowercased().hasSuffix("hi sightglass") == true }, "Paste types what's on the clipboard")
+        XCTAssertTrue(
+            wait { (field.value as? String)?.lowercased().hasSuffix("hi sightglass") == true },
+            "Paste types what's on the clipboard")
         XCTAssertTrue(wait { !paste.isHittable }, "and they tuck back in")
 
         tool.tap()
@@ -251,32 +280,43 @@ final class ToolPanelTests: XCTestCase {
         tool.tap()
         XCTAssertTrue(wait { paste.isHittable && paste.isEnabled })
         paste.tap()
-        XCTAssertTrue(wait { (field.value as? String)?.contains("Sightglass") == true }, "and Paste puts back what Cut copied")
+        XCTAssertTrue(
+            wait { (field.value as? String)?.contains("Sightglass") == true }, "and Paste puts back what Cut copied")
     }
 
     func testTranscriptsOpenFromTheirShelfAndTypeWhatYouPick() throws {
         let app = launch()
         open(.transcripts, in: app)
-        XCTAssertTrue(app.collectionViews["iikb.transcripts"].waitForExistence(timeout: 3), "the menu's Transcripts shelf opens them")
+        XCTAssertTrue(
+            app.collectionViews["iikb.transcripts"].waitForExistence(timeout: 3),
+            "the menu's Transcripts shelf opens them")
         let row = app.descendants(matching: .any).matching(identifier: "iikb.transcript.0").firstMatch
         guard row.waitForExistence(timeout: 5) else {
             XCTAssertTrue(app.buttons["iikb.transcripts.message"].exists, "with nothing dictated, the drawer says so")
             return try shot("transcripts-empty")
         }
-        XCTAssertTrue(row.staticTexts["iikb.clip.detail"].label.contains(" words · ") || row.staticTexts["iikb.clip.detail"].label.contains(" word · "), "a row says its words, then how long ago")
+        XCTAssertTrue(
+            row.staticTexts["iikb.clip.detail"].label.contains(" words · ")
+                || row.staticTexts["iikb.clip.detail"].label.contains(" word · "),
+            "a row says its words, then how long ago")
         try shot("transcripts")
         let text = row.staticTexts["iikb.clip.text"].label
         row.tap()
         let field = app.textViews.firstMatch
-        XCTAssertTrue(wait { (field.value as? String)?.contains(text.prefix(20)) == true }, "a tap types it into the app")
+        XCTAssertTrue(
+            wait { (field.value as? String)?.contains(text.prefix(20)) == true }, "a tap types it into the app")
         row.press(forDuration: 1.2)
-        XCTAssertTrue(app.buttons["Copy"].waitForExistence(timeout: 3), "holding a transcript shows it with Paste and Copy")
+        XCTAssertTrue(
+            app.buttons["Copy"].waitForExistence(timeout: 3), "holding a transcript shows it with Paste and Copy")
         try shot("transcripts-preview")
     }
 
     private func launch() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", orientation, "-iikbOneHanded", "off", "-iikbCompactPanels", compactSetting ? "YES" : "NO"]
+        app.launchArguments = [
+            "-iikbFocus", "YES", "-iikbOrientation", orientation, "-iikbOneHanded", "off", "-iikbCompactPanels",
+            compactSetting ? "YES" : "NO",
+        ]
         app.launch()
         if !key("space", in: app).waitForExistence(timeout: 20) {
             app.terminate()
@@ -312,7 +352,8 @@ final class ToolPanelTests: XCTestCase {
     private var compact: Bool { compactSetting || orientation == "landscape" }
 
     /// The results sit in one row, and a swipe moves them sideways.
-    private func assertOneRowScrollsSideways(_ tiles: XCUIElementQuery, in scroller: XCUIElement, app: XCUIApplication) {
+    private func assertOneRowScrollsSideways(_ tiles: XCUIElementQuery, in scroller: XCUIElement, app: XCUIApplication)
+    {
         let row = (0..<min(tiles.count, 8)).map { tiles.element(boundBy: $0).frame }
         XCTAssertEqual(Set(row.map(\.minY)).count, 1, "the GIFs are one row")
         let first = tiles.element(boundBy: 0)
@@ -326,9 +367,12 @@ final class ToolPanelTests: XCTestCase {
     private func shot(_ name: String) throws {
         guard let shots else { return }
         Thread.sleep(forTimeInterval: 1.5)
-        let inner = XCUIScreen.screens.map { $0.screenshot() }.max { $0.image.size.width * $0.image.size.height < $1.image.size.width * $1.image.size.height }
+        let inner = XCUIScreen.screens.map { $0.screenshot() }.max {
+            $0.image.size.width * $0.image.size.height < $1.image.size.width * $1.image.size.height
+        }
         let screen = unfolded ? inner : nil
-        try (screen ?? XCUIScreen.main.screenshot()).pngRepresentation.write(to: URL(fileURLWithPath: "\(shots)-\(name).png"))
+        try (screen ?? XCUIScreen.main.screenshot()).pngRepresentation.write(
+            to: URL(fileURLWithPath: "\(shots)-\(name).png"))
     }
 
     private func key(_ name: String, in app: XCUIApplication) -> XCUIElement {

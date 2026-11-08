@@ -37,8 +37,12 @@ extension TouchModel {
             let posterior = model.posterior(label)
             let center = (x: cell.midX + posterior.mean.x * cell.width, y: cell.midY + posterior.mean.y * cell.height)
             let variance: Double = posterior.dof / (posterior.dof - 2)
-            let w = cell.width, h = cell.height
-            let spread = (xx: posterior.xx * variance * w * w, xy: posterior.xy * variance * w * h, yy: posterior.yy * variance * h * h)
+            let w = cell.width
+            let h = cell.height
+            let spread = (
+                xx: posterior.xx * variance * w * w, xy: posterior.xy * variance * w * h,
+                yy: posterior.yy * variance * h * h
+            )
             let point = { (u: Double, v: Double) in (x: cell.midX + u * w, y: cell.midY + v * h) }
             let recent: [(x: Double, y: Double, landed: Key?)] = (taps[label] ?? []).map {
                 let (x, y) = point($0.x, $0.y)
@@ -61,11 +65,14 @@ extension TouchModel {
 
     /// Spreads a Gaussian over the grid on a lattice out to 3.5σ along its axes and asks the grid which key is under
     /// each point, the way a tap with no model behind it would be read.
-    static func landing(around center: (x: Double, y: Double), spread: (xx: Double, xy: Double, yy: Double), on grid: KeyGrid) -> [(key: Key, share: Double)] {
+    static func landing(
+        around center: (x: Double, y: Double), spread: (xx: Double, xy: Double, yy: Double), on grid: KeyGrid
+    ) -> [(key: Key, share: Double)] {
         let l11 = spread.xx.squareRoot()
         let l21 = spread.xy / l11
         let l22 = max(spread.yy - l21 * l21, 0).squareRoot()
-        let steps = 24, reach = 3.5
+        let steps = 24
+        let reach = 3.5
         var shares: [Int: Double] = [:]
         var total = 0.0
         for i in -steps...steps {
@@ -78,7 +85,8 @@ extension TouchModel {
                 total += weight
             }
         }
-        return shares
+        return
+            shares
             .map { (key: grid.rows[$0.key / 1000][$0.key % 1000].key, share: $0.value / total) }
             .sorted { $0.share > $1.share }
     }

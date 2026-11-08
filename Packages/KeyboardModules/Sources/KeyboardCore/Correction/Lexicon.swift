@@ -113,7 +113,8 @@ extension Lexicon {
     /// when that's how they're spelled; anything outside a–z and the apostrophe is skipped.
     public convenience init(counts: some Sequence<(word: String, count: Double)>) {
         let entries = counts.filter { entry in
-            entry.count > 0 && !entry.word.isEmpty && entry.word.utf8.allSatisfy { Lexicon.index(of: Lexicon.fold($0)) != nil }
+            entry.count > 0 && !entry.word.isEmpty
+                && entry.word.utf8.allSatisfy { Lexicon.index(of: Lexicon.fold($0)) != nil }
         }
         let total = entries.reduce(0) { $0 + $1.count }
         let root = Building()
@@ -142,7 +143,9 @@ extension Lexicon {
             let node = order[cursor].node
             let letters = node.children.keys.sorted()
             firstChild.append(letters.isEmpty ? 0 : order.count)
-            for (i, letter) in letters.enumerated() { order.append((node.children[letter]!, letter, i == letters.count - 1)) }
+            for (i, letter) in letters.enumerated() {
+                order.append((node.children[letter]!, letter, i == letters.count - 1))
+            }
             cursor += 1
         }
         var bytes = Self.header
@@ -150,7 +153,9 @@ extension Lexicon {
         for (index, entry) in order.enumerated() {
             let flags: UInt8 = (entry.last ? 1 : 0) | (entry.node.capitalized ? 2 : 0)
             bytes += [entry.letter, quantize(entry.node.probability), quantize(min(entry.node.mass, 1)), flags]
-            for shift in stride(from: 0, to: 32, by: 8) { bytes.append(UInt8(truncatingIfNeeded: firstChild[index] >> shift)) }
+            for shift in stride(from: 0, to: 32, by: 8) {
+                bytes.append(UInt8(truncatingIfNeeded: firstChild[index] >> shift))
+            }
         }
         self.init(bytes: bytes)!
     }
@@ -180,7 +185,9 @@ extension Lexicon: CandidateSource {
                 continue
             }
             if let word = logWord(node) { heap.push((node, spelling, true), priority: word) }
-            for child in children(node) { heap.push((child, spelling + [letter(child)], false), priority: logMass(child)) }
+            for child in children(node) {
+                heap.push((child, spelling + [letter(child)], false), priority: logMass(child))
+            }
         }
         return words
     }

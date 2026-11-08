@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// The host's field, through the keyboard's `textDocumentProxy`, as the `TextDocument` that `TypingEngine` edits.
 public final class ProxyDocument: TextDocument {
@@ -42,66 +42,71 @@ extension InputTraits {
     }
 
     private static let literalContent: Set<UITextContentType> = [
-        .URL, .emailAddress, .username, .password, .newPassword, .oneTimeCode, .telephoneNumber, .postalCode, .creditCardNumber,
+        .URL, .emailAddress, .username, .password, .newPassword, .oneTimeCode, .telephoneNumber, .postalCode,
+        .creditCardNumber,
     ]
 }
 
 extension InputContent {
     init(_ type: UITextContentType) {
-        self = switch type {
-        case .emailAddress: .emailAddress
-        case .URL: .url
-        case .username: .username
-        case .telephoneNumber: .telephoneNumber
-        case .oneTimeCode: .oneTimeCode
-        case .postalCode: .postalCode
-        case .creditCardNumber: .creditCardNumber
-        default: .other
-        }
+        self =
+            switch type {
+            case .emailAddress: .emailAddress
+            case .URL: .url
+            case .username: .username
+            case .telephoneNumber: .telephoneNumber
+            case .oneTimeCode: .oneTimeCode
+            case .postalCode: .postalCode
+            case .creditCardNumber: .creditCardNumber
+            default: .other
+            }
     }
 }
 
 extension InputKind {
     init(_ type: UIKeyboardType) {
-        self = switch type {
-        case .emailAddress: .email
-        case .URL: .url
-        case .numberPad, .asciiCapableNumberPad, .phonePad, .namePhonePad, .numbersAndPunctuation: .number
-        case .decimalPad: .decimal
-        case .twitter: .twitter
-        case .webSearch: .webSearch
-        default: .text
-        }
+        self =
+            switch type {
+            case .emailAddress: .email
+            case .URL: .url
+            case .numberPad, .asciiCapableNumberPad, .phonePad, .namePhonePad, .numbersAndPunctuation: .number
+            case .decimalPad: .decimal
+            case .twitter: .twitter
+            case .webSearch: .webSearch
+            default: .text
+            }
     }
 }
 
 extension ReturnKind {
     init(_ type: UIReturnKeyType) {
-        self = switch type {
-        case .go: .go
-        case .google: .google
-        case .join: .join
-        case .next: .next
-        case .route: .route
-        case .search: .search
-        case .send: .send
-        case .yahoo: .yahoo
-        case .done: .done
-        case .emergencyCall: .emergencyCall
-        case .continue: .continue
-        default: .default
-        }
+        self =
+            switch type {
+            case .go: .go
+            case .google: .google
+            case .join: .join
+            case .next: .next
+            case .route: .route
+            case .search: .search
+            case .send: .send
+            case .yahoo: .yahoo
+            case .done: .done
+            case .emergencyCall: .emergencyCall
+            case .continue: .continue
+            default: .default
+            }
     }
 }
 
 extension Autocapitalization {
     init(_ type: UITextAutocapitalizationType) {
-        self = switch type {
-        case .none: .none
-        case .words: .words
-        case .allCharacters: .allCharacters
-        default: .sentences
-        }
+        self =
+            switch type {
+            case .none: .none
+            case .words: .words
+            case .allCharacters: .allCharacters
+            default: .sentences
+            }
     }
 }
 

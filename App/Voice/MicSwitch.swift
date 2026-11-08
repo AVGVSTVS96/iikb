@@ -19,12 +19,16 @@ private struct EndsWithCards: ViewModifier {
     func body(content: Content) -> some View {
         content
             .offset(x: min(0, safeTrailing - AppStyle.margin - trailing))
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { trailing = $0 }
+            .onGeometryChange(for: CGFloat.self) {
+                $0.frame(in: .global).maxX
+            } action: {
+                trailing = $0
+            }
     }
 }
 
-private extension View {
-    func endsWithCards() -> some View { modifier(EndsWithCards()) }
+extension View {
+    fileprivate func endsWithCards() -> some View { modifier(EndsWithCards()) }
 }
 
 /// The microphone, on or off, as it really is: on, the keyboard starts each dictation in place, and it stays on until
@@ -53,7 +57,10 @@ struct MicSwitch: View {
         .padding(.trailing, 11.5)
         .frame(height: 44)
         .glassEffect(.regular, in: .capsule)
-        .alert("Couldn’t Turn On the Microphone", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
+        .alert(
+            "Couldn’t Turn On the Microphone",
+            isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })
+        ) {
             Button("Settings") { AppStatus.openSettings() }
             Button("OK", role: .cancel) {}
         } message: {

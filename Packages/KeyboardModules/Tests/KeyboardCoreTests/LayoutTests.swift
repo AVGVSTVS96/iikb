@@ -1,4 +1,5 @@
 import Testing
+
 @testable import KeyboardCore
 
 struct LayoutTests {
@@ -22,10 +23,13 @@ struct LayoutTests {
     @Test func keysSitWhereApplesDoOnIPhoneDuo() {
         let context = LayoutContext(device: .phone, layer: .letters)
         let metrics = KeyboardMetrics.for(.phone, width: 466, height: 678).fitted(screen: 466, window: 452)
-        let grid = KeyGrid(Layouts.layout(for: context), width: 452, metrics: metrics.grid, signature: context.signature)
+        let grid = KeyGrid(
+            Layouts.layout(for: context), width: 452, metrics: metrics.grid, signature: context.signature)
         let center = { (label: String) in 7 + grid.frame(of: label)!.x + grid.frame(of: label)!.width / 2 }
         #expect(abs(center("q") - 26.5) <= 1 && abs(center("p") - 439.7) <= 1)
-        #expect(KeyboardMetrics.for(.phone, width: 402, height: 874).fitted(screen: 402, window: 402) == KeyboardMetrics.for(.phone, width: 402, height: 874))
+        #expect(
+            KeyboardMetrics.for(.phone, width: 402, height: 874).fitted(screen: 402, window: 402)
+                == KeyboardMetrics.for(.phone, width: 402, height: 874))
     }
 
     /// Where iOS wants a way to the next keyboard, an iPhone's globe sits left of 123, away from the emoji key: as a
@@ -33,27 +37,41 @@ struct LayoutTests {
     /// offers it.
     @Test func thePhonesGlobeSitsLeftOf123OrInTheMenu() {
         var settings = KeyboardSettings()
-        let duo = { LayoutContext(device: .phone, layer: .letters, showsGlobe: true, screen: Size(width: 466, height: 678), settings: settings) }
+        let duo = {
+            LayoutContext(
+                device: .phone, layer: .letters, showsGlobe: true, screen: Size(width: 466, height: 678),
+                settings: settings)
+        }
         for layer in KeyboardLayer.allCases {
             var context = duo()
             context.layer = layer
-            let row = Layouts.layout(for: context).rows.last!.compactMap { if case .key(let key) = $0 { key.action } else { nil } }
-            #expect(row.prefix(3) == [.globeSpacer, .layer(layer == .letters ? .numbers : .letters), .emoji], "\(layer)")
+            let row = Layouts.layout(for: context).rows.last!.compactMap {
+                if case .key(let key) = $0 { key.action } else { nil }
+            }
+            #expect(
+                row.prefix(3) == [.globeSpacer, .layer(layer == .letters ? .numbers : .letters), .emoji], "\(layer)")
         }
         #expect(duo().moreMenu.contains(.nextKeyboard) && duo().menu.contains(.nextKeyboard))
         settings.globeKey = .switches
         #expect(Layouts.layout(for: duo()).rows.last!.first == .key(Key(.nextKeyboard, width: .pitch(0.93))))
         #expect(!duo().moreMenu.contains(.nextKeyboard))
         settings.globeKey = .hidden
-        #expect(!Layouts.layout(for: duo()).keys.contains { [.nextKeyboard, .globeSpacer].contains($0.action) } && duo().moreMenu.contains(.nextKeyboard))
+        #expect(
+            !Layouts.layout(for: duo()).keys.contains { [.nextKeyboard, .globeSpacer].contains($0.action) }
+                && duo().moreMenu.contains(.nextKeyboard))
         settings.split = true
         for globe in [GlobeKey.switches, .spacer] {
             settings.globeKey = globe
-            let split = LayoutContext(device: .phone, layer: .letters, showsGlobe: true, screen: Size(width: 951, height: 669), settings: settings)
+            let split = LayoutContext(
+                device: .phone, layer: .letters, showsGlobe: true, screen: Size(width: 951, height: 669),
+                settings: settings)
             #expect(split.isSplit && Layouts.layout(for: split).rows.last!.first == .key(Key(split.globe)), "\(globe)")
         }
-        let faceID = LayoutContext(device: .phone, layer: .letters, screen: Size(width: 402, height: 874), settings: KeyboardSettings())
-        #expect(!Layouts.layout(for: faceID).keys.contains { $0.action == .nextKeyboard }, "iOS draws its own globe under the keys")
+        let faceID = LayoutContext(
+            device: .phone, layer: .letters, screen: Size(width: 402, height: 874), settings: KeyboardSettings())
+        #expect(
+            !Layouts.layout(for: faceID).keys.contains { $0.action == .nextKeyboard },
+            "iOS draws its own globe under the keys")
     }
 
     /// With Settings' Record Key on, the record button takes the globe's place left of 123, split or not, on every
@@ -64,13 +82,20 @@ struct LayoutTests {
         for (width, height) in [(466.0, 678.0), (402, 874), (951, 669)] {
             for split in [false, true] {
                 settings.split = split
-                let context = LayoutContext(device: .phone, layer: .letters, showsGlobe: true, screen: Size(width: width, height: height), settings: settings)
-                let row = Layouts.layout(for: context).rows.last!.compactMap { if case .key(let key) = $0 { key.action } else { nil } }
-                #expect(row.prefix(2) == [.dictate, .layer(.numbers)] && !row.contains(.nextKeyboard) && !row.contains(.globeSpacer), "\(width)×\(height)\(split ? " split" : "")")
+                let context = LayoutContext(
+                    device: .phone, layer: .letters, showsGlobe: true, screen: Size(width: width, height: height),
+                    settings: settings)
+                let row = Layouts.layout(for: context).rows.last!.compactMap {
+                    if case .key(let key) = $0 { key.action } else { nil }
+                }
+                #expect(
+                    row.prefix(2) == [.dictate, .layer(.numbers)] && !row.contains(.nextKeyboard)
+                        && !row.contains(.globeSpacer), "\(width)×\(height)\(split ? " split" : "")")
                 #expect(context.moreMenu.contains(.nextKeyboard), "\(width)×\(height)")
             }
         }
-        let pad = LayoutContext(device: .pad, layer: .letters, showsGlobe: true, screen: Size(width: 834, height: 1194), settings: settings)
+        let pad = LayoutContext(
+            device: .pad, layer: .letters, showsGlobe: true, screen: Size(width: 834, height: 1194), settings: settings)
         #expect(!Layouts.layout(for: pad).keys.contains { $0.action == .dictate }, "an iPad keeps its mic in the bar")
     }
 
@@ -81,7 +106,10 @@ struct LayoutTests {
         #expect(phone.menu == phone.moreMenu)
         let open = LayoutContext(device: .phone, layer: .letters, showsGlobe: true, isOpen: true)
         #expect(open.moreMenu == [.nextKeyboard, .settings] && open.menu == [.keep, .nextKeyboard, .settings])
-        #expect(LayoutContext(device: .phone, layer: .letters).moreMenu == [.pick(.left), .pick(.off), .pick(.right), .settings])
+        #expect(
+            LayoutContext(device: .phone, layer: .letters).moreMenu == [
+                .pick(.left), .pick(.off), .pick(.right), .settings,
+            ])
         let pad = LayoutContext(device: .pad, layer: .letters, showsGlobe: true)
         #expect(Layouts.layout(for: pad).keys.contains { $0.action == .nextKeyboard } && pad.moreMenu == [.settings])
     }
@@ -90,7 +118,11 @@ struct LayoutTests {
     /// always keeps its button.
     @Test func theKeyboardMenuOpensWhereSettingsPutIt() {
         var settings = KeyboardSettings()
-        let open = { (device: DeviceClass) in LayoutContext(device: device, layer: .letters, showsGlobe: true, screen: Size(width: 402, height: 874), settings: settings) }
+        let open = { (device: DeviceClass) in
+            LayoutContext(
+                device: device, layer: .letters, showsGlobe: true, screen: Size(width: 402, height: 874),
+                settings: settings)
+        }
         #expect(!open(.phone).menu.isEmpty && open(.phone).showsMoreButton)
         settings.keyboardMenu = .hold
         #expect(!open(.phone).menu.isEmpty && !open(.phone).showsMoreButton)
@@ -110,10 +142,16 @@ struct LayoutTests {
     @Test func everyFieldHasTheEmojiKey() {
         for kind in [InputKind.text, .email, .url, .twitter, .webSearch] {
             for landscape in [false, true] {
-                let context = LayoutContext(device: .phone, layer: .letters, kind: kind, isLandscape: landscape, showsEmoji: true)
-                let row = Layouts.layout(for: context).rows.last!.compactMap { item -> Key? in if case .key(let key) = item { key } else { nil } }
+                let context = LayoutContext(
+                    device: .phone, layer: .letters, kind: kind, isLandscape: landscape, showsEmoji: true)
+                let row = Layouts.layout(for: context).rows.last!.compactMap { item -> Key? in
+                    if case .key(let key) = item { key } else { nil }
+                }
                 #expect(row.prefix(2).map(\.action) == [.layer(.numbers), .emoji], "\(kind)")
-                let grid = KeyGrid(Layouts.layout(for: context), width: landscape ? 874 : 402, metrics: KeyboardMetrics.for(.phone, width: landscape ? 874 : 402, height: landscape ? 402 : 874).grid)
+                let grid = KeyGrid(
+                    Layouts.layout(for: context), width: landscape ? 874 : 402,
+                    metrics: KeyboardMetrics.for(.phone, width: landscape ? 874 : 402, height: landscape ? 402 : 874)
+                        .grid)
                 #expect(grid.rows.last!.allSatisfy { $0.frame.width > 30 }, "\(kind): every key has room")
             }
         }
@@ -141,7 +179,9 @@ struct LayoutTests {
     }
 
     @Test func alternatesIncludeTheBaseLetter() {
-        let e = Layouts.layout(for: LayoutContext(device: .phone, layer: .letters)).keys.first { $0.action == .character("e") }
+        let e = Layouts.layout(for: LayoutContext(device: .phone, layer: .letters)).keys.first {
+            $0.action == .character("e")
+        }
         #expect(e?.alternates.contains("e") == true)
         #expect(e?.alternates.contains("é") == true)
     }
@@ -155,7 +195,10 @@ struct LayoutTests {
 
     @Test func bottomRowKeys123AsWideAsEmoji() {
         for isLandscape in [false, true] {
-            let keys = Layouts.layout(for: LayoutContext(device: .phone, layer: .letters, showsGlobe: true, isLandscape: isLandscape, showsEmoji: true)).keys
+            let keys = Layouts.layout(
+                for: LayoutContext(
+                    device: .phone, layer: .letters, showsGlobe: true, isLandscape: isLandscape, showsEmoji: true)
+            ).keys
             let width = { (action: KeyAction) in keys.first { $0.action == action }?.width.span ?? 0 }
             #expect(width(.emoji) == (isLandscape ? 1 : 1.25), "the emoji key keeps its width")
             #expect(width(.layer(.numbers)) == width(.emoji), "123 is as wide as the emoji key")
@@ -185,7 +228,9 @@ struct LayoutTests {
         ]
         for (device, screen, undo, redo) in screens {
             func grid(_ layer: KeyboardLayer) -> KeyGrid {
-                KeyboardGeometry(LayoutContext(device: device, layer: layer, showsGlobe: true), screen: screen, style: .ios26).grid
+                KeyboardGeometry(
+                    LayoutContext(device: device, layer: layer, showsGlobe: true), screen: screen, style: .ios26
+                ).grid
             }
             #expect(grid(.numbers).rows[undo.row][undo.key].key.action == .undo, "\(device)")
             let symbols = device == .largePad ? grid(.numbers) : grid(.symbols)
@@ -198,12 +243,16 @@ struct LayoutTests {
     /// docs/design.md, "iPad": Apple's keys measured on each iPad, sideways as well as upright.
     @Test func iPadKeysAreApplesSidewaysToo() {
         let screens: [(DeviceClass, Size, letter: Double, height: Double, bottom: Double)] = [
-            (.compactPad, Size(width: 744, height: 1133), 54.45, 55.5, 8), (.compactPad, Size(width: 1133, height: 744), 87.16, 74.75, 10),
-            (.pad, Size(width: 834, height: 1210), 56, 55.5, 8), (.pad, Size(width: 1210, height: 834), 81.52, 73.75, 11),
-            (.largePad, Size(width: 1032, height: 1376), 64, 61, 4), (.largePad, Size(width: 1376, height: 1032), 84.6, 79, 4),
+            (.compactPad, Size(width: 744, height: 1133), 54.45, 55.5, 8),
+            (.compactPad, Size(width: 1133, height: 744), 87.16, 74.75, 10),
+            (.pad, Size(width: 834, height: 1210), 56, 55.5, 8),
+            (.pad, Size(width: 1210, height: 834), 81.52, 73.75, 11),
+            (.largePad, Size(width: 1032, height: 1376), 64, 61, 4),
+            (.largePad, Size(width: 1376, height: 1032), 84.6, 79, 4),
         ]
         for (device, screen, letter, height, bottom) in screens {
-            let context = LayoutContext(device: device, layer: .letters, showsGlobe: true, isLandscape: screen.width > screen.height)
+            let context = LayoutContext(
+                device: device, layer: .letters, showsGlobe: true, isLandscape: screen.width > screen.height)
             let keys = KeyboardGeometry(context, screen: screen, style: .ios26)
             let q = keys.grid.frame(of: "q")
             #expect(abs((q?.width ?? 0) - letter) < 0.1, "\(device) \(screen): q is \(q?.width ?? 0) wide")
@@ -213,7 +262,8 @@ struct LayoutTests {
 
     private func rowsAboveBottom(width: Double, style: KeyboardStyle) -> Double {
         let metrics = KeyboardMetrics.phone(width: width, style: style)
-        let grid = KeyGrid(Layouts.layout(for: LayoutContext(device: .phone, layer: .letters)), width: width, metrics: metrics.grid)
+        let grid = KeyGrid(
+            Layouts.layout(for: LayoutContext(device: .phone, layer: .letters)), width: width, metrics: metrics.grid)
         return metrics.height(rows: 4, hasNumberRow: false) - grid.rows[0][0].frame.y
     }
 
@@ -226,8 +276,12 @@ struct LayoutTests {
     /// docs/design.md, "Per device": the bar over the keys, or a panel in its place.
     @Test func theToolbarFollowsTheDesignOnEachScreen() {
         let cover = KeyboardMetrics.for(.phone, width: 466, height: 678)
-        #expect(cover.toolbar.height + cover.topInset == 3 + 38 + 7, "the mic's 38 with 7 above (4 of it iOS's backdrop) and 7 below: Apple's height, with the tools beside the suggestions")
-        #expect(cover.toolbar.panelHeight - cover.toolbar.height == 144, "a panel's results and search row replace the bar")
+        #expect(
+            cover.toolbar.height + cover.topInset == 3 + 38 + 7,
+            "the mic's 38 with 7 above (4 of it iOS's backdrop) and 7 below: Apple's height, with the tools beside the suggestions"
+        )
+        #expect(
+            cover.toolbar.panelHeight - cover.toolbar.height == 144, "a panel's results and search row replace the bar")
         #expect(!cover.toolbar.isCompact)
         #expect(cover.cornerRadius == 9 && cover.margin == .none)
         let open = KeyboardMetrics.for(.phone, width: 669, height: 951)
@@ -235,7 +289,8 @@ struct LayoutTests {
         let side = KeyboardMetrics.for(.phone, width: 951, height: 669)
         #expect(side.toolbar.isCompact && side.margin == .none && side.toolbar.bar == cover.toolbar.bar)
         let folded = KeyboardMetrics.for(.phone, width: 678, height: 466)
-        #expect(folded.toolbar.isCompact && folded.toolbar.bar == 32 && folded.toolbar.button == 24 && folded.topInset == 7)
+        #expect(
+            folded.toolbar.isCompact && folded.toolbar.bar == 32 && folded.toolbar.button == 24 && folded.topInset == 7)
         let landscape = KeyboardMetrics.for(.phone, width: 874, height: 402)
         #expect(landscape.toolbar.isCompact && landscape.margin == .none && landscape.topInset == 7)
         #expect(KeyboardMetrics.for(.pad, width: 834, height: 1194).toolbar.isCompact)
@@ -264,7 +319,8 @@ struct LayoutTests {
         let given = ((keys + toolbar.panelHeight) * 3).rounded(.down) / 3 - keys
         #expect(toolbar.fitting(given) == toolbar, "the height iOS rounds to the screen's pixels still fits")
         let folded = toolbar.fitting(322 - keys)
-        #expect(folded.isCompact && folded.panelHeight <= 322 - keys && folded.results > 40, "one row, still a full one")
+        #expect(
+            folded.isCompact && folded.panelHeight <= 322 - keys && folded.results > 40, "one row, still a full one")
         #expect(folded.height == toolbar.height, "the bar stays as it is")
         #expect(toolbar.fitting(0).results == 0)
     }
@@ -279,7 +335,9 @@ struct LayoutTests {
         #expect(tall.keyHeight == open.keyHeight + 12.5)
         #expect(tall.rowGap == open.rowGap && tall.topInset == open.topInset && tall.bottomInset == open.bottomInset)
         #expect(open.filling(keys, rows: 4, hasNumberRow: false) == open)
-        #expect(open.filling(keys - 100, rows: 4, hasNumberRow: false) == open, "short of room, the panel gives way, not the keys")
+        #expect(
+            open.filling(keys - 100, rows: 4, hasNumberRow: false) == open,
+            "short of room, the panel gives way, not the keys")
         let numbers = open.filling(open.height(rows: 5, hasNumberRow: true) + 50, rows: 5, hasNumberRow: true)
         #expect(numbers.height(rows: 5, hasNumberRow: true) == open.height(rows: 5, hasNumberRow: true) + 50)
     }
@@ -296,14 +354,21 @@ struct LayoutTests {
         ]
         for screen in screens {
             let metrics = KeyboardMetrics.for(.phone, width: screen.width, height: screen.height)
-            #expect([metrics.keyHeight, metrics.rowGap, metrics.keyGap, metrics.sideInset, metrics.letterSize] == screen.keys, "\(screen.width) × \(screen.height)")
+            #expect(
+                [metrics.keyHeight, metrics.rowGap, metrics.keyGap, metrics.sideInset, metrics.letterSize]
+                    == screen.keys, "\(screen.width) × \(screen.height)")
         }
         let apple = [(Duo.Screen.openPortrait, 45.67, 14.0), (.openLandscape, 38.67, 13)]
         for (screen, key, row) in apple {
             let metrics = KeyboardMetrics.for(.phone, width: screen.size.width, height: screen.size.height)
-            #expect(abs(metrics.height(rows: 4, hasNumberRow: false) - (metrics.topInset + 4 * key + 3 * row + metrics.bottomInset)) < 0.05, "\(screen.name): Apple's keyboard height")
+            #expect(
+                abs(
+                    metrics.height(rows: 4, hasNumberRow: false)
+                        - (metrics.topInset + 4 * key + 3 * row + metrics.bottomInset)) < 0.05,
+                "\(screen.name): Apple's keyboard height")
         }
-        #expect(KeyboardMetrics.for(.phone, width: 440, height: 956).letterSize == 23, "regular iPhones keep their letters")
+        #expect(
+            KeyboardMetrics.for(.phone, width: 440, height: 956).letterSize == 23, "regular iPhones keep their letters")
     }
 
     /// The Duo's keys span the keyboard's whole width on its four screens.
@@ -315,7 +380,9 @@ struct LayoutTests {
             let grid = KeyGrid(Layouts.layout(for: context), width: width, metrics: metrics.grid)
             let frames = grid.rows.flatMap { $0.map(\.frame) }
             let inset = metrics.sideInset + 0.01
-            #expect(frames.map(\.x).min()! <= inset && frames.map { $0.x + $0.width }.max()! >= width - inset, "\(width) × \(height)")
+            #expect(
+                frames.map(\.x).min()! <= inset && frames.map { $0.x + $0.width }.max()! >= width - inset,
+                "\(width) × \(height)")
             #expect(grid.expander == nil)
         }
     }

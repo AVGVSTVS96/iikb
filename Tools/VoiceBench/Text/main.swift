@@ -9,7 +9,10 @@ import KeyboardCore
 /// with the words the keyboard has seen typed (the keyboard's saved memory, as scripts/gate reads it).
 /// Writes `{id, typed}` lines; scripts/voiceloop runs it here on Linux, on a package of KeyboardCore alone. With a last
 /// argument `dictionary`, `typed` is `heard` through the Dictionary alone, as scripts/voiceloop reads a final.
-struct Clip: Decodable { let id, heard: String; let field, content, before: String? }
+struct Clip: Decodable {
+    let id, heard: String
+    let field, content, before: String?
+}
 struct Row: Encodable { let id, typed: String }
 struct Saved: Decodable { var memory: TypingMemory }
 
@@ -23,8 +26,13 @@ final class Field: TextDocument {
     func deleteBackward(_ count: Int) { before.removeLast(min(count, before.count)) }
     func moveCursor(by offset: Int) {
         let moved = offset < 0 ? before.count - max(before.count + offset, 0) : min(offset, after.count)
-        if offset < 0 { after = before.suffix(moved) + after; before.removeLast(moved) }
-        else { before += after.prefix(moved); after.removeFirst(moved) }
+        if offset < 0 {
+            after = before.suffix(moved) + after
+            before.removeLast(moved)
+        } else {
+            before += after.prefix(moved)
+            after.removeFirst(moved)
+        }
     }
 }
 
@@ -40,7 +48,8 @@ let dictionaryOnly = arguments.count > 8 && arguments[8] == "dictionary"
 let corrector = Corrector(source: lexicon)
 if arguments[3] != "-" {
     let decoder = JSONDecoder()
-    decoder.nonConformingFloatDecodingStrategy = .convertFromString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+    decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+        positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
     let memory = try decoder.decode(Saved.self, from: Data(contentsOf: URL(fileURLWithPath: arguments[3]))).memory
     corrector.changeMemory { $0 = memory }
 }
@@ -49,16 +58,27 @@ var lines: [String] = []
 while let line = readLine() {
     let clip = try JSONDecoder().decode(Clip.self, from: Data(line.utf8))
     if dictionaryOnly {
-        lines.append(String(decoding: try JSONEncoder().encode(Row(id: clip.id, typed: vocabulary.corrected(clip.heard, lexicon: lexicon))), as: UTF8.self))
+        lines.append(
+            String(
+                decoding: try JSONEncoder().encode(
+                    Row(id: clip.id, typed: vocabulary.corrected(clip.heard, lexicon: lexicon))), as: UTF8.self))
         continue
     }
-    var engine = TypingEngine(traits: InputTraits(kind: clip.field.flatMap(InputKind.init) ?? .text, content: clip.content.flatMap(InputContent.init) ?? .other))
+    var engine = TypingEngine(
+        traits: InputTraits(
+            kind: clip.field.flatMap(InputKind.init) ?? .text,
+            content: clip.content.flatMap(InputContent.init) ?? .other))
     engine.settings = settings
     engine.corrector = corrector
     let field = Field(clip.before ?? "")
-    engine.handle(.dictated(vocabulary.corrected(settings.dictation(in: nil).written(clip.heard), lexicon: lexicon),
-                            plain: vocabulary.corrected(clip.heard, lexicon: lexicon)), in: field)
+    engine.handle(
+        .dictated(
+            vocabulary.corrected(settings.dictation(in: nil).written(clip.heard), lexicon: lexicon),
+            plain: vocabulary.corrected(clip.heard, lexicon: lexicon)), in: field)
     let kept = zip(clip.before ?? "", field.before).prefix { $0 == $1 }.count
-    lines.append(String(decoding: try JSONEncoder().encode(Row(id: clip.id, typed: String(field.before.dropFirst(kept)))), as: UTF8.self))
+    lines.append(
+        String(
+            decoding: try JSONEncoder().encode(Row(id: clip.id, typed: String(field.before.dropFirst(kept)))),
+            as: UTF8.self))
 }
 print(lines.joined(separator: "\n"))

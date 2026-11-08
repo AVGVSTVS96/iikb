@@ -7,7 +7,10 @@ final class PanelTests: XCTestCase {
         let shots = ProcessInfo.processInfo.environment["IIKB_SHOTS"]
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", orientation, "-iikbOneHanded", "off", "-iikbCompactPanels", compactSetting ? "YES" : "NO"]
+        app.launchArguments = [
+            "-iikbFocus", "YES", "-iikbOrientation", orientation, "-iikbOneHanded", "off", "-iikbCompactPanels",
+            compactSetting ? "YES" : "NO",
+        ]
         app.launch()
         XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 30), "iikb is not the active keyboard")
         for letter in "coffee at" { key(letter == " " ? "space" : String(letter), in: app).tap() }
@@ -96,7 +99,9 @@ final class PanelTests: XCTestCase {
     }
 
     /// The results sit in one row, and a swipe moves them sideways.
-    private func assertOneRowScrollsSideways(_ cells: XCUIElementQuery, in scroller: XCUIElement, app: XCUIApplication) throws {
+    private func assertOneRowScrollsSideways(_ cells: XCUIElementQuery, in scroller: XCUIElement, app: XCUIApplication)
+        throws
+    {
         let row = (0..<min(cells.count, 12)).map { cells.element(boundBy: $0).frame }
         XCTAssertGreaterThan(row.count, 4)
         XCTAssertEqual(Set(row.map(\.minY)).count, 1, "the results are one row")

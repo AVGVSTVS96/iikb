@@ -4,14 +4,17 @@ import XCTest
 /// a transcript and its sound in the app first, and screenshots each step to IIKB_SHOTS.
 final class RecordingShareTests: XCTestCase {
     func testARecordingIsSentFromTheListAndFromItsPage() throws {
-        guard let shots = ProcessInfo.processInfo.environment["IIKB_SHOTS"] else { throw XCTSkip("Run through scripts/sharetest") }
+        guard let shots = ProcessInfo.processInfo.environment["IIKB_SHOTS"] else {
+            throw XCTSkip("Run through scripts/sharetest")
+        }
         func shot(_ name: String) throws {
             try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(shots)-\(name).png"))
         }
         let iikb = XCUIApplication()
         iikb.launchArguments = ["-iikbTab", "transcripts"]
         iikb.launch()
-        let row = iikb.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Hey, running ten minutes late'")).firstMatch
+        let row = iikb.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Hey, running ten minutes late'"))
+            .firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
 
         row.press(forDuration: 1.2)

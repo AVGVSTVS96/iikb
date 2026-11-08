@@ -74,15 +74,23 @@ public struct TextState: Hashable, Sendable {
     /// The same text can recur (type a letter, delete it), so a late report matches the earliest state it could be,
     /// and only the states before that one are dropped.
     @discardableResult
-    public mutating func reconcile(before host: String?, after hostAfter: String?, selected hostSelected: String? = nil) -> Report {
-        let host = host ?? "", hostSelected = hostSelected ?? ""
-        if isKnown, !host.isEmpty, let index = unconfirmed.firstIndex(where: {
-            Self.agree(host, $0.tail, reach: $0.reach) && Self.agree(after: hostAfter, $0.after) && hostSelected == $0.selected
-        }) {
+    public mutating func reconcile(before host: String?, after hostAfter: String?, selected hostSelected: String? = nil)
+        -> Report
+    {
+        let host = host ?? ""
+        let hostSelected = hostSelected ?? ""
+        if isKnown, !host.isEmpty,
+            let index = unconfirmed.firstIndex(where: {
+                Self.agree(host, $0.tail, reach: $0.reach) && Self.agree(after: hostAfter, $0.after)
+                    && hostSelected == $0.selected
+            })
+        {
             unconfirmed.removeFirst(index)
             return .behind
         }
-        if isKnown, hostSelected == selected, Self.agree(host, before, reach: reach), Self.agree(after: hostAfter, after) {
+        if isKnown, hostSelected == selected, Self.agree(host, before, reach: reach),
+            Self.agree(after: hostAfter, after)
+        {
             if host.count > before.count {
                 owned = min(owned, before.count)
                 before = host
@@ -103,14 +111,18 @@ public struct TextState: Hashable, Sendable {
     }
 
     private mutating func remember() {
-        unconfirmed.append(Remembered(tail: String(before.suffix(Self.window)), after: after.map { String($0.prefix(Self.window)) }, selected: selected, reach: reach))
+        unconfirmed.append(
+            Remembered(
+                tail: String(before.suffix(Self.window)), after: after.map { String($0.prefix(Self.window)) },
+                selected: selected, reach: reach))
     }
 
     /// Whether the host's view can be `known`: a window of it, or more of it in a view no longer than `reach`. An
     /// empty view is an empty field (a sent message leaves one), never a late report.
     static func agree(_ host: String, _ known: String, reach: Int) -> Bool {
         guard !host.isEmpty, !known.isEmpty else { return host.isEmpty && known.isEmpty }
-        let shown = host.suffix(window), mine = known.suffix(window)
+        let shown = host.suffix(window)
+        let mine = known.suffix(window)
         return mine.hasSuffix(shown) || (host.count <= reach && shown.hasSuffix(mine))
     }
 
@@ -118,9 +130,11 @@ public struct TextState: Hashable, Sendable {
     /// text shows a before that the keyboard's own typing passed through on its way there, so only the text after the
     /// caret tells the two apart. Hosts show nothing after the caret at the end of the text, as nil or empty.
     static func agree(after host: String?, _ known: String?) -> Bool {
-        let host = host ?? "", known = known ?? ""
+        let host = host ?? ""
+        let known = known ?? ""
         guard !host.isEmpty, !known.isEmpty else { return host.isEmpty && known.isEmpty }
-        let shown = host.prefix(window), mine = known.prefix(window)
+        let shown = host.prefix(window)
+        let mine = known.prefix(window)
         return mine.hasPrefix(shown) || shown.hasPrefix(mine)
     }
 }

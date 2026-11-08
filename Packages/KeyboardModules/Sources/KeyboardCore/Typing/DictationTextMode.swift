@@ -17,12 +17,13 @@ public enum DictationTextMode: String, CaseIterable, Hashable, Sendable {
     var lowercases: Bool { self == .texting || self == .genZ }
 
     func swapped(_ text: [Character]) -> [Character] {
-        let table: [(String, String)] = switch self {
-        case .spelledOut: []
-        case .abbreviated: Self.abbreviatedSwaps
-        case .texting: Self.textingSwaps + Self.abbreviatedSwaps
-        case .genZ: Self.genZSwaps + Self.textingSwaps + Self.abbreviatedSwaps
-        }
+        let table: [(String, String)] =
+            switch self {
+            case .spelledOut: []
+            case .abbreviated: Self.abbreviatedSwaps
+            case .texting: Self.textingSwaps + Self.abbreviatedSwaps
+            case .genZ: Self.genZSwaps + Self.textingSwaps + Self.abbreviatedSwaps
+            }
         let replies = self == .genZ ? Self.genZReplies : []
         guard !table.isEmpty else { return text }
         let phrases = (replies.map { ($0, true) } + table.map { ($0, false) }).map { swap, alone in
@@ -38,7 +39,7 @@ public enum DictationTextMode: String, CaseIterable, Hashable, Sendable {
                 at += 1
                 continue
             }
-            out += text[copied ..< words[at].lowerBound] + phrase.with
+            out += text[copied..<words[at].lowerBound] + phrase.with
             copied = words[at + phrase.words.count - 1].upperBound
             at += phrase.words.count
         }
@@ -46,15 +47,20 @@ public enum DictationTextMode: String, CaseIterable, Hashable, Sendable {
     }
 
     /// Whether `phrase` is said starting at `words[from]`, and when `alone`, with no word going on from it.
-    private static func matches(_ phrase: [String], in text: [Character], words: [Range<Int>], from: Int, alone: Bool) -> Bool {
+    private static func matches(_ phrase: [String], in text: [Character], words: [Range<Int>], from: Int, alone: Bool)
+        -> Bool
+    {
         guard from + phrase.count <= words.count else { return false }
-        if alone, from + phrase.count < words.count, text[words[from + phrase.count - 1].upperBound ..< words[from + phrase.count].lowerBound].allSatisfy(\.isWhitespace) {
+        if alone, from + phrase.count < words.count,
+            text[words[from + phrase.count - 1].upperBound..<words[from + phrase.count].lowerBound].allSatisfy(
+                \.isWhitespace)
+        {
             return false
         }
         for (offset, word) in phrase.enumerated() {
             let range = words[from + offset]
             guard Words.plain(String(text[range])).lowercased() == word else { return false }
-            if offset > 0, text[words[from + offset - 1].upperBound ..< range.lowerBound] != [" "] { return false }
+            if offset > 0, text[words[from + offset - 1].upperBound..<range.lowerBound] != [" "] { return false }
         }
         return true
     }

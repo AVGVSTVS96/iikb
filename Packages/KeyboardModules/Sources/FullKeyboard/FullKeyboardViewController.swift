@@ -1,8 +1,8 @@
-import UIKit
-import KeyboardStore
 import KeyboardCore
 import KeyboardEnglish
+import KeyboardStore
 import KeyboardUI
+import UIKit
 
 open class FullKeyboardViewController: UIInputViewController {
     open var hapticsEnabled: Bool { hasFullAccess && engine.settings.haptics != .off }
@@ -63,7 +63,9 @@ open class FullKeyboardViewController: UIInputViewController {
         return panel
     }()
     /// The panels this keyboard has, in the tools' order. GIFs need a KLIPY key built in.
-    private lazy var panels: [Panel: PanelContent] = [.emoji: emojiPanel, .gif: gifPanel, .clipboard: clipboardPanel, .transcripts: transcriptsPanel].compactMapValues { $0 }
+    private lazy var panels: [Panel: PanelContent] = [
+        .emoji: emojiPanel, .gif: gifPanel, .clipboard: clipboardPanel, .transcripts: transcriptsPanel,
+    ].compactMapValues { $0 }
     private lazy var host = ProxyDocument { [unowned self] in textDocumentProxy }
     /// The chats panel's message line while it's open, which the keys type into in place of the app's field.
     private var line: LineDocument?
@@ -208,10 +210,12 @@ open class FullKeyboardViewController: UIInputViewController {
 
     override open func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        let width = view.bounds.width, room = toolbarView.bounds.height
+        let width = view.bounds.width
+        let room = toolbarView.bounds.height
         let bar = line == nil ? 0 : toolbar.height
         suggestionBar.frame = CGRect(x: 0, y: max(room - toolbar.height, 0), width: width, height: toolbar.height)
-        panelView.frame = CGRect(x: 0, y: max(room - bar - toolbar.panelHeight, 0), width: width, height: toolbar.panelHeight)
+        panelView.frame = CGRect(
+            x: 0, y: max(room - bar - toolbar.panelHeight, 0), width: width, height: toolbar.panelHeight)
         TouchTrace.shared.layout(view)
     }
 
@@ -341,7 +345,11 @@ open class FullKeyboardViewController: UIInputViewController {
             field = textDocumentProxy.field
             engine.leaveField()
             if let kept = Dictation.takeDraft() {
-                if let field, kept.field == field { engine.resume(kept.draft) } else { Dictation.leave(kept.draft.outcomes(sent: false)) }
+                if let field, kept.field == field {
+                    engine.resume(kept.draft)
+                } else {
+                    Dictation.leave(kept.draft.outcomes(sent: false))
+                }
             }
             keepDictations()
         }
@@ -376,7 +384,8 @@ open class FullKeyboardViewController: UIInputViewController {
         let now = Date.now
         let parts = Calendar.current.dateComponents([.year, .month, .day, .hour], from: now)
         let day = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
-        typingLog.note(engine.tally, at: ProcessInfo.processInfo.systemUptime, day: day, hour: parts.hour ?? 0, app: hostApp ?? "")
+        typingLog.note(
+            engine.tally, at: ProcessInfo.processInfo.systemUptime, day: day, hour: parts.hour ?? 0, app: hostApp ?? "")
     }
 
     /// The screen the keys are laid out for, by the room iOS gives the keyboard, never the device alone: the iPad's
@@ -393,7 +402,9 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     private var device: DeviceClass {
-        DeviceClass(isPad: traitCollection.userInterfaceIdiom == .pad && !isFloating, shortSide: min(screenSize.width, screenSize.height))
+        DeviceClass(
+            isPad: traitCollection.userInterfaceIdiom == .pad && !isFloating,
+            shortSide: min(screenSize.width, screenSize.height))
     }
 
     /// The iPhone Duo draws no globe under a third-party keyboard, yet its iOS 27.1 simulator says none is needed, so
@@ -410,11 +421,15 @@ open class FullKeyboardViewController: UIInputViewController {
 
     /// What a source sees: the field's text as the keyboard knows it, with Full Access, outside password and code fields.
     private func tellSources(_ author: FieldUpdate.Author) {
-        guard hasFullAccess, line == nil, !textDocumentProxy.isPrivate, let field = textDocumentProxy.field else { return }
-        sources.observe(FieldUpdate(
-            field: field, before: engine.text.before, after: engine.text.after ?? "", by: author, traits: engine.traits,
-            at: Date().timeIntervalSince1970, app: hostApp
-        ))
+        guard hasFullAccess, line == nil, !textDocumentProxy.isPrivate, let field = textDocumentProxy.field else {
+            return
+        }
+        sources.observe(
+            FieldUpdate(
+                field: field, before: engine.text.before, after: engine.text.after ?? "", by: author,
+                traits: engine.traits,
+                at: Date().timeIntervalSince1970, app: hostApp
+            ))
     }
 
     private var hint: String? {
@@ -428,11 +443,14 @@ open class FullKeyboardViewController: UIInputViewController {
         noteTyping()
         let device = device
         let screen = Size(width: screenSize.width, height: screenSize.height)
-        let keys = KeyboardGeometry(engine.layout(on: device, screen: screen, showsGlobe: showsGlobe), screen: screen, window: view.bounds.width, style: .current)
+        let keys = KeyboardGeometry(
+            engine.layout(on: device, screen: screen, showsGlobe: showsGlobe), screen: screen,
+            window: view.bounds.width, style: .current)
         let (context, layout, height) = (keys.context, keys.layout, keys.height)
         var metrics = keys.metrics
         let wanted = metrics.toolbar.showing(engine.panel, compact: engine.settings.compactPanels)
-        let ask = line != nil ? wanted.panelHeight + wanted.height : engine.panel == nil ? wanted.height : wanted.panelHeight
+        let ask =
+            line != nil ? wanted.panelHeight + wanted.height : engine.panel == nil ? wanted.height : wanted.panelHeight
         let room = view.bounds.height
         metrics.toolbar = wanted
         if ask == toolbarHeightConstraint.constant, height == keyboardHeightConstraint.constant, room > 0 {
@@ -443,7 +461,9 @@ open class FullKeyboardViewController: UIInputViewController {
         if toolbarHeightConstraint.constant != ask { toolbarHeightConstraint.constant = ask }
         keyboardView.slidesToType = engine.settings.slideToType && engine.panel == nil
         keyboardView.menu = (context.menuKeys(in: layout), context.menu, context.menuPick)
-        keyboardView.update(layout: layout, signature: context.signature, metrics: metrics, faces: engine.faces(on: device), theme: theme)
+        keyboardView.update(
+            layout: layout, signature: context.signature, metrics: metrics, faces: engine.faces(on: device),
+            theme: theme)
         renderToolbar(metrics, device: device)
         renderMenu(context, metrics: metrics)
         renderSuggestions()
@@ -457,7 +477,10 @@ open class FullKeyboardViewController: UIInputViewController {
     /// The bar, or the open panel in its place, across the keys block.
     private func renderToolbar(_ metrics: KeyboardMetrics, device: DeviceClass) {
         let width = view.bounds.width
-        let block = (minX: CGFloat(metrics.margin.leading + metrics.sideInset), maxX: width - CGFloat(metrics.margin.trailing + metrics.sideInset))
+        let block = (
+            minX: CGFloat(metrics.margin.leading + metrics.sideInset),
+            maxX: width - CGFloat(metrics.margin.trailing + metrics.sideInset)
+        )
         if metrics.toolbar != toolbar {
             toolbar = metrics.toolbar
             view.setNeedsLayout()
@@ -465,7 +488,10 @@ open class FullKeyboardViewController: UIInputViewController {
         // 375 is the narrowest iPhone; only the iPad's floating keyboard is narrower.
         let narrow = width < 375
         let hasChats = hasFullAccess && !chats.services.isEmpty && !narrow
-        let tools: [Panel] = line != nil ? [.chats] : (hasChats ? [.chats] : []) + (engine.settings.emojiKey && device != .phone && !narrow ? [.emoji] : [])
+        let tools: [Panel] =
+            line != nil
+            ? [.chats]
+            : (hasChats ? [.chats] : []) + (engine.settings.emojiKey && device != .phone && !narrow ? [.emoji] : [])
         let panel = line != nil ? chatPanel : engine.panel.flatMap { panels[$0] }
         panelView.open(panel)
         panelView.isHidden = panel == nil
@@ -476,7 +502,9 @@ open class FullKeyboardViewController: UIInputViewController {
         suggestionBar.update(tools: tools, open: line == nil ? nil : .chats, theme: theme)
         suggestionBar.update(more: true)
         suggestionBar.update(edits: menuOpen && panel == nil ? edits : nil, theme: theme)
-        suggestionBar.update(mic: mic, recorded: recorded, saved: dictation.writing, waitingFor: dictation.waiting, notice: notice ?? hint, theme: theme)
+        suggestionBar.update(
+            mic: mic, recorded: recorded, saved: dictation.writing, waitingFor: dictation.waiting,
+            notice: notice ?? hint, theme: theme)
         keyMic.show(mic, theme: theme)
         if let line {
             panelView.show(query: line.text, caret: line.caret, theme: theme, metrics: metrics)
@@ -492,12 +520,20 @@ open class FullKeyboardViewController: UIInputViewController {
         keyboardView.isHidden = open
         if open != !menuView.isHidden {
             menuView.isHidden = !open
-            if open { menuView.open([Panel.clipboard, .transcripts, .gif].compactMap { panel in panels[panel].map { (panel, $0) } }) }
+            if open {
+                menuView.open(
+                    [Panel.clipboard, .transcripts, .gif].compactMap { panel in panels[panel].map { (panel, $0) } })
+            }
         }
         guard open else { return }
         let width = view.bounds.width
-        let block = (minX: CGFloat(metrics.margin.leading + metrics.sideInset), maxX: width - CGFloat(metrics.margin.trailing + metrics.sideInset))
-        menuView.show(footer: context.showsMoreButton ? context.moreMenu : [.settings], picked: context.menuPick, theme: theme, metrics: metrics, block: block)
+        let block = (
+            minX: CGFloat(metrics.margin.leading + metrics.sideInset),
+            maxX: width - CGFloat(metrics.margin.trailing + metrics.sideInset)
+        )
+        menuView.show(
+            footer: context.showsMoreButton ? context.moreMenu : [.settings], picked: context.menuPick, theme: theme,
+            metrics: metrics, block: block)
     }
 
     private func toggleMenu() {
@@ -576,7 +612,8 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     private var theme: KeyboardTheme {
-        KeyboardTheme.current(for: traitCollection, appearance: textDocumentProxy.keyboardAppearance, settings: engine.settings)
+        KeyboardTheme.current(
+            for: traitCollection, appearance: textDocumentProxy.keyboardAppearance, settings: engine.settings)
     }
 
     private var ranking = false
@@ -587,7 +624,8 @@ open class FullKeyboardViewController: UIInputViewController {
     private func renderSuggestions() {
         guard isShown else { return }
         guard engine.suggestionsAreStale else {
-            return suggestionBar.update(engine.suggestions, emoji: engine.emojiSuggestions, enabled: engine.showsSuggestions, theme: theme)
+            return suggestionBar.update(
+                engine.suggestions, emoji: engine.emojiSuggestions, enabled: engine.showsSuggestions, theme: theme)
         }
         guard !ranking, let job = engine.suggestionJob() else { return }
         ranking = true
@@ -726,7 +764,8 @@ open class FullKeyboardViewController: UIInputViewController {
         for (file, note) in Dictation.notes where Dictation.take(file) {
             switch note {
             case .heard(let text, let plain, let keyboard, let id) where keyboard == nil || keyboard == self.keyboard:
-                engine.handle(.dictated(text, plain: plain, id: textDocumentProxy.isPrivate ? nil : id?.uuidString), in: document)
+                engine.handle(
+                    .dictated(text, plain: plain, id: textDocumentProxy.isPrivate ? nil : id?.uuidString), in: document)
             case .heard:
                 notice = "Not typed here: it’s in iikb › Transcripts"
             case .notice(let notice):

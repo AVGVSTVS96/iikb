@@ -1,6 +1,7 @@
 import Foundation
 import KeyboardCore
 import Testing
+
 @testable import KeyboardStore
 
 /// Each store stands for a keyboard view controller; iOS makes a new one in the same process each time the keyboard
@@ -65,11 +66,15 @@ struct MemoryStoreTests {
         let keyboard = MemoryStore()
         var memory = try #require(await refresh(keyboard))
         let decoder = JSONDecoder()
-        decoder.nonConformingFloatDecodingStrategy = .convertFromString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
-        memory.touches = try decoder.decode(TouchModel.self, from: Data("""
-            {"layouts":{"standard":{"m":{"all":{"count":2,"meanX":"nan","meanY":2.5,"scatterXX":0.02,"scatterXY":0,\
-            "scatterYY":0.01},"lately":{"count":2,"x":7.5,"y":2.5},"now":{"count":2,"x":7.5,"y":2.5},"weights":[0.3,0.3,0.4]}}}}
-            """.utf8))
+        decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+            positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+        memory.touches = try decoder.decode(
+            TouchModel.self,
+            from: Data(
+                """
+                {"layouts":{"standard":{"m":{"all":{"count":2,"meanX":"nan","meanY":2.5,"scatterXX":0.02,"scatterXY":0,\
+                "scatterYY":0.01},"lately":{"count":2,"x":7.5,"y":2.5},"now":{"count":2,"x":7.5,"y":2.5},"weights":[0.3,0.3,0.4]}}}}
+                """.utf8))
         memory.record("there", after: nil)
         keyboard.save(memory, sharing: false)
         #expect(try saved() == ["their", "there"], "one NaN doesn't stop the memory from saving")

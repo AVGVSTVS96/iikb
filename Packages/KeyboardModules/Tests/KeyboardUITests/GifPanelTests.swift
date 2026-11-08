@@ -2,6 +2,7 @@ import Foundation
 import KeyboardCore
 import Testing
 import UIKit
+
 @testable import FullKeyboard
 
 /// The GIF panel against `KlipyStub`, which stands in for KLIPY and its media.
@@ -78,7 +79,9 @@ struct GifPanelTests {
 
     private func tiles(_ panel: GifPanel?) throws -> [UIControl] {
         let scroll = try #require(panel?.subviews.compactMap { $0 as? UIScrollView }.first)
-        return scroll.subviews.compactMap { $0 as? UIControl }.filter { $0.accessibilityIdentifier?.hasPrefix("iikb.gif.") == true }
+        return scroll.subviews.compactMap { $0 as? UIControl }.filter {
+            $0.accessibilityIdentifier?.hasPrefix("iikb.gif.") == true
+        }
     }
 
     @discardableResult
@@ -156,7 +159,9 @@ final class KlipyStub: URLProtocol, @unchecked Sendable {
                 client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
                 return
             }
-            client?.urlProtocol(self, didReceive: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(
+                self, didReceive: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
             client?.urlProtocolDidFinishLoading(self)
         }

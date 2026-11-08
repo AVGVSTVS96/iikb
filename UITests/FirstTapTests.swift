@@ -24,7 +24,11 @@ final class FirstTapTests: XCTestCase {
 
     func testTapsBetweenKeysType() throws {
         app.launch()
-        let q = app.keys["iikb.q"], w = app.keys["iikb.w"], a = app.keys["iikb.a"], b = app.keys["iikb.b"], space = app.keys["iikb.space"]
+        let q = app.keys["iikb.q"]
+        let w = app.keys["iikb.w"]
+        let a = app.keys["iikb.a"]
+        let b = app.keys["iikb.b"]
+        let space = app.keys["iikb.space"]
         XCTAssertTrue(q.waitForExistence(timeout: 10), "iikb is not the active keyboard")
         let points = [
             ("between q and w", CGPoint(x: (q.frame.maxX + w.frame.minX) / 2, y: q.frame.midY)),

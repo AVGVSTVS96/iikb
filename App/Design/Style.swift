@@ -23,12 +23,13 @@ enum AppStyle {
 
     /// Helvetica Neue, iikb's display face (brand/BRAND.md), for titles and big numbers; everything else is the system font.
     static func display(_ size: CGFloat, weight: UIFont.Weight = .bold) -> UIFont {
-        let name = switch weight {
-        case .bold, .heavy, .black, .semibold: "HelveticaNeue-Bold"
-        case .medium: "HelveticaNeue-Medium"
-        case .light, .thin, .ultraLight: "HelveticaNeue-Light"
-        default: "HelveticaNeue"
-        }
+        let name =
+            switch weight {
+            case .bold, .heavy, .black, .semibold: "HelveticaNeue-Bold"
+            case .medium: "HelveticaNeue-Medium"
+            case .light, .thin, .ultraLight: "HelveticaNeue-Light"
+            default: "HelveticaNeue"
+            }
         return UIFont(name: name, size: size) ?? .systemFont(ofSize: size, weight: weight)
     }
 
@@ -50,18 +51,21 @@ enum AppStyle {
         view.layer.cornerRadius = cardRadius
         view.layer.cornerCurve = .continuous
         view.layer.borderWidth = 1
-        let paint = { (view: UIView) in view.layer.borderColor = edge.resolvedColor(with: view.traitCollection).cgColor }
+        let paint = { (view: UIView) in view.layer.borderColor = edge.resolvedColor(with: view.traitCollection).cgColor
+        }
         paint(view)
         view.registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: UIView, _) in paint(view) }
     }
 }
 
-private extension UITraitCollection {
-    var isDark: Bool { userInterfaceStyle == .dark }
+extension UITraitCollection {
+    fileprivate var isDark: Bool { userInterfaceStyle == .dark }
 }
 
 extension Font {
-    static func display(_ size: CGFloat, weight: UIFont.Weight = .bold) -> Font { Font(AppStyle.display(size, weight: weight)) }
+    static func display(_ size: CGFloat, weight: UIFont.Weight = .bold) -> Font {
+        Font(AppStyle.display(size, weight: weight))
+    }
 }
 
 extension Color {
@@ -104,7 +108,10 @@ struct Mark: View {
             .padding(size * 0.13)
             .frame(width: size, height: size, alignment: .bottomLeading)
             .background(.black, in: .rect(cornerRadius: size * 0.225, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: size * 0.225, style: .continuous).strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+            .overlay(
+                RoundedRectangle(cornerRadius: size * 0.225, style: .continuous).strokeBorder(
+                    .white.opacity(0.12), lineWidth: 0.5)
+            )
             .accessibilityHidden(true)
     }
 }
@@ -119,7 +126,8 @@ enum ThisDevice {
 
     /// The whole screen, turned as the app is: an iPad's keyboard spans it in Split View and Stage Manager too.
     @MainActor static var screen: CGSize {
-        (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.size ?? CGSize(width: 390, height: 844)
+        (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.size
+            ?? CGSize(width: 390, height: 844)
     }
 
     /// The keyboard KeyboardCore lays out on this device, by its screen, never the app's window.

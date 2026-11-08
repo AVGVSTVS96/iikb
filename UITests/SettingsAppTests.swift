@@ -42,7 +42,7 @@ final class SettingsAppTests: XCTestCase {
         iikb.launch()
         let picked = iikb.buttons["5 Minutes"]
         XCTAssertTrue(picked.waitForExistence(timeout: 5))
-        for _ in 0 ..< 6 where !picked.isHittable { iikb.swipeUp() }
+        for _ in 0..<6 where !picked.isHittable { iikb.swipeUp() }
         XCTAssertTrue(picked.isSelected)
         try shot(iikb, "keep-mic-on-choices")
         let minute = iikb.buttons["1 Minute"]
@@ -64,7 +64,10 @@ final class SettingsAppTests: XCTestCase {
         entry.tap()
         open("Voice Typing", in: settings)
         XCTAssertTrue(settings.staticTexts["Keep Mic On"].waitForExistence(timeout: 5))
-        XCTAssertTrue(settings.descendants(matching: .any).matching(NSPredicate(format: "label == '1 Minute' OR value == '1 Minute'")).firstMatch.exists)
+        XCTAssertTrue(
+            settings.descendants(matching: .any).matching(
+                NSPredicate(format: "label == '1 Minute' OR value == '1 Minute'")
+            ).firstMatch.exists)
         try shot(settings, "keep-mic-on-settings")
         settings.terminate()
     }

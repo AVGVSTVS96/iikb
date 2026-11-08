@@ -15,7 +15,9 @@ extension ClipboardHistory.Item.Content {
         case .textFile: return .text
         case .text(let text):
             let trimmed = text.trimmed
-            guard !trimmed.isEmpty, trimmed.count <= 2048, !trimmed.contains(where: \.isWhitespace) || Self.isPhone(trimmed) else { return .text }
+            guard !trimmed.isEmpty, trimmed.count <= 2048,
+                !trimmed.contains(where: \.isWhitespace) || Self.isPhone(trimmed)
+            else { return .text }
             if let link = ClipLink(trimmed) { return .link(link) }
             if let color = Self.color(trimmed) { return color }
             if Self.isEmail(trimmed) { return .email }
@@ -26,14 +28,17 @@ extension ClipboardHistory.Item.Content {
 
     private static func isEmail(_ text: String) -> Bool {
         let parts = text.split(separator: "@", omittingEmptySubsequences: false)
-        guard parts.count == 2, !parts[0].isEmpty, let dot = parts[1].lastIndex(of: "."), dot != parts[1].startIndex else { return false }
+        guard parts.count == 2, !parts[0].isEmpty, let dot = parts[1].lastIndex(of: "."), dot != parts[1].startIndex
+        else { return false }
         let top = parts[1][parts[1].index(after: dot)...]
         return top.count >= 2 && top.allSatisfy(\.isLetter)
     }
 
     /// Digits with a phone number's punctuation: ten or more of them, or fewer after a +, so a date or a code stays text.
     private static func isPhone(_ text: String) -> Bool {
-        guard text.allSatisfy({ $0.isASCII && ($0.isNumber || " +-().".contains($0)) }), !text.contains("..") else { return false }
+        guard text.allSatisfy({ $0.isASCII && ($0.isNumber || " +-().".contains($0)) }), !text.contains("..") else {
+            return false
+        }
         let digits = text.filter(\.isNumber).count
         return (text.hasPrefix("+") ? 7 : 10)...15 ~= digits
     }
@@ -80,7 +85,8 @@ public struct ClipLink: Hashable, Sendable {
         if let colon = host.firstIndex(of: ":") { host = String(host[..<colon]) }
         if host.hasPrefix("www.") { host.removeFirst(4) }
         guard host.contains("."), !host.hasPrefix("."), !host.hasSuffix("."),
-              host.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "." || $0 == "-") }) else { return nil }
+            host.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "." || $0 == "-") })
+        else { return nil }
         let after = rest[hostEnd...]
         var path = String(after.prefix { $0 != "?" && $0 != "#" })
         while path.hasSuffix("/") { path.removeLast() }
@@ -89,8 +95,8 @@ public struct ClipLink: Hashable, Sendable {
     }
 }
 
-private extension String {
-    var trimmed: String {
+extension String {
+    fileprivate var trimmed: String {
         let start = firstIndex { !$0.isWhitespace } ?? endIndex
         let end = lastIndex { !$0.isWhitespace }.map(index(after:)) ?? start
         return String(self[start..<max(start, end)])

@@ -16,9 +16,14 @@ final class DictationBar: UIView {
     private let cancel = UIButton(configuration: .plain())
     private let capsule = UIButton(configuration: .prominentGlass())
     private let waveform = Waveform()
-    private let stop = UIImageView(image: UIImage(systemName: "stop.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .bold)))
+    private let stop = UIImageView(
+        image: UIImage(
+            systemName: "stop.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .bold)))
     private let spinner = UIActivityIndicatorView(style: .medium)
-    private let warning = UIImageView(image: UIImage(systemName: "exclamationmark.triangle.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .semibold)))
+    private let warning = UIImageView(
+        image: UIImage(
+            systemName: "exclamationmark.triangle.fill",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .semibold)))
     private let title = UILabel()
     private let detail = UILabel()
     private let close = UIButton(configuration: .plain())
@@ -27,7 +32,8 @@ final class DictationBar: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        cancel.configuration?.image = UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .bold))
+        cancel.configuration?.image = UIImage(
+            systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .bold))
         cancel.configuration?.baseForegroundColor = .label
         cancel.configuration?.background.backgroundColor = .tertiarySystemFill
         cancel.configuration?.cornerStyle = .capsule
@@ -54,7 +60,8 @@ final class DictationBar: UIView {
         detail.font = .systemFont(ofSize: 13)
         detail.textColor = AppStyle.secondary
         detail.lineBreakMode = .byTruncatingTail
-        close.configuration?.image = UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .bold))
+        close.configuration?.image = UIImage(
+            systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .bold))
         close.configuration?.baseForegroundColor = AppStyle.secondary
         close.accessibilityLabel = "Dismiss"
         close.addAction(UIAction { _ in Listener.shared.dismissFailure() }, for: .touchUpInside)
@@ -87,12 +94,15 @@ final class DictationBar: UIView {
             title.text = failed
             detail.text = "Tap to see why"
         }
-        let shown: [UIView] = switch state {
-        case .listening: [cancel, capsule]
-        case .writing: [spinner, title, detail]
-        case .failed: [warning, title, detail, close]
+        let shown: [UIView] =
+            switch state {
+            case .listening: [cancel, capsule]
+            case .writing: [spinner, title, detail]
+            case .failed: [warning, title, detail, close]
+            }
+        for view in [cancel, capsule, spinner, warning, title, detail, close] as [UIView] {
+            view.isHidden = !shown.contains(view)
         }
-        for view in [cancel, capsule, spinner, warning, title, detail, close] as [UIView] { view.isHidden = !shown.contains(view) }
         if case .writing = state {} else { spinner.stopAnimating() }
         setNeedsLayout()
     }
@@ -112,24 +122,28 @@ final class DictationBar: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let height = bounds.height, inset: CGFloat = 6
+        let height = bounds.height
+        let inset: CGFloat = 6
         let button = min(height - 2 * inset, 36)
         let middle = (height - button) / 2
-        let width = min(bounds.width - 2 * inset, 400), left = ((bounds.width - width) / 2).rounded()
+        let width = min(bounds.width - 2 * inset, 400)
+        let left = ((bounds.width - width) / 2).rounded()
         cancel.frame = CGRect(x: left, y: middle, width: button, height: button)
         capsule.frame = CGRect(x: cancel.frame.maxX + 8, y: middle, width: width - button - 8, height: button)
         waveform.frame = capsule.bounds
         waveform.insets = (14, 38)
         stop.frame = CGRect(x: capsule.bounds.width - 30, y: 0, width: 16, height: button)
 
-        let lead = left + 10, glyph: CGFloat = 24
+        let lead = left + 10
+        let glyph: CGFloat = 24
         spinner.frame = CGRect(x: lead, y: (height - glyph) / 2, width: glyph, height: glyph)
         warning.frame = spinner.frame
         close.frame = CGRect(x: left + width - 38, y: (height - 44) / 2, width: 44, height: 44)
         let text = lead + glyph + 10
         let end = close.isHidden ? left + width - 10 : close.frame.minX
         let lines = detail.text?.isEmpty == false
-        let titleHeight = title.font.lineHeight.rounded(.up), detailHeight = detail.font.lineHeight.rounded(.up)
+        let titleHeight = title.font.lineHeight.rounded(.up)
+        let detailHeight = detail.font.lineHeight.rounded(.up)
         let top = ((height - titleHeight - (lines ? detailHeight + 1 : 0)) / 2).rounded()
         title.frame = CGRect(x: text, y: top, width: end - text, height: titleHeight)
         detail.frame = CGRect(x: text, y: title.frame.maxY + 1, width: end - text, height: detailHeight)

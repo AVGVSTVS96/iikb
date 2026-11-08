@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 extension KeyboardView {
     final class TrackedTouch {
@@ -51,7 +51,8 @@ extension KeyboardView {
             rollOver()
             let point = touch.location(in: self)
             guard let view = keyView(at: point) else { continue }
-            let tracked = TrackedTouch(keyView: view, start: point, at: touch.timestamp, swipes: slidesToType && startsSwipe(view.key))
+            let tracked = TrackedTouch(
+                keyView: view, start: point, at: touch.timestamp, swipes: slidesToType && startsSwipe(view.key))
             self.tracked[ObjectIdentifier(touch)] = tracked
             if menu.keys.contains(view.key), !menu.items.isEmpty { tracked.menuFrame = view.frame }
             press(view, tracked: tracked)
@@ -73,7 +74,8 @@ extension KeyboardView {
                 alternates.track(point)
             case .trackpad:
                 while true {
-                    let step = point.x > tracked.lastCursor.x ? 1 : -1, width = advance(step)
+                    let step = point.x > tracked.lastCursor.x ? 1 : -1
+                    let width = advance(step)
                     guard abs(point.x - tracked.lastCursor.x) >= width else { break }
                     tracked.lastCursor.x += CGFloat(step) * width
                     onEvent(.cursor(offset: step))
@@ -91,7 +93,9 @@ extension KeyboardView {
             case .typing, .slide:
                 if tracked.swipeReach.isFinite {
                     tracked.follow(touch, in: self, event: event)
-                    if hypot(point.x - tracked.start.x, point.y - tracked.start.y) >= tracked.swipeReach { beginSwipe(tracked) }
+                    if hypot(point.x - tracked.start.x, point.y - tracked.start.y) >= tracked.swipeReach {
+                        beginSwipe(tracked)
+                    }
                     if tracked.mode == .swipe { continue }
                 }
                 if let flick = flickTarget(tracked, point) {
@@ -105,7 +109,8 @@ extension KeyboardView {
                     tracked.hold?.invalidate()
                 }
                 guard let view = keyView(at: point), view.key != tracked.key,
-                      tracked.mode == .slide || (view.key.isInput && tracked.key.isInput) else { continue }
+                    tracked.mode == .slide || (view.key.isInput && tracked.key.isInput)
+                else { continue }
                 tracked.keyView?.isPressed = false
                 tracked.key = view.key
                 tracked.keyView = view
@@ -204,8 +209,11 @@ extension KeyboardView {
 
     private func show(_ tracked: TrackedTouch) {
         guard showsCallouts, tracked.mode != .alternates, let view = tracked.keyView,
-              let text = text(for: view.key, flicked: tracked.flicked) else { return callout.hide() }
-        callout.show(displayed(text), over: view.frame, in: drawableBounds, metrics: keyMetrics, theme: theme, detached: characterPreview == .detached)
+            let text = text(for: view.key, flicked: tracked.flicked)
+        else { return callout.hide() }
+        callout.show(
+            displayed(text), over: view.frame, in: drawableBounds, metrics: keyMetrics, theme: theme,
+            detached: characterPreview == .detached)
     }
 
     private func text(for key: Key, flicked: Bool) -> String? {
@@ -218,7 +226,8 @@ extension KeyboardView {
 
     private func flickTarget(_ tracked: TrackedTouch, _ point: CGPoint) -> Bool? {
         guard faceContext.device == .pad || faceContext.device == .compactPad,
-              tracked.mode == .typing, tracked.key.secondary != nil else { return nil }
+            tracked.mode == .typing, tracked.key.secondary != nil
+        else { return nil }
         let dy = point.y - tracked.start.y
         return abs(point.x - tracked.start.x) < metrics.keyHeight * 0.6 ? dy > metrics.keyHeight * 0.35 : nil
     }
@@ -229,7 +238,9 @@ extension KeyboardView {
         guard tracked.mode == .typing else { return }
         let isSpace = key.action == .space
         guard isSpace || key.alternates.count > 1 else { return }
-        tracked.hold = Timer.scheduledTimer(withTimeInterval: isSpace ? 0.4 : 0.45, repeats: false) { [weak self, weak tracked] _ in // timer: long-press
+        // timer: long-press
+        tracked.hold = Timer.scheduledTimer(withTimeInterval: isSpace ? 0.4 : 0.45, repeats: false) {
+            [weak self, weak tracked] _ in
             MainActor.assumeIsolated {
                 guard let self, let tracked, tracked.mode == .typing, let view = tracked.keyView else { return }
                 if isSpace {
@@ -243,20 +254,27 @@ extension KeyboardView {
                     self.callout.hide()
                     let shown = view.key.alternates.map(self.displayed)
                     let base = self.displayed(self.text(for: view.key, flicked: false) ?? "")
-                    self.alternates.show(shown, selected: shown.firstIndex(of: base) ?? 0, over: view.frame, in: self.drawableBounds, metrics: self.keyMetrics, theme: self.theme)
+                    self.alternates.show(
+                        shown, selected: shown.firstIndex(of: base) ?? 0, over: view.frame, in: self.drawableBounds,
+                        metrics: self.keyMetrics, theme: self.theme)
                 }
             }
         }
     }
 
     private func scheduleMenu(for tracked: TrackedTouch) {
-        tracked.hold = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self, weak tracked] _ in // timer: long-press
+        // timer: long-press
+        tracked.hold = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self, weak tracked] _ in
             MainActor.assumeIsolated {
-                guard let self, let tracked, tracked.mode == .slide || tracked.mode == .typing, let frame = tracked.menuFrame else { return }
+                guard let self, let tracked, tracked.mode == .slide || tracked.mode == .typing,
+                    let frame = tracked.menuFrame
+                else { return }
                 tracked.mode = .menu
                 self.callout.hide()
                 let items = self.menu.items
-                self.alternates.show(symbols: items.map(\.symbol), selected: self.menu.current.flatMap(items.firstIndex) ?? 0, over: frame, in: self.drawableBounds, metrics: self.keyMetrics, theme: self.theme)
+                self.alternates.show(
+                    symbols: items.map(\.symbol), selected: self.menu.current.flatMap(items.firstIndex) ?? 0,
+                    over: frame, in: self.drawableBounds, metrics: self.keyMetrics, theme: self.theme)
             }
         }
     }
@@ -293,6 +311,6 @@ extension KeyboardEvent {
     }
 }
 
-private extension Set<UITouch> {
-    var inOrder: [UITouch] { sorted { $0.timestamp < $1.timestamp } }
+extension Set<UITouch> {
+    fileprivate var inOrder: [UITouch] { sorted { $0.timestamp < $1.timestamp } }
 }

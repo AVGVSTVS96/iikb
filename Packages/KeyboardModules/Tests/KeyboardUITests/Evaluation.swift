@@ -1,7 +1,7 @@
 import Foundation
-import Testing
 import KeyboardCore
 import KeyboardEnglish
+import Testing
 
 /// Types the MacKenzie & Soukoreff phrase set through `TypingEngine` with simulated taps and reports word accuracy.
 ///
@@ -18,9 +18,9 @@ struct Evaluation {
         /// The baseline needs `UITextChecker`, so off Apple's platforms (scripts/eval on Linux) only iikb's two run.
         static var scored: [Keyboard] {
             #if canImport(UIKit)
-            allCases
+                allCases
             #else
-            [.decoder, .learning]
+                [.decoder, .learning]
             #endif
         }
     }
@@ -38,7 +38,9 @@ struct Evaluation {
                 var session = Session(keyboard, grid: user.grid)
                 for phrase in phrases {
                     session.startPhrase()
-                    for word in phrase.split(separator: " ") { session.type(String(word), by: &user, tappingSpace: false) }
+                    for word in phrase.split(separator: " ") {
+                        session.type(String(word), by: &user, tappingSpace: false)
+                    }
                 }
                 print("EVAL noise=\(noise) keyboard=\(keyboard.rawValue) \(session.score)")
             }
@@ -51,7 +53,10 @@ struct Evaluation {
         let phrases = try Self.phrases().prefix(100)
         var user = SimulatedUser(width: Self.width, noise: 0.2, seed: 2026)
         var session = Session(.learning, grid: user.grid)
-        var down: [Duration] = [], letters: [Duration] = [], spaces: [Duration] = [], changed: [Duration] = []
+        var down: [Duration] = []
+        var letters: [Duration] = []
+        var spaces: [Duration] = []
+        var changed: [Duration] = []
         let clock = ContinuousClock()
         for phrase in phrases {
             session.startPhrase()
@@ -61,18 +66,23 @@ struct Evaluation {
                 down.append(clock.measure { hit = session.engine.key(atX: x, y: y, in: session.grid) })
                 guard let hit, let label = session.grid.rows[hit.row][hit.key].key.label else { continue }
                 let up = clock.measure {
-                    session.engine.perform(label == " " ? .space : .character(label), in: session.document, tap: Tap(x: x, y: y, key: label))
+                    session.engine.perform(
+                        label == " " ? .space : .character(label), in: session.document,
+                        tap: Tap(x: x, y: y, key: label))
                 }
                 if label == " " { spaces.append(up) } else { letters.append(up) }
                 changed.append(clock.measure { session.engine.documentChanged(session.document) })
             }
         }
         func summary(_ name: String, _ samples: [Duration]) -> String {
-            let ms = samples.map { Double($0.components.attoseconds) / 1e15 + Double($0.components.seconds) * 1000 }.sorted()
+            let ms = samples.map { Double($0.components.attoseconds) / 1e15 + Double($0.components.seconds) * 1000 }
+                .sorted()
             let at = { (q: Double) in String(format: "%.2f", ms[min(ms.count - 1, Int(Double(ms.count) * q))]) }
             return "\(name) median=\(at(0.5)) p95=\(at(0.95)) p99=\(at(0.99)) max=\(at(1))"
         }
-        print("EVAL latency ms keys=\(down.count) \(summary("down", down)) | \(summary("letter up", letters)) | \(summary("space up", spaces)) | \(summary("textDidChange", changed))")
+        print(
+            "EVAL latency ms keys=\(down.count) \(summary("down", down)) | \(summary("letter up", letters)) | \(summary("space up", spaces)) | \(summary("textDidChange", changed))"
+        )
     }
 
     /// The suggestion bar before each word: how often the word you type next is one of the three it shows, and how
@@ -102,7 +112,9 @@ struct Evaluation {
             let words = try String(contentsOf: url, encoding: .utf8).split(whereSeparator: \.isWhitespace)
                 .map { String($0.filter { $0.isLetter || $0.isNumber || $0 == "'" }) }.filter { !$0.isEmpty }
             let found = words.filter { !EmojiCatalog.english.suggestions(for: $0, history: EmojiHistory()).isEmpty }
-            print("EVAL emoji corpus=\(corpus) words=\(words.count) withEmoji=\(String(format: "%.1f", 100.0 * Double(found.count) / Double(words.count)))%")
+            print(
+                "EVAL emoji corpus=\(corpus) words=\(words.count) withEmoji=\(String(format: "%.1f", 100.0 * Double(found.count) / Double(words.count)))%"
+            )
         }
     }
 
@@ -117,7 +129,11 @@ struct Evaluation {
             var user = SimulatedUser(width: Self.width, noise: 0.25, seed: 2027 + seed)
             var thumb = SimulatedUser(width: Self.width, noise: 0.4, seed: 2028 + seed)
             var random = SplitMix64(seed: 2029 + seed)
-            var runs = 0, spaced = 0, shown = 0, first = 0, mistyped = 0
+            var runs = 0
+            var spaced = 0
+            var shown = 0
+            var first = 0
+            var mistyped = 0
             for phrase in phrases {
                 let words = phrase.split(separator: " ").map(String.init)
                 guard words.count > spaces else { continue }
@@ -133,15 +149,19 @@ struct Evaluation {
                     return tap(x, y)
                 }
                 func tap(_ x: Double, _ y: Double) -> String? {
-                    guard let hit = engine.key(atX: x, y: y, in: user.grid), let label = user.grid.rows[hit.row][hit.key].key.label else { return nil }
-                    engine.perform(label == " " ? .space : .character(label), in: document, tap: Tap(x: x, y: y, key: label))
+                    guard let hit = engine.key(atX: x, y: y, in: user.grid),
+                        let label = user.grid.rows[hit.row][hit.key].key.label
+                    else { return nil }
+                    engine.perform(
+                        label == " " ? .space : .character(label), in: document, tap: Tap(x: x, y: y, key: label))
                     return label
                 }
                 for word in words[..<pick] {
                     for character in word + " " { _ = tap(character) }
                 }
                 let run = words[pick...(pick + spaces)]
-                var landed: [String?] = [], typo = false
+                var landed: [String?] = []
+                var typo = false
                 for (index, word) in run.enumerated() {
                     if index > 0, skipped {
                         landed.append(nil)
@@ -149,7 +169,12 @@ struct Evaluation {
                         var space: (Double, Double)?
                         for _ in 0..<500 {
                             let point = thumb.tap(" ")
-                            if let label = user.grid.key(atX: point.0, y: point.1)?.label, label.count == 1, label.first!.isLetter { space = point; break }
+                            if let label = user.grid.key(atX: point.0, y: point.1)?.label, label.count == 1,
+                                label.first!.isLetter
+                            {
+                                space = point
+                                break
+                            }
                         }
                         guard let space else { break }
                         landed.append(tap(space.0, space.1))
@@ -169,8 +194,11 @@ struct Evaluation {
                     if bar.dropFirst().first == run.joined(separator: " ") { first += 1 }
                 }
             }
-            let share = { (count: Int, of: Int) in String(format: "%.1f%%", 100.0 * Double(count) / Double(max(of, 1))) }
-            print("EVAL missedSpaces spaces=\(spaces)\(skipped ? " untyped" : "") keyboard=decoder runs=\(runs) withTypo=\(mistyped) aSpaceReadAsSpace=\(share(spaced, runs)) allAsLetters: shown=\(share(shown, runs - spaced)) firstAlternative=\(share(first, runs - spaced))")
+            let share = { (count: Int, of: Int) in String(format: "%.1f%%", 100.0 * Double(count) / Double(max(of, 1)))
+            }
+            print(
+                "EVAL missedSpaces spaces=\(spaces)\(skipped ? " untyped" : "") keyboard=decoder runs=\(runs) withTypo=\(mistyped) aSpaceReadAsSpace=\(share(spaced, runs)) allAsLetters: shown=\(share(shown, runs - spaced)) firstAlternative=\(share(first, runs - spaced))"
+            )
         }
     }
 
@@ -186,12 +214,17 @@ struct Evaluation {
                     session.startPhrase()
                     for word in phrase.split(separator: " ") {
                         session.type(String(word), by: &user, tappingSpace: true)
-                        if session.score.words % block == 0 { curve.append(session.window.summary); session.window = Score() }
+                        if session.score.words % block == 0 {
+                            curve.append(session.window.summary)
+                            session.window = Score()
+                        }
                     }
                 }
             }
             print("EVAL thumbs keyboard=\(keyboard.rawValue) total: \(session.score)")
-            print("EVAL thumbs keyboard=\(keyboard.rawValue) per \(block) words (raw/final): \(curve.joined(separator: " "))")
+            print(
+                "EVAL thumbs keyboard=\(keyboard.rawValue) per \(block) words (raw/final): \(curve.joined(separator: " "))"
+            )
             if keyboard == .learning, let corrector = session.engine.corrector {
                 let centers = ["m", "b", "o", "e"].map { label in
                     let c = corrector.memory.touches.center(of: label, on: user.grid)
@@ -222,11 +255,16 @@ struct Evaluation {
             for word in phrase.split(separator: " ") {
                 session.type(String(word), by: &user, tappingSpace: true)
                 let words = session.score.words
-                if words <= 500 ? words % 100 == 0 : words % 500 == 0 { curve.append(session.window.summary); session.window = Score() }
+                if words <= 500 ? words % 100 == 0 : words % 500 == 0 {
+                    curve.append(session.window.summary)
+                    session.window = Score()
+                }
             }
         }
         print("EVAL aimShift keyboard=learning after: \(session.score)")
-        print("EVAL aimShift keyboard=learning per 100 words to 500, then per 500 (raw/final): \(curve.joined(separator: " "))")
+        print(
+            "EVAL aimShift keyboard=learning per 100 words to 500, then per 500 (raw/final): \(curve.joined(separator: " "))"
+        )
     }
 }
 
@@ -243,9 +281,10 @@ struct Session {
         self.keyboard = keyboard
         self.grid = grid
         #if canImport(UIKit)
-        let source: any CandidateSource = keyboard == .baseline ? TextCheckerSource(language: "en-US") : Lexicon.english
+            let source: any CandidateSource =
+                keyboard == .baseline ? TextCheckerSource(language: "en-US") : Lexicon.english
         #else
-        let source: any CandidateSource = Lexicon.english
+            let source: any CandidateSource = Lexicon.english
         #endif
         let corrector = Corrector(source: source, network: keyboard == .baseline ? nil : .english)
         corrector.grid = grid
@@ -268,7 +307,9 @@ struct Session {
         for character in word + (tappingSpace ? " " : "") {
             let (x, y) = user.tap(character)
             let hit = keyboard == .baseline ? grid.index(atX: x, y: y) : engine.key(atX: x, y: y, in: grid)
-            guard let hit, let label = grid.rows[hit.row][hit.key].key.label, tappingSpace || label != " " else { continue }
+            guard let hit, let label = grid.rows[hit.row][hit.key].key.label, tappingSpace || label != " " else {
+                continue
+            }
             if character != " " { typed += label }
             if character == " " { shown = engine.suggestions.map { $0.text.lowercased() } }
             engine.perform(label == " " ? .space : .character(label), in: document, tap: Tap(x: x, y: y, key: label))
@@ -329,8 +370,12 @@ struct SimulatedUser {
     var random: SplitMix64
 
     /// Offsets in key pitches: m drifts toward n, b toward the space bar, o toward i, and every tap lands a bit low.
-    static let thumbs: [Character: (x: Double, y: Double)] = ["m": (-0.4, 0.1), "b": (0, 0.55), "o": (-0.45, 0.1), "*": (0, 0.1)]
-    static let shifted: [Character: (x: Double, y: Double)] = ["m": (-0.4, 0.4), "b": (0, 0.7), "o": (0.4, 0.3), "e": (-0.45, 0.3), "*": (0.1, 0.3)]
+    static let thumbs: [Character: (x: Double, y: Double)] = [
+        "m": (-0.4, 0.1), "b": (0, 0.55), "o": (-0.45, 0.1), "*": (0, 0.1),
+    ]
+    static let shifted: [Character: (x: Double, y: Double)] = [
+        "m": (-0.4, 0.4), "b": (0, 0.7), "o": (0.4, 0.3), "e": (-0.45, 0.3), "*": (0.1, 0.3),
+    ]
 
     init(width: Double, noise: Double, seed: UInt64, bias: [Character: (x: Double, y: Double)] = [:]) {
         let layout = Layouts.layout(for: LayoutContext(device: .phone, layer: .letters))
@@ -342,10 +387,13 @@ struct SimulatedUser {
 
     mutating func tap(_ character: Character) -> (Double, Double) {
         let frame = grid.frame(of: String(character))!
-        let pitchX = character == " " ? 45.0 : frame.width + 6, pitchY = frame.height + 11
+        let pitchX = character == " " ? 45.0 : frame.width + 6
+        let pitchY = frame.height + 11
         let offset = bias[character] ?? bias["*"] ?? (0, 0)
-        return (frame.midX + (offset.x + random.gaussian() * noise) * pitchX,
-                frame.midY + (offset.y + random.gaussian() * noise) * pitchY)
+        return (
+            frame.midX + (offset.x + random.gaussian() * noise) * pitchX,
+            frame.midY + (offset.y + random.gaussian() * noise) * pitchY
+        )
     }
 }
 

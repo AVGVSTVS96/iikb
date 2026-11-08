@@ -32,8 +32,10 @@ public struct AppWords: Codable, Hashable, Sendable {
     func probability(of word: String, after previous: String?, below fallback: Double) -> Double {
         func blend(_ counts: [String: Int], total: Int, below p: Double) -> Double {
             guard total > 0 else { return p }
-            let capitalized = word.first?.isLowercase == true ? counts[word.prefix(1).uppercased() + word.dropFirst(), default: 0] : 0
-            return (Double(counts[word, default: 0] + capitalized) + Double(counts.count) * p) / Double(total + counts.count)
+            let capitalized =
+                word.first?.isLowercase == true ? counts[word.prefix(1).uppercased() + word.dropFirst(), default: 0] : 0
+            return (Double(counts[word, default: 0] + capitalized) + Double(counts.count) * p)
+                / Double(total + counts.count)
         }
         let p = blend(counts, total: total, below: fallback)
         guard let previous, let next = following[previous] else { return p }

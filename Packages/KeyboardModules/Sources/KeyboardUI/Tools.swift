@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// One of the buttons at the bar's left, the More button or a panel's tool: its glyph, in a circle that shows only while
 /// pressed, or while what it opened is out.
@@ -63,7 +63,8 @@ final class EditPill: UIButton {
     init(title: String, symbol: String) {
         super.init(frame: .zero)
         accessibilityLabel = title
-        icon.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .medium))
+        icon.image = UIImage(
+            systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .medium))
         icon.contentMode = .center
         label.text = title
         label.font = .systemFont(ofSize: 16, weight: .medium)
@@ -92,7 +93,8 @@ final class EditPill: UIButton {
     override func layoutSubviews() {
         super.layoutSubviews()
         layer.cornerRadius = bounds.height / 2
-        let glyph = icon.image?.size.width ?? 0, spacing: CGFloat = 6
+        let glyph = icon.image?.size.width ?? 0
+        let spacing: CGFloat = 6
         let text = min(label.intrinsicContentSize.width, bounds.width - glyph - spacing - 16)
         let showsTitle = text >= 24
         label.isHidden = !showsTitle
@@ -136,7 +138,10 @@ extension Panel {
         let size = CGSize(width: ink.width * scale, height: ink.height * scale)
         return UIGraphicsImageRenderer(size: size).image { _ in
             light.performAsCurrent {
-                image.withTintColor(.black).draw(in: CGRect(x: -ink.minX * scale, y: -ink.minY * scale, width: image.size.width * scale, height: image.size.height * scale))
+                image.withTintColor(.black).draw(
+                    in: CGRect(
+                        x: -ink.minX * scale, y: -ink.minY * scale, width: image.size.width * scale,
+                        height: image.size.height * scale))
             }
         }.withRenderingMode(.alwaysTemplate)
     }
@@ -145,14 +150,17 @@ extension Panel {
     /// outline of the same size, so they span 0.88 of it.
     static func moreGlyph(_ side: CGFloat) -> UIImage {
         let size = CGSize(width: side, height: side)
-        let extent = side * 0.88, gap = side * 0.13
+        let extent = side * 0.88
+        let gap = side * 0.13
         let square = (extent - gap) / 2
         return UIGraphicsImageRenderer(size: size).image { _ in
             let origin = (side - extent) / 2
             UIColor.black.setFill()
             for row in 0..<2 {
                 for column in 0..<2 {
-                    let rect = CGRect(x: origin + CGFloat(column) * (square + gap), y: origin + CGFloat(row) * (square + gap), width: square, height: square)
+                    let rect = CGRect(
+                        x: origin + CGFloat(column) * (square + gap), y: origin + CGFloat(row) * (square + gap),
+                        width: square, height: square)
                     UIBezierPath(roundedRect: rect, cornerRadius: square * 0.28).fill()
                 }
             }
@@ -165,11 +173,16 @@ extension Panel {
         let size = CGSize(width: side, height: 14.4 * unit)
         return UIGraphicsImageRenderer(size: size).image { _ in
             let box = CGRect(origin: .zero, size: size)
-            let path = UIBezierPath(roundedRect: box.insetBy(dx: 0.85 * unit, dy: 0.85 * unit), cornerRadius: 3.6 * unit)
+            let path = UIBezierPath(
+                roundedRect: box.insetBy(dx: 0.85 * unit, dy: 0.85 * unit), cornerRadius: 3.6 * unit)
             path.lineWidth = 1.7 * unit
             UIColor.black.setStroke()
             path.stroke()
-            let text = NSAttributedString(string: "GIF", attributes: [.font: UIFont.systemFont(ofSize: 8 * unit, weight: .heavy), .foregroundColor: UIColor.black])
+            let text = NSAttributedString(
+                string: "GIF",
+                attributes: [
+                    .font: UIFont.systemFont(ofSize: 8 * unit, weight: .heavy), .foregroundColor: UIColor.black,
+                ])
             let bounds = text.size()
             text.draw(at: CGPoint(x: box.midX - bounds.width / 2, y: box.midY - bounds.height / 2))
         }.withRenderingMode(.alwaysTemplate)

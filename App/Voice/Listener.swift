@@ -169,7 +169,10 @@ import UIKit
         do {
             let written = try await VoiceModel.shared.write(samples, for: take.app)
             writing.removeAll { $0 === take }
-            Transcripts.shared.add(written.text, heard: written.heard, id: take.id, at: take.started, seconds: seconds, typed: take.typed, model: written.model, mic: take.mic, voiceProcessing: false, capture: take.capture, levels: Recording.levels(samples), app: take.app)
+            Transcripts.shared.add(
+                written.text, heard: written.heard, id: take.id, at: take.started, seconds: seconds, typed: take.typed,
+                model: written.model, mic: take.mic, voiceProcessing: false, capture: take.capture,
+                levels: Recording.levels(samples), app: take.app)
             if take.typed, silent {
                 Dictation.leave(.notice("The microphone gave no sound: tap the mic again"))
             } else if take.typed, written.text.isEmpty {
@@ -178,10 +181,14 @@ import UIKit
                 Dictation.leave(.heard(written.text, plain: written.plain, keyboard: take.keyboard, id: take.id))
             }
             publish()
-            HostApp.log.notice("\(written.model, privacy: .public) wrote \(seconds, format: .fixed(precision: 1))s down \(Date.now.timeIntervalSince(take.stopped), format: .fixed(precision: 2))s after the stop, \(HostApp.written, format: .fixed(precision: 1)) MB written since iikb started")
+            HostApp.log.notice(
+                "\(written.model, privacy: .public) wrote \(seconds, format: .fixed(precision: 1))s down \(Date.now.timeIntervalSince(take.stopped), format: .fixed(precision: 2))s after the stop, \(HostApp.written, format: .fixed(precision: 1)) MB written since iikb started"
+            )
         } catch {
             writing.removeAll { $0 === take }
-            fail("Couldn’t write it down", "\(error.localizedDescription) The recording is kept, and written down when iikb next opens.")
+            fail(
+                "Couldn’t write it down",
+                "\(error.localizedDescription) The recording is kept, and written down when iikb next opens.")
         }
         keepMicOn()
     }
@@ -198,7 +205,7 @@ import UIKit
         guard seconds > 0, !micOffOnceWritten else { return closeMic() }
         guard seconds != Dictation.micForever else { return }
         micOff = Task {
-            try? await Task.sleep(for: .seconds(seconds)) // timer: Keep Mic On
+            try? await Task.sleep(for: .seconds(seconds))  // timer: Keep Mic On
             guard !Task.isCancelled, recording == nil, writing.isEmpty else { return }
             closeMic()
         }
@@ -207,7 +214,7 @@ import UIKit
     /// The microphone picked in Settings changed: hears from it now, into the recording going on, if there is one.
     func microphoneChanged() {
         guard Microphone.inFront else { return }
-        microphone.restart() // restart: in front
+        microphone.restart()  // restart: in front
     }
 
     /// Home's switch, on: the microphone on with nothing recorded, so the keyboard starts each dictation in place, and
@@ -257,7 +264,9 @@ import UIKit
             HostApp.log.notice("the microphone came back on after another app had it")
             keepMicOn()
         } catch {
-            HostApp.log.error("the microphone couldn't come back on after another app had it: \(error.localizedDescription, privacy: .public)")
+            HostApp.log.error(
+                "the microphone couldn't come back on after another app had it: \(error.localizedDescription, privacy: .public)"
+            )
         }
     }
 

@@ -1,5 +1,5 @@
-import KeyboardStore
 import KeyboardCore
+import KeyboardStore
 import KeyboardUI
 import UIKit
 
@@ -57,20 +57,26 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         list.dataSource = self
         list.delegate = self
         list.accessibilityIdentifier = "iikb.clipboard"
-        [list.topEdgeEffect, list.bottomEdgeEffect, list.leftEdgeEffect, list.rightEdgeEffect].forEach { $0.isHidden = true }
+        [list.topEdgeEffect, list.bottomEdgeEffect, list.leftEdgeEffect, list.rightEdgeEffect].forEach {
+            $0.isHidden = true
+        }
         list.register(LinkBadge.self, forCellWithReuseIdentifier: "link")
         list.register(ClipRow.self, forCellWithReuseIdentifier: "clip")
         message.accessibilityIdentifier = "iikb.clipboard.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
         linksButton.accessibilityIdentifier = "iikb.clipboard.links"
         linksButton.accessibilityLabel = "Links"
-        linksButton.setImage(UIImage(systemName: "link", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)), for: .normal)
-        linksButton.addAction(UIAction { [unowned self] _ in
-            linksOnly.toggle()
-            linksButton.accessibilityTraits = linksOnly ? [.button, .selected] : .button
-            notice = nil
-            changed()
-        }, for: .touchUpInside)
+        linksButton.setImage(
+            UIImage(
+                systemName: "link", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)),
+            for: .normal)
+        linksButton.addAction(
+            UIAction { [unowned self] _ in
+                linksOnly.toggle()
+                linksButton.accessibilityTraits = linksOnly ? [.button, .selected] : .button
+                notice = nil
+                changed()
+            }, for: .touchUpInside)
         list.addSubview(message)
         addSubview(list)
         store.onChange = { [unowned self] in refresh() }
@@ -89,7 +95,8 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
 
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
         linksButton.tintColor = linksOnly ? theme.prominent.ui : theme.candidate.ui
-        let next = Shown(query: query, compact: metrics.toolbar.isCompact, theme: theme, length: length(), linksOnly: linksOnly)
+        let next = Shown(
+            query: query, compact: metrics.toolbar.isCompact, theme: theme, length: length(), linksOnly: linksOnly)
         guard next != shown else { return }
         if query != shown?.query { notice = nil }
         shown = next
@@ -105,15 +112,24 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
             let found = fullAccess() && store.loaded ? await store.matching(shown.query) : []
             guard request == search else { return }
             let links = found.filter { ClipTitle.site($0.content) != nil }
-            display(links: links, items: shown.linksOnly ? [] : found.filter { ClipTitle.site($0.content) == nil }, shown: shown)
+            display(
+                links: links, items: shown.linksOnly ? [] : found.filter { ClipTitle.site($0.content) == nil },
+                shown: shown)
         }
     }
 
     private func display(links: [ClipboardHistory.Item], items: [ClipboardHistory.Item], shown: Shown) {
         let loaded = fullAccess() && store.loaded
         let found = !links.isEmpty || !items.isEmpty
-        let missing: String? = if !fullAccess() { "Clipboard needs Full Access." } else if store.refused { "To keep what you copy, set Paste from Other Apps to Allow." } else { nil }
-        let empty: String? = loaded && !found ? (shown.query.isEmpty ? (shown.linksOnly ? "Links you copy show up here." : "Things you copy show up here.") : "Nothing copied with “\(shown.query)”") : nil
+        let missing: String? =
+            if !fullAccess() { "Clipboard needs Full Access." } else if store.refused {
+                "To keep what you copy, set Paste from Other Apps to Allow."
+            } else { nil }
+        let empty: String? =
+            loaded && !found
+            ? (shown.query.isEmpty
+                ? (shown.linksOnly ? "Links you copy show up here." : "Things you copy show up here.")
+                : "Nothing copied with “\(shown.query)”") : nil
         message.show(missing ?? empty, turnOn: missing != nil, oneRow: shown.compact, theme: shown.theme)
         let moved = (links + items).map(\.content) != (self.links + self.items).map(\.content)
         self.links = links
@@ -125,7 +141,9 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         setNeedsLayout()
     }
 
-    private func item(at path: IndexPath) -> ClipboardHistory.Item { path.section == 0 ? links[path.item] : items[path.item] }
+    private func item(at path: IndexPath) -> ClipboardHistory.Item {
+        path.section == 0 ? links[path.item] : items[path.item]
+    }
 
     private func pick(_ item: ClipboardHistory.Item) {
         switch item.content {
@@ -145,9 +163,12 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
 
     func numberOfSections(in collectionView: UICollectionView) -> Int { 2 }
 
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int { section == 0 ? badges : items.count }
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        section == 0 ? badges : items.count
+    }
 
-    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell
+    {
         let item = item(at: indexPath)
         if indexPath.section == 0 {
             let badge = collectionView.dequeueReusableCell(withReuseIdentifier: "link", for: indexPath) as! LinkBadge
@@ -168,10 +189,14 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     }
 
     private func configure(_ row: ClipRow, _ item: ClipboardHistory.Item) {
-        let compact = shown?.compact == true, theme = shown?.theme ?? .lightCurrent
+        let compact = shown?.compact == true
+        let theme = shown?.theme ?? .lightCurrent
         let age = ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)
-        let detail = [ClipboardHistory.length(of: item.content, in: shown?.length ?? .characters), age].compactMap { $0 }.joined(separator: " · ")
-        let title = ClipTitle.make(item.content, font: ClipRow.font(compact: compact), label: theme.label.ui, secondary: theme.candidate.ui)
+        let detail = [ClipboardHistory.length(of: item.content, in: shown?.length ?? .characters), age].compactMap {
+            $0
+        }.joined(separator: " · ")
+        let title = ClipTitle.make(
+            item.content, font: ClipRow.font(compact: compact), label: theme.label.ui, secondary: theme.candidate.ui)
         row.show(
             text: item.content.preview, styled: title, detail: detail, pinned: item.pinned,
             compact: compact, theme: theme
@@ -184,13 +209,17 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         badge.show(badgeTitle(item), theme: theme)
         badge.shown = item.content
         badge.accessibilityIdentifier = "iikb.clip.\(item.content.label)"
-        badge.accessibilityLabel = ClipTitle.site(item.content).map { "\($0), \(ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970))" }
+        badge.accessibilityLabel = ClipTitle.site(item.content).map {
+            "\($0), \(ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970))"
+        }
     }
 
     private func badgeTitle(_ item: ClipboardHistory.Item) -> NSAttributedString? {
         let theme = shown?.theme ?? .lightCurrent
         let age = ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)
-        return ClipTitle.badge(item.content, age: age, pinned: item.pinned, font: LinkBadge.font(compact: shown?.compact == true), label: theme.label.ui, secondary: theme.candidate.ui)
+        return ClipTitle.badge(
+            item.content, age: age, pinned: item.pinned, font: LinkBadge.font(compact: shown?.compact == true),
+            label: theme.label.ui, secondary: theme.candidate.ui)
     }
 
     private func badgeWidth(_ index: Int) -> CGFloat {
@@ -226,7 +255,9 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         return links.count
     }
 
-    func collectionView(_ collectionView: UICollectionView, layout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+    func collectionView(
+        _ collectionView: UICollectionView, layout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath
+    ) -> CGSize {
         if indexPath.section == 0 { return badgeSize(indexPath.item) }
         return shown?.compact == true
             ? CGSize(width: ((bounds.width - 2 * Self.gap) / 3).rounded(.down), height: bounds.height)
@@ -234,7 +265,9 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     }
 
     /// The notice goes ahead of the first section that has anything, and the badges keep a gap from the rows after them.
-    func collectionView(_ collectionView: UICollectionView, layout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
+    func collectionView(
+        _ collectionView: UICollectionView, layout: UICollectionViewLayout, insetForSectionAt section: Int
+    ) -> UIEdgeInsets {
         let compact = shown?.compact == true
         let ahead = message.isHidden || (badges == 0 && items.isEmpty) ? 0.0 : (compact ? bounds.width + Self.gap : 46)
         let first = section == 0 ? badges > 0 : badges == 0
@@ -242,23 +275,36 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         let after = section == 0 && badges > 0 && !items.isEmpty ? (compact ? Self.gap : 8) : 0
         let stack = CGFloat(stacked) * badgeHeight + CGFloat(stacked - 1) * Self.gap
         let middle = section == 0 && compact ? ((bounds.height - stack) / 2).rounded(.down) : 0
-        return compact ? UIEdgeInsets(top: middle, left: before, bottom: middle, right: after) : UIEdgeInsets(top: before, left: 0, bottom: after, right: 0)
+        return compact
+            ? UIEdgeInsets(top: middle, left: before, bottom: middle, right: after)
+            : UIEdgeInsets(top: before, left: 0, bottom: after, right: 0)
     }
 
-    func collectionView(_ collectionView: UICollectionView, layout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
+    func collectionView(
+        _ collectionView: UICollectionView, layout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int
+    ) -> CGFloat {
         section == 0 || shown?.compact == true ? Self.gap : 2
     }
 
-    func collectionView(_ collectionView: UICollectionView, layout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
+    func collectionView(
+        _ collectionView: UICollectionView, layout: UICollectionViewLayout,
+        minimumInteritemSpacingForSectionAt section: Int
+    ) -> CGFloat {
         section == 0 ? Self.gap : 0
     }
 
-    func collectionView(_ collectionView: UICollectionView, contextMenuConfigurationForItemsAt indexPaths: [IndexPath], point: CGPoint) -> UIContextMenuConfiguration? {
+    func collectionView(
+        _ collectionView: UICollectionView, contextMenuConfigurationForItemsAt indexPaths: [IndexPath], point: CGPoint
+    ) -> UIContextMenuConfiguration? {
         guard let item = indexPaths.first.map(item(at:)) else { return nil }
-        return UIContextMenuConfiguration(identifier: nil) { [unowned self] in preview(item.content) } actionProvider: { [unowned self] _ in
+        return UIContextMenuConfiguration(identifier: nil) { [unowned self] in
+            preview(item.content)
+        } actionProvider: { [unowned self] _ in
             UIMenu(children: [
                 UIAction(title: "Paste", image: UIImage(systemName: "doc.on.clipboard")) { _ in self.pick(item) },
-                UIAction(title: item.pinned ? "Unpin" : "Pin", image: UIImage(systemName: item.pinned ? "pin.slash" : "pin")) { _ in
+                UIAction(
+                    title: item.pinned ? "Unpin" : "Pin", image: UIImage(systemName: item.pinned ? "pin.slash" : "pin")
+                ) { _ in
                     self.store.setPinned(!item.pinned, item.content)
                     self.refresh()
                 },
@@ -288,7 +334,10 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     }
 
     private func thumbnail(_ name: String, for row: ClipRow) {
-        if let image = thumbnails.object(forKey: name as NSString) { return row.thumbnail = image }
+        if let image = thumbnails.object(forKey: name as NSString) {
+            row.thumbnail = image
+            return
+        }
         Task { [store] in
             let image = await Task.detached(priority: .userInitiated) { store.thumbnail(name, side: 96) }.value
             guard let image else { return }
@@ -329,7 +378,8 @@ private final class BadgeFlowLayout: UICollectionViewFlowLayout {
         var next = 0.0
         for item in 0..<collectionView.numberOfItems(inSection: 0) {
             let path = IndexPath(item: item, section: 0)
-            guard let attributes = super.layoutAttributesForItem(at: path)?.copy() as? UICollectionViewLayoutAttributes else { continue }
+            guard let attributes = super.layoutAttributesForItem(at: path)?.copy() as? UICollectionViewLayoutAttributes
+            else { continue }
             let frame = attributes.frame
             if start == nil { start = across ? frame.minX : frame.minY }
             if line != (across ? frame.midY : frame.midX) {
@@ -441,7 +491,10 @@ final class ClipRow: UICollectionViewCell {
 
     /// `text` nil shows the thumbnail; `styled`, when there is one, is how the text is written (`ClipTitle`); `detail`
     /// is the length and age, "312 chars · 5m".
-    func show(text string: String?, styled: NSAttributedString? = nil, detail: String, pinned: Bool, compact: Bool, theme: KeyboardTheme) {
+    func show(
+        text string: String?, styled: NSAttributedString? = nil, detail: String, pinned: Bool, compact: Bool,
+        theme: KeyboardTheme
+    ) {
         self.pinned = pinned
         self.compact = compact
         fill = compact ? theme.key.ui : .clear
@@ -455,7 +508,11 @@ final class ClipRow: UICollectionViewCell {
         age.font = .monospacedDigitSystemFont(ofSize: compact ? 11 : 13, weight: .regular)
         age.text = detail
         age.textAlignment = compact ? .left : .right
-        if let styled { text.attributedText = styled } else { text.text = string.map { String($0.prefix(300)).split(whereSeparator: \.isNewline).joined(separator: " ") } }
+        if let styled {
+            text.attributedText = styled
+        } else {
+            text.text = string.map { String($0.prefix(300)).split(whereSeparator: \.isNewline).joined(separator: " ") }
+        }
         text.isHidden = string == nil
         image.isHidden = string != nil
         if string != nil { image.image = nil }
@@ -479,7 +536,8 @@ final class ClipRow: UICollectionViewCell {
         if compact {
             let inset = bounds.insetBy(dx: 10, dy: 6)
             pin.frame = CGRect(x: inset.maxX - 14, y: inset.minY, width: 14, height: 14)
-            text.frame = CGRect(x: inset.minX, y: inset.minY, width: inset.width - (pinned ? 16 : 0), height: inset.height - 13)
+            text.frame = CGRect(
+                x: inset.minX, y: inset.minY, width: inset.width - (pinned ? 16 : 0), height: inset.height - 13)
             image.frame = CGRect(x: inset.minX, y: inset.minY, width: inset.height - 13, height: inset.height - 13)
             age.frame = CGRect(x: inset.minX, y: inset.maxY - 13, width: inset.width, height: 13)
             return
@@ -493,8 +551,8 @@ final class ClipRow: UICollectionViewCell {
     }
 }
 
-private extension ClipboardHistory.Item.Content {
-    var label: String {
+extension ClipboardHistory.Item.Content {
+    fileprivate var label: String {
         switch self {
         case .text(let text), .textFile(_, let text): String(text.prefix(40))
         case .image(let name): name

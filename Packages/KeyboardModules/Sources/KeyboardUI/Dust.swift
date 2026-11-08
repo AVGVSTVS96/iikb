@@ -8,18 +8,23 @@ final class Dust: UIView {
     /// `area` of `view`, in its coordinates, starting from `origin`, a point on `view`'s x axis.
     init?(of view: UIView, in area: CGRect, from origin: CGFloat) {
         let scale = view.traitCollection.displayScale
-        let width = Int((area.width * scale).rounded(.up)), height = Int((area.height * scale).rounded(.up))
-        guard width > 0, height > 0, let context = CGContext(
-            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
-            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
+        let width = Int((area.width * scale).rounded(.up))
+        let height = Int((area.height * scale).rounded(.up))
+        guard width > 0, height > 0,
+            let context = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else { return nil }
         context.translateBy(x: 0, y: CGFloat(height))
         context.scaleBy(x: scale, y: -scale)
         context.translateBy(x: -area.minX, y: -area.minY)
         UIGraphicsPushContext(context)
         view.drawHierarchy(in: view.bounds, afterScreenUpdates: false)
         UIGraphicsPopContext()
-        guard let picture = context.makeImage(), let pixels = context.data?.assumingMemoryBound(to: UInt8.self) else { return nil }
+        guard let picture = context.makeImage(), let pixels = context.data?.assumingMemoryBound(to: UInt8.self) else {
+            return nil
+        }
 
         let side = max(1.5, (area.width * area.height / 2400).squareRoot())
         let reach = max(abs(origin - area.minX), abs(area.maxX - origin), 1)
@@ -29,12 +34,15 @@ final class Dust: UIView {
             var x: CGFloat = 0
             while x < area.width {
                 let tile = CGRect(x: x, y: y, width: min(side, area.width - x), height: min(side, area.height - y))
-                let px = min(Int((tile.midX * scale)), width - 1), py = min(Int((tile.midY * scale)), height - 1)
+                let px = min(Int((tile.midX * scale)), width - 1)
+                let py = min(Int((tile.midY * scale)), height - 1)
                 if pixels[(py * width + px) * 4 + 3] > 24 {
                     let speck = CALayer()
                     speck.contents = picture
                     speck.contentsScale = scale
-                    speck.contentsRect = CGRect(x: tile.minX / area.width, y: tile.minY / area.height, width: tile.width / area.width, height: tile.height / area.height)
+                    speck.contentsRect = CGRect(
+                        x: tile.minX / area.width, y: tile.minY / area.height, width: tile.width / area.width,
+                        height: tile.height / area.height)
                     speck.frame = tile
                     specks.append((speck, abs(area.minX + tile.midX - origin) / reach))
                 }

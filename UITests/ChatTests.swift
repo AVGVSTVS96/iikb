@@ -30,7 +30,9 @@ final class ChatTests: XCTestCase {
         XCTAssertTrue(tool.waitForExistence(timeout: 10), "the bar has the Chats tool")
         tool.tap()
         try shot("\(shots)-panel")
-        let listed = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN %@", ["iikb.chat.0", "iikb.chat.picker"])).firstMatch
+        let listed = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier IN %@", ["iikb.chat.0", "iikb.chat.picker"])
+        ).firstMatch
         XCTAssertTrue(listed.waitForExistence(timeout: 20), "the chats are listed, as chips or, in one row, a picker")
         if let name = environment["IIKB_CHAT"] {
             if listed.identifier == "iikb.chat.picker" { listed.tap() }
@@ -41,8 +43,11 @@ final class ChatTests: XCTestCase {
         type(message, in: app)
         try shot("\(shots)-typed")
         element("iikb.chat.send", in: app).tap()
-        let answer = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", reply)).firstMatch
-        XCTAssertTrue(answer.waitForExistence(timeout: Double(environment["IIKB_WAIT"] ?? "20") ?? 20), "the reply shows in the panel")
+        let answer = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", reply))
+            .firstMatch
+        XCTAssertTrue(
+            answer.waitForExistence(timeout: Double(environment["IIKB_WAIT"] ?? "20") ?? 20),
+            "the reply shows in the panel")
         try shot("\(shots)-reply")
 
         element("iikb.panel.back", in: app).tap()
@@ -65,7 +70,10 @@ final class ChatTests: XCTestCase {
     /// The open Duo draws on its inner screen, the larger one.
     private func shot(_ path: String) throws {
         let open = ProcessInfo.processInfo.environment["IIKB_OPEN"].map { !$0.isEmpty } ?? false
-        let screen = open ? XCUIScreen.screens.max { $0.screenshot().image.size.width < $1.screenshot().image.size.width }! : XCUIScreen.main
+        let screen =
+            open
+            ? XCUIScreen.screens.max { $0.screenshot().image.size.width < $1.screenshot().image.size.width }!
+            : XCUIScreen.main
         try screen.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: path + ".png"))
     }
 

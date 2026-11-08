@@ -25,7 +25,9 @@ public struct EmojiCatalog: Sendable {
         if word.hasSuffix("s"), !word.hasSuffix("ss") {
             forms.append(String(word.dropLast()))
             let stem = word.dropLast(2)
-            if word.hasSuffix("es"), ["s", "x", "z", "ch", "sh", "o"].contains(where: stem.hasSuffix) { forms.append(String(stem)) }
+            if word.hasSuffix("es"), ["s", "x", "z", "ch", "sh", "o"].contains(where: stem.hasSuffix) {
+                forms.append(String(stem))
+            }
         }
         let found = forms.lazy.compactMap { byWord[$0] }.first ?? []
         guard !found.isEmpty else { return [] }
@@ -64,15 +66,21 @@ public struct EmojiSearch: Sendable {
             if variants.count > 1 { tones[emoji] = Array(variants.dropFirst()) }
             guard fields.count == 3, let rank = Int(fields[1]) else { continue }
             var words: [String] = []
-            for word in fields[2].split(whereSeparator: { $0 == "|" || $0 == " " || $0 == "-" || $0 == ":" || $0 == "," }) where !words.contains(String(word)) {
+            for word in fields[2].split(whereSeparator: {
+                $0 == "|" || $0 == " " || $0 == "-" || $0 == ":" || $0 == ","
+            }) where !words.contains(String(word)) {
                 words.append(String(word))
             }
             ranked.append((rank, emoji, words))
         }
         self.all = all
         self.tones = tones
-        bases = Dictionary(tones.flatMap { base, toned in ([base] + toned).map { ($0, base) } }, uniquingKeysWith: { first, _ in first })
-        entries = ranked.enumerated().sorted { ($0.element.rank, $0.offset) < ($1.element.rank, $1.offset) }.map { ($0.element.emoji, $0.element.words) }
+        bases = Dictionary(
+            tones.flatMap { base, toned in ([base] + toned).map { ($0, base) } },
+            uniquingKeysWith: { first, _ in first })
+        entries = ranked.enumerated().sorted { ($0.element.rank, $0.offset) < ($1.element.rank, $1.offset) }.map {
+            ($0.element.emoji, $0.element.words)
+        }
     }
 
     /// The untoned emoji whose skin tones include `emoji`, or `emoji` itself when it has tones.
@@ -89,7 +97,9 @@ public struct EmojiSearch: Sendable {
     /// `emoji` in the tone last picked for it, else in your preferred tone, else as it is.
     public func toned(_ emoji: String, history: EmojiHistory) -> String {
         if let picked = history.tones[emoji] { return picked }
-        guard let tone = history.skinTone, let toned = tones[emoji], let index = SkinTone.allCases.firstIndex(of: tone), toned.indices.contains(index) else { return emoji }
+        guard let tone = history.skinTone, let toned = tones[emoji], let index = SkinTone.allCases.firstIndex(of: tone),
+            toned.indices.contains(index)
+        else { return emoji }
         return toned[index]
     }
 
@@ -141,9 +151,11 @@ public struct EmojiHistory: Codable, Hashable, Sendable {
     func ranked(_ emoji: [String]) -> [String] {
         let local = local
         return emoji.enumerated().sorted { a, b in
-            let first = local[a.element, default: 0], second = local[b.element, default: 0]
+            let first = local[a.element, default: 0]
+            let second = local[b.element, default: 0]
             if first != second { return first > second }
-            let sharedFirst = scores[a.element, default: 0], sharedSecond = scores[b.element, default: 0]
+            let sharedFirst = scores[a.element, default: 0]
+            let sharedSecond = scores[b.element, default: 0]
             return sharedFirst != sharedSecond ? sharedFirst > sharedSecond : a.offset < b.offset
         }.map(\.element)
     }
@@ -154,7 +166,10 @@ public struct EmojiHistory: Codable, Hashable, Sendable {
     static let shown = 30
     /// Common picks, for a keyboard that hasn't seen you pick an emoji yet: Unicode's most used, less ♥️, which iOS draws
     /// as ❤️.
-    static let starters = ["❤️", "😂", "👍", "😭", "🙏", "😘", "🥰", "😍", "😊", "🎉", "😁", "💕", "🥺", "😅", "🔥", "☺️", "🤦", "🤷", "🙄", "😆", "🤗", "😉", "🎂", "🤔", "👏", "🙂", "😳", "🥳", "😎", "👌"]
+    static let starters = [
+        "❤️", "😂", "👍", "😭", "🙏", "😘", "🥰", "😍", "😊", "🎉", "😁", "💕", "🥺", "😅", "🔥", "☺️", "🤦", "🤷", "🙄", "😆", "🤗", "😉",
+        "🎂", "🤔", "👏", "🙂", "😳", "🥳", "😎", "👌",
+    ]
 
     public init() {}
 
@@ -171,7 +186,11 @@ public struct EmojiHistory: Codable, Hashable, Sendable {
         if let app {
             if apps == nil { apps = [:] }
             apps?[app, default: [:]][emoji, default: 0] += weight
-            if let local = apps?[app], local.count > Self.capacity, let least = local.min(by: { $0.value < $1.value })?.key { apps?[app]?[least] = nil }
+            if let local = apps?[app], local.count > Self.capacity,
+                let least = local.min(by: { $0.value < $1.value })?.key
+            {
+                apps?[app]?[least] = nil
+            }
         }
         scores[emoji, default: 0] += weight
         weight *= Self.growth
@@ -180,7 +199,9 @@ public struct EmojiHistory: Codable, Hashable, Sendable {
             apps = apps?.mapValues { $0.mapValues { $0 / weight } }
             weight = 1
         }
-        if scores.count > Self.capacity, let least = scores.min(by: { $0.value < $1.value })?.key { scores[least] = nil }
+        if scores.count > Self.capacity, let least = scores.min(by: { $0.value < $1.value })?.key {
+            scores[least] = nil
+        }
     }
 }
 

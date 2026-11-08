@@ -1,6 +1,6 @@
-import Testing
 import KeyboardCore
 import KeyboardEnglish
+import Testing
 
 @MainActor
 struct EnglishLexiconTests {

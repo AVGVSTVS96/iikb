@@ -15,7 +15,9 @@ final class MicControlTests: XCTestCase {
         XCUIDevice.shared.press(.home)
 
         openControlCenter()
-        let control = springboard.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] 'iikb Mic'")).firstMatch
+        let control = springboard.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS[c] 'iikb Mic'")
+        ).firstMatch
         if !control.waitForExistence(timeout: 3) { addControl() }
         XCTAssertTrue(control.waitForExistence(timeout: 10), springboard.debugDescription)
         try shot("on")
@@ -23,7 +25,8 @@ final class MicControlTests: XCTestCase {
         try shot("tapped")
 
         iikb.activate()
-        XCTAssertTrue(wait { mic.value as? String == "0" }, "the app's microphone stayed on after the control was tapped")
+        XCTAssertTrue(
+            wait { mic.value as? String == "0" }, "the app's microphone stayed on after the control was tapped")
         XCUIDevice.shared.press(.home)
         openControlCenter()
         XCTAssertTrue(control.waitForExistence(timeout: 10))
@@ -32,14 +35,16 @@ final class MicControlTests: XCTestCase {
 
     private func openControlCenter() {
         let top = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.005))
-        top.press(forDuration: 0.1, thenDragTo: springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.7)))
+        top.press(
+            forDuration: 0.1, thenDragTo: springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.7)))
         sleep(2)
     }
 
     /// Edit mode's "+" and Add a Control's gallery, searched for iikb.
     private func addControl() {
         let any = springboard.descendants(matching: .any)
-        let plus = any.matching(NSPredicate(format: "label IN {'Add', 'Edit', 'Edit Controls', 'Add Controls'}")).firstMatch
+        let plus = any.matching(NSPredicate(format: "label IN {'Add', 'Edit', 'Edit Controls', 'Add Controls'}"))
+            .firstMatch
         if plus.waitForExistence(timeout: 3) {
             plus.tap()
         } else {

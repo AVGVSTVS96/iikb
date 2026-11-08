@@ -50,12 +50,15 @@ import UIKit
             guard let version else { return nil }
             let title = title
             return { progress in
-                let folder = try await AsrModels.download(to: version.folder, version: version, progressHandler: progress)
+                let folder = try await AsrModels.download(
+                    to: version.folder, version: version, progressHandler: progress)
                 var load = 1
                 while true {
                     let parakeet = AsrManager(config: .default)
                     try await parakeet.loadModels(try await AsrModels.load(from: folder, version: version))
-                    guard VoiceModel.hasNeuralEngine, load < 3, try await !parakeet.onNeuralEngine() else { return parakeet }
+                    guard VoiceModel.hasNeuralEngine, load < 3, try await !parakeet.onNeuralEngine() else {
+                        return parakeet
+                    }
                     HostApp.log.error("\(title, privacy: .public)'s encoder ran on the CPU after load \(load)")
                     load += 1
                 }
@@ -81,11 +84,11 @@ import UIKit
     @ObservationIgnored var micIsOn = false { didSet { if micIsOn { prepare() } else { letGoIfIdle() } } }
 
     #if targetEnvironment(simulator)
-    /// The simulator has no Neural Engine, so a Parakeet would compile on the Mac's CPU, and its UI tests stand in for
-    /// the app's voice (`scripts/voiceapp.py`).
-    nonisolated static let hasNeuralEngine = false
+        /// The simulator has no Neural Engine, so a Parakeet would compile on the Mac's CPU, and its UI tests stand in for
+        /// the app's voice (`scripts/voiceapp.py`).
+        nonisolated static let hasNeuralEngine = false
     #else
-    nonisolated static let hasNeuralEngine = true
+        nonisolated static let hasNeuralEngine = true
     #endif
 
     private init() {}
@@ -103,7 +106,8 @@ import UIKit
     /// The picked model and how far along it is, in a few words.
     var status: String {
         switch state {
-        case .downloading(let done): "\(model.title), downloading \(done.formatted(.percent.precision(.fractionLength(0))))"
+        case .downloading(let done):
+            "\(model.title), downloading \(done.formatted(.percent.precision(.fractionLength(0))))"
         case .loading: "\(model.title), getting ready"
         case .ready: "\(model.title), ready"
         case .failed: "\(model.title) couldn’t load"
@@ -125,7 +129,10 @@ import UIKit
     /// Neural Engine; later ones read that from a cache. It asks iOS for time in the background to finish, since iOS suspends iikb there within seconds
     /// (after `scripts/phone` starts it, or once you're back in your app with the microphone off) and the compile with it.
     func prepare() {
-        guard let load = model.loader else { return state = .ready }
+        guard let load = model.loader else {
+            state = .ready
+            return
+        }
         guard parakeet == nil else { return }
         state = .loading
         let model = model
@@ -151,13 +158,16 @@ import UIKit
                 _ = try await parakeet.value
                 guard self.parakeet == parakeet else { return }
                 state = .ready
-                HostApp.log.notice("\(model.title, privacy: .public) ready after \(Date.now.timeIntervalSince(began), format: .fixed(precision: 1))s, \(HostApp.written, format: .fixed(precision: 1)) MB written since iikb started")
+                HostApp.log.notice(
+                    "\(model.title, privacy: .public) ready after \(Date.now.timeIntervalSince(began), format: .fixed(precision: 1))s, \(HostApp.written, format: .fixed(precision: 1)) MB written since iikb started"
+                )
                 letGoIfIdle()
             } catch {
                 guard self.parakeet == parakeet else { return }
                 self.parakeet = nil
                 state = .failed(error.localizedDescription)
-                HostApp.log.error("\(model.title, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+                HostApp.log.error(
+                    "\(model.title, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
@@ -186,8 +196,14 @@ import UIKit
             let model = model
             do {
                 let heard: String
-                if let parakeet { heard = try await parakeet.value.dictate(recording) } else { heard = try await AppleSpeech.write(recording) }
-                return Written(text: DictationWriting.typed(heard, in: app), heard: heard, plain: DictationWriting.plain(heard), model: model.title)
+                if let parakeet {
+                    heard = try await parakeet.value.dictate(recording)
+                } else {
+                    heard = try await AppleSpeech.write(recording)
+                }
+                return Written(
+                    text: DictationWriting.typed(heard, in: app), heard: heard, plain: DictationWriting.plain(heard),
+                    model: model.title)
             } catch {
                 guard self.model != model else { throw error }
             }
@@ -220,9 +236,13 @@ nonisolated enum AppleSpeech {
     static func write(_ recording: [Float]) async throws -> String {
         let (module, heard) = try await transcriber()
         defer { heard.cancel() }
-        guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else { throw Unsupported() }
+        guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
+            throw Unsupported()
+        }
         guard let sound = Recording.converted(recording, to: format) else { throw Unconvertible() }
-        if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) { try await request.downloadAndInstall() }
+        if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
+            try await request.downloadAndInstall()
+        }
         let (stream, input) = AsyncStream<AnalyzerInput>.makeStream()
         let analyzer = SpeechAnalyzer(modules: [module])
         try await analyzer.start(inputSequence: stream)
@@ -235,19 +255,31 @@ nonisolated enum AppleSpeech {
     private static func transcriber() async throws -> (any SpeechModule, Task<String, any Error>) {
         if SpeechTranscriber.isAvailable, let locale = await SpeechTranscriber.supportedLocale(equivalentTo: .current) {
             let module = SpeechTranscriber(locale: locale, preset: .transcription)
-            return (module, Task {
+            return (
+                module,
+                Task {
+                    var text = ""
+                    for try await result in module.results where result.isFinal {
+                        text += String(result.text.characters)
+                    }
+                    return text
+                }
+            )
+        }
+        guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: .current) else {
+            throw Unsupported()
+        }
+        let module = DictationTranscriber(
+            locale: locale, contentHints: [], transcriptionOptions: [.punctuation], reportingOptions: [],
+            attributeOptions: [])
+        return (
+            module,
+            Task {
                 var text = ""
                 for try await result in module.results where result.isFinal { text += String(result.text.characters) }
                 return text
-            })
-        }
-        guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: .current) else { throw Unsupported() }
-        let module = DictationTranscriber(locale: locale, contentHints: [], transcriptionOptions: [.punctuation], reportingOptions: [], attributeOptions: [])
-        return (module, Task {
-            var text = ""
-            for try await result in module.results where result.isFinal { text += String(result.text.characters) }
-            return text
-        })
+            }
+        )
     }
 
     private struct Unsupported: LocalizedError {

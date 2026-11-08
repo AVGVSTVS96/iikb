@@ -1,4 +1,5 @@
 import Testing
+
 @testable import KeyboardCore
 
 struct OneHandedTests {
@@ -35,7 +36,9 @@ struct OneHandedTests {
         #expect(LayoutContext(device: .phone, layer: .letters, isLandscape: true, oneHanded: .left).oneHanded == .off)
         #expect(LayoutContext(device: .pad, layer: .letters, oneHanded: .right).oneHanded == .off)
         #expect(LayoutContext(device: .phone, layer: .numbers, oneHanded: .right).oneHanded == .right)
-        #expect(LayoutContext(device: .phone, layer: .letters, isOpen: true, oneHanded: .left).oneHanded == .off, "the open Duo never narrows, as Apple's doesn't")
+        #expect(
+            LayoutContext(device: .phone, layer: .letters, isOpen: true, oneHanded: .left).oneHanded == .off,
+            "the open Duo never narrows, as Apple's doesn't")
     }
 
     @Test func eachHandLearnsItsOwnTaps() {
@@ -52,14 +55,18 @@ struct OneHandedTests {
         let numbers = LayoutContext(device: .phone, layer: .numbers)
         #expect(numbers.menuKeys(in: Layouts.layout(for: numbers)).first?.action == .layer(.letters))
         #expect(LayoutContext(device: .pad, layer: .letters).menu.isEmpty, "an iPad's globe is its key")
-        #expect(LayoutContext(device: .phone, layer: .letters, isLandscape: true).menu == [.keep, .settings], "only a phone in portrait narrows for one hand")
+        #expect(
+            LayoutContext(device: .phone, layer: .letters, isLandscape: true).menu == [.keep, .settings],
+            "only a phone in portrait narrows for one hand")
     }
 
     /// Holding 123 is how Bassim reaches iikb's settings, so it offers them on every iPhone screen; where no layout
     /// applies, the layout in use comes first; letting go without sliding changes nothing.
     @Test func holding123OffersAppSettingsOnEveryScreen() {
         for screen in Duo.Screen.allCases {
-            let context = LayoutContext(device: .phone, layer: .numbers, showsGlobe: true, isLandscape: screen.isLandscape, isOpen: screen.isOpen)
+            let context = LayoutContext(
+                device: .phone, layer: .numbers, showsGlobe: true, isLandscape: screen.isLandscape,
+                isOpen: screen.isOpen)
             #expect(context.menu.suffix(2) == [.nextKeyboard, .settings], "\(screen.name)")
             #expect(context.menu.contains(context.menuPick), "\(screen.name): the layout in use is there, picked")
         }
@@ -79,15 +86,19 @@ struct OneHandedTests {
             for layer in KeyboardLayer.allCases {
                 var settings = KeyboardSettings()
                 settings.split = true
-                let context = LayoutContext(device: .phone, layer: layer, showsGlobe: true, screen: screen.size, settings: settings)
+                let context = LayoutContext(
+                    device: .phone, layer: layer, showsGlobe: true, screen: screen.size, settings: settings)
                 let held = context.menuKeys(in: Layouts.layout(for: context)).map(\.action)
                 #expect(held == [.layer(layer == .letters ? .numbers : .letters), .emoji], "\(screen.name), \(layer)")
             }
         }
         var settings = KeyboardSettings()
         settings.emojiKey = false
-        let bare = LayoutContext(device: .phone, layer: .letters, showsGlobe: true, screen: Duo.Screen.foldedPortrait.size, settings: settings)
-        #expect(bare.menuKeys(in: Layouts.layout(for: bare)).map(\.action) == [.layer(.numbers)], "without them, 123 alone")
+        let bare = LayoutContext(
+            device: .phone, layer: .letters, showsGlobe: true, screen: Duo.Screen.foldedPortrait.size,
+            settings: settings)
+        #expect(
+            bare.menuKeys(in: Layouts.layout(for: bare)).map(\.action) == [.layer(.numbers)], "without them, 123 alone")
     }
 
     @Test func pickingAHandBringsTheLettersBack() {

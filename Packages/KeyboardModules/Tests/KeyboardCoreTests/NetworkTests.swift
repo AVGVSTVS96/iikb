@@ -1,4 +1,5 @@
 import Testing
+
 @testable import KeyboardCore
 
 /// A network that expects "to" after "want" and "i" at a sentence's start: each word's embedding is what it reads and
@@ -14,9 +15,10 @@ let testNetwork: Network = {
         }
     }
     let input: [[Float]] = [[0, 0], [0, 0], [0, 0], [0, 0], [5, 0], [0, 5], [0, 0], [0, 0]]
-    return Network(vocabulary: vocabulary, embedding: embedding, input: input, recurrent: Array(repeating: [0, 0], count: 8),
-                   gates: [10, 10, -10, -10, 0, 0, 10, 10], projection: [[20, 0], [0, 20]], projectionBias: [0, 0],
-                   output: vocabulary.map { Network.specials.contains($0) || $0 == "want" ? -10 : 0 })
+    return Network(
+        vocabulary: vocabulary, embedding: embedding, input: input, recurrent: Array(repeating: [0, 0], count: 8),
+        gates: [10, 10, -10, -10, 0, 0, 10, 10], projection: [[20, 0], [0, 20]], projectionBias: [0, 0],
+        output: vocabulary.map { Network.specials.contains($0) || $0 == "want" ? -10 : 0 })
 }()
 
 struct NetworkTests {
@@ -34,10 +36,12 @@ struct NetworkTests {
     }
 
     @Test func probabilitiesAddUpAndFollowTheLastWord() {
-        let afterWant = testNetwork.logProbabilities(at: testNetwork.read(testNetwork.tokens(before: "I want"), from: testNetwork.start))
+        let afterWant = testNetwork.logProbabilities(
+            at: testNetwork.read(testNetwork.tokens(before: "I want"), from: testNetwork.start))
         #expect(abs(afterWant.reduce(0) { $0 + Math.exp(Double($1)) } - 1) < 1e-4)
         #expect(afterWant.indices.max { afterWant[$0] < afterWant[$1] } == testNetwork.id(of: "to"))
-        let atStart = testNetwork.logProbabilities(at: testNetwork.read(testNetwork.tokens(before: ""), from: testNetwork.start))
+        let atStart = testNetwork.logProbabilities(
+            at: testNetwork.read(testNetwork.tokens(before: ""), from: testNetwork.start))
         #expect(atStart.indices.max { atStart[$0] < atStart[$1] } == testNetwork.id(of: "i"))
     }
 
@@ -45,7 +49,8 @@ struct NetworkTests {
         let corrector = Corrector(source: testLexicon, network: testNetwork)
         _ = corrector.expected(after: "I want")
         let continued = corrector.expected(after: "I want to work")!.logProbabilities
-        let fresh = Corrector(source: testLexicon, network: testNetwork).expected(after: "I want to work")!.logProbabilities
+        let fresh = Corrector(source: testLexicon, network: testNetwork).expected(after: "I want to work")!
+            .logProbabilities
         #expect(zip(continued, fresh).allSatisfy { abs($0 - $1) < 1e-5 })
     }
 
@@ -56,7 +61,9 @@ struct NetworkTests {
         engine.documentChanged(document)
         engine.suggestionsChanged()
         #expect(engine.suggestions.first?.text == "I")
-        for character in "want " { engine.perform(character == " " ? .space : .character(String(character)), in: document) }
+        for character in "want " {
+            engine.perform(character == " " ? .space : .character(String(character)), in: document)
+        }
         #expect(engine.suggestions.first?.text == "to")
     }
 

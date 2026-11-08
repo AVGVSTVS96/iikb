@@ -12,10 +12,10 @@ nonisolated struct Computer: Codable, Hashable, Sendable {
     /// `iikb://computer?name=…&url=…&token=…`, the link `mac/share` shows as a QR code.
     init?(link: URL) {
         guard link.scheme == "iikb", link.host() == "computer",
-              let items = URLComponents(url: link, resolvingAgainstBaseURL: false)?.queryItems,
-              let name = items.first(where: { $0.name == "name" })?.value, !name.isEmpty,
-              let url = items.first(where: { $0.name == "url" })?.value.flatMap(URL.init(string:)), Source.allows(url),
-              let token = items.first(where: { $0.name == "token" })?.value, !token.isEmpty
+            let items = URLComponents(url: link, resolvingAgainstBaseURL: false)?.queryItems,
+            let name = items.first(where: { $0.name == "name" })?.value, !name.isEmpty,
+            let url = items.first(where: { $0.name == "url" })?.value.flatMap(URL.init(string:)), Source.allows(url),
+            let token = items.first(where: { $0.name == "token" })?.value, !token.isEmpty
         else { return nil }
         self.name = name
         self.url = url
@@ -38,7 +38,8 @@ nonisolated struct Computer: Codable, Hashable, Sendable {
     private static let copies = URL.cachesDirectory.appending(path: "computers")
 
     private init() {
-        all = (try? Data(contentsOf: Self.list)).flatMap { try? JSONDecoder().decode([Computer].self, from: $0) } ?? [] // file: the computers you added
+        // file: the computers you added
+        all = (try? Data(contentsOf: Self.list)).flatMap { try? JSONDecoder().decode([Computer].self, from: $0) } ?? []
         for computer in all { load(computer.name) }
     }
 
@@ -67,29 +68,35 @@ nonisolated struct Computer: Codable, Hashable, Sendable {
     }
 
     private func read(_ computer: Computer) async {
-        var request = URLRequest(url: computer.url.appending(path: "typing-stats.json"), cachePolicy: .reloadIgnoringLocalCacheData)
+        var request = URLRequest(
+            url: computer.url.appending(path: "typing-stats.json"), cachePolicy: .reloadIgnoringLocalCacheData)
         request.setValue("Bearer \(computer.token)", forHTTPHeaderField: "Authorization")
-        guard let (data, response) = try? await URLSession.shared.data(for: request), (response as? HTTPURLResponse)?.statusCode == 200,
-              let activity = KeystrokeStats.decode(data), all.contains(computer)
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+            (response as? HTTPURLResponse)?.statusCode == 200,
+            let activity = KeystrokeStats.decode(data), all.contains(computer)
         else { return }
-        let modified = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Last-Modified").flatMap(Self.httpDate) ?? .now
+        let modified =
+            (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Last-Modified").flatMap(Self.httpDate) ?? .now
         self.activity[computer.name] = activity
         asOf[computer.name] = modified
         let copy = Self.copy(computer.name)
         try? FileManager.default.createDirectory(at: Self.copies, withIntermediateDirectories: true)
-        try? data.write(to: copy, options: .atomic) // file: cache of what the computer shares, fetched again from it
-        try? FileManager.default.setAttributes([.modificationDate: modified], ofItemAtPath: copy.path(percentEncoded: false))
+        try? data.write(to: copy, options: .atomic)  // file: cache of what the computer shares, fetched again from it
+        try? FileManager.default.setAttributes(
+            [.modificationDate: modified], ofItemAtPath: copy.path(percentEncoded: false))
     }
 
     private func load(_ name: String) {
         let copy = Self.copy(name)
-        activity[name] = (try? Data(contentsOf: copy)).flatMap(KeystrokeStats.decode) // file: cache of what the computer shares
+        // file: cache of what the computer shares
+        activity[name] = (try? Data(contentsOf: copy)).flatMap(KeystrokeStats.decode)
         asOf[name] = try? copy.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
     }
 
     private func save() {
-        try? FileManager.default.createDirectory(at: Self.list.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? JSONEncoder().encode(all).write(to: Self.list, options: .atomic) // file: the computers you added
+        try? FileManager.default.createDirectory(
+            at: Self.list.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? JSONEncoder().encode(all).write(to: Self.list, options: .atomic)  // file: the computers you added
     }
 
     private static func copy(_ name: String) -> URL {

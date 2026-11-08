@@ -22,10 +22,14 @@ struct StoredFileTests {
 
         #expect(file.save(["taps": 3]))
         #expect(file.read() == .value(["taps": 3]))
-        let aside = try FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false)).filter { $0 != "kept.json" }
+        let aside = try FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false)).filter {
+            $0 != "kept.json"
+        }
         #expect(aside.count == 1)
         #expect(aside.first?.hasPrefix("kept-unread-") == true && aside.first?.hasSuffix(".json") == true)
-        #expect(try Data(contentsOf: folder.appending(path: aside.first ?? "")) == cut, "the unreadable file is kept as it was")
+        #expect(
+            try Data(contentsOf: folder.appending(path: aside.first ?? "")) == cut,
+            "the unreadable file is kept as it was")
     }
 
     @Test func keepsNaNAndInfinity() {

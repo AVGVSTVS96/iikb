@@ -29,7 +29,10 @@ let package = Package(
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ],
             path: "App",
-            exclude: ["AGENTS.md", "Voice/AGENTS.md", "Assets.xcassets", "Settings.bundle", "iikb.entitlements", "PrivacyInfo.xcprivacy"],
+            exclude: [
+                "AGENTS.md", "Voice/AGENTS.md", "Assets.xcassets", "Settings.bundle", "iikb.entitlements",
+                "PrivacyInfo.xcprivacy",
+            ],
             swiftSettings: settings
         ),
         .target(

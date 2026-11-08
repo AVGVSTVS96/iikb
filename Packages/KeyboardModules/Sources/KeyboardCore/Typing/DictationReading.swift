@@ -7,13 +7,16 @@
 enum DictationReading {
     /// What a dictation types as the field reads it, or nil when it's prose.
     static func typed(_ said: String, in traits: InputTraits, after before: String) -> String? {
-        let reading: String? = switch (traits.content, traits.kind) {
-        case (.emailAddress, _), (.url, _), (.username, _), (.other, .email), (.other, .url): SpokenAddress.read(said)
-        case (.telephoneNumber, _), (.oneTimeCode, _), (.postalCode, _), (.creditCardNumber, _), (.other, .number): SpokenAddress.digits(said)
-        case (.other, .decimal): SpokenAddress.digits(said, point: true)
-        case (.other, .webSearch): SpokenAddress.domain(said)
-        default: nil
-        }
+        let reading: String? =
+            switch (traits.content, traits.kind) {
+            case (.emailAddress, _), (.url, _), (.username, _), (.other, .email), (.other, .url):
+                SpokenAddress.read(said)
+            case (.telephoneNumber, _), (.oneTimeCode, _), (.postalCode, _), (.creditCardNumber, _), (.other, .number):
+                SpokenAddress.digits(said)
+            case (.other, .decimal): SpokenAddress.digits(said, point: true)
+            case (.other, .webSearch): SpokenAddress.domain(said)
+            default: nil
+            }
         return reading ?? (continuesAddress(before) ? SpokenAddress.read(said) : nil)
     }
 

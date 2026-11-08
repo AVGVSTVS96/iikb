@@ -85,7 +85,8 @@ public enum Dictation {
 
         public init?(_ link: URL) {
             guard link.scheme == "iikb", link.host() == "dictate" else { return nil }
-            host = URLComponents(url: link, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "host" }?.value
+            host =
+                URLComponents(url: link, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "host" }?.value
         }
 
         public var url: URL {
@@ -108,7 +109,7 @@ public enum Dictation {
     /// so the lock, unlike a status the app writes, can't outlive the app.
     public static func lockMic() -> Int32? {
         guard let micURL else { return nil }
-        let descriptor = open(micURL.path, O_CREAT | O_RDWR, 0o644) // file: lock
+        let descriptor = open(micURL.path, O_CREAT | O_RDWR, 0o644)  // file: lock
         guard descriptor >= 0 else { return nil }
         guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
             close(descriptor)
@@ -138,17 +139,21 @@ public enum Dictation {
     /// Stats. Only the keyboard writes it, before it signals, so the app reads it as the signal comes; nil when the
     /// keyboard couldn't tell (`KeyboardHost`).
     public static var host: String? {
-        get { hostURL.flatMap { try? String(contentsOf: $0, encoding: .utf8) }.flatMap { $0.isEmpty ? nil : $0 } } // file: dictation channel (the app the keyboard is in)
-        set { if let hostURL { try? Data((newValue ?? "").utf8).write(to: hostURL, options: .atomic) } } // file: dictation channel (the app the keyboard is in)
+        // file: dictation channel (the app the keyboard is in)
+        get { hostURL.flatMap { try? String(contentsOf: $0, encoding: .utf8) }.flatMap { $0.isEmpty ? nil : $0 } }
+        // file: dictation channel (the app the keyboard is in)
+        set { if let hostURL { try? Data((newValue ?? "").utf8).write(to: hostURL, options: .atomic) } }
     }
 
     public static var status: Status {
-        statusURL.flatMap { try? JSONDecoder().decode(Status.self, from: Data(contentsOf: $0)) } ?? Status() // file: dictation status, rewritten on each change
+        // file: dictation status, rewritten on each change
+        statusURL.flatMap { try? JSONDecoder().decode(Status.self, from: Data(contentsOf: $0)) } ?? Status()
     }
 
     public static func publish(_ status: Status) {
         guard let statusURL else { return }
-        try? JSONEncoder().encode(status).write(to: statusURL, options: .atomic) // file: dictation status, rewritten on each change
+        // file: dictation status, rewritten on each change
+        try? JSONEncoder().encode(status).write(to: statusURL, options: .atomic)
         send(.changed)
     }
 
@@ -193,7 +198,9 @@ public enum Dictation {
         var draft: DictationDraft
     }
 
-    private static var draftFile: StoredFile<Kept> { StoredFile(URL.applicationSupportDirectory.appending(path: "dictation-draft.json")) }
+    private static var draftFile: StoredFile<Kept> {
+        StoredFile(URL.applicationSupportDirectory.appending(path: "dictation-draft.json"))
+    }
 
     /// Takes a note or an edit, true for the one taker: removing its file succeeds once.
     public static func take(_ file: URL) -> Bool {
@@ -206,15 +213,22 @@ public enum Dictation {
         for value in values {
             guard let data = try? JSONEncoder().encode(value) else { continue }
             let name = String(format: "%020llu-%@.json", clock_gettime_nsec_np(CLOCK_REALTIME), UUID().uuidString)
-            try? data.write(to: folder.appending(path: name), options: .atomic) // file: dictation channel (notes and edits, each taken by removing it)
+            // file: dictation channel (notes and edits, each taken by removing it)
+            try? data.write(to: folder.appending(path: name), options: .atomic)
         }
     }
 
     private static func files<Value: Decodable>(in folder: URL?) -> [(file: URL, value: Value)] {
-        guard let folder, let files = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) else { return [] }
-        return files.filter { $0.pathExtension == "json" }.sorted { $0.lastPathComponent < $1.lastPathComponent }.compactMap { file in
-            (try? Data(contentsOf: file)).flatMap { try? JSONDecoder().decode(Value.self, from: $0) }.map { (file, $0) } // file: dictation channel (notes and edits, each taken by removing it)
-        }
+        guard let folder,
+            let files = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+        else { return [] }
+        return files.filter { $0.pathExtension == "json" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+            .compactMap { file in
+                // file: dictation channel (notes and edits, each taken by removing it)
+                (try? Data(contentsOf: file)).flatMap { try? JSONDecoder().decode(Value.self, from: $0) }.map {
+                    (file, $0)
+                }
+            }
     }
 
     public static func send(_ signal: Signal) {
@@ -227,11 +241,12 @@ public enum Dictation {
         send(signal)
     }
 
-    nonisolated private static let stateTokens = Dictionary(uniqueKeysWithValues: [Signal.finish, .appeared].map { signal in
-        var token: Int32 = 0
-        notify_register_check(signal.rawValue, &token)
-        return (signal, token)
-    })
+    nonisolated private static let stateTokens = Dictionary(
+        uniqueKeysWithValues: [Signal.finish, .appeared].map { signal in
+            var token: Int32 = 0
+            notify_register_check(signal.rawValue, &token)
+            return (signal, token)
+        })
 
     nonisolated private static let levelToken: Int32 = {
         var token: Int32 = 0
@@ -242,7 +257,8 @@ public enum Dictation {
     /// The microphone's loudness (RMS of a buffer), for the keyboard's mic to move with your voice, and the seconds the
     /// recording holds so far, for the time beside it.
     nonisolated public static func publish(level: Float, recorded seconds: Double) {
-        notify_set_state(levelToken, UInt64(UInt32(min(seconds * 1000, Double(UInt32.max)))) << 32 | UInt64(level.bitPattern))
+        notify_set_state(
+            levelToken, UInt64(UInt32(min(seconds * 1000, Double(UInt32.max)))) << 32 | UInt64(level.bitPattern))
         notify_post(Signal.level.rawValue)
     }
 
@@ -254,7 +270,9 @@ public enum Dictation {
     }
 
     /// Calls `handler` on the main queue with each loudness and recorded seconds the app publishes.
-    public static func observeLevel(_ handler: @escaping @MainActor @Sendable (_ loudness: Float, _ recorded: Double) -> Void) -> Int32 {
+    public static func observeLevel(
+        _ handler: @escaping @MainActor @Sendable (_ loudness: Float, _ recorded: Double) -> Void
+    ) -> Int32 {
         var token: Int32 = 0
         notify_register_dispatch(Signal.level.rawValue, &token, .main) { token in
             var state: UInt64 = 0
@@ -275,7 +293,9 @@ public enum Dictation {
     }
 
     /// Calls `handler` on the main queue on each `signal` with the keyboard it came from, nil when none said.
-    public static func observe(_ signal: Signal, _ handler: @escaping @MainActor @Sendable (_ keyboard: UInt64?) -> Void) -> Int32 {
+    public static func observe(
+        _ signal: Signal, _ handler: @escaping @MainActor @Sendable (_ keyboard: UInt64?) -> Void
+    ) -> Int32 {
         var token: Int32 = 0
         notify_register_dispatch(signal.rawValue, &token, .main) { token in
             var state: UInt64 = 0

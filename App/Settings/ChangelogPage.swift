@@ -30,7 +30,8 @@ struct ChangelogPage: View {
         var days: [Day] = []
         for row in rows {
             guard let build = row["build"] as? Int, let text = row["change"] as? String,
-                  let date = row["date"] as? String, let parsed = parser.date(from: date) else { continue }
+                let date = row["date"] as? String, let parsed = parser.date(from: date)
+            else { continue }
             let day = calendar.startOfDay(for: parsed)
             let change = Change(build: build, text: text)
             if let index = days.firstIndex(where: { $0.date == day }) {

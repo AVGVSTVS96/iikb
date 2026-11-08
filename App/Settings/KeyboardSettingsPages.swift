@@ -1,5 +1,5 @@
-import KeyboardStore
 import KeyboardCore
+import KeyboardStore
 import KeyboardUI
 import SwiftUI
 
@@ -22,7 +22,8 @@ struct KeyboardPreview: UIViewRepresentable {
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: KeyboardPreviewView, context: Context) -> CGSize? {
         let width = proposal.width ?? 390
-        return CGSize(width: width, height: KeyboardPreviewView.height(forWidth: width, settings: settings, screen: screen))
+        return CGSize(
+            width: width, height: KeyboardPreviewView.height(forWidth: width, settings: settings, screen: screen))
     }
 }
 
@@ -42,10 +43,13 @@ struct TryPreview: View {
                 TextField("Type to try iikb", text: $text, axis: .vertical)
                     .font(.title3)
                     .focused($focused)
-                    .lineLimit(3 ... 6)
+                    .lineLimit(3...6)
                     .padding(18)
                     .background(Color.appCard, in: .rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(
+                            Color.appEdge)
+                    )
                     .onAppear { focused = true }
                     .onChange(of: focused) { _, focused in if !focused { withAnimation(.snappy) { trying = false } } }
                     .transition(.opacity.combined(with: .scale(scale: 0.97)))
@@ -73,7 +77,10 @@ struct TryPreview: View {
     /// Wide enough to read, short enough to leave the settings in view: at most two fifths of the window's height, and
     /// alone in a column 520 at most, while in a pane as wide as the cards under it.
     private func maxWidth(_ screen: CGSize) -> CGFloat {
-        min(inPane ? .infinity : 520, window.height * 0.4 / (KeyboardPreviewView.height(forWidth: 100, settings: model.settings, screen: screen) / 100))
+        min(
+            inPane ? .infinity : 520,
+            window.height * 0.4
+                / (KeyboardPreviewView.height(forWidth: 100, settings: model.settings, screen: screen) / 100))
     }
 }
 
@@ -88,7 +95,9 @@ struct TryPreview: View {
     private(set) var keepMicOn = SettingsStore.keepMicOn
 
     private init() {
-        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { _ in
             MainActor.assumeIsolated { SettingsModel.shared.reload() }
         }
     }
@@ -106,7 +115,11 @@ struct TryPreview: View {
     }
 
     func binding<Value>(_ path: WritableKeyPath<KeyboardSettings, Value>) -> Binding<Value> {
-        Binding { self.settings[keyPath: path] } set: { value in self.update { $0[keyPath: path] = value } }
+        Binding {
+            self.settings[keyPath: path]
+        } set: { value in
+            self.update { $0[keyPath: path] = value }
+        }
     }
 
     func keepMicOn(_ seconds: Int) {
@@ -126,7 +139,11 @@ struct TryPreview: View {
     /// Adds an extension, or puts `replacing` back with its new values.
     func save(_ added: Extension, replacing old: Extension?) {
         var extensions = ExtensionStore.load()
-        if let old, let index = extensions.firstIndex(of: old) { extensions[index] = added } else { extensions.append(added) }
+        if let old, let index = extensions.firstIndex(of: old) {
+            extensions[index] = added
+        } else {
+            extensions.append(added)
+        }
         ExtensionStore.save(extensions)
         self.extensions = extensions
     }
@@ -161,7 +178,11 @@ private struct ThemeSettings: View {
     private let model = SettingsModel.shared
 
     var body: some View {
-        Box(header: "Theme", footer: model.settings.theme.hasAppearance ? "Automatic follows the app you’re typing in, light or dark." : nil) {
+        Box(
+            header: "Theme",
+            footer: model.settings.theme.hasAppearance
+                ? "Automatic follows the app you’re typing in, light or dark." : nil
+        ) {
             ForEach(ThemeName.allCases, id: \.self) { theme in
                 let picked = model.settings.theme == theme
                 ChoiceRow(title: theme.title, detail: Self.detail(of: theme), picked: picked) {
@@ -183,7 +204,8 @@ private struct ThemeSettings: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(appearance.title)
-                            .accessibilityAddTraits(model.settings.themeAppearance == appearance ? [.isSelected, .isButton] : .isButton)
+                            .accessibilityAddTraits(
+                                model.settings.themeAppearance == appearance ? [.isSelected, .isButton] : .isButton)
                         }
                     }
                     .padding(.vertical, 16)
@@ -220,7 +242,10 @@ struct TypingSettings: View {
     private let model = SettingsModel.shared
 
     var body: some View {
-        Box(footer: "Predictive Text shows three suggestions above the keys, and the next word before you type it. Slide to Type types a word as you swipe across its letters.") {
+        Box(
+            footer:
+                "Predictive Text shows three suggestions above the keys, and the next word before you type it. Slide to Type types a word as you swipe across its letters."
+        ) {
             ToggleRow(title: "Auto-Capitalization", isOn: model.binding(\.autoCapitalization))
             ToggleRow(title: "Auto-Correction", isOn: model.binding(\.autoCorrection))
             ToggleRow(title: "Predictive Text", isOn: model.binding(\.predictiveText))
@@ -229,12 +254,20 @@ struct TypingSettings: View {
         Box(footer: "Smart Punctuation curls quotes and turns two hyphens into a dash.") {
             ToggleRow(title: "Smart Punctuation", isOn: model.binding(\.smartPunctuation))
             ToggleRow(title: "Enable Caps Lock", detail: "Double-tap shift.", isOn: model.binding(\.capsLock))
-            ToggleRow(title: "“.” Shortcut", detail: "Double-tap space for a period and a space.", isOn: model.binding(\.periodShortcut))
+            ToggleRow(
+                title: "“.” Shortcut", detail: "Double-tap space for a period and a space.",
+                isOn: model.binding(\.periodShortcut))
         }
         Box(header: "Text Replacements") {
-            Button { AppStatus.openSettings() } label: {
+            Button {
+                AppStatus.openSettings()
+            } label: {
                 HStack {
-                    RowText(title: "Open Settings", detail: "iikb types the ones in General › Keyboard › Text Replacement. This opens Settings › Apps › iikb.")
+                    RowText(
+                        title: "Open Settings",
+                        detail:
+                            "iikb types the ones in General › Keyboard › Text Replacement. This opens Settings › Apps › iikb."
+                    )
                     Image(systemName: "arrow.up.forward")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.appSecondary)
@@ -251,49 +284,96 @@ private struct LayoutSettings: View {
 
     var body: some View {
         let here = KeysHere()
-        Box(header: "Size and Shape", footer: "Less space between the keys makes them bigger. The keyboard stays the same size.") {
-            StopSlider(title: "Space Between Keys", label: "Key Spacing", level: model.binding(\.keySpacing), levels: KeySpacing.allCases, name: \.title, ends: ("Bigger Keys", "More Space"))
-            StopSlider(title: "Corners", label: "Key Roundness", level: model.binding(\.keyRoundness), levels: KeyRoundness.allCases, name: \.title, ends: ("Sharper", "Rounder"))
+        Box(
+            header: "Size and Shape",
+            footer: "Less space between the keys makes them bigger. The keyboard stays the same size."
+        ) {
+            StopSlider(
+                title: "Space Between Keys", label: "Key Spacing", level: model.binding(\.keySpacing),
+                levels: KeySpacing.allCases, name: \.title, ends: ("Bigger Keys", "More Space"))
+            StopSlider(
+                title: "Corners", label: "Key Roundness", level: model.binding(\.keyRoundness),
+                levels: KeyRoundness.allCases, name: \.title, ends: ("Sharper", "Rounder"))
         }
         if here.numberRow || here.emojiKey || here.recordKey {
             Box(header: "Keys") {
                 if here.numberRow {
-                    ToggleRow(title: "Number Row", detail: "1 to 0 above the letters. The keyboard grows upward.", isOn: model.binding(\.numberRow))
+                    ToggleRow(
+                        title: "Number Row", detail: "1 to 0 above the letters. The keyboard grows upward.",
+                        isOn: model.binding(\.numberRow))
                 }
                 if here.emojiKey {
-                    ToggleRow(title: "Emoji Key", detail: "Every emoji, from beside the space bar. Without it, a word’s emoji still show in the suggestions.", isOn: model.binding(\.emojiKey))
+                    ToggleRow(
+                        title: "Emoji Key",
+                        detail:
+                            "Every emoji, from beside the space bar. Without it, a word’s emoji still show in the suggestions.",
+                        isOn: model.binding(\.emojiKey))
                 }
                 if here.recordKey {
-                    ToggleRow(title: "Record Key", detail: "The record button left of 123, in the globe’s place, instead of at the right of the bar. The globe goes to the keyboard’s menu.", isOn: model.binding(\.micKey))
+                    ToggleRow(
+                        title: "Record Key",
+                        detail:
+                            "The record button left of 123, in the globe’s place, instead of at the right of the bar. The globe goes to the keyboard’s menu.",
+                        isOn: model.binding(\.micKey))
                 }
             }
         }
         if here.globeKey {
-            Box(header: "Globe Key", footer: "At the far left of the bottom row, on iPhones with no globe under the keyboard, like the Duo. As a spacer it keeps 123 away from the corner and does nothing when tapped. As a spacer or hidden, Next Keyboard is in the keyboard’s menu.") {
+            Box(
+                header: "Globe Key",
+                footer:
+                    "At the far left of the bottom row, on iPhones with no globe under the keyboard, like the Duo. As a spacer it keeps 123 away from the corner and does nothing when tapped. As a spacer or hidden, Next Keyboard is in the keyboard’s menu."
+            ) {
                 ForEach(GlobeKey.allCases, id: \.self) { globe in
-                    ChoiceRow(title: globe.title, picked: model.settings.globeKey == globe) { model.update { $0.globeKey = globe } }
+                    ChoiceRow(title: globe.title, picked: model.settings.globeKey == globe) {
+                        model.update { $0.globeKey = globe }
+                    }
                 }
             }
         }
         Box(header: "Emoji, GIFs and Clipboard") {
-            MenuRow(title: "Skin Tone", selection: model.binding(\.skinTone), choices: [nil] + SkinTone.allCases.map(Optional.some)) { tone in
+            MenuRow(
+                title: "Skin Tone", selection: model.binding(\.skinTone),
+                choices: [nil] + SkinTone.allCases.map(Optional.some)
+            ) { tone in
                 "✋\(tone.map { String($0.modifier) } ?? "") \(tone?.title ?? "Default")"
             }
             if here.largePanels {
-                ToggleRow(title: "Compact Emoji & GIFs", detail: "One row that scrolls sideways, as in landscape, so the keyboard stays short in portrait too.", isOn: model.binding(\.compactPanels))
+                ToggleRow(
+                    title: "Compact Emoji & GIFs",
+                    detail:
+                        "One row that scrolls sideways, as in landscape, so the keyboard stays short in portrait too.",
+                    isOn: model.binding(\.compactPanels))
             }
-            MenuRow(title: "Clipboard Length", selection: model.binding(\.clipboardLength), choices: ClipboardLength.allCases) { $0.title }
+            MenuRow(
+                title: "Clipboard Length", selection: model.binding(\.clipboardLength),
+                choices: ClipboardLength.allCases
+            ) { $0.title }
         }
         if here.split || here.oneHanded {
-            Box(header: "Split and One-Handed", footer: "Split puts half the keys under each thumb on the open iPhone Duo in landscape. One-Handed moves them toward one thumb on an iPhone in portrait, on the Duo only folded. The keyboard’s menu has both too.") {
+            Box(
+                header: "Split and One-Handed",
+                footer:
+                    "Split puts half the keys under each thumb on the open iPhone Duo in landscape. One-Handed moves them toward one thumb on an iPhone in portrait, on the Duo only folded. The keyboard’s menu has both too."
+            ) {
                 if here.split { ToggleRow(title: "Split Keyboard", isOn: model.binding(\.split)) }
-                if here.oneHanded { MenuRow(title: "One-Handed Keyboard", selection: model.binding(\.oneHanded), choices: OneHanded.allCases, label: Self.title(of:)) }
+                if here.oneHanded {
+                    MenuRow(
+                        title: "One-Handed Keyboard", selection: model.binding(\.oneHanded),
+                        choices: OneHanded.allCases, label: Self.title(of:))
+                }
             }
         }
         if here.keyboardMenu {
-            Box(header: "Keyboard Menu", footer: "Where to open layouts, Next Keyboard and iikb Settings: hold 123 or emoji and slide, or tap the menu button above the keys.") {
+            Box(
+                header: "Keyboard Menu",
+                footer:
+                    "Where to open layouts, Next Keyboard and iikb Settings: hold 123 or emoji and slide, or tap the menu button above the keys."
+            ) {
                 ForEach(KeyboardMenu.allCases, id: \.self) { place in
-                    ChoiceRow(title: place.title, picked: model.settings.keyboardMenu == place) { model.update { $0.keyboardMenu = place } }
+                    ChoiceRow(title: place.title, picked: model.settings.keyboardMenu == place) {
+                        model.update { $0.keyboardMenu = place }
+                    }
                 }
             }
         }
@@ -315,9 +395,12 @@ private struct KeysHere {
     let numberRow, emojiKey, recordKey, globeKey, keyboardMenu, split, oneHanded, largePanels, characterPreview: Bool
 
     @MainActor init() {
-        let screen = ThisDevice.screen, device = ThisDevice.keyboard
+        let screen = ThisDevice.screen
+        let device = ThisDevice.keyboard
         characterPreview = device == .phone
-        let all = LayoutContext(device: device, layer: .letters, showsGlobe: true, showsEmoji: true, showsGlobeKey: true, showsNumberRow: true, keyboardMenu: .hold)
+        let all = LayoutContext(
+            device: device, layer: .letters, showsGlobe: true, showsEmoji: true, showsGlobeKey: true,
+            showsNumberRow: true, keyboardMenu: .hold)
         numberRow = all.showsNumberRow
         emojiKey = all.showsEmoji
         globeKey = all.showsGlobeKey
@@ -326,7 +409,9 @@ private struct KeysHere {
         split = LayoutContext(device: device, layer: .letters, isLandscape: true, isOpen: true).allowsSplit
         oneHanded = LayoutContext(device: device, layer: .letters).allowsOneHanded
         let upright = Size(width: min(screen.width, screen.height), height: max(screen.width, screen.height))
-        largePanels = !KeyboardGeometry(LayoutContext(device: device, layer: .letters), screen: upright, style: .current).metrics.toolbar.isCompact
+        largePanels = !KeyboardGeometry(
+            LayoutContext(device: device, layer: .letters), screen: upright, style: .current
+        ).metrics.toolbar.isCompact
     }
 }
 
@@ -337,7 +422,10 @@ private struct StopAnimationPicker: View {
     var body: some View {
         Box(header: "Stop Animation", footer: "How the recording goes back into the mic when you stop dictating.") {
             ForEach(StopAnimation.allCases, id: \.self) { animation in
-                ChoiceRow(title: animation.title, detail: Self.detail(of: animation), picked: model.settings.stopAnimation == animation) {
+                ChoiceRow(
+                    title: animation.title, detail: Self.detail(of: animation),
+                    picked: model.settings.stopAnimation == animation
+                ) {
                     model.update { $0.stopAnimation = animation }
                 }
             }
@@ -373,7 +461,8 @@ private struct CharacterPreviewPicker: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(preview.title)
-                    .accessibilityAddTraits(model.settings.characterPreview == preview ? [.isSelected, .isButton] : .isButton)
+                    .accessibilityAddTraits(
+                        model.settings.characterPreview == preview ? [.isSelected, .isButton] : .isButton)
                 }
             }
             .padding(.vertical, 18)
@@ -387,7 +476,8 @@ private struct PreviewDrawing: View {
     let preview: CharacterPreview
 
     var body: some View {
-        let key = Color.appSecondary.opacity(0.45), bubble = Color.appSecondary.opacity(0.7)
+        let key = Color.appSecondary.opacity(0.45)
+        let bubble = Color.appSecondary.opacity(0.7)
         ZStack(alignment: .bottom) {
             switch preview {
             case .none:
@@ -398,16 +488,18 @@ private struct PreviewDrawing: View {
                     letter.frame(width: 38, height: 40).background(key, in: .rect(cornerRadius: 7))
                 }
             case .attached:
-                UnevenRoundedRectangle(topLeadingRadius: 9, bottomLeadingRadius: 7, bottomTrailingRadius: 7, topTrailingRadius: 9)
-                    .fill(bubble)
-                    .frame(width: 52, height: 88)
-                    .mask {
-                        VStack(spacing: 0) {
-                            Rectangle().frame(width: 52, height: 48)
-                            Rectangle().frame(width: 38, height: 40)
-                        }
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 9, bottomLeadingRadius: 7, bottomTrailingRadius: 7, topTrailingRadius: 9
+                )
+                .fill(bubble)
+                .frame(width: 52, height: 88)
+                .mask {
+                    VStack(spacing: 0) {
+                        Rectangle().frame(width: 52, height: 48)
+                        Rectangle().frame(width: 38, height: 40)
                     }
-                    .overlay(alignment: .top) { letter.font(.title3).padding(.top, 10) }
+                }
+                .overlay(alignment: .top) { letter.font(.title3).padding(.top, 10) }
             }
         }
         .frame(height: 90, alignment: .bottom)
@@ -458,10 +550,12 @@ struct StopSlider<Level: Hashable>: View {
                 .frame(height: thumb)
                 .contentShape(.rect)
                 .onTapGesture { location in pick(stop(at: location.x, step: step)) }
-                .gesture(DragGesture(minimumDistance: 8).onChanged { drag in
-                    guard abs(drag.translation.width) > abs(drag.translation.height) else { return }
-                    pick(stop(at: drag.location.x, step: step))
-                })
+                .gesture(
+                    DragGesture(minimumDistance: 8).onChanged { drag in
+                        guard abs(drag.translation.width) > abs(drag.translation.height) else { return }
+                        pick(stop(at: drag.location.x, step: step))
+                    }
+                )
                 .animation(.snappy(duration: 0.18), value: index)
             }
             .frame(height: thumb)
@@ -505,7 +599,10 @@ struct HapticSlider: View {
     @State private var haptics = KeyHaptics()
 
     var body: some View {
-        StopSlider(title: "Strength", label: "Haptic Strength", level: $level, levels: HapticFeedback.levels, name: \.title, ends: ("Lighter", "Stronger")) { picked in
+        StopSlider(
+            title: "Strength", label: "Haptic Strength", level: $level, levels: HapticFeedback.levels, name: \.title,
+            ends: ("Lighter", "Stronger")
+        ) { picked in
             haptics.strength = Float(picked.strength)
             haptics.play(.input)
         }
@@ -545,7 +642,9 @@ struct FeedbackSettings: View {
     @AppStorage("hapticsBeforeOff") private var lastLevel = HapticFeedback.standard
 
     private var hapticsOn: Binding<Bool> {
-        Binding { model.settings.haptics != .off } set: { on in
+        Binding {
+            model.settings.haptics != .off
+        } set: { on in
             if !on { lastLevel = model.settings.haptics }
             withAnimation(.snappy) { model.update { $0.haptics = on ? lastLevel : .off } }
         }
@@ -553,7 +652,12 @@ struct FeedbackSettings: View {
 
     var body: some View {
         if ThisDevice.hasHaptics {
-            Box(header: "Haptics", footer: status.fullAccess ? "Standard is Apple’s keyboard’s own tap. Each step taps as you pick it." : "Haptics need Allow Full Access.") {
+            Box(
+                header: "Haptics",
+                footer: status.fullAccess
+                    ? "Standard is Apple’s keyboard’s own tap. Each step taps as you pick it."
+                    : "Haptics need Allow Full Access."
+            ) {
                 ToggleRow(title: "Key Haptics", isOn: hapticsOn)
                 if model.settings.haptics != .off {
                     HapticSlider(level: model.binding(\.haptics))
@@ -564,7 +668,10 @@ struct FeedbackSettings: View {
             }
         }
         Box {
-            ToggleRow(title: "Sound", detail: "The key click, while Keyboard Clicks is on in iOS Settings › Sounds & Haptics.", isOn: model.binding(\.sound))
+            ToggleRow(
+                title: "Sound",
+                detail: "The key click, while Keyboard Clicks is on in iOS Settings › Sounds & Haptics.",
+                isOn: model.binding(\.sound))
         }
     }
 }

@@ -52,7 +52,11 @@ private struct WindowReader: ViewModifier {
         content
             .environment(\.window, size)
             .environment(\.safeTrailing, safeTrailing)
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { safeTrailing = $0 }
+            .onGeometryChange(for: CGFloat.self) {
+                $0.frame(in: .global).maxX
+            } action: {
+                safeTrailing = $0
+            }
             .background {
                 GeometryReader { proxy in
                     Color.clear
@@ -116,14 +120,17 @@ struct Box<Content: View>: View {
                     ForEach(rows.indices, id: \.self) { index in
                         rows[index]
                         if index < rows.count - 1 {
-                            Rectangle().fill(Color.appDivider).frame(height: 1).padding(.leading, 20).padding(.trailing, Self.edge)
+                            Rectangle().fill(Color.appDivider).frame(height: 1).padding(.leading, 20).padding(
+                                .trailing, Self.edge)
                         }
                     }
                 }
             }
             .background(Color.appCard)
             .clipShape(.rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge, lineWidth: Self.edge))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(
+                    Color.appEdge, lineWidth: Self.edge))
             if let footer {
                 Text(footer)
                     .font(.footnote)
@@ -347,7 +354,9 @@ private struct SideBarBack: ViewModifier {
                         .sharedBackgroundVisibility(.hidden)
                     }
                     .safeAreaInset(edge: .trailing, spacing: 0) {
-                        Button { dismiss() } label: {
+                        Button {
+                            dismiss()
+                        } label: {
                             Image(systemName: "chevron.backward")
                                 .font(.system(size: 20, weight: .semibold))
                                 .frame(width: 48, height: 48)
@@ -386,14 +395,18 @@ private struct SwipeBack: UIViewControllerRepresentable {
 
         override func viewDidAppear(_ animated: Bool) {
             super.viewDidAppear(animated)
-            guard let swipe = navigationController?.interactivePopGestureRecognizer, swipe.delegate !== self else { return }
+            guard let swipe = navigationController?.interactivePopGestureRecognizer, swipe.delegate !== self else {
+                return
+            }
             system = swipe.delegate
             swipe.delegate = self
         }
 
         override func viewWillDisappear(_ animated: Bool) {
             super.viewWillDisappear(animated)
-            guard let swipe = navigationController?.interactivePopGestureRecognizer, swipe.delegate === self else { return }
+            guard let swipe = navigationController?.interactivePopGestureRecognizer, swipe.delegate === self else {
+                return
+            }
             swipe.delegate = system
         }
 
@@ -430,7 +443,11 @@ struct Column<Content: View>: View {
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: fills ? height : nil, alignment: .top)
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if fills { height = $0 } }
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.height
+        } action: {
+            if fills { height = $0 }
+        }
         .scrollDismissesKeyboard(.interactively)
         .defaultScrollAnchor(LaunchOptions.scrollAnchor)
         .defaultScrollAnchor(LaunchOptions.scrollsToEnd ? .bottom : nil, for: .sizeChanges)
@@ -507,7 +524,9 @@ struct EqualColumns: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let width = (bounds.width - spacing * CGFloat(max(subviews.count - 1, 0))) / CGFloat(max(subviews.count, 1))
         for (index, subview) in subviews.enumerated() {
-            subview.place(at: CGPoint(x: bounds.minX + (width + spacing) * CGFloat(index), y: bounds.minY), proposal: ProposedViewSize(width: width, height: bounds.height))
+            subview.place(
+                at: CGPoint(x: bounds.minX + (width + spacing) * CGFloat(index), y: bounds.minY),
+                proposal: ProposedViewSize(width: width, height: bounds.height))
         }
     }
 }
@@ -551,8 +570,12 @@ struct SearchField: View {
             TextField("Search", text: $text)
                 .submitLabel(.search)
             if !text.isEmpty {
-                Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Color.appSecondary) }
-                    .buttonStyle(.plain)
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(Color.appSecondary)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 14)

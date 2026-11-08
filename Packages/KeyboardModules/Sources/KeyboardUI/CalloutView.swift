@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 final class CalloutView: UIView {
     private let shape = CAShapeLayer()
@@ -19,17 +19,23 @@ final class CalloutView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     /// Attached grows the key up into the bubble, as Apple's does; detached floats the bubble above the key.
-    func show(_ text: String, over key: CGRect, in area: CGRect, metrics: KeyboardMetrics, theme: KeyboardTheme, detached: Bool = false) {
+    func show(
+        _ text: String, over key: CGRect, in area: CGRect, metrics: KeyboardMetrics, theme: KeyboardTheme,
+        detached: Bool = false
+    ) {
         let radius = metrics.cornerRadius
         var bubble = Self.bubbleRect(for: key, in: area)
         if detached {
-            bubble = CGRect(x: key.midX - key.width * 0.7, y: key.minY - key.height * 1.12 - 6, width: key.width * 1.4, height: key.height * 1.12)
+            bubble = CGRect(
+                x: key.midX - key.width * 0.7, y: key.minY - key.height * 1.12 - 6, width: key.width * 1.4,
+                height: key.height * 1.12)
             bubble.origin.x = min(max(bubble.minX, area.minX + 1), area.maxX - bubble.width - 1)
             bubble.origin.y = max(bubble.minY, area.minY + 1)
         }
         frame = detached ? bubble : bubble.union(key)
         let local = { (rect: CGRect) in rect.offsetBy(dx: -self.frame.minX, dy: -self.frame.minY) }
-        shape.path = detached
+        shape.path =
+            detached
             ? UIBezierPath(roundedRect: local(bubble), cornerRadius: radius * 1.4).cgPath
             : Self.path(bubble: local(bubble), key: local(key), radius: radius)
         shape.fillColor = theme.bubble.ui.cgColor
@@ -49,7 +55,8 @@ final class CalloutView: UIView {
         let spread = key.width * 0.32
         let height = key.height * 1.22
         let neck = key.height * 0.3
-        var bubble = CGRect(x: key.minX - spread, y: key.minY - neck - height, width: key.width + spread * 2, height: height)
+        var bubble = CGRect(
+            x: key.minX - spread, y: key.minY - neck - height, width: key.width + spread * 2, height: height)
         bubble.origin.x = min(max(bubble.minX, area.minX + 1), area.maxX - bubble.width - 1)
         bubble.origin.y = max(bubble.minY, area.minY + 1)
         return bubble
@@ -63,7 +70,9 @@ final class CalloutView: UIView {
         let neckTop = max(key.minY, shoulder + r)
 
         path.move(to: CGPoint(x: key.minX + r, y: key.maxY))
-        path.addArc(withCenter: CGPoint(x: key.minX + r, y: key.maxY - r), radius: r, startAngle: .pi / 2, endAngle: .pi, clockwise: true)
+        path.addArc(
+            withCenter: CGPoint(x: key.minX + r, y: key.maxY - r), radius: r, startAngle: .pi / 2, endAngle: .pi,
+            clockwise: true)
         path.addLine(to: CGPoint(x: key.minX, y: neckTop))
         path.addCurve(
             to: CGPoint(x: bubble.minX, y: shoulder - bubbleRadius),
@@ -71,9 +80,13 @@ final class CalloutView: UIView {
             controlPoint2: CGPoint(x: bubble.minX, y: shoulder + (neckTop - shoulder) * 0.2)
         )
         path.addLine(to: CGPoint(x: bubble.minX, y: bubble.minY + bubbleRadius))
-        path.addArc(withCenter: CGPoint(x: bubble.minX + bubbleRadius, y: bubble.minY + bubbleRadius), radius: bubbleRadius, startAngle: .pi, endAngle: .pi * 1.5, clockwise: true)
+        path.addArc(
+            withCenter: CGPoint(x: bubble.minX + bubbleRadius, y: bubble.minY + bubbleRadius), radius: bubbleRadius,
+            startAngle: .pi, endAngle: .pi * 1.5, clockwise: true)
         path.addLine(to: CGPoint(x: bubble.maxX - bubbleRadius, y: bubble.minY))
-        path.addArc(withCenter: CGPoint(x: bubble.maxX - bubbleRadius, y: bubble.minY + bubbleRadius), radius: bubbleRadius, startAngle: .pi * 1.5, endAngle: 0, clockwise: true)
+        path.addArc(
+            withCenter: CGPoint(x: bubble.maxX - bubbleRadius, y: bubble.minY + bubbleRadius), radius: bubbleRadius,
+            startAngle: .pi * 1.5, endAngle: 0, clockwise: true)
         path.addLine(to: CGPoint(x: bubble.maxX, y: shoulder - bubbleRadius))
         path.addCurve(
             to: CGPoint(x: key.maxX, y: neckTop),
@@ -81,7 +94,9 @@ final class CalloutView: UIView {
             controlPoint2: CGPoint(x: key.maxX, y: neckTop - (neckTop - shoulder) * 0.6)
         )
         path.addLine(to: CGPoint(x: key.maxX, y: key.maxY - r))
-        path.addArc(withCenter: CGPoint(x: key.maxX - r, y: key.maxY - r), radius: r, startAngle: 0, endAngle: .pi / 2, clockwise: true)
+        path.addArc(
+            withCenter: CGPoint(x: key.maxX - r, y: key.maxY - r), radius: r, startAngle: 0, endAngle: .pi / 2,
+            clockwise: true)
         path.close()
         return path.cgPath
     }

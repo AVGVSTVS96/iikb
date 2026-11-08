@@ -1,8 +1,12 @@
 import Testing
+
 @testable import KeyboardCore
 
 struct DictationTests {
-    private func dictate(_ heard: String, into text: String, cursor: Int? = nil, style: DictationStyle = .formal, field: Autocapitalization = .sentences, autoCapitalization: Bool = true) -> String {
+    private func dictate(
+        _ heard: String, into text: String, cursor: Int? = nil, style: DictationStyle = .formal,
+        field: Autocapitalization = .sentences, autoCapitalization: Bool = true
+    ) -> String {
         var engine = TypingEngine(traits: InputTraits(autocapitalization: field))
         engine.corrector = Corrector(source: testLexicon)
         engine.settings.dictationStyle = style
@@ -14,12 +18,17 @@ struct DictationTests {
     }
 
     @Test func aNameAlreadyInTheFieldComesOutTheSame() {
-        #expect(dictate("as well as another pool.kestrul dot run", into: "proxy.kestrel.run? we could also do dash.kestrel.run, ")
-            == "proxy.kestrel.run? we could also do dash.kestrel.run, as well as another pool.kestrel.run")
+        #expect(
+            dictate(
+                "as well as another pool.kestrul dot run",
+                into: "proxy.kestrel.run? we could also do dash.kestrel.run, ")
+                == "proxy.kestrel.run? we could also do dash.kestrel.run, as well as another pool.kestrel.run")
     }
 
     @Test func aDictationContinuingASentenceStartsLowercase() {
-        #expect(dictate("In which case go home.", into: "start there unless it's a lot of work ") == "start there unless it's a lot of work in which case go home.")
+        #expect(
+            dictate("In which case go home.", into: "start there unless it's a lot of work ")
+                == "start there unless it's a lot of work in which case go home.")
         #expect(dictate("The job is done.", into: "and then,") == "and then, the job is done.")
     }
 
@@ -55,7 +64,9 @@ struct DictationTests {
 
     @Test func withAutoCapitalizationOffADictationStartsSentencesLowercaseInEveryStyle() {
         for style in DictationStyle.allCases {
-            #expect(dictate("Hello. I think it's done. Sam liked it.", into: "", style: style, autoCapitalization: false).hasPrefix("hello. i think it's done. Sam liked it"))
+            #expect(
+                dictate("Hello. I think it's done. Sam liked it.", into: "", style: style, autoCapitalization: false)
+                    .hasPrefix("hello. i think it's done. Sam liked it"))
         }
     }
 
@@ -73,7 +84,9 @@ struct DictationTests {
         #expect(dictate("go home. then work.", into: "and ") == "and go home. Then work.")
         #expect(dictate("iPhone is here.", into: "") == "iPhone is here.")
         #expect(dictate("go home.", into: "", field: .words) == "go home.")
-        #expect(dictate("My goals are:\n1. finish the report\n2. send it", into: "") == "My goals are:\n1. Finish the report\n2. Send it")
+        #expect(
+            dictate("My goals are:\n1. finish the report\n2. send it", into: "")
+                == "My goals are:\n1. Finish the report\n2. Send it")
         #expect(dictate("The job:\n1. The job is done", into: "", style: .veryCasual) == "the job:\n1. the job is done")
     }
 }

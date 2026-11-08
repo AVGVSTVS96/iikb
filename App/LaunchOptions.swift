@@ -1,5 +1,5 @@
-import KeyboardStore
 import KeyboardCore
+import KeyboardStore
 import KeyboardUI
 import SwiftUI
 import UIKit
@@ -19,7 +19,9 @@ enum LaunchOptions {
         case "listening": .listening
         case "writing": .writing(waiting: nil)
         case "loading": .writing(waiting: "Model loading…")
-        case "failed": .failed(title: "Couldn’t listen", reason: "iikb needs the microphone. Turn it on in Settings › Apps › iikb.")
+        case "failed":
+            .failed(
+                title: "Couldn’t listen", reason: "iikb needs the microphone. Turn it on in Settings › Apps › iikb.")
         default: nil
         }
     }
@@ -27,7 +29,7 @@ enum LaunchOptions {
     /// Seven seconds of a voice into the bar's waveform, for the listening screenshot.
     @MainActor static func speak(into bar: DictationBar) {
         bar.layoutIfNeeded()
-        for step in 0 ..< 82 {
+        for step in 0..<82 {
             let wave = abs(sin(Double(step) * 0.55)) * (0.6 + 0.4 * abs(sin(Double(step) * 0.13)))
             bar.hear(Float(0.002 + 0.08 * wave * wave), recorded: Double(step + 1) * 0.085)
         }
@@ -41,7 +43,9 @@ enum LaunchOptions {
     static func route() {
         let router = Router.shared
         if let section = statsSection { return router.show(section) }
-        if let page = defaults.string(forKey: "iikbSettings") { return router.show(.settings, settings: SettingsPage.Page(rawValue: page)) }
+        if let page = defaults.string(forKey: "iikbSettings") {
+            return router.show(.settings, settings: SettingsPage.Page(rawValue: page))
+        }
         router.show(defaults.string(forKey: "iikbTab").flatMap(Router.Destination.init) ?? .home)
     }
 
@@ -86,9 +90,15 @@ enum LaunchOptions {
     /// settings for a test.
     static func applySettings() {
         if let hand = defaults.string(forKey: "iikbOneHanded").flatMap(OneHanded.init) { SettingsStore.set(hand) }
-        if defaults.object(forKey: "iikbCompactPanels") != nil { SettingsStore.set(defaults.bool(forKey: "iikbCompactPanels"), for: \.compactPanels) }
-        if defaults.object(forKey: "iikbAutoCapitalization") != nil { SettingsStore.set(defaults.bool(forKey: "iikbAutoCapitalization"), for: \.autoCapitalization) }
-        if defaults.object(forKey: "iikbMicKey") != nil { SettingsStore.set(defaults.bool(forKey: "iikbMicKey"), for: \.micKey) }
+        if defaults.object(forKey: "iikbCompactPanels") != nil {
+            SettingsStore.set(defaults.bool(forKey: "iikbCompactPanels"), for: \.compactPanels)
+        }
+        if defaults.object(forKey: "iikbAutoCapitalization") != nil {
+            SettingsStore.set(defaults.bool(forKey: "iikbAutoCapitalization"), for: \.autoCapitalization)
+        }
+        if defaults.object(forKey: "iikbMicKey") != nil {
+            SettingsStore.set(defaults.bool(forKey: "iikbMicKey"), for: \.micKey)
+        }
     }
 
     /// `-iikbTheme mechanical -iikbThemeAppearance dark -iikbCharacterPreview detached -iikbNumberRow YES -iikbSkinTone medium
@@ -96,12 +106,22 @@ enum LaunchOptions {
     static func applyLook() {
         var settings = SettingsStore.load()
         if let theme = defaults.string(forKey: "iikbTheme").flatMap(ThemeName.init) { settings.theme = theme }
-        if let appearance = defaults.string(forKey: "iikbThemeAppearance").flatMap(ThemeAppearance.init) { settings.themeAppearance = appearance }
-        if let preview = defaults.string(forKey: "iikbCharacterPreview").flatMap(CharacterPreview.init) { settings.characterPreview = preview }
-        if defaults.object(forKey: "iikbNumberRow") != nil { settings.numberRow = defaults.bool(forKey: "iikbNumberRow") }
+        if let appearance = defaults.string(forKey: "iikbThemeAppearance").flatMap(ThemeAppearance.init) {
+            settings.themeAppearance = appearance
+        }
+        if let preview = defaults.string(forKey: "iikbCharacterPreview").flatMap(CharacterPreview.init) {
+            settings.characterPreview = preview
+        }
+        if defaults.object(forKey: "iikbNumberRow") != nil {
+            settings.numberRow = defaults.bool(forKey: "iikbNumberRow")
+        }
         if let tone = defaults.string(forKey: "iikbSkinTone") { settings.skinTone = SkinTone(rawValue: tone) }
-        if let spacing = defaults.string(forKey: "iikbKeySpacing").flatMap(KeySpacing.init) { settings.keySpacing = spacing }
-        if let roundness = defaults.string(forKey: "iikbKeyRoundness").flatMap(KeyRoundness.init) { settings.keyRoundness = roundness }
+        if let spacing = defaults.string(forKey: "iikbKeySpacing").flatMap(KeySpacing.init) {
+            settings.keySpacing = spacing
+        }
+        if let roundness = defaults.string(forKey: "iikbKeyRoundness").flatMap(KeyRoundness.init) {
+            settings.keyRoundness = roundness
+        }
         if settings != SettingsStore.load() { SettingsStore.save(settings) }
     }
 

@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 extension KeyboardStyle {
     /// The system keyboard's look on this iOS, which sizes and colors follow.
@@ -16,7 +16,9 @@ extension KeyboardTheme {
         appearance == .dark || traits.userInterfaceStyle == .dark ? darkCurrent : lightCurrent
     }
 
-    public static func current(for traits: UITraitCollection, appearance: UIKeyboardAppearance?, settings: KeyboardSettings) -> KeyboardTheme {
+    public static func current(
+        for traits: UITraitCollection, appearance: UIKeyboardAppearance?, settings: KeyboardSettings
+    ) -> KeyboardTheme {
         let dark = appearance == .dark || traits.userInterfaceStyle == .dark
         return named(settings.theme, appearance: settings.themeAppearance, dark: dark, style: .current)
     }

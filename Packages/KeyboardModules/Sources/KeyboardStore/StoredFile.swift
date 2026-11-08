@@ -19,7 +19,8 @@ nonisolated public enum AppGroup {
 /// moved aside first as `<name>-unread-<seconds>.<ext>`, in the same folder, so the backup still sends it.
 nonisolated public struct StoredFile<Value: Codable>: Sendable {
     public enum Read {
-        case missing, unreadable, value(Value)
+        case missing, unreadable
+        case value(Value)
 
         public var value: Value? {
             if case .value(let value) = self { value } else { nil }
@@ -37,7 +38,8 @@ nonisolated public struct StoredFile<Value: Codable>: Sendable {
             return FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) ? .unreadable : .missing
         }
         let decoder = JSONDecoder()
-        decoder.nonConformingFloatDecodingStrategy = .convertFromString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+        decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+            positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
         guard let value = try? decoder.decode(Value.self, from: data) else { return .unreadable }
         return .value(value)
     }
@@ -46,15 +48,20 @@ nonisolated public struct StoredFile<Value: Codable>: Sendable {
     @discardableResult public func save(_ value: Value) -> Bool {
         do {
             let data = try encoded(value)
-            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             if case .unreadable = read() {
-                let name = url.deletingPathExtension().lastPathComponent + "-unread-\(Int(Date.now.timeIntervalSince1970))"
-                try FileManager.default.moveItem(at: url, to: url.deletingLastPathComponent().appending(path: name).appendingPathExtension(url.pathExtension))
+                let name =
+                    url.deletingPathExtension().lastPathComponent + "-unread-\(Int(Date.now.timeIntervalSince1970))"
+                try FileManager.default.moveItem(
+                    at: url,
+                    to: url.deletingLastPathComponent().appending(path: name).appendingPathExtension(url.pathExtension))
             }
             try data.write(to: url, options: .atomic)
             return true
         } catch {
-            log.fault("\(url.lastPathComponent, privacy: .public) not saved: \(String(describing: error), privacy: .public)")
+            log.fault(
+                "\(url.lastPathComponent, privacy: .public) not saved: \(String(describing: error), privacy: .public)")
             return false
         }
     }
@@ -70,9 +77,12 @@ nonisolated public struct StoredFile<Value: Codable>: Sendable {
             return try JSONEncoder().encode(value)
         } catch EncodingError.invalidValue(let number, let context) {
             let path = context.codingPath.map(\.stringValue).joined(separator: ".")
-            log.fault("\(String(describing: number), privacy: .public) at \(path, privacy: .public) in \(url.lastPathComponent, privacy: .public) is saved as a string")
+            log.fault(
+                "\(String(describing: number), privacy: .public) at \(path, privacy: .public) in \(url.lastPathComponent, privacy: .public) is saved as a string"
+            )
             let encoder = JSONEncoder()
-            encoder.nonConformingFloatEncodingStrategy = .convertToString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+            encoder.nonConformingFloatEncodingStrategy = .convertToString(
+                positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
             return try encoder.encode(value)
         }
     }

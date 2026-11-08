@@ -1,4 +1,5 @@
 import Testing
+
 @testable import KeyboardCore
 
 struct AutocorrectTests {
@@ -281,12 +282,16 @@ struct AutocorrectTests {
 }
 
 struct MissedSpaceTests {
-    let corrector = Corrector(source: Lexicon(counts: [
-        ("great", 300), ("day", 400), ("the", 1000), ("what", 500), ("given", 80), ("give", 100), ("treat", 40),
-        ("i", 900), ("also", 300), ("updated", 60), ("update", 80), ("done", 200), ("ok", 100), ("love", 200), ("you", 900),
-        ("baby", 60), ("about", 300), ("hr", 20), ("but", 600), ("pm", 30), ("see", 400), ("dont", 20), ("don't", 500),
-        ("its", 300), ("it's", 250),
-    ].map { (word: $0.0, count: Double($0.1)) }))
+    let corrector = Corrector(
+        source: Lexicon(
+            counts: [
+                ("great", 300), ("day", 400), ("the", 1000), ("what", 500), ("given", 80), ("give", 100), ("treat", 40),
+                ("i", 900), ("also", 300), ("updated", 60), ("update", 80), ("done", 200), ("ok", 100), ("love", 200),
+                ("you", 900),
+                ("baby", 60), ("about", 300), ("hr", 20), ("but", 600), ("pm", 30), ("see", 400), ("dont", 20),
+                ("don't", 500),
+                ("its", 300), ("it's", 250),
+            ].map { (word: $0.0, count: Double($0.1)) }))
 
     @Test func readsAMistypedLetterBesidesEveryMissedSpace() {
         #expect(corrector.split(TypedWord("iblovebuoubbaby")) == "i love you baby")
@@ -307,18 +312,23 @@ struct MissedSpaceTests {
 
     @Test func readsAMissedSpaceByTheWordsAroundIt() {
         let vocabulary = Network.specials + ["in", "i", "also", "updated", "done"]
-        let network = Network(vocabulary: vocabulary, embedding: vocabulary.map { word in
-            switch word {
-            case "in", "<s>": [1, 0]
-            case "i": [0, 1]
-            case "also": [-1, 1]
-            default: [0, 0]
-            }
-        }, input: [[0, 0], [0, 0], [0, 0], [0, 0], [5, 0], [0, 5], [0, 0], [0, 0]], recurrent: Array(repeating: [0, 0], count: 8),
-                              gates: [10, 10, -10, -10, 0, 0, 10, 10], projection: [[20, 0], [0, 20]], projectionBias: [0, 0],
-                              output: vocabulary.map { Network.specials.contains($0) ? -10 : 0 })
-        let corrector = Corrector(source: Lexicon(counts: [("in", 3000), ("i", 900), ("also", 300), ("updated", 60), ("done", 200)]
-            .map { (word: $0.0, count: Double($0.1)) }), network: network)
+        let network = Network(
+            vocabulary: vocabulary,
+            embedding: vocabulary.map { word in
+                switch word {
+                case "in", "<s>": [1, 0]
+                case "i": [0, 1]
+                case "also": [-1, 1]
+                default: [0, 0]
+                }
+            }, input: [[0, 0], [0, 0], [0, 0], [0, 0], [5, 0], [0, 5], [0, 0], [0, 0]],
+            recurrent: Array(repeating: [0, 0], count: 8),
+            gates: [10, 10, -10, -10, 0, 0, 10, 10], projection: [[20, 0], [0, 20]], projectionBias: [0, 0],
+            output: vocabulary.map { Network.specials.contains($0) ? -10 : 0 })
+        let corrector = Corrector(
+            source: Lexicon(
+                counts: [("in", 3000), ("i", 900), ("also", 300), ("updated", 60), ("done", 200)]
+                    .map { (word: $0.0, count: Double($0.1)) }), network: network)
         let typed = TypedWord("inalsonuodated", previous: "done")
         #expect(corrector.split(typed) == "in also updated")
         #expect(corrector.split(typed, context: "done ") == "i also updated")

@@ -1,6 +1,6 @@
 import Foundation
-import KeyboardStore
 import KeyboardCore
+import KeyboardStore
 import UIKit
 
 /// Sends each source the field you're typing in and keeps the hint it answers with. The request is encoded and sent
@@ -66,7 +66,8 @@ final class Sources {
             by = update.by.rawValue
             kind = "\(update.traits.kind)"
             returnKey = "\(update.traits.returnKind)"
-            at = Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(Date(timeIntervalSince1970: update.at))
+            at = Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(
+                Date(timeIntervalSince1970: update.at))
         }
     }
 
@@ -77,13 +78,13 @@ final class Sources {
     nonisolated private static let session = URLSession(configuration: .ephemeral)
 
     @concurrent nonisolated private static func post(_ update: FieldUpdate, to source: Source) async -> Answer? {
-        var request = URLRequest(url: source.url, timeoutInterval: 10) // timer: source answer
+        var request = URLRequest(url: source.url, timeoutInterval: 10)  // timer: source answer
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = source.token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         request.httpBody = try? JSONEncoder().encode(Request(update))
         guard let (data, response) = try? await session.data(for: request),
-              let status = (response as? HTTPURLResponse)?.statusCode, (200..<300).contains(status)
+            let status = (response as? HTTPURLResponse)?.statusCode, (200..<300).contains(status)
         else { return nil }
         return data.isEmpty ? Answer() : try? JSONDecoder().decode(Answer.self, from: data)
     }
@@ -92,7 +93,8 @@ final class Sources {
 extension UITextDocumentProxy {
     /// `documentIdentifier` is declared nonnull but is nil until the keyboard has a field, and bridging nil traps.
     var field: String? {
-        ((self as? NSObject)?.perform(#selector(getter: UITextDocumentProxy.documentIdentifier))?.takeUnretainedValue() as? NSUUID)?.uuidString
+        ((self as? NSObject)?.perform(#selector(getter: UITextDocumentProxy.documentIdentifier))?.takeUnretainedValue()
+            as? NSUUID)?.uuidString
     }
 
     /// Fields whose text never goes to a source. iOS already swaps in its own keyboard for secure fields.

@@ -1,5 +1,5 @@
-import KeyboardCore
 import Charts
+import KeyboardCore
 import KeyboardStore
 import KeyboardUI
 import SwiftUI
@@ -23,7 +23,7 @@ struct StatsPage: View {
         var title: String {
             switch self {
             case .iPhone: ThisDevice.name
-            case let .computer(name): name
+            case .computer(let name): name
             }
         }
 
@@ -53,14 +53,24 @@ struct StatsPage: View {
                 switch (section, device) {
                 case (.taps, _): TapsPage()
                 case (.overview, .iPhone): Overview(activity: phone.activity, device: .iPhone)
-                case let (.overview, .computer(name)): Overview(activity: computers.activity[name] ?? Activity(), device: device)
-                case (_, .iPhone): DeviceStats(kind: section == .typing ? .typed : .said, activity: phone.activity, device: .iPhone)
-                case let (_, .computer(name)):
-                    DeviceStats(kind: section == .typing ? .typed : .said, activity: computers.activity[name] ?? Activity(), device: device)
+                case (.overview, .computer(let name)):
+                    Overview(activity: computers.activity[name] ?? Activity(), device: device)
+                case (_, .iPhone):
+                    DeviceStats(kind: section == .typing ? .typed : .said, activity: phone.activity, device: .iPhone)
+                case (_, .computer(let name)):
+                    DeviceStats(
+                        kind: section == .typing ? .typed : .said, activity: computers.activity[name] ?? Activity(),
+                        device: device)
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
-                let pills = SectionPills(sections: sections, selection: Binding { section } set: { router.stats = $0 }, title: \.title)
+                let pills = SectionPills(
+                    sections: sections,
+                    selection: Binding {
+                        section
+                    } set: {
+                        router.stats = $0
+                    }, title: \.title)
                 HStack(spacing: 8) {
                     pills.layoutPriority(1)
                     if menuInRow {
@@ -68,7 +78,9 @@ struct StatsPage: View {
                         devices(inRow: true)
                     }
                 }
-                .background { pills.fixedSize().hidden().onGeometryChange(for: CGFloat.self, of: \.size.width) { pillsWidth = $0 } }
+                .background {
+                    pills.fixedSize().hidden().onGeometryChange(for: CGFloat.self, of: \.size.width) { pillsWidth = $0 }
+                }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .onGeometryChange(for: CGFloat.self, of: \.size.width) { rowWidth = $0 }
                 .padding(.horizontal, 16)
@@ -97,13 +109,20 @@ struct StatsPage: View {
 
     private func devices(inRow: Bool) -> some View {
         Menu {
-            Picker("Device", selection: Binding { device } set: { router.statsComputer = if case let .computer(name) = $0 { name } else { nil } }) {
+            Picker(
+                "Device",
+                selection: Binding {
+                    device
+                } set: {
+                    router.statsComputer = if case .computer(let name) = $0 { name } else { nil }
+                }
+            ) {
                 ForEach([Device.iPhone] + computers.all.map { .computer($0.name) }, id: \.self) { device in
                     Label(device.title, systemImage: device.symbol).tag(device)
                 }
             }
             Button("Add Computer…", systemImage: "plus") { adding = true }
-            if case let .computer(name) = device {
+            if case .computer(let name) = device {
                 Button("Forget \(name)", systemImage: "trash", role: .destructive) {
                     router.statsComputer = nil
                     computers.remove(name)

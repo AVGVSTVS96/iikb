@@ -1,16 +1,18 @@
 import Testing
+
 @testable import KeyboardCore
 
 struct PanelTests {
-    let search = EmojiSearch(text: """
-    # Smileys & People
-    😀\t52\tgrinning face|face|grin|happy|smile
-    😂\t0\tface with tears of joy|face|joy|laugh|lol
-    👍 👍🏻 👍🏼 👍🏽 👍🏾 👍🏿\t2\tthumbs up|+1|hand|thumb|up|yes
-    # Food & Drink
-    🍕\t300\tpizza|cheese|slice
-    🍔\t310\thamburger|burger
-    """)
+    let search = EmojiSearch(
+        text: """
+            # Smileys & People
+            😀\t52\tgrinning face|face|grin|happy|smile
+            😂\t0\tface with tears of joy|face|joy|laugh|lol
+            👍 👍🏻 👍🏼 👍🏽 👍🏾 👍🏿\t2\tthumbs up|+1|hand|thumb|up|yes
+            # Food & Drink
+            🍕\t300\tpizza|cheese|slice
+            🍔\t310\thamburger|burger
+            """)
 
     @Test func theEmojiKeyOpensThePickerAndClosesIt() {
         var engine = TypingEngine()
