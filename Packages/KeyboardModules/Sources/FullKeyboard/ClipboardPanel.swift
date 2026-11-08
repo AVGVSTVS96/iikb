@@ -199,7 +199,8 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
             $0
         }.joined(separator: " · ")
         let title = ClipTitle.make(
-            item.content, font: ClipRow.font(compact: compact), label: theme.label.ui, secondary: theme.candidate.ui)
+            item.content, font: ClipRow.font(compact: compact), label: theme.label.ui,
+            secondary: compact ? theme.onKeySecondary : theme.candidate.ui)
         row.show(
             text: item.content.preview, styled: title, detail: detail, pinned: item.pinned,
             compact: compact, theme: theme
@@ -222,7 +223,7 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         let age = ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)
         return ClipTitle.badge(
             item.content, age: age, pinned: item.pinned, font: LinkBadge.font(compact: shown?.compact == true),
-            label: theme.label.ui, secondary: theme.candidate.ui)
+            label: theme.label.ui, secondary: theme.onKeySecondary)
     }
 
     private func badgeWidth(_ index: Int) -> CGFloat {
@@ -232,9 +233,14 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     /// How many badges stack in a column in one row: as many as fit at least 26 tall.
     private var stacked: Int { max(Int((bounds.height + Self.gap) / (26 + Self.gap)), 1) }
 
-    /// A badge's height in one row: a column's share of it, at most 32.
+    /// A badge's height in one row: a column's share of it, at most 36.
     private var badgeHeight: CGFloat {
-        min(((bounds.height - Self.gap * CGFloat(stacked - 1)) / CGFloat(stacked)).rounded(.down), 32)
+        min(((bounds.height - Self.gap * CGFloat(stacked - 1)) / CGFloat(stacked)).rounded(.down), 36)
+    }
+
+    /// The gap between a column's badges in one row, so its first and last sit on the cards' top and bottom edges.
+    private var stackGap: CGFloat {
+        stacked > 1 ? (bounds.height - CGFloat(stacked) * badgeHeight) / CGFloat(stacked - 1) : Self.gap
     }
 
     /// A badge's size: one line, as wide as its words up to 200; in one row they stack in columns, each as wide as its
@@ -276,7 +282,7 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         let first = section == 0 ? badges > 0 : badges == 0
         let before = first ? ahead : 0
         let after = section == 0 && badges > 0 && !items.isEmpty ? (compact ? Self.gap : 8) : 0
-        let stack = CGFloat(stacked) * badgeHeight + CGFloat(stacked - 1) * Self.gap
+        let stack = CGFloat(stacked) * badgeHeight + CGFloat(stacked - 1) * stackGap
         let middle = section == 0 && compact ? ((bounds.height - stack) / 2).rounded(.down) : 0
         return compact
             ? UIEdgeInsets(top: middle, left: before, bottom: middle, right: after)
@@ -360,7 +366,7 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
             badges = fitting
             list.reloadData()
         }
-        layout.badgeGap = Self.gap
+        layout.badgeGap = compact ? stackGap : Self.gap
         layout.invalidateLayout()
     }
 }
@@ -503,12 +509,12 @@ final class ClipRow: UICollectionViewCell {
         self.compact = compact
         fill = compact ? theme.key.ui : .clear
         pressedFill = compact ? theme.keyPressed.ui : theme.label.ui.withAlphaComponent(0.12)
-        pin.tintColor = theme.candidate.ui
+        pin.tintColor = compact ? theme.onKeySecondary : theme.candidate.ui
         pin.isHidden = !pinned
         text.textColor = theme.label.ui
         text.font = Self.font(compact: compact)
         text.numberOfLines = compact ? 2 : 1
-        age.textColor = theme.candidate.ui
+        age.textColor = compact ? theme.onKeySecondary : theme.candidate.ui
         age.font = .monospacedDigitSystemFont(ofSize: compact ? 11 : 13, weight: .regular)
         age.text = detail
         age.textAlignment = compact ? .left : .right
@@ -553,6 +559,11 @@ final class ClipRow: UICollectionViewCell {
         image.frame = CGRect(x: 22, y: (bounds.height - 32) / 2, width: 32, height: 32)
         text.frame = CGRect(x: 22, y: 0, width: right - 34, height: bounds.height)
     }
+}
+
+extension KeyboardTheme {
+    /// Secondary text on the key fill, a card's or a badge's, 4.5:1 or more against it in light and dark.
+    var onKeySecondary: UIColor { label.ui.withAlphaComponent(0.62) }
 }
 
 extension ClipboardHistory.Item.Content {

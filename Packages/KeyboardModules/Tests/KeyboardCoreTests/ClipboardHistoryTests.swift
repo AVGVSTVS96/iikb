@@ -130,7 +130,7 @@ struct ClipboardKindTests {
         let names = ["x.com", "github.com", "en.wikipedia.org", "news.ycombinator.com", "bbc.co.uk", "t.co"].map {
             ClipLink(site: $0, path: "").name
         }
-        #expect(names == ["x.com", "github", "wikipedia", "ycombinator", "bbc", "t.co"])
+        #expect(names == ["x", "github", "wikipedia", "ycombinator", "bbc", "t"])
     }
 
     @Test func textThatOnlyMentionsALinkStaysText() {

@@ -6,13 +6,14 @@ import UIKit
 /// it is; a link as its site's icon and its site; an address or a phone number after its glyph; a color after a swatch
 /// of it. Nil for plain text and images, which rows show as they always have.
 enum ClipTitle {
-    /// `short` names a link's site as ChatGPT's source pills do, `ClipLink.name`, as a badge has it.
+    /// `short` names a link's site as ChatGPT's source pills do, `ClipLink.name`, after a larger icon, as a badge has
+    /// it. A glyph stays on its text's line, and an address that wraps wraps after its `@`.
     static func make(
         _ content: ClipboardHistory.Item.Content, font: UIFont, label: UIColor, secondary: UIColor, short: Bool = false
     ) -> NSAttributedString? {
         guard case .text(let text) = content else { return nil }
         let plain = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let size = (font.pointSize * 1.1).rounded()
+        let size = (font.pointSize * (short ? 1.3 : 1.1)).rounded()
         let body: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: label]
         let title = NSMutableAttributedString()
         func glyph(_ image: UIImage?) {
@@ -20,7 +21,7 @@ enum ClipTitle {
             let attachment = NSTextAttachment(image: image)
             attachment.bounds = CGRect(x: 0, y: ((font.capHeight - size) / 2).rounded(), width: size, height: size)
             title.append(NSAttributedString(attachment: attachment))
-            title.append(NSAttributedString(string: "\u{2002}", attributes: body))
+            title.append(NSAttributedString(string: "\u{2002}\u{2060}", attributes: body))
         }
         func symbol(_ name: String) -> UIImage? {
             UIImage(
@@ -38,7 +39,8 @@ enum ClipTitle {
                     attributes: [.font: font.withWeight(.semibold), .foregroundColor: label]))
         case .email:
             glyph(symbol("envelope"))
-            title.append(NSAttributedString(string: plain, attributes: body))
+            title.append(
+                NSAttributedString(string: plain.replacingOccurrences(of: "@", with: "@\u{200B}"), attributes: body))
         case .phone:
             glyph(symbol("phone"))
             title.append(NSAttributedString(string: plain, attributes: body))

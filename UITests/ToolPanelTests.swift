@@ -221,7 +221,7 @@ final class ToolPanelTests: XCTestCase {
         page.launchArguments = ["-iikbTab", "clipboard", "-iikbOrientation", orientation]
         page.launch()
         XCTAssertTrue(
-            page.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'x.com'")).firstMatch
+            page.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'x ·'")).firstMatch
                 .waitForExistence(timeout: 10),
             "the app's Clipboard writes a link by its site's name")
         Thread.sleep(forTimeInterval: 2)
