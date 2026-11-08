@@ -15,7 +15,7 @@ xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "
   -derivedDataPath build/uitest -quiet
 scripts/sim boot "$ID"
 scripts/sim use "$ID" iikb
-[ -n "${OPEN:-}" ] && scripts/sim unfold "$ID"
+if [ -n "${OPEN:-}" ]; then scripts/sim unfold "$ID"; else scripts/sim unfold "$ID" 0; fi
 scripts/sim allow "$ID"
 xcrun simctl install "$ID" build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
 for appearance in ${APPEARANCES:-light dark}; do
@@ -25,7 +25,7 @@ for appearance in ${APPEARANCES:-light dark}; do
     stand=$!
   fi
   TEST_RUNNER_IIKB_EXTENSION="${EXTENSION:-http://localhost:$PORT}" TEST_RUNNER_IIKB_CHAT="${CHAT:-}" \
-    TEST_RUNNER_IIKB_MESSAGE="${MESSAGE:-}" TEST_RUNNER_IIKB_REPLY="${REPLY:-}" TEST_RUNNER_IIKB_WAIT="${WAIT:-}" \
+    TEST_RUNNER_IIKB_MESSAGE="${MESSAGE:-}" TEST_RUNNER_IIKB_REPLY="${REPLY:-}" TEST_RUNNER_IIKB_WAIT="${WAIT:-}" TEST_RUNNER_IIKB_OPEN="${OPEN:-}" \
     TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/extensions/$slug${OPEN:+-open}-$appearance" \
     xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
     -derivedDataPath build/uitest -only-testing:AppUITests/ChatTests > build/uitest/chat.log 2>&1 || failed=1

@@ -62,8 +62,11 @@ final class ChatTests: XCTestCase {
         return XCTWaiter.wait(for: [expectation], timeout: 10) == .completed
     }
 
+    /// The open Duo draws on its inner screen, the larger one.
     private func shot(_ path: String) throws {
-        try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: path + ".png"))
+        let open = ProcessInfo.processInfo.environment["IIKB_OPEN"].map { !$0.isEmpty } ?? false
+        let screen = open ? XCUIScreen.screens.max { $0.screenshot().image.size.width < $1.screenshot().image.size.width }! : XCUIScreen.main
+        try screen.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: path + ".png"))
     }
 
     private func key(_ name: String, in app: XCUIApplication) -> XCUIElement {

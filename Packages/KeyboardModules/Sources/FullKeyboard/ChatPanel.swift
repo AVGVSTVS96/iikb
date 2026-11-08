@@ -30,6 +30,9 @@ final class ChatPanel: UIView, PanelContent {
     /// In one row, the open chat's name, whose menu picks another, in the chips' place.
     private let picker = UIButton(configuration: .plain())
     private let thread = UIScrollView()
+    /// Holds the thread and fades its top, so a message scrolled under the chips goes soft rather than cut.
+    private let well = UIView()
+    private let fade = CAGradientLayer()
     private var bubbles: [Bubble] = []
     private let message = PanelNotice()
     /// What went wrong, under the messages, when there are messages to keep showing.
@@ -42,8 +45,10 @@ final class ChatPanel: UIView, PanelContent {
         row.accessibilityIdentifier = "iikb.chats"
         thread.accessibilityIdentifier = "iikb.chat.messages"
         thread.showsVerticalScrollIndicator = false
-        [thread.bottomEdgeEffect, thread.leftEdgeEffect, thread.rightEdgeEffect].forEach { $0.isHidden = true }
-        thread.topEdgeEffect.style = .soft
+        [thread.topEdgeEffect, thread.bottomEdgeEffect, thread.leftEdgeEffect, thread.rightEdgeEffect].forEach { $0.isHidden = true }
+        fade.colors = [UIColor.clear.cgColor, UIColor.black.cgColor]
+        well.layer.mask = fade
+        well.addSubview(thread)
         trouble.font = .systemFont(ofSize: 13)
         trouble.textAlignment = .center
         trouble.numberOfLines = 0
@@ -57,7 +62,7 @@ final class ChatPanel: UIView, PanelContent {
         send.addAction(UIAction { [unowned self] _ in onSend() }, for: .touchUpInside)
         message.accessibilityIdentifier = "iikb.chat.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
-        [row, thread, message].forEach(addSubview)
+        [row, well, message].forEach(addSubview)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -155,10 +160,16 @@ final class ChatPanel: UIView, PanelContent {
             x += chip.frame.width + 4
         }
         row.contentSize = CGSize(width: max(x - 4, 0), height: rowHeight)
-        thread.frame = compact
+        well.frame = compact
             ? CGRect(x: pick + 6, y: 0, width: max(bounds.width - pick - 6, 0), height: bounds.height)
             : CGRect(x: 0, y: rowHeight + 6, width: bounds.width, height: max(bounds.height - rowHeight - 6, 0))
-        message.frame = thread.frame
+        thread.frame = well.bounds
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        fade.frame = well.bounds
+        fade.locations = [0, NSNumber(value: compact || well.bounds.height == 0 ? 0 : min(14 / well.bounds.height, 1))]
+        CATransaction.commit()
+        message.frame = well.frame
         let width = thread.bounds.width
         let widest = compact ? width : (width * 0.82).rounded(.down)
         var y = 0.0
