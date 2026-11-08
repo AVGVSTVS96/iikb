@@ -131,7 +131,9 @@ private final class SearchField: UIView {
         self.notice = notice
         accessibilityLabel = placeholder
         accessibilityValue = notice ?? query
-        label.text = notice ?? (query.isEmpty ? placeholder : query)
+        let shown = notice ?? (query.isEmpty ? placeholder : query)
+        if shown != label.text { setNeedsLayout() }
+        label.text = shown
         label.textColor = query.isEmpty && notice == nil ? theme.candidate.ui : theme.label.ui
         caret.isHidden = notice != nil
         glyph.image = notice == nil ? image : UIImage(systemName: "checkmark.circle.fill")
