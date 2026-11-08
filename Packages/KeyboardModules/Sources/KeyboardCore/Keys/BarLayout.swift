@@ -33,7 +33,7 @@ public struct BarLayout: Hashable, Sendable {
     public static let recordingWidth = 220.0
 
     /// `keys` are the top row's keys, left to right, as their edges. Where a suggestion is at most `maximumSlot` wide
-    /// (Apple's iPad), the three are centered in their span.
+    /// (Apple's iPad), the middle one is centered on the keys as Apple's is, or as near as the tools and mic leave room.
     public init(
         _ toolbar: Toolbar, keys: [(minX: Double, maxX: Double)], tools: Int, more: Bool = false, mic: Bool = true,
         maximumSlot: Double = .infinity
@@ -61,7 +61,8 @@ public struct BarLayout: Hashable, Sendable {
         let span = maxX - minX
         emojiBeside = maximumSlot == .infinity && span - 3 * Self.slotWidth >= 2 * Self.emojiPitch
         let slot = emojiBeside ? Self.slotWidth : min(span / 3, maximumSlot)
-        let first = emojiBeside ? minX : minX + (span - 3 * slot) / 2
+        let centered = min(max((left + right) / 2 - 1.5 * slot, minX), maxX - 3 * slot)
+        let first = emojiBeside ? minX : centered
         slots = (0..<3).map { Rect(x: first + Double($0) * slot, y: row.y, width: slot, height: row.height) }
         let besideX = first + 3 * slot
         self.emoji = emojiBeside ? Rect(x: besideX, y: row.y, width: maxX - besideX, height: row.height) : slots[2]
