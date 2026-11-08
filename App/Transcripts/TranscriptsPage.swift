@@ -174,10 +174,12 @@ private struct Actions: View {
 }
 
 /// How much you've dictated, in dictation's pink: every word said, how this week compares with the one before, words a
-/// day for the last two weeks with the best day marked, then time talking, pace and today. A tap opens Stats ›
-/// Dictation.
+/// day for the last two weeks with the best day marked (left out in a short window with a
+/// transcript beside the list, so the list keeps room), then time talking, pace and today. A tap opens Stats › Dictation.
 private struct Summary: View {
     let transcripts: [Transcript]
+    @Environment(\.window) private var window
+    @Environment(\.arrangement) private var arrangement
 
     private struct Day: Identifiable {
         var date: Date
@@ -239,7 +241,7 @@ private struct Summary: View {
                         }
                     }
                 }
-                FortnightChart(days: days.map { ($0.date, $0.words) })
+                if arrangement == .single || window.height >= 760 { FortnightChart(days: days.map { ($0.date, $0.words) }) }
                 Rectangle().fill(Color.appDivider).frame(height: 1)
                 Figures(size: 22) {
                     Figure(value: Duration.seconds(seconds).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .narrow, maximumUnitCount: 2)), label: "talking")

@@ -306,12 +306,16 @@ extension EnvironmentValues {
 }
 
 /// A scrolling column of boxes: alone, as wide as a window gets before it takes two panes, so a narrow window keeps the
-/// margins its bar has; in a pane, the pane's width, so the panes' margins match and nothing floats in a wide pane.
+/// margins its bar has; in a pane, the pane's width, so the panes' margins match and nothing floats in a wide pane. One that
+/// `fills` is at least as tall as the window, so content with no height of its own (`maxHeight: .infinity`) takes what's
+/// left.
 struct Column<Content: View>: View {
     var maxWidth: CGFloat = Arrangement.wide
     var top: CGFloat = 12
+    var fills = false
     @ViewBuilder var content: Content
     @Environment(\.inPane) private var inPane
+    @State private var height: CGFloat = 0
 
     var body: some View {
         ScrollView {
@@ -321,7 +325,9 @@ struct Column<Content: View>: View {
                 .padding(.bottom, 40)
                 .frame(maxWidth: inPane ? .infinity : maxWidth)
                 .frame(maxWidth: .infinity)
+                .frame(minHeight: fills ? height : nil, alignment: .top)
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if fills { height = $0 } }
         .scrollDismissesKeyboard(.interactively)
         .defaultScrollAnchor(LaunchOptions.scrollAnchor)
         .defaultScrollAnchor(LaunchOptions.scrollsToEnd ? .bottom : nil, for: .sizeChanges)

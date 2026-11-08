@@ -186,7 +186,7 @@ private struct MicrophoneSettings: View {
     private let choices = MicrophoneChoices.shared
 
     var body: some View {
-        Box(header: "Microphone", footer: "Automatic hears from the \(ThisDevice.name), or a wired headset when one is plugged in, never from Bluetooth, so music on AirPods and speakers keeps its full quality while you dictate. A Bluetooth microphone records at full quality on AirPods that can, and otherwise puts its device on a call while the mic is on. A pick is used whenever it’s connected; when it isn’t, the \(ThisDevice.name)’s hears.") {
+        Box(header: "Microphone", footer: "Automatic uses the \(ThisDevice.name) or a wired headset, never Bluetooth, so music on AirPods keeps its full quality. A pick is used whenever it’s connected; a Bluetooth one may put its device on a call while the mic is on.") {
             ChoiceRow(title: "Automatic", picked: choices.picked == nil) { choices.pick(nil) }
             ForEach(choices.all, id: \.uid) { microphone in
                 ChoiceRow(title: microphone.title, detail: detail(microphone), picked: choices.isPicked(microphone)) { choices.pick(microphone) }

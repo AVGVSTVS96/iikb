@@ -211,7 +211,7 @@ private struct ClipDetail: View {
     }
 
     var body: some View {
-        Column(top: 4) {
+        Column(top: 4, fills: true) {
             HStack(spacing: 4) {
                 Text(detail)
                     .font(.subheadline.weight(.medium))
@@ -248,6 +248,7 @@ private struct ClipDetail: View {
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
+                        .frame(maxHeight: .infinity, alignment: .top)
                 case .image(let name):
                     FullImage(file: store.file(name))
                 }
@@ -256,7 +257,7 @@ private struct ClipDetail: View {
             .clipShape(.rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
             Box {
-                ActionRow(title: "Delete", role: .destructive) {
+                ActionRow(title: "Delete Item", role: .destructive) {
                     store.remove(item.content)
                     changed()
                 }

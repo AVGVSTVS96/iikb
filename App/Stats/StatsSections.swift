@@ -171,7 +171,7 @@ private struct WordSources: View {
                 Figure(value: channel.keys > 0 ? share(channel.deletes, of: channel.keys) : "–", label: "deleted")
                 Figure(value: channel.emoji.formatted(), label: "emoji")
             }
-            Caption("Taken back: autocorrect’s fixes you undid with the bar. Deleted: your taps on the delete key.")
+            Caption("Taken back: autocorrect fixes you undid. Deleted: taps on delete.")
         }
     }
 
