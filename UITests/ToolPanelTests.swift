@@ -181,7 +181,7 @@ final class ToolPanelTests: XCTestCase {
         let page = XCUIApplication()
         page.launchArguments = ["-iikbTab", "clipboard", "-iikbOrientation", orientation]
         page.launch()
-        XCTAssertTrue(page.staticTexts["x.com"].firstMatch.waitForExistence(timeout: 10), "the app's Clipboard writes a link by its site")
+        XCTAssertTrue(page.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'x.com'")).firstMatch.waitForExistence(timeout: 10), "the app's Clipboard writes a link by its site")
         Thread.sleep(forTimeInterval: 2)
         try shot("app-clipboard-kinds")
     }
