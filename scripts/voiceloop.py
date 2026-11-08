@@ -333,6 +333,9 @@ def diff(reference, hypothesis, terms, final, marks):
                 if marks and (i == i1 or ref[i][2] != ref[i - 1][2]) and x != y and said(x) == said(y):
                     out.append(("casing" if x.lower() == y.lower() else "punctuation", 1, x, y))
             continue
+        if final and tag == "replace" and len(b) - len(a) >= 4:
+            out.append(("cut later", len(b) - len(a), "·", " ".join(b[len(a) :])))
+            b = b[: len(a)]
         near = {k for _, k, _ in ref[max(i1 - 1, 0) : i2 + 1]} if tag == "insert" else {k for _, k, _ in ref[i1:i2]}
         near |= {k for _, k, _ in hyp[j1:j2]}
         if final and tag == "insert" and len(b) >= 4:
