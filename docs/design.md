@@ -49,7 +49,7 @@ From top to bottom: 3 of padding (iOS draws its backdrop 4 above the keyboard, s
 
 ### The tools
 
-- GIF and Clipboard (and, on iPad with the emoji key on, Emoji) sit after the More button (Raycast's four rounded squares), in the label color, before the suggestions. GIF opens its panel (section "Panels").
+- GIF and Clipboard (and, on iPad with the emoji key on, Emoji) sit after the More button (Raycast's four rounded squares), in the label color, before the suggestions. GIF opens its panel (section "Panels"). A bar narrower than any iPhone's (the iPad's floating keyboard, about 320) keeps only Clipboard, whose tray has cut, copy and paste, so its three suggestions keep an iPhone's width; with every tool they were about 45 wide and cut words to "a…d".
 - Clipboard first lets out its tray, as the iPad's shortcut bar keeps hard buttons for these: a capsule in the key fill, with the keys' shadow, grows out of the clipboard's button over the suggestions, on the mic's spring, holding Cut (`scissors`), Copy (`doc.on.doc`) and Paste (`clipboard`), a 1×16 divider, then Clipboard History (`clock.arrow.circlepath`), each a tool's circle a pitch apart (closer where the bar is short). Cut and Copy dim to 0.3 with nothing selected, Paste with no text on the clipboard; without Full Access all show and a tap says what to turn on. The suggestions fade under it, and the clipboard's button keeps its pressed circle while it's out. It tucks back in once one is used, and when a key is touched, the clipboard's button is tapped again, a panel opens, you dictate or the keyboard goes away. What you copy or cut joins the clipboard's history.
 - Nothing AI goes here.
 

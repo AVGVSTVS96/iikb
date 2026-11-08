@@ -414,7 +414,9 @@ open class FullKeyboardViewController: UIInputViewController {
             toolbar = metrics.toolbar
             view.setNeedsLayout()
         }
-        let tools = Panel.tools.filter { panels[$0] != nil && ($0 != .emoji || engine.settings.emojiKey && device != .phone) }
+        // 375 is the narrowest iPhone; only the iPad's floating keyboard is narrower.
+        let narrow = width < 375
+        let tools = Panel.tools.filter { panels[$0] != nil && ($0 != .emoji || engine.settings.emojiKey && device != .phone) && (!narrow || $0 == .clipboard) }
         let panel = engine.panel.flatMap { panels[$0] }
         panelView.open(panel)
         panelView.isHidden = panel == nil
