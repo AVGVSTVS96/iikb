@@ -31,7 +31,8 @@ final class ChatPanel: UIView, PanelContent {
     private let chats: Chats
     private var shown: Shown?
     private let thread = UIScrollView()
-    /// Holds the thread and fades its top, so a message scrolled up goes soft rather than cut.
+    /// Holds the thread and fades its ends, so a message scrolled past the top or under the box goes soft rather than
+    /// cut.
     private let well = UIView()
     private let fade = CAGradientLayer()
     private var bubbles: [Bubble] = []
@@ -47,7 +48,7 @@ final class ChatPanel: UIView, PanelContent {
         [thread.topEdgeEffect, thread.bottomEdgeEffect, thread.leftEdgeEffect, thread.rightEdgeEffect].forEach {
             $0.isHidden = true
         }
-        fade.colors = [UIColor.clear.cgColor, UIColor.black.cgColor]
+        fade.colors = [UIColor.clear, .black, .black, .clear].map(\.cgColor)
         well.layer.mask = fade
         well.addSubview(thread)
         trouble.font = .systemFont(ofSize: 13)
@@ -115,12 +116,14 @@ final class ChatPanel: UIView, PanelContent {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        let wasAtEnd = thread.contentOffset.y >= thread.contentSize.height - thread.bounds.height - 1
         well.frame = bounds
         thread.frame = well.bounds
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         fade.frame = well.bounds
-        fade.locations = [0, NSNumber(value: well.bounds.height == 0 ? 0 : min(14 / well.bounds.height, 1))]
+        let edge = well.bounds.height == 0 ? 0 : min(14 / well.bounds.height, 0.5)
+        fade.locations = [0, edge, 1 - edge, 1].map { NSNumber(value: $0) }
         CATransaction.commit()
         message.frame = bounds
         let width = thread.bounds.width
@@ -142,8 +145,8 @@ final class ChatPanel: UIView, PanelContent {
         } else {
             trouble.frame = .zero
         }
+        y += 14
         thread.contentInset.top = max(thread.bounds.height - y, 0)
-        let wasAtEnd = thread.contentOffset.y >= thread.contentSize.height - thread.bounds.height - 1
         thread.contentSize = CGSize(width: width, height: y)
         if wasAtEnd || y <= thread.bounds.height { thread.contentOffset.y = y - thread.bounds.height }
     }

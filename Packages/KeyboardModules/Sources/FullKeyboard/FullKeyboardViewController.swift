@@ -91,8 +91,12 @@ open class FullKeyboardViewController: UIInputViewController {
     private var placed: (chat: Bool, inPlace: Bool)?
     private var panelOpen: Bool { line != nil || engine.panel != nil }
     /// The menu and a chat grow the keyboard, to all of the screen but this much left for the app (docs/extensions.md),
-    /// and a chat keeps that height while you read, dictate and type.
-    private static let roomForApp = 140.0
+    /// and a chat keeps that height while you read, dictate and type. On the Duo it clears the clock, battery and
+    /// Wi-Fi iOS stacks at the screen's top right, which reach 167 down (measured on the phone, Nov 8).
+    private var roomForApp: Double { Duo.isDuo(short: min(screenSize.width, screenSize.height)) ? 172 : 140 }
+    /// The screen's height the bar and the keys don't take below the app's room: what iOS keeps under the keyboard,
+    /// measured where the keyboard sits, so the room left for the app is the room asked for.
+    private var beneath = 0.0
     private var panelInKeysPlace: Bool { panelOpen && !keysUp && engine.panel != .emoji }
     private lazy var chatPanel: ChatPanel = {
         let panel = ChatPanel(chats: chats)
@@ -249,6 +253,7 @@ open class FullKeyboardViewController: UIInputViewController {
 
     override open func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        measureBeneath()
         let width = view.bounds.width
         let room = toolbarView.bounds.height
         let bar = line == nil ? 0 : toolbar.height
@@ -494,7 +499,7 @@ open class FullKeyboardViewController: UIInputViewController {
         var metrics = keys.metrics
         let wanted = metrics.toolbar.showing(engine.panel, compact: engine.settings.compactPanels)
         let inPlace = panelInKeysPlace
-        let tall = max(height + wanted.height, Double(screenSize.height) - Self.roomForApp)
+        let tall = max(height + wanted.height, Double(screenSize.height) - roomForApp - beneath)
         let ask =
             line != nil
             ? (keysUp ? tall - height : wanted.height) : inPlace || !panelOpen ? wanted.height : wanted.panelHeight
@@ -521,6 +526,16 @@ open class FullKeyboardViewController: UIInputViewController {
             keyboardHeightConstraint.constant = keysHeight
             keysMinimumConstraint.constant = height
         }
+    }
+
+    private func measureBeneath() {
+        guard let screen = view.window?.windowScene?.screen, view.bounds.height > 0 else { return }
+        let top = view.convert(CGPoint.zero, to: screen.coordinateSpace).y
+        let taken = toolbarHeightConstraint.constant + keyboardHeightConstraint.constant
+        let measured = Double(screen.bounds.height - top - taken)
+        guard (0...120).contains(measured), abs(measured - beneath) > 1 else { return }
+        beneath = measured
+        view.setNeedsLayout()
     }
 
     /// The bar, or the open panel in its place, across the keys block.
