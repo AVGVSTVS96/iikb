@@ -18,14 +18,18 @@ final class ToolPanelTests: XCTestCase {
         XCTAssertTrue(gifs.waitForExistence(timeout: 3), "the menu's GIFs shelf opens the GIF panel")
         let tile = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'iikb.gif.'"))
         XCTAssertTrue(tile.firstMatch.waitForExistence(timeout: 15), "an empty search shows KLIPY's trending GIFs")
+        XCTAssertFalse(key("space", in: app).isHittable, "the panel opens in the keys' place")
         try shot("gif")
 
+        let search = raiseKeys(in: app)
         for letter in "cat" { key(String(letter), in: app).tap() }
-        let search = app.descendants(matching: .any).matching(identifier: "iikb.panel.search").firstMatch
         XCTAssertTrue(wait { (search.value as? String) == "cat" }, "the keys type into the search")
         XCTAssertTrue(wait(15) { tile.count > 4 }, "searching finds GIFs")
         try shot("gif-search")
         if compact { assertOneRowScrollsSideways(tile, in: gifs, app: app) }
+        key("return", in: app).tap()
+        XCTAssertTrue(wait { !self.key("space", in: app).isHittable }, "return puts the keys back down")
+        XCTAssertEqual(search.value as? String, "cat", "and keeps the search")
 
         let picked = tile.element(boundBy: 0)
         let id = picked.identifier.components(separatedBy: "--")[0]
@@ -99,6 +103,7 @@ final class ToolPanelTests: XCTestCase {
             "a row says how long its text is, then how long ago")
         try shot("clipboard")
 
+        raiseKeys(in: app)
         for letter in "sight" { key(String(letter), in: app).tap() }
         XCTAssertTrue(row.exists, "the search finds it by its text")
         row.tap()
@@ -172,7 +177,10 @@ final class ToolPanelTests: XCTestCase {
             open(.clipboard, in: app)
         }
         app.buttons["iikb.panel.back"].tap()
+        XCTAssertTrue(app.buttons["iikb.shelf.clipboard"].waitForExistence(timeout: 3), "back steps out to the menu")
         let more = app.buttons["iikb.more"]
+        more.tap()
+        XCTAssertTrue(wait { self.key("space", in: app).isHittable }, "and More gives the keys back")
         for item in Self.kinds.dropFirst() {
             UIPasteboard.general.string = item
             more.tap()
@@ -232,10 +240,42 @@ final class ToolPanelTests: XCTestCase {
             app.buttons["iikb.shelf.clipboard"].waitForExistence(timeout: 3), "the menu has the clipboard's shelf")
         XCTAssertTrue(app.buttons["iikb.shelf.transcripts"].exists, "and Transcripts'")
         XCTAssertFalse(key("space", in: app).isHittable, "the menu is in the keys' place")
+        XCTAssertTrue(
+            wait { more.frame.minY < 200 }, "the menu grows the keyboard to all of the screen but 140 pt for the app")
+        let footer = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'iikb.menu.' AND identifier != 'iikb.menu.settings'"))
+        XCTAssertEqual(footer.count, 0, "the menu has no layout or Next Keyboard buttons")
         Thread.sleep(forTimeInterval: ProcessInfo.processInfo.environment["IIKB_SETTLE"].flatMap(Double.init) ?? 3)
         try shot("menu")
         more.tap()
         XCTAssertTrue(wait { self.key("space", in: app).isHittable }, "More again gives the keys back")
+    }
+
+    func testAPanelFromTheMenuTakesTheKeysPlaceUntilItsSearchIsTapped() throws {
+        let app = launch()
+        open(.transcripts, in: app)
+        XCTAssertTrue(
+            app.collectionViews["iikb.transcripts"].waitForExistence(timeout: 3), "the shelf's name opens its panel")
+        XCTAssertFalse(key("space", in: app).isHittable, "in the keys' place")
+        XCTAssertTrue(app.buttons["iikb.more"].isHittable, "with the bar and More above it")
+        try shot("panel-in-place")
+
+        raiseKeys(in: app)
+        XCTAssertTrue(app.collectionViews["iikb.transcripts"].exists, "the panel sits above the keys")
+        try shot("panel-keys")
+        let back = app.buttons["iikb.panel.back"]
+        back.tap()
+        XCTAssertTrue(wait { !self.key("space", in: app).isHittable }, "back puts the keys down first")
+        XCTAssertTrue(app.collectionViews["iikb.transcripts"].exists, "and keeps the panel")
+        back.tap()
+        XCTAssertTrue(
+            app.buttons["iikb.shelf.transcripts"].waitForExistence(timeout: 3), "back again returns to the menu")
+
+        app.buttons["iikb.shelf.transcripts"].tap()
+        XCTAssertTrue(app.collectionViews["iikb.transcripts"].waitForExistence(timeout: 3))
+        app.buttons["iikb.more"].tap()
+        XCTAssertTrue(wait { self.key("space", in: app).isHittable }, "More gives the keys back from a panel")
+        XCTAssertFalse(app.collectionViews["iikb.transcripts"].exists, "and closes it")
     }
 
     func testTheMenuLetsOutCutCopyAndPasteAndGivesTheKeysBackOnceUsed() throws {
@@ -328,7 +368,7 @@ final class ToolPanelTests: XCTestCase {
 
     private enum Shelf: String { case gif, clipboard, transcripts }
 
-    /// Opens a panel the way you do: the More button, then the shelf's name.
+    /// Opens a panel the way you do: the More button, then the shelf's name. It opens in the keys' place.
     private func open(_ shelf: Shelf, in app: XCUIApplication) {
         let more = app.buttons["iikb.more"]
         XCTAssertTrue(more.waitForExistence(timeout: 10), "the bar's More button shows")
@@ -336,6 +376,16 @@ final class ToolPanelTests: XCTestCase {
         let head = app.buttons["iikb.shelf.\(shelf.rawValue)"]
         XCTAssertTrue(head.waitForExistence(timeout: 3), "the menu has the \(shelf.rawValue) shelf")
         head.tap()
+    }
+
+    /// A tap on a panel's search brings the keys up to type into it.
+    @discardableResult
+    private func raiseKeys(in app: XCUIApplication) -> XCUIElement {
+        let search = app.descendants(matching: .any).matching(identifier: "iikb.panel.search").firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 3), "the panel has its search")
+        search.tap()
+        XCTAssertTrue(wait(5) { self.key("space", in: app).isHittable }, "tapping the search brings the keys up")
+        return search
     }
 
     private func wait(_ timeout: TimeInterval = 10, _ condition: @escaping () -> Bool) -> Bool {
