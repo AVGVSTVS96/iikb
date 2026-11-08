@@ -19,7 +19,7 @@ enum ClipTitle {
             let attachment = NSTextAttachment(image: image)
             attachment.bounds = CGRect(x: 0, y: ((font.capHeight - size) / 2).rounded(), width: size, height: size)
             title.append(NSAttributedString(attachment: attachment))
-            title.append(NSAttributedString(string: "\u{2009}\u{2009}", attributes: body))
+            title.append(NSAttributedString(string: "\u{2002}", attributes: body))
         }
         func symbol(_ name: String) -> UIImage? {
             UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: font.pointSize * 0.8, weight: .medium))?

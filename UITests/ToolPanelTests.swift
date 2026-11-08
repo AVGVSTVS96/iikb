@@ -173,6 +173,13 @@ final class ToolPanelTests: XCTestCase {
         XCTAssertEqual(link.staticTexts["iikb.clip.detail"].label.contains("chars"), false, "a link says how long ago, not how long")
         Thread.sleep(forTimeInterval: 2)
         try shot("clipboard-kinds")
+        let list = app.collectionViews["iikb.clipboard"]
+        list.swipeUp()
+        XCTAssertTrue(app.descendants(matching: .any)["iikb.clip.hello@example.com"].waitForExistence(timeout: 3), "further down, the address")
+        try shot("clipboard-kinds-more")
+        list.swipeDown()
+        list.swipeDown()
+        XCTAssertTrue(link.waitForExistence(timeout: 3))
         link.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 3))
         try shot("clipboard-link-preview")

@@ -17,7 +17,7 @@ iikb's saved data, in the App Group the app and the keyboard extension share and
   - The app resets it by sharing a new reset token.
   - With Full Access the keyboard also writes its touch model to the group as `Library/touches.json`, since a keyboard can't write the group's root, and posts a Darwin notification.
 - `ClipboardStore`: what you copied, in the App Group for the app's Clipboard tab, with a copy in the keyboard's own container that a group without a history takes.
-- `LinkIcons`: a copied link's site icon, fetched once per site from the site itself (only its name leaves the device, never the link) into the group's `Library/Caches/link-icons`, for the app and the keyboard.
+- `LinkIcons`: a copied link's site icon, fetched once per site from the site itself (only its name leaves the device, never the link) into the group's `Library/Caches/site-icons`, for the app and the keyboard.
 - `TranscriptFeed`: what you dictated, copied by the app to the group's `Library/Caches` each time its transcripts change, for the keyboard's Transcripts panel; the backup leaves it out, since the app's own file is the one kept.
 - `TypingStats`: the hours the keyboard appends to the group's `Library/typing.jsonl` each time it closes or a message goes, with a Darwin notification.
 - `PersonalNetwork`, with `Network.current`.
