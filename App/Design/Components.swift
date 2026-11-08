@@ -305,10 +305,10 @@ extension EnvironmentValues {
     @Entry var inPane = false
 }
 
-/// A scrolling column of boxes: alone, at the width they read best; in a pane, the pane's width, so the panes' margins
-/// match and nothing floats in the middle of a wide pane.
+/// A scrolling column of boxes: alone, as wide as a window gets before it takes two panes, so a narrow window keeps the
+/// margins its bar has; in a pane, the pane's width, so the panes' margins match and nothing floats in a wide pane.
 struct Column<Content: View>: View {
-    var maxWidth: CGFloat = 640
+    var maxWidth: CGFloat = Arrangement.wide
     var top: CGFloat = 12
     @ViewBuilder var content: Content
     @Environment(\.inPane) private var inPane

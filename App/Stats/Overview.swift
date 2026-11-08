@@ -235,12 +235,12 @@ enum Format {
         count >= 10000 ? Double(count).formatted(.number.notation(.compactName).precision(.fractionLength(0 ... 1))).lowercased() : count.formatted()
     }
 
-    /// The round number at or above `value` a chart's top reads, close enough that the tallest bar nears it: 1, 2,
-    /// 2.5, 3, 4, 5, 6 or 8 times a power of ten.
+    /// The round number at or above `value` a chart's top reads, close enough that the tallest bar nears it: 1, 1.5,
+    /// 2, 2.5, 3, 4, 5, 6 or 8 times a power of ten.
     static func roundUp(_ value: Double) -> Double {
         guard value > 0 else { return 1 }
         let power = pow(10, floor(log10(value)))
-        return ([1, 2, 2.5, 3, 4, 5, 6, 8, 10].first { $0 * power >= value } ?? 10) * power
+        return ([1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].first { $0 * power >= value } ?? 10) * power
     }
 
     /// 860, 8.6k, 21k: a chart's label, short at any size.
@@ -492,16 +492,18 @@ struct History: View {
 
 // MARK: Records
 
-/// Your streak, the day you wrote most, your fastest day and your fastest stretch, each a tile.
+/// Your streak, the day you wrote most, your fastest day and your fastest stretch, each a tile, four across where they
+/// fit, else two, so none is left alone on a row.
 private struct Records: View {
     let activity: Activity
+    @State private var width: CGFloat = 0
 
     var body: some View {
         let streak = streaks
         let most = activity.days.max { $0.value.typed.words + $0.value.said.words < $1.value.typed.words + $1.value.said.words }
         let fastest = activity.days.compactMap { date, day in day.typed.seconds >= 120 ? day.typed.speed.map { (date, $0) } : nil }.max { $0.1 < $1.1 }
         let burst = activity.days.map { ($0.key, $0.value.typed.peak) }.max { $0.1 < $1.1 }
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: width >= 4 * 150 + 36 ? 4 : 2), spacing: 12) {
             Record(symbol: "flame.fill", color: .orange, title: "Streak", value: "\(streak.current)", unit: streak.current == 1 ? "day" : "days", detail: "Longest \(streak.longest) days")
             Record(
                 symbol: "trophy.fill", color: .yellow, title: "Most words", value: Format.short(most.map { $0.value.typed.words + $0.value.said.words } ?? 0), unit: "words",
@@ -513,6 +515,7 @@ private struct Records: View {
                 detail: burst.flatMap { $0.1 > 0 ? Format.day($0.0) : nil } ?? "–"
             )
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
     }
 
     /// Days in a row with words, up to today (or yesterday, while today has none yet), and the most ever.
@@ -843,9 +846,10 @@ struct Year: View {
             let x = left + CGFloat(week) * (cell + gap)
             let first = start.adding(days: week * 7)
             let month = calendar.component(.month, from: first)
-            if month != lastMonth, x + 22 <= size.width {
+            if month != lastMonth {
                 if lastMonth != -1 || calendar.component(.day, from: first) <= 7 {
-                    context.draw(Text(first.formatted(.dateTime.month(.abbreviated))).font(.system(size: 9, weight: .medium)).foregroundStyle(label), at: CGPoint(x: x, y: 5), anchor: .leading)
+                    let fits = x + 22 <= size.width
+                    context.draw(Text(first.formatted(.dateTime.month(.abbreviated))).font(.system(size: 9, weight: .medium)).foregroundStyle(label), at: CGPoint(x: fits ? x : x + cell, y: 5), anchor: fits ? .leading : .trailing)
                 }
                 lastMonth = month
             }

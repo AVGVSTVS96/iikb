@@ -169,7 +169,9 @@ final class TapMarksView: UIView {
             let rect = CGRect(frame)
             let name = NSAttributedString(string: TapMapPalette.name(of: key), attributes: [
                 .font: UIFont.systemFont(ofSize: (key.label == " " ? 13 : 17) * textScale, weight: .medium),
-                .foregroundColor: UIColor.label.withAlphaComponent(dark ? 0.85 : 0.62),
+                .foregroundColor: UIColor.label.withAlphaComponent(dark ? 0.9 : 0.62),
+                .strokeColor: UIColor.black.withAlphaComponent(dark ? 0.55 : 0),
+                .strokeWidth: dark ? -4 : 0,
                 .shadow: halo,
             ])
             let size = name.size()

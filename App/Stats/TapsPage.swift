@@ -87,6 +87,7 @@ struct TapsPage: View {
             Legend(mode: mode, hasSelection: model.selected != nil)
                 .padding(.horizontal, 4)
         }
+        .frame(maxWidth: board.size.width)
         .id("map")
     }
 

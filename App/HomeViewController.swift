@@ -35,6 +35,7 @@ final class HomeViewController: UIHostingController<AnyView> {
         state.typed = !field.text.isEmpty
         NotificationCenter.default.addObserver(self, selector: #selector(refresh), name: UIApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(edited), name: UITextView.textDidChangeNotification, object: field)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardMoved), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -57,6 +58,15 @@ final class HomeViewController: UIHostingController<AnyView> {
     @objc private func edited() {
         state.typed = !field.text.isEmpty
     }
+
+    /// Whether keys on the screen cover the page under the field: not a hardware keyboard's bar alone, nor another
+    /// app's keyboard in Split View.
+    @objc private func keyboardMoved(_ note: Notification) {
+        guard let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect, let screen = view.window?.screen else { return }
+        let covered = end.intersection(screen.bounds).height > 120 && field.isFirstResponder
+        guard covered != state.keysUp else { return }
+        withAnimation(.snappy(duration: 0.25)) { state.keysUp = covered }
+    }
 }
 
 /// What the home screen reads that isn't the keyboard's status, read again whenever iikb comes forward.
@@ -64,6 +74,8 @@ final class HomeViewController: UIHostingController<AnyView> {
     var taps = 0
     var copied = 0
     var typed = false
+    /// The keyboard is up over a filled dashboard, which then shows only the field.
+    var keysUp = false
     @ObservationIgnored private lazy var clipboard: ClipboardStore = {
         let store = ClipboardStore()
         store.onChange = { [unowned self, unowned store] in copied = store.history.items.count }
@@ -81,7 +93,7 @@ final class HomeViewController: UIHostingController<AnyView> {
 /// upright), the field across the top taking what the rest leaves, what iikb has gathered, then the settings' cards
 /// three across, voice typing's over the keyboard's; when it doesn't, the field over what iikb has gathered beside the
 /// cards two across, so the field stays above the keys while you try them. Elsewhere, one column, its field taking
-/// what a tall window leaves.
+/// what a tall window leaves. A filled dashboard shows only the field while the keyboard is up.
 struct HomeView: View {
     let state: HomeState
     let field: UITextView
@@ -95,16 +107,19 @@ struct HomeView: View {
                 ViewThatFits(in: .vertical) {
                     VStack(alignment: .leading, spacing: 12) {
                         tryIt.frame(minHeight: 200, maxHeight: .infinity)
-                        if !status.isSetUp { setUp }
-                        stats
-                        shortcutCards(across: 3)
+                        Group {
+                            if !status.isSetUp { setUp }
+                            stats
+                            shortcutCards(across: 3)
+                        }
+                        .hiddenWhileTyping(state.keysUp)
                     }
                     .padding([.horizontal, .bottom], 16)
                     .padding(.top, 12)
                     HStack(alignment: .top, spacing: 12) {
                         VStack(spacing: 12) {
                             tryIt.frame(minHeight: 160, maxHeight: .infinity)
-                            stats
+                            stats.hiddenWhileTyping(state.keysUp)
                         }
                         .padding([.leading, .bottom], 16)
                         .padding(.top, 12)
@@ -112,6 +127,7 @@ struct HomeView: View {
                             shortcutCards(across: 2, fills: true)
                                 .padding([.trailing, .bottom], 16)
                                 .padding(.top, 12)
+                                .hiddenWhileTyping(state.keysUp)
                         } else {
                             ScrollView {
                                 VStack(alignment: .leading, spacing: 28) {
@@ -130,16 +146,19 @@ struct HomeView: View {
                 ViewThatFits(in: .vertical) {
                     VStack(alignment: .leading, spacing: 28) {
                         tryIt.frame(minHeight: 150, maxHeight: .infinity)
-                        if !status.isSetUp { setUp }
-                        VStack(spacing: 12) {
-                            stats
-                            shortcutCards(across: 2)
+                        Group {
+                            if !status.isSetUp { setUp }
+                            VStack(spacing: 12) {
+                                stats
+                                shortcutCards(across: 2)
+                            }
                         }
+                        .hiddenWhileTyping(state.keysUp)
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 4)
                     .padding(.bottom, 16)
-                    .frame(maxWidth: 640)
+                    .frame(maxWidth: Arrangement.wide)
                     .frame(maxWidth: .infinity)
                     Column(top: 4) {
                         tryIt.frame(height: 150)
@@ -191,7 +210,7 @@ struct HomeView: View {
         let today = Transcripts.shared.all.prefix { Calendar.current.isDateInToday($0.date) }.reduce(0) { $0 + $1.words }
         let counts = [
             Count(symbol: "text.bubble.fill", color: .pink, value: today, label: "said today", title: today == 1 ? "Word said today" : "Words said today", open: { Router.shared.show(.transcripts) }),
-            Count(symbol: "list.clipboard.fill", color: .orange, value: state.copied, label: "copied", title: state.copied == 1 ? "Item copied" : "Items copied", open: { Router.shared.show(.clipboard) }),
+            Count(symbol: "list.clipboard.fill", color: .orange, value: state.copied, label: "in clipboard", title: "In clipboard", open: { Router.shared.show(.clipboard) }),
             Count(symbol: "hand.tap.fill", color: .blue, value: state.taps, label: state.taps == 1 ? "tap learned" : "taps learned", title: state.taps == 1 ? "Tap learned" : "Taps learned", open: { Router.shared.show(StatsPage.Section.taps) }),
         ]
         return ViewThatFits(in: .horizontal) {
@@ -302,6 +321,14 @@ private struct CountRow: View {
                 .layoutPriority(1)
         }
         .row()
+    }
+}
+
+private extension View {
+    /// Fades out while the keyboard covers it, so the keys never cut a card in half and the field is all that's left
+    /// above them.
+    func hiddenWhileTyping(_ typing: Bool) -> some View {
+        opacity(typing ? 0 : 1).allowsHitTesting(!typing)
     }
 }
 

@@ -86,7 +86,7 @@ struct ClipboardPage: View {
             .padding(.horizontal, 16)
             .padding(.top, 4)
             .padding(.bottom, 40)
-            .frame(maxWidth: 640)
+            .frame(maxWidth: Arrangement.wide)
             .frame(maxWidth: .infinity)
         }
         .scrollDismissesKeyboard(.interactively)
