@@ -41,6 +41,6 @@ for spec in "${specs[@]}"; do
     done
   done
   done
-  [ -n "${KEEP:-}" ] || xcrun simctl shutdown "$ID"
+  [ -n "${KEEP:-}" ] || scripts/sim down "$ID"
 done
 exit "${failed:-0}"

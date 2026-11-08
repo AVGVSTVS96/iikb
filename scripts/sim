@@ -42,9 +42,14 @@ print([r['identifier'] for r in json.load(sys.stdin)['runtimes'] if r['platform'
     id=$(xcrun simctl create "$name" "$type" "$runtime")
   fi
   for other in $(xcrun simctl list devices booted | sed -n "s/^ *$PREFIX .*(\([0-9A-F-]\{36\}\)) (Booted).*/\1/p"); do
-    [ "$other" = "$id" ] || xcrun simctl shutdown "$other"
+    [ "$other" = "$id" ] || down "$other"
   done
   echo "$id"
+}
+
+# Shuts a simulator down; one already down is fine, as turn or another slot may have shut it while this one waited.
+down() {
+  xcrun simctl shutdown "$1" 2>/dev/null || ! xcrun simctl list devices booted | grep -q "$1"
 }
 
 # Boots a simulator and installs iikb, built first when a file it's built from is newer than the build, as after a sync,
@@ -67,7 +72,7 @@ allow() {
   [ "${2:-}" = paste ] && rows="$rows, ('kTCCServicePasteboard', '$BUNDLE')"
   perl -e 'alarm shift; exec @ARGV' 600 xcrun simctl bootstatus "$1" -b >/dev/null
   [ "$(sqlite3 "$db" "select count(*) = $(grep -o '(' <<<"$rows" | wc -l) from access where auth_value = 2 and (service, client) in (values $rows)")" = 1 ] && return
-  xcrun simctl shutdown "$1"
+  down "$1"
   sqlite3 "$db" "insert or replace into access (service, client, client_type, auth_value, auth_reason, auth_version, flags)
     select column1, column2, 0, 2, 4, 1, 0 from (values $rows)"
   boot "$1"
@@ -85,7 +90,7 @@ use() {
   [ "$current" = "$(printf %s "${keyboards[@]}")" ] && [ "$expanded" = 1 ] && return
   xcrun simctl spawn "$id" defaults write .GlobalPreferences AppleKeyboards -array "${keyboards[@]}"
   xcrun simctl spawn "$id" defaults write .GlobalPreferences AppleKeyboardsExpanded -int 1
-  xcrun simctl shutdown "$id"
+  down "$id"
   boot "$id"
 }
 
@@ -123,7 +128,7 @@ all() {
         shoot "$id" "$keyboard" "$appearance" "shots/raw/$slug-$tag-$keyboard-$appearance.png" "$@"
       done
     done
-    [ -n "${KEEP:-}" ] || xcrun simctl shutdown "$id"
+    [ -n "${KEEP:-}" ] || down "$id"
   done
 }
 
@@ -148,7 +153,7 @@ type-websearch -FullKeyboardType 10
 landscape -iikbOrientation landscape
 VARIANTS
   done
-  [ -n "${KEEP:-}" ] || xcrun simctl shutdown "$id"
+  [ -n "${KEEP:-}" ] || down "$id"
 }
 
 # Sends Device Hub's events to a booted iPhone Duo (scripts/devicehub.c): hub ID hinge 180, hub ID orientation portrait.
@@ -192,7 +197,7 @@ duo() {
     done <<<"$DUO_SCREENS"
     [ -z "$app" ] || { kill "$app"; wait "$app" 2>/dev/null || true; app=; }
   done
-  [ -n "${KEEP:-}" ] || xcrun simctl shutdown "$id"
+  [ -n "${KEEP:-}" ] || down "$id"
 }
 
 # Screenshots the keyboard in every theme on the iPhone Duo, folded and open, light and dark:
@@ -216,7 +221,7 @@ themes() {
       done
     done
   done <<<"$DUO_SCREENS"
-  [ -n "${KEEP:-}" ] || xcrun simctl shutdown "$id"
+  [ -n "${KEEP:-}" ] || down "$id"
 }
 
 # The app's pages as duoapp and ipadapp screenshot them: a name and the launch arguments that open it.
@@ -293,7 +298,7 @@ duoapp() {
       done <<<"$APP_PAGES"
     done
   done <<<"$DUO_SCREENS"
-  [ -n "${KEEP:-}" ] || xcrun simctl shutdown "$id"
+  [ -n "${KEEP:-}" ] || down "$id"
 }
 
 # iPads and the windows each gives the app: full screen upright and sideways, then windows dragged toward a size in
@@ -344,7 +349,7 @@ ipadapp() {
       grep -E "error:|SHOT|Test Case .*(passed|failed)" build/uitest/app.log || true
     done
   done 3<<<"$IPAD_WINDOWS"
-  [ -n "${KEEP:-}" ] || xcrun simctl shutdown "$id"
+  [ -n "${KEEP:-}" ] || down "$id"
   return "${failed:-0}"
 }
 
@@ -378,7 +383,7 @@ accuracy-key -iikbTapsMode accuracy -iikbTapsKey ${KEY:-p}
 thumbs -iikbTapsScroll bottom
 VARIANTS
   done
-  [ -n "${KEEP:-}" ] || xcrun simctl shutdown "$id"
+  [ -n "${KEEP:-}" ] || down "$id"
 }
 
 "$@"
