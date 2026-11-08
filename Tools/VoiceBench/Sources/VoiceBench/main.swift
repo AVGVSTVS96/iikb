@@ -1,5 +1,6 @@
 import FluidAudio
 import Foundation
+import VoiceCapture
 
 /// `VoiceBench <corpus> <way> [percent loudness]`: writes every clip in `<corpus>/clips.jsonl` at the given loudness
 /// into `<corpus>/outputs/<way>-<percent>.jsonl`, with the milliseconds each took, in one way:

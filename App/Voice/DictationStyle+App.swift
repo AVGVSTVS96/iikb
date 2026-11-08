@@ -1,6 +1,28 @@
 import KeyboardCore
 import KeyboardEnglish
 import KeyboardStore
+import VoiceModels
+
+extension VoiceModel {
+    struct Written {
+        /// As your style and vocabulary have it (`DictationWriting`).
+        var text: String
+        /// As the model wrote it.
+        var heard: String
+        /// As the model wrote it, with your vocabulary and no style or lists: what a field of addresses or digits reads.
+        var plain: String
+        var model: String
+    }
+
+    /// A finished recording written down by the picked model, once it's ready: a dictation, Transcribe Again, and a
+    /// recording an ended app left all go through here, in the style picked for `app`, the one it was said for.
+    func write(_ recording: [Float], for app: String?) async throws -> Written {
+        let (heard, model) = try await write(recording)
+        return Written(
+            text: DictationWriting.typed(heard, in: app), heard: heard, plain: DictationWriting.plain(heard),
+            model: model)
+    }
+}
 
 extension DictationWriting {
     /// What iikb types for what the voice model wrote: as Settings › Voice writes it for `app` (its bundle ID), then with

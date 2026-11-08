@@ -21,9 +21,8 @@ settings:
 packages:
   KeyboardModules:
     path: Packages/KeyboardModules
-  FluidAudio:
-    url: https://github.com/FluidInference/FluidAudio.git
-    exactVersion: 0.18.0
+  Voice:
+    path: Packages/Voice
 targets:
   iikb:
     type: application
@@ -40,7 +39,10 @@ targets:
         product: KeyboardStore
       - package: KeyboardModules
         product: KeyboardUI
-      - package: FluidAudio
+      - package: Voice
+        product: VoiceCapture
+      - package: Voice
+        product: VoiceModels
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.iikb

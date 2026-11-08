@@ -1,6 +1,5 @@
 import AVFoundation
 import KeyboardStore
-import KeyboardUI
 import Observation
 import UIKit
 
@@ -11,7 +10,7 @@ extension PickedMicrophone {
     }
 
     /// iOS names the iPhone's own "iPhone Microphone", though it's several.
-    @MainActor var title: String { kind == .iPhone ? UIDevice.current.model : name }
+    @MainActor public var title: String { kind == .iPhone ? UIDevice.current.model : name }
 
     func matches(_ port: AVAudioSessionPortDescription) -> Bool {
         isSame(as: PickedMicrophone(port))
@@ -34,11 +33,11 @@ extension PickedMicrophone {
 /// devices the iPhone is sending sound to. The session lists microphones only in a recording category, so reading sets
 /// the microphone's, which changes nothing until it's active; it lists a Bluetooth microphone only while it allows one,
 /// which would put speakers on a call, so reading never allows one. The picked one is always there, connected or not.
-@Observable @MainActor final class MicrophoneChoices {
-    static let shared = MicrophoneChoices()
+@Observable @MainActor public final class MicrophoneChoices {
+    public static let shared = MicrophoneChoices()
 
     private(set) var connected: [PickedMicrophone] = []
-    private(set) var picked = SettingsStore.microphone
+    public private(set) var picked = SettingsStore.microphone
 
     private init() {
         NotificationCenter.default.addObserver(
@@ -50,11 +49,11 @@ extension PickedMicrophone {
     }
 
     /// Everything to show: the connected, then the picked one if it's away.
-    var all: [PickedMicrophone] {
+    public var all: [PickedMicrophone] {
         connected + [picked].compactMap { $0 }.filter(isAway)
     }
 
-    func reload() {
+    public func reload() {
         let session = AVAudioSession.sharedInstance()
         if session.category != .playAndRecord { try? session.setCategory(.playAndRecord, options: Microphone.options) }
         let ports =
@@ -68,17 +67,16 @@ extension PickedMicrophone {
         picked = SettingsStore.microphone
     }
 
-    func pick(_ microphone: PickedMicrophone?) {
+    public func pick(_ microphone: PickedMicrophone?) {
         SettingsStore.microphone = microphone
         picked = microphone
-        Listener.shared.microphoneChanged()
     }
 
-    func isPicked(_ microphone: PickedMicrophone) -> Bool {
+    public func isPicked(_ microphone: PickedMicrophone) -> Bool {
         picked?.isSame(as: microphone) ?? false
     }
 
-    func isAway(_ microphone: PickedMicrophone) -> Bool {
+    public func isAway(_ microphone: PickedMicrophone) -> Bool {
         !connected.contains(where: microphone.isSame)
     }
 }

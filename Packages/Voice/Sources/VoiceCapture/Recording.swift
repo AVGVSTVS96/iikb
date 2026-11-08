@@ -2,15 +2,15 @@ import AVFoundation
 
 /// A dictation's sound as iikb keeps it, beside its transcript: 16 kHz mono, which is what a Parakeet reads, saved as a
 /// 16-bit WAV.
-nonisolated enum Recording {
-    static let format = AVAudioFormat(
+public nonisolated enum Recording {
+    public static let format = AVAudioFormat(
         commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false)!
 
     /// The recording with its speech brought up toward -20 dBFS, but its quietest stretches (the room) to no more than
     /// -55 dBFS, and never clipped. FluidAudio's Parakeets drop whole stretches of quiet speech: on 170 of Bassim's
     /// dictations made 30 dB quieter, v3 lost 651 words instead of 42 (11.8% wrong instead of 2.5%). A room lifted
     /// louder than that comes back as "Thank you."
-    static func leveled(_ samples: [Float]) -> [Float] {
+    public static func leveled(_ samples: [Float]) -> [Float] {
         guard let (room, speech) = levels(samples) else { return samples }
         let peak = samples.reduce(0) { max($0, abs($1)) }
         guard speech > 0, peak > 0 else { return samples }
@@ -20,7 +20,7 @@ nonisolated enum Recording {
 
     /// The room and the speech: the quietest tenth and the loudest twentieth of the recording's 20 ms stretches, each
     /// the root mean square about its mean; nil when it's shorter than one.
-    static func levels(_ samples: [Float]) -> (room: Float, speech: Float)? {
+    public static func levels(_ samples: [Float]) -> (room: Float, speech: Float)? {
         let frame = 320
         guard samples.count >= frame else { return nil }
         let levels = stride(from: 0, to: samples.count - frame + 1, by: frame).map { start in
@@ -31,7 +31,7 @@ nonisolated enum Recording {
         return (levels[levels.count / 10], levels[levels.count * 95 / 100])
     }
 
-    static func write(_ samples: [Float], to url: URL) throws {
+    public static func write(_ samples: [Float], to url: URL) throws {
         try (header(bytes: samples.count * 2) + pcm(samples)).write(to: url, options: .atomic)  // file: recording audio
     }
 
@@ -97,12 +97,12 @@ nonisolated enum Recording {
 
     /// How a recording leaves iikb: an .m4a in AAC, as Voice Memos keeps its own, or a .caf in Opus at 24 kHz, as
     /// Messages records its audio messages.
-    enum Export {
+    public enum Export {
         case memo, message
     }
 
     /// The recording at `url` as a file named `name`, in a folder of its own to delete once it's sent.
-    static func export(_ url: URL, named name: String, as kind: Export) throws -> URL {
+    public static func export(_ url: URL, named name: String, as kind: Export) throws -> URL {
         let samples = try read(url)
         let rate: Double = kind == .memo ? 16_000 : 24_000
         guard !samples.isEmpty,
@@ -123,7 +123,7 @@ nonisolated enum Recording {
     }
 
     /// `samples` at 16 kHz in `format`.
-    static func converted(_ samples: [Float], to format: AVAudioFormat) -> AVAudioPCMBuffer? {
+    public static func converted(_ samples: [Float], to format: AVAudioFormat) -> AVAudioPCMBuffer? {
         guard
             let buffer = AVAudioPCMBuffer(pcmFormat: Recording.format, frameCapacity: AVAudioFrameCount(samples.count)),
             let converter = AVAudioConverter(from: Recording.format, to: format),
@@ -145,7 +145,7 @@ nonisolated enum Recording {
     }
 
     /// A recording `write` saved.
-    static func read(_ url: URL) throws -> [Float] {
+    public static func read(_ url: URL) throws -> [Float] {
         let data = try Data(contentsOf: url)  // file: recording audio
         let count = max(0, (data.count - 44) / 2)
         return data.withUnsafeBytes { raw in

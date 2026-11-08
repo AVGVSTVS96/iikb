@@ -7,17 +7,17 @@ import UIKit
 /// times each of a Parakeet's parts loading on this iPhone (Unified's as a whole, twice), then writes
 /// `Documents/probe.wav` three times, as it is and as dictation does (`Parakeet.dictate`), logging to
 /// `Documents/probe.log`.
-nonisolated enum VoiceProbe {
-    static var asked: Bool { UserDefaults.standard.string(forKey: "iikbVoiceProbe") != nil }
+public nonisolated enum VoiceProbe {
+    public static var asked: Bool { UserDefaults.standard.string(forKey: "iikbVoiceProbe") != nil }
 
-    @MainActor static func runIfAsked() {
+    @MainActor public static func runIfAsked(then end: @escaping @MainActor () -> Void) {
         guard let name = UserDefaults.standard.string(forKey: "iikbVoiceProbe") else { return }
         setvbuf(stdout, nil, _IOLBF, 0)
         try? keepRunning()
         Task.detached {
             do { try await run(name) } catch { say("failed: \(error)") }
             say("done")
-            await Probe.end()
+            await end()
         }
     }
 

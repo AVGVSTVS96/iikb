@@ -1,6 +1,7 @@
 import FluidAudio
 import Foundation
 import KeyboardStore
+import VoiceCapture
 
 /// A loaded Parakeet, writing 16 kHz sound down in English.
 nonisolated protocol Parakeet: Sendable {

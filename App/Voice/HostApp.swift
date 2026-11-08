@@ -7,21 +7,6 @@ import UIKit
 enum HostApp {
     nonisolated static let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
 
-    /// The megabytes iikb has written to storage since it started, as iOS counts them against its disk-writes limit.
-    nonisolated static var written: Double {
-        var usage = rusage_info_v4()
-        return rusage(getpid(), RUSAGE_INFO_V4, &usage) == 0 ? Double(usage.ri_logical_writes) / 1_000_000 : 0
-    }
-
-    #if APP_STORE
-        nonisolated private static func rusage(_ pid: pid_t, _ flavor: Int32, _ usage: UnsafeMutableRawPointer) -> Int32
-        { -1 }
-    #else
-        /// libproc's `proc_pid_rusage`, in iOS's libSystem but not its SDK's headers.
-        @_silgen_name("proc_pid_rusage")
-        nonisolated private static func rusage(_ pid: pid_t, _ flavor: Int32, _ usage: UnsafeMutableRawPointer) -> Int32
-    #endif
-
     static func open(_ bundle: String) async -> Bool {
         if openByID(bundle) { return true }
         guard let link = links[bundle].flatMap(URL.init(string:)) else { return false }

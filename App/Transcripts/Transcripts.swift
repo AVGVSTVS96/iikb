@@ -2,6 +2,8 @@ import Foundation
 import KeyboardStore
 import Observation
 import UIKit
+import VoiceCapture
+import VoiceModels
 
 struct Transcript: Codable, Identifiable, Hashable {
     var id = UUID()

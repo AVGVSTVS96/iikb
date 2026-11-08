@@ -1,21 +1,24 @@
 import AVFoundation
 import FluidAudio
-import KeyboardCore
+import OSLog
 import Observation
 import Speech
 import UIKit
+import VoiceCapture
+
+nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
 
 /// The speech model voice typing writes with, picked in Settings: one of NVIDIA's Parakeets, run on the Neural Engine by
 /// FluidAudio and downloaded from Hugging Face once, or Apple's SpeechTranscriber. It only ever writes finished
 /// recordings (`write`), so it never stands between you and the microphone: a dictation made while the picked Parakeet
 /// gets ready is recorded as any other and written once it's ready. Either way the sound never leaves the iPhone.
-@Observable final class VoiceModel {
-    static let shared = VoiceModel()
+@Observable public final class VoiceModel {
+    public static let shared = VoiceModel()
 
-    nonisolated enum Model: String, CaseIterable {
+    public nonisolated enum Model: String, CaseIterable, Sendable {
         case ultra, v3, apple
 
-        var title: String {
+        public var title: String {
             switch self {
             case .ultra: "Parakeet Ultra"
             case .v3: "Parakeet v3"
@@ -23,7 +26,7 @@ import UIKit
             }
         }
 
-        var detail: String {
+        public var detail: String {
             switch self {
             case .v3: "Fast and accurate. Downloads once, about 500 MB."
             case .ultra: "A little more accurate. Takes minutes to get ready, and runs warm, each time iikb opens."
@@ -59,14 +62,14 @@ import UIKit
                     guard VoiceModel.hasNeuralEngine, load < 3, try await !parakeet.onNeuralEngine() else {
                         return parakeet
                     }
-                    HostApp.log.error("\(title, privacy: .public)'s encoder ran on the CPU after load \(load)")
+                    log.error("\(title, privacy: .public)'s encoder ran on the CPU after load \(load)")
                     load += 1
                 }
             }
         }
     }
 
-    enum State: Equatable {
+    public enum State: Equatable {
         case downloading(Double)
         case loading
         case ready
@@ -75,26 +78,26 @@ import UIKit
 
     private static let modelKey = "voiceModel"
 
-    private(set) var model = UserDefaults.standard.string(forKey: modelKey).flatMap(Model.init) ?? .v3
-    private(set) var state = State.loading { didSet { if state != oldValue { onState?() } } }
-    @ObservationIgnored var onState: (() -> Void)?
+    public private(set) var model = UserDefaults.standard.string(forKey: modelKey).flatMap(Model.init) ?? .v3
+    public private(set) var state = State.loading { didSet { if state != oldValue { onState?() } } }
+    @ObservationIgnored public var onState: (() -> Void)?
     @ObservationIgnored private var parakeet: Task<any Parakeet, any Error>?
     @ObservationIgnored private var writes = 0
     /// Whether iikb has its microphone on, which gets the Parakeet ready and keeps it for the next dictation.
-    @ObservationIgnored var micIsOn = false { didSet { if micIsOn { prepare() } else { letGoIfIdle() } } }
+    @ObservationIgnored public var micIsOn = false { didSet { if micIsOn { prepare() } else { letGoIfIdle() } } }
 
     #if targetEnvironment(simulator)
         /// The simulator has no Neural Engine, so a Parakeet would compile on the Mac's CPU, and its UI tests stand in for
         /// the app's voice (`scripts/voiceapp.py`).
-        nonisolated static let hasNeuralEngine = false
+        public nonisolated static let hasNeuralEngine = false
     #else
-        nonisolated static let hasNeuralEngine = true
+        public nonisolated static let hasNeuralEngine = true
     #endif
 
     private init() {}
 
     /// Lets go of the model in use, so only one is ever in memory, and gets the new one ready.
-    func pick(_ model: Model) {
+    public func pick(_ model: Model) {
         guard model != self.model else { return }
         UserDefaults.standard.set(model.rawValue, forKey: Self.modelKey)
         self.model = model
@@ -104,7 +107,7 @@ import UIKit
     }
 
     /// The picked model and how far along it is, in a few words.
-    var status: String {
+    public var status: String {
         switch state {
         case .downloading(let done):
             "\(model.title), downloading \(done.formatted(.percent.precision(.fractionLength(0))))"
@@ -115,7 +118,7 @@ import UIKit
     }
 
     /// What dictations wait for while the model gets ready, in a few words for the keyboard's bar; nil once it's ready.
-    var waiting: String? {
+    public var waiting: String? {
         switch state {
         case .downloading(let done): "Model downloading, \(done.formatted(.percent.precision(.fractionLength(0))))"
         case .loading: "Model loading…"
@@ -128,7 +131,7 @@ import UIKit
     /// that failed is tried again. Its first load after an install of a new build or an iOS update compiles it for the
     /// Neural Engine; later ones read that from a cache. It asks iOS for time in the background to finish, since iOS suspends iikb there within seconds
     /// (after `scripts/phone` starts it, or once you're back in your app with the microphone off) and the compile with it.
-    func prepare() {
+    public func prepare() {
         guard let load = model.loader else {
             state = .ready
             return
@@ -158,34 +161,23 @@ import UIKit
                 _ = try await parakeet.value
                 guard self.parakeet == parakeet else { return }
                 state = .ready
-                HostApp.log.notice(
-                    "\(model.title, privacy: .public) ready after \(Date.now.timeIntervalSince(began), format: .fixed(precision: 1))s, \(HostApp.written, format: .fixed(precision: 1)) MB written since iikb started"
+                log.notice(
+                    "\(model.title, privacy: .public) ready after \(Date.now.timeIntervalSince(began), format: .fixed(precision: 1))s, \(VoiceModel.written, format: .fixed(precision: 1)) MB written since iikb started"
                 )
                 letGoIfIdle()
             } catch {
                 guard self.parakeet == parakeet else { return }
                 self.parakeet = nil
                 state = .failed(error.localizedDescription)
-                HostApp.log.error(
+                log.error(
                     "\(model.title, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
 
-    struct Written {
-        /// As your style and vocabulary have it (`DictationWriting`).
-        var text: String
-        /// As the model wrote it.
-        var heard: String
-        /// As the model wrote it, with your vocabulary and no style or lists: what a field of addresses or digits reads.
-        var plain: String
-        var model: String
-    }
-
-    /// A finished recording written down by the picked model, once it's ready: a dictation, Transcribe Again, and a
-    /// recording an ended app left all go through here, in the style picked for `app`, the one it was said for.
-    /// Picking another model while it waits has that one write it.
-    func write(_ recording: [Float], for app: String?) async throws -> Written {
+    /// A finished recording written down by the picked model, once it's ready, with the model's name. Picking another
+    /// model while it waits has that one write it.
+    public func write(_ recording: [Float]) async throws -> (heard: String, model: String) {
         writes += 1
         defer {
             writes -= 1
@@ -195,20 +187,32 @@ import UIKit
             prepare()
             let model = model
             do {
-                let heard: String
                 if let parakeet {
-                    heard = try await parakeet.value.dictate(recording)
-                } else {
-                    heard = try await AppleSpeech.write(recording)
+                    return (try await parakeet.value.dictate(recording), model.title)
                 }
-                return Written(
-                    text: DictationWriting.typed(heard, in: app), heard: heard, plain: DictationWriting.plain(heard),
-                    model: model.title)
+                return (try await AppleSpeech.write(recording), model.title)
             } catch {
                 guard self.model != model else { throw error }
             }
         }
     }
+}
+
+extension VoiceModel {
+    /// The megabytes iikb has written to storage since it started, as iOS counts them against its disk-writes limit.
+    public nonisolated static var written: Double {
+        var usage = rusage_info_v4()
+        return rusage(getpid(), RUSAGE_INFO_V4, &usage) == 0 ? Double(usage.ri_logical_writes) / 1_000_000 : 0
+    }
+
+    #if APP_STORE
+        nonisolated private static func rusage(_ pid: pid_t, _ flavor: Int32, _ usage: UnsafeMutableRawPointer) -> Int32
+        { -1 }
+    #else
+        /// libproc's `proc_pid_rusage`, in iOS's libSystem but not its SDK's headers.
+        @_silgen_name("proc_pid_rusage")
+        nonisolated private static func rusage(_ pid: pid_t, _ flavor: Int32, _ usage: UnsafeMutableRawPointer) -> Int32
+    #endif
 }
 
 extension VoiceModel {

@@ -2,7 +2,7 @@ import AVFoundation
 import KeyboardStore
 
 /// How the iPhone's own microphones hear a dictation, kept in its transcript (`scripts/voicehealth.py`).
-nonisolated enum Capture: String {
+public nonisolated enum Capture: String {
     /// Apple's voice processing, as a call, which heard dictations until Nov 7 and gave 19 of 436 no sound at all.
     case voiceProcessing
     /// A cardioid, which iOS forms from more than one of the microphones, on the front one, toward the face looking at
@@ -10,7 +10,7 @@ nonisolated enum Capture: String {
     /// upright lost seconds of speech at a time.
     case cardioid
 
-    var title: String {
+    public var title: String {
         switch self {
         case .voiceProcessing: "Voice Processing"
         case .cardioid: "Front Cardioid"

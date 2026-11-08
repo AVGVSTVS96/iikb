@@ -1,4 +1,6 @@
 import SwiftUI
+import VoiceCapture
+import VoiceModels
 
 /// What's done with a transcript, right under its text: its words copied or shared, and, when iikb kept its sound, that
 /// sent on in a new message in Messages' own audio format or as a voice memo through the share sheet.

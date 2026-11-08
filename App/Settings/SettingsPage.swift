@@ -2,6 +2,7 @@ import KeyboardCore
 import KeyboardStore
 import KeyboardUI
 import SwiftUI
+import VoiceModels
 
 /// Every setting in the app, in one list: the keyboard's, voice typing's, and iikb's own, a page each. Wide, the list
 /// takes the first pane and the picked page the second; elsewhere a page opens on its own.

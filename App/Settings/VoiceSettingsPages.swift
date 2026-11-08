@@ -3,6 +3,8 @@ import KeyboardEnglish
 import KeyboardStore
 import KeyboardUI
 import SwiftUI
+import VoiceCapture
+import VoiceModels
 
 /// How iikb hears you, on one page: the model that writes it down, how long the mic stays on, and which microphone.
 struct VoiceSettings: View {
@@ -231,14 +233,19 @@ private struct MicrophoneSettings: View {
             footer:
                 "Automatic uses the \(ThisDevice.name) or a wired headset, never Bluetooth, so music on AirPods keeps its full quality. A pick is used whenever it’s connected; a Bluetooth one may put its device on a call while the mic is on."
         ) {
-            ChoiceRow(title: "Automatic", picked: choices.picked == nil) { choices.pick(nil) }
+            ChoiceRow(title: "Automatic", picked: choices.picked == nil) { pick(nil) }
             ForEach(choices.all, id: \.uid) { microphone in
                 ChoiceRow(title: microphone.title, detail: detail(microphone), picked: choices.isPicked(microphone)) {
-                    choices.pick(microphone)
+                    pick(microphone)
                 }
             }
         }
         .onAppear { choices.reload() }
+    }
+
+    private func pick(_ microphone: PickedMicrophone?) {
+        choices.pick(microphone)
+        Listener.shared.microphoneChanged()
     }
 
     private func detail(_ microphone: PickedMicrophone) -> String? {

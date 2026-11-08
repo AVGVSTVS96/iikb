@@ -2,6 +2,8 @@ import AVFoundation
 import KeyboardStore
 import Observation
 import UIKit
+import VoiceCapture
+import VoiceModels
 
 /// Voice typing, in two steps that never wait on each other: the `Microphone` records a dictation the moment you ask,
 /// and once you stop, the `VoiceModel` writes its finished `Recording` down, whatever state it was in when you started.
@@ -182,7 +184,7 @@ import UIKit
             }
             publish()
             HostApp.log.notice(
-                "\(written.model, privacy: .public) wrote \(seconds, format: .fixed(precision: 1))s down \(Date.now.timeIntervalSince(take.stopped), format: .fixed(precision: 2))s after the stop, \(HostApp.written, format: .fixed(precision: 1)) MB written since iikb started"
+                "\(written.model, privacy: .public) wrote \(seconds, format: .fixed(precision: 1))s down \(Date.now.timeIntervalSince(take.stopped), format: .fixed(precision: 2))s after the stop, \(VoiceModel.written, format: .fixed(precision: 1)) MB written since iikb started"
             )
         } catch {
             writing.removeAll { $0 === take }

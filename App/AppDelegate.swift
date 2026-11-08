@@ -1,6 +1,7 @@
 import KeyboardStore
 import SwiftUI
 import UIKit
+import VoiceModels
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -102,7 +103,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         LaunchOptions.applySettings()
         LaunchOptions.applyLook()
         AppStyle.applyTitles()
-        VoiceProbe.runIfAsked()
+        VoiceProbe.runIfAsked(then: Probe.end)
         RankingProbe.runIfAsked()
         JudgeProbe.runIfAsked()
         let tabs = Tabs(tabs: [

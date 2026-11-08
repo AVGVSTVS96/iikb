@@ -18,7 +18,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "Packages/KeyboardModules"),
-        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.0", traits: []),
+        .package(path: "Packages/Voice"),
     ],
     targets: [
         .target(
@@ -27,7 +27,8 @@ let package = Package(
                 .product(name: "KeyboardEnglish", package: "KeyboardModules"),
                 .product(name: "KeyboardStore", package: "KeyboardModules"),
                 .product(name: "KeyboardUI", package: "KeyboardModules"),
-                .product(name: "FluidAudio", package: "FluidAudio"),
+                .product(name: "VoiceCapture", package: "Voice"),
+                .product(name: "VoiceModels", package: "Voice"),
             ],
             path: "App",
             exclude: [

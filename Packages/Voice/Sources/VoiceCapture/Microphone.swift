@@ -1,13 +1,16 @@
 import AVFoundation
 import KeyboardStore
+import OSLog
 import Observation
 import UIKit
 import WidgetKit
 
+nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
+
 /// The microphone, recording a dictation as a `Recording`: 16 kHz, kept in memory and written to its file as
 /// it's heard. It knows nothing of the models that write recordings down, so nothing about them can hold up a
 /// recording. While it's on it holds the App Group's mic lock, which tells the keyboard the app is there to dictate.
-@Observable @MainActor final class Microphone {
+@Observable @MainActor public final class Microphone {
     private var engine = AVAudioEngine()
     private let feed = Feed()
     private var lock: Int32?
@@ -16,14 +19,14 @@ import WidgetKit
     /// How the recording being made is heard, nil when a restart changed it mid-recording.
     private var recordingAs: Capture?
     /// The engine couldn't be started again after a change under it.
-    var onLost: () -> Void = {}
+    public var onLost: () -> Void = {}
     /// Another app took the microphone: a call answered, a voice message, Siri.
-    var onInterrupted: () -> Void = {}
+    public var onInterrupted: () -> Void = {}
     /// iOS says the app that took the microphone is done with it.
-    var onFreed: () -> Void = {}
-    var onLevel: (_ loudness: Float, _ recorded: Double) -> Void = { _, _ in }
+    public var onFreed: () -> Void = {}
+    public var onLevel: (_ loudness: Float, _ recorded: Double) -> Void = { _, _ in }
 
-    init() {
+    public init() {
         let center = NotificationCenter.default
         center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) {
             [weak self] note in
@@ -63,14 +66,14 @@ import WidgetKit
         }
     }
 
-    var isOn: Bool { lock != nil }
+    public var isOn: Bool { lock != nil }
 
     /// The input recording now, as iOS names it.
-    var input: String? { AVAudioSession.sharedInstance().currentRoute.inputs.first?.portName }
+    public var input: String? { AVAudioSession.sharedInstance().currentRoute.inputs.first?.portName }
 
     /// How the last recording was heard: the front cardioid, or nil for iOS's own pick, another microphone, or a restart
     /// that changed it mid-recording.
-    var heard: Capture? { recordingAs }
+    public var heard: Capture? { recordingAs }
 
     /// By default it hears from the iPhone and never from a Bluetooth microphone, which would put a speaker or AirPods on
     /// a call (`.allowBluetoothHFP`), and music would drop to call quality or stop. A microphone picked in Settings is
@@ -84,7 +87,7 @@ import WidgetKit
     /// it). So it mixes with whatever else plays, wherever it plays, and nothing else hears a difference. iOS mutes
     /// every app's haptics while any app records unless the recording session allows them, and an incoming call that
     /// rings doesn't stop it, only one that's answered.
-    func open() throws {
+    public func open() throws {
         guard lock == nil else { return }
         do {
             try beginOnAnyEngine()
@@ -130,7 +133,7 @@ import WidgetKit
         do {
             aimed = try Capture.aim(session)
         } catch {
-            HostApp.log.error("couldn't aim the microphone: \(error.localizedDescription, privacy: .public)")
+            log.error("couldn't aim the microphone: \(error.localizedDescription, privacy: .public)")
             aimed = nil
         }
         if feed.isRecording, aimed != recordingAs { recordingAs = nil }
@@ -153,7 +156,7 @@ import WidgetKit
         }
         let route = session.currentRoute.inputs.first
         let source = route?.selectedDataSource
-        HostApp.log.notice(
+        log.notice(
             "hearing \(self.aimed?.rawValue ?? "as iOS picks", privacy: .public), from \(route?.portType.rawValue ?? "nothing", privacy: .public) \(source?.dataSourceName ?? "", privacy: .public) \(source?.selectedPolarPattern?.rawValue ?? "", privacy: .public), other audio \(session.isOtherAudioPlaying ? "playing" : "silent", privacy: .public)"
         )
     }
@@ -161,7 +164,7 @@ import WidgetKit
     /// iOS stops the engine when the hardware's format or route changes under it, and every audio object is dead after
     /// the media services reset, the microphone on or off, and another microphone may be picked: starts again into the
     /// same recording, which converts whatever format comes next.
-    func restart(rebuilding: Bool = false) {
+    public func restart(rebuilding: Bool = false) {
         if rebuilding {
             engine = AVAudioEngine()
         } else {
@@ -176,7 +179,7 @@ import WidgetKit
         }
     }
 
-    func close() {
+    public func close() {
         guard let lock else { return }
         _ = feed.stop()
         engine.inputNode.removeTap(onBus: 0)
@@ -189,25 +192,25 @@ import WidgetKit
     }
 
     /// Records from the next sound on into `url`.
-    func record(to url: URL) {
+    public func record(to url: URL) {
         recordingAs = aimed
         feed.start(file: url)
         Dictation.publish(level: 0, recorded: 0)
     }
 
     /// Everything recorded since `record`, through your last word (`Feed.stopOnceQuiet`).
-    func stop() async -> [Float] {
+    public func stop() async -> [Float] {
         engine.isRunning ? await feed.stopOnceQuiet() : feed.stop()
     }
 
     /// Everything recorded since `record`, up to now.
-    func cut() -> [Float] {
+    public func cut() -> [Float] {
         feed.stop()
     }
 
     /// Whether iikb is in front, the only time it stops and starts the microphone by choice: from the background iOS
     /// refuses the new start (Bassim's Duo, Nov 6: OSStatus 560557684 pointing it, then the engine's start failing twice).
-    static var inFront: Bool { UIApplication.shared.applicationState == .active }
+    public static var inFront: Bool { UIApplication.shared.applicationState == .active }
 
     /// Runs on the audio thread: hands each buffer to the recording, if there is one, and says how loud it was and how
     /// long the recording is now.
@@ -288,7 +291,7 @@ nonisolated private final class Feed: @unchecked Sendable {
             if heard != buffer.format {
                 heard = buffer.format
                 recorder = nil
-                HostApp.log.notice(
+                log.notice(
                     "recording from \(buffer.format.channelCount) channels at \(buffer.format.sampleRate, format: .fixed(precision: 0)) Hz"
                 )
             }

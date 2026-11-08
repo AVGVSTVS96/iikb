@@ -1,5 +1,6 @@
 import MessageUI
 import UIKit
+import VoiceCapture
 
 /// A transcript's sound sent on: into a new message as Messages' own audio message format, or through the share sheet
 /// as a voice memo (Voice Memos, Files, AirDrop, any app).

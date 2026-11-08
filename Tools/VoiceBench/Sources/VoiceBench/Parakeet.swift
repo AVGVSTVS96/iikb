@@ -1,1 +1,1 @@
-../../../../App/Voice/Parakeet.swift
+../../../../Packages/Voice/Sources/VoiceModels/Parakeet.swift

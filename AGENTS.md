@@ -4,14 +4,16 @@ An iOS custom keyboard (UIKit, Swift 6, iOS 26+) that types like Apple's and loo
 
 ## Modules
 
-Each module keeps its own AGENTS.md beside its code, with what it holds and why. Read it before working in that module. What a module may import is set in `Packages/KeyboardModules/Package.swift` and the root `Package.swift`.
+Each module keeps its own AGENTS.md beside its code, with what it holds and why. Read it before working in that module. What a module may import is set in `Packages/KeyboardModules/Package.swift`, `Packages/Voice/Package.swift` and the root `Package.swift`.
 
 - `Packages/KeyboardModules/Sources/KeyboardCore`: everything the keyboard does (keys, layouts, typing, correction, swipe, dictation's text), so the extension and the web demo share it. Imports nothing, not even Foundation; it also compiles to WebAssembly. [KeyboardCore/AGENTS.md](Packages/KeyboardModules/Sources/KeyboardCore/AGENTS.md)
 - `…/KeyboardEnglish`: the bundled English data and its loaders. On KeyboardCore and Foundation. [KeyboardEnglish/AGENTS.md](Packages/KeyboardModules/Sources/KeyboardEnglish/AGENTS.md)
 - `…/KeyboardStore`: iikb's saved data and the app–keyboard channel, through `StoredFile`. On KeyboardCore and KeyboardEnglish. [KeyboardStore/AGENTS.md](Packages/KeyboardModules/Sources/KeyboardStore/AGENTS.md)
 - `…/KeyboardUI`: UIKit parts any keyboard can build on, with no private API. On KeyboardCore and KeyboardEnglish. [KeyboardUI/AGENTS.md](Packages/KeyboardModules/Sources/KeyboardUI/AGENTS.md)
 - `…/FullKeyboard`: iikb's own keyboard (the view controller, its panels, sources, the host app). On the four above, and the only target that links the private `KeyboardArbiter`. [FullKeyboard/AGENTS.md](Packages/KeyboardModules/Sources/FullKeyboard/AGENTS.md)
-- `App/`: the containing app, a folder per feature. On KeyboardEnglish, KeyboardStore, KeyboardUI and FluidAudio, never FullKeyboard. [App/AGENTS.md](App/AGENTS.md); voice typing in [App/Voice/AGENTS.md](App/Voice/AGENTS.md)
+- `Packages/Voice/Sources/VoiceCapture`: voice typing's microphone and the `Recording` it makes. On KeyboardStore. [VoiceCapture/AGENTS.md](Packages/Voice/Sources/VoiceCapture/AGENTS.md)
+- `…/VoiceModels`: the models that write a finished recording down, the Parakeets through FluidAudio and Apple's. On VoiceCapture, KeyboardStore and FluidAudio. [VoiceModels/AGENTS.md](Packages/Voice/Sources/VoiceModels/AGENTS.md)
+- `App/`: the containing app, a folder per feature. On KeyboardEnglish, KeyboardStore, KeyboardUI, VoiceCapture and VoiceModels, never FullKeyboard. [App/AGENTS.md](App/AGENTS.md); voice typing in [App/Voice/AGENTS.md](App/Voice/AGENTS.md)
 - `Keyboard/`: the extension target, a one-line subclass. On FullKeyboard.
 - `Controls/`: the widget extension holding iikb Mic, a control for Control Center, the Lock Screen and the Action button that shows whether the app's microphone is on and turns it off (`Signal.micOff`), or opens the app with it on (`AppLink.mic`). On nothing of ours, so it doesn't carry the English data; it spells KeyboardStore's names itself (`ArchitectureTests`). Its App Intents metadata is committed in `Controls/Metadata.appintents`, since xtool can't make it: `scripts/build` fails when Xcode's differs and names the copy to commit.
 - `Packages/KeyboardModules/Examples/MinimalKeyboard`: a keyboard with a look of its own on `TypingEngine`, in one file, for docs/build-a-keyboard.md (the guide for building on iikb). It's its own package target, so it reaches only public API. Neither `scripts/check` nor `scripts/coretest` builds it, so a change to that API needs it built on the Mac to keep the guide true.
@@ -66,7 +68,7 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | `KeyboardUI` uses no private API; only `FullKeyboard` links `KeyboardArbiter` | Package.swift for `KeyboardArbiter`; judgment for anything called by name |
 | The app never imports `FullKeyboard` | Package.swift, project.yml |
 | Kept data reads and saves through `StoredFile`, which never saves over a file it couldn't read; any other file access says what it is, `// file: <what>` (KeyboardStore) | `StoredFile`, `ArchitectureTests` |
-| Behavior follows real events (touches, `textDidChange`, `selectionDidChange`). The keyboard's only timers are key repeat, long-press and a source's 10 s to answer; the app's are in App/Voice. Each timer's line says which it is, `// timer: <which>` | `ArchitectureTests` |
+| Behavior follows real events (touches, `textDidChange`, `selectionDidChange`). The keyboard's only timers are key repeat, long-press and a source's 10 s to answer; the app's are in App/Voice/AGENTS.md. Each timer's line says which it is, `// timer: <which>` | `ArchitectureTests` |
 | The engine reads the text only from its `TextState`; every edit goes through `TypingEngine.write`; automatic edits replace only characters the keyboard typed (KeyboardCore) | `TextState`, `TextStateStressTests` |
 | A correctly typed real word is never changed; word frequencies only choose among what the fingers could have meant (KeyboardCore) | `TypingModelTests`, `scripts/eval` |
 | Learning comes only from real events, and nothing in the model runs on a clock (KeyboardCore) | `TypingModelTests` |
@@ -77,8 +79,8 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | Gaps between keys take taps (KeyboardUI) | `FirstTapTests` |
 | Keycaps use SF Compact from the system font file (KeyboardUI) | judgment: nothing enforces it |
 | The keyboard's height comes from Auto Layout content, never a plain height constraint (KeyboardUI) | judgment: nothing enforces it |
-| Recording never waits for a model: the `Microphone` knows nothing of `VoiceModel` (App/Voice) | judgment: nothing enforces it |
-| Never a Bluetooth microphone unless one is picked in Settings › Microphone (App/Voice) | judgment: nothing enforces it |
+| Recording never waits for a model: the `Microphone` knows nothing of `VoiceModel` (App/Voice) | Packages/Voice/Package.swift: VoiceModels is on VoiceCapture, so VoiceCapture can't import it |
+| Never a Bluetooth microphone unless one is picked in Settings › Microphone (VoiceCapture) | judgment: nothing enforces it |
 | A page opened from another in its tab has one Back, in the Duo's side bar with the tabs on every screen (App) | `backInSideBar(_:)`, `BackTests` |
 | A new use of the host app goes through `FullKeyboardViewController.hostApp` (FullKeyboard) | judgment: nothing enforces it |
 | Only main's last commit reaches the phone, never mid-dictation, never without backup, never linked below iOS 27.1 (scripts) | `scripts/phone`: builds main in its own worktree, waits for the dictation, refuses without `backup.key` or below 27.1 |

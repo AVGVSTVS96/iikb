@@ -23,8 +23,8 @@ struct ArchitectureTests {
             "timeout:",
         ]
         let timers = ["key repeat", "long-press", "source answer", "Keep Mic On", "stop waits for quiet"]
-        let sources = ["App", "Keyboard", "web/Sources", "Packages/KeyboardModules/Sources"].flatMap(Self.files).filter
-        { $0.pathExtension == "swift" }
+        let sources = ["App", "Keyboard", "web/Sources", "Packages/KeyboardModules/Sources", "Packages/Voice/Sources"]
+            .flatMap(Self.files).filter { $0.pathExtension == "swift" }
         #expect(sources.count > 100)
         for file in sources {
             let lines = try Self.lines(of: file)
@@ -52,7 +52,7 @@ struct ArchitectureTests {
     @Test func theMicrophoneRestartsByChoiceOnlyInFront() throws {
         let reasons = ["iOS stopped it", "a picked microphone came or went", "in front"]
         var restarts = 0
-        for file in Self.files(in: "App").filter({ $0.pathExtension == "swift" }) {
+        for file in ["App", "Packages/Voice/Sources"].flatMap(Self.files).filter({ $0.pathExtension == "swift" }) {
             let lines = try Self.lines(of: file)
             for (number, line) in lines.enumerated()
             where line.contains("restart(") && !line.contains("func restart(")
@@ -81,7 +81,7 @@ struct ArchitectureTests {
 
     /// A probe's launch is the iikb the keyboard dictates into, so quitting it while the microphone is on turned it off.
     @Test func onlyAFinishedProbeQuits() throws {
-        for file in Self.files(in: "App").filter({ $0.pathExtension == "swift" }) {
+        for file in ["App", "Packages/Voice/Sources"].flatMap(Self.files).filter({ $0.pathExtension == "swift" }) {
             let lines = try Self.lines(of: file)
             for (number, line) in lines.enumerated()
             where line.contains("exit(") && !line.trimmingCharacters(in: .whitespaces).hasPrefix("//") {
@@ -102,7 +102,7 @@ struct ArchitectureTests {
             "contents(atPath:",
             "AVAudioFile(forWriting:", "O_CREAT",
         ]
-        let sources = ["App", "Packages/KeyboardModules/Sources"].flatMap(Self.files).filter {
+        let sources = ["App", "Packages/KeyboardModules/Sources", "Packages/Voice/Sources"].flatMap(Self.files).filter {
             $0.pathExtension == "swift" && $0.lastPathComponent != "StoredFile.swift"
         }
         #expect(sources.count > 100)
