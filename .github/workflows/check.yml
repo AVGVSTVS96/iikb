@@ -12,5 +12,6 @@ jobs:
     container: swift:6.4.0-noble
     steps:
       - uses: actions/checkout@v5
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: scripts/format --check
       - run: scripts/coretest
