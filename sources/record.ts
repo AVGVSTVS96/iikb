@@ -1,32 +1,30 @@
 #!/usr/bin/env bun
-/**
- * Record: a source that keeps what you send and type, one JSON line each (docs/sources.md).
- *
- *   RECORD_TOKEN=secret bun sources/record.ts [--port 2590] [--out record.jsonl]
- */
 import { appendFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 
-/** What iikb sends as you type. */
-export interface Update {
-  readonly app?: string | null;
-  readonly field: string;
-  readonly before: string;
-  readonly after: string;
-  readonly by: "keyboard" | "app";
-  readonly kind: string;
-  readonly returnKey: string;
-  readonly at: string;
-}
+import { z } from "zod";
 
-/** What a Shortcuts automation sends when you open an app (its name) or leave it (empty). */
-export interface AppOpened {
-  readonly app: string;
-}
+const Update = z.object({
+  app: z.string().nullish(),
+  field: z.string(),
+  before: z.string(),
+  after: z.string(),
+  by: z.enum(["keyboard", "app"]),
+  kind: z.string(),
+  returnKey: z.string(),
+  at: z.string(),
+});
+
+export type Update = z.infer<typeof Update>;
+
+const ShortcutsAppOpened = z.object({ app: z.string() });
+
+export type ShortcutsAppOpened = z.infer<typeof ShortcutsAppOpened>;
+
+export const Input = z.union([Update, ShortcutsAppOpened]);
 
 export interface Entry {
   readonly at: string;
-  /** `sent`: the app emptied the field after you typed in it. `typed`: you left a field with text you typed. */
   readonly event: "sent" | "typed";
   readonly text: string;
   readonly app?: string;
@@ -34,61 +32,115 @@ export interface Entry {
   readonly returnKey: string;
 }
 
-/** The newest update and the app it was in, whether you typed in its field since the last entry, and the app now. */
-export interface State {
-  readonly last: { readonly update: Update; readonly app: string } | null;
-  readonly typed: boolean;
+interface Typed {
+  readonly update: Update;
   readonly app: string;
 }
 
-export const start: State = { last: null, typed: false, app: "" };
+export interface State {
+  readonly last: Typed | null;
+  readonly typedSinceLastEntry: boolean;
+  readonly appOpened: string;
+}
+
+export interface Recorded {
+  readonly state: State;
+  readonly entry: Entry | null;
+}
+
+export const start: State = { last: null, typedSinceLastEntry: false, appOpened: "" };
 
 const text = (update: Update) => update.before + update.after;
 
-const entry = ({ update, app }: NonNullable<State["last"]>, event: Entry["event"]): Entry => ({
+const entry = ({ update, app }: Typed, event: Entry["event"]): Entry => ({
   at: update.at,
   event,
   text: text(update),
-  ...(app && { app }),
+  ...(app !== "" && { app }),
   kind: update.kind,
   returnKey: update.returnKey,
 });
 
-export const record = (state: State, input: Update | AppOpened): { state: State; entry: Entry | null } => {
-  if (!("field" in input)) return { state: { ...state, app: input.app }, entry: null };
-  const { last, typed, app } = state;
-  const host = "app" in input ? input.app ?? "" : app;
-  const sameField = last?.update.field === input.field && (!("app" in input) || !("app" in last.update) || !last.app || !host || last.app === host);
-  const settled = last !== null && typed && text(last.update) !== "";
+const inSameField = (last: Typed | null, update: Update, host: string) => {
+  if (last?.update.field !== update.field) {
+    return false;
+  }
+
+  const bothNameTheirApp =
+    "app" in update && "app" in last.update && last.app !== "" && host !== "";
+
+  return !bothNameTheirApp || last.app === host;
+};
+
+const entryFor = (last: Typed | null, sent: boolean, left: boolean): Entry | null => {
+  if (last === null) {
+    return null;
+  }
+
+  if (sent) {
+    return entry(last, "sent");
+  }
+
+  return left ? entry(last, "typed") : null;
+};
+
+export const record = (state: State, input: Update | ShortcutsAppOpened): Recorded => {
+  if (!("field" in input)) {
+    return { state: { ...state, appOpened: input.app }, entry: null };
+  }
+
+  const { last, typedSinceLastEntry, appOpened } = state;
+  const host = "app" in input ? (input.app ?? "") : appOpened;
+  const sameField = inSameField(last, input, host);
+  const settled = last !== null && typedSinceLastEntry && text(last.update) !== "";
   const sent = settled && sameField && input.by === "app" && text(input) === "";
-  const left = settled && !sameField;
 
   return {
     state: {
       last: { update: input, app: host },
-      typed: input.by === "keyboard" || (!sent && sameField && typed),
-      app,
+      typedSinceLastEntry: input.by === "keyboard" || (!sent && sameField && typedSinceLastEntry),
+      appOpened,
     },
-    entry: sent ? entry(last, "sent") : left ? entry(last, "typed") : null,
+    entry: entryFor(last, sent, settled && !sameField),
   };
 };
 
 if (import.meta.main) {
   const { values } = parseArgs({
-    options: { port: { type: "string", default: "2590" }, out: { type: "string", default: "record.jsonl" } },
+    options: {
+      port: { type: "string", default: "2590" },
+      out: { type: "string", default: "record.jsonl" },
+    },
   });
-  const token = process.env["RECORD_TOKEN"];
+
+  const token = process.env.RECORD_TOKEN ?? "";
   let state = start;
 
   Bun.serve({
     hostname: "127.0.0.1",
     port: Number(values.port),
     fetch: async (request) => {
-      if (request.method !== "POST") return new Response(null, { status: 405 });
-      if (token && request.headers.get("authorization") !== `Bearer ${token}`) return new Response(null, { status: 401 });
-      const result = record(state, (await request.json()) as Update | AppOpened);
-      state = result.state;
-      if (result.entry) await appendFile(values.out, `${JSON.stringify(result.entry)}\n`);
+      if (request.method !== "POST") {
+        return new Response(null, { status: 405 });
+      }
+
+      if (token !== "" && request.headers.get("authorization") !== `Bearer ${token}`) {
+        return new Response(null, { status: 401 });
+      }
+
+      const input = Input.safeParse(await request.json());
+
+      if (!input.success) {
+        return new Response(z.prettifyError(input.error), { status: 400 });
+      }
+
+      const recorded = record(state, input.data);
+      ({ state } = recorded);
+
+      if (recorded.entry) {
+        await appendFile(values.out, `${JSON.stringify(recorded.entry)}\n`);
+      }
+
       return Response.json({});
     },
   });

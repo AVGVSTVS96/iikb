@@ -1,30 +1,58 @@
 import { afterEach, expect, test } from "bun:test";
 import { mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import path from "node:path";
 
-import { backup, type Held } from "./backup.ts";
+import { Held, backup } from "./backup.ts";
 
-const dirs: Array<string> = [];
+const dirs: string[] = [];
+
 afterEach(async () => {
-  for (const dir of dirs.splice(0)) await rm(dir, { recursive: true });
+  await Promise.all(
+    dirs.splice(0).map(async (dir) => {
+      await rm(dir, { recursive: true });
+    }),
+  );
 });
 
-const server = async (times: Array<Date> = []) => {
-  const dir = await mkdtemp(join(tmpdir(), "backup-"));
+const hours = (counts: Record<number, number>) =>
+  Array.from({ length: 24 }, (_, at) => counts[at] ?? 0);
+
+const server = async (times: Date[] = []) => {
+  const dir = await mkdtemp(path.join(tmpdir(), "backup-"));
   dirs.push(dir);
   const fetch = backup(dir, "secret", () => times.shift() ?? new Date());
-  const send = (method: string, path: string, body?: string, modified = 1_762_000_000, token = "secret") =>
-    fetch(new Request(`http://server${path}`, { method, body, headers: { authorization: `Bearer ${token}`, "x-modified": String(modified) } }));
-  return { dir, send, held: async () => (await (await send("GET", "/")).json()) as Held };
+
+  const send = async (
+    method: string,
+    url: string,
+    body: string | null = null,
+    modified = 1_762_000_000,
+    token = "secret",
+  ) =>
+    await fetch(
+      new Request(`http://server${url}`, {
+        method,
+        body,
+        headers: { authorization: `Bearer ${token}`, "x-modified": String(modified) },
+      }),
+    );
+
+  return { dir, send, held: async () => Held.parse(await (await send("GET", "/")).json()) };
 };
 
 test("keeps a file with the size and time it was sent with, under its name", async () => {
   const { dir, send, held } = await server();
-  expect((await send("PUT", "/keyboard/support/typing-memory.json", "{}", 1_762_000_123)).status).toBe(204);
+  expect(
+    (await send("PUT", "/keyboard/support/typing-memory.json", "{}", 1_762_000_123)).status,
+  ).toBe(204);
   expect(await held()).toEqual({ "keyboard/support/typing-memory.json": [2, 1_762_000_123] });
-  expect(await readFile(join(dir, "mirror/keyboard/support/typing-memory.json"), "utf8")).toBe("{}");
-  expect((await stat(join(dir, "mirror/keyboard/support/typing-memory.json"))).mtimeMs).toBe(1_762_000_123_000);
+  expect(
+    await readFile(path.join(dir, "mirror/keyboard/support/typing-memory.json"), "utf-8"),
+  ).toBe("{}");
+  expect((await stat(path.join(dir, "mirror/keyboard/support/typing-memory.json"))).mtimeMs).toBe(
+    1_762_000_123_000,
+  );
 });
 
 test("tailscale serve's /backup in the path names nothing", async () => {
@@ -34,19 +62,27 @@ test("tailscale serve's /backup in the path names nothing", async () => {
 });
 
 test("a file sent with other contents keeps the one it replaces as a version, and one sent again unchanged keeps none", async () => {
-  const { dir, send } = await server([new Date(2026, 10, 4, 4, 56, 5), new Date(2026, 10, 4, 5, 0, 0)]);
+  const { dir, send } = await server([
+    new Date(2026, 10, 4, 4, 56, 5),
+    new Date(2026, 10, 4, 5, 0, 0),
+  ]);
+
   await send("PUT", "/app/transcripts.jsonl", "one");
   await send("PUT", "/app/transcripts.jsonl", "one\ntwo", 1_762_000_500);
   await send("PUT", "/app/transcripts.jsonl", "one\ntwo", 1_762_000_600);
-  expect(await readFile(join(dir, "mirror/app/transcripts.jsonl"), "utf8")).toBe("one\ntwo");
-  expect(await readdir(join(dir, "versions"))).toEqual(["2026-11-04T045605"]);
-  expect(await readFile(join(dir, "versions/2026-11-04T045605/app/transcripts.jsonl"), "utf8")).toBe("one");
-  expect((await stat(join(dir, "mirror/app/transcripts.jsonl"))).mtimeMs).toBe(1_762_000_600_000);
+  expect(await readFile(path.join(dir, "mirror/app/transcripts.jsonl"), "utf-8")).toBe("one\ntwo");
+  expect(await readdir(path.join(dir, "versions"))).toEqual(["2026-11-04T045605"]);
+  expect(
+    await readFile(path.join(dir, "versions/2026-11-04T045605/app/transcripts.jsonl"), "utf-8"),
+  ).toBe("one");
+  expect((await stat(path.join(dir, "mirror/app/transcripts.jsonl"))).mtimeMs).toBe(
+    1_762_000_600_000,
+  );
 });
 
 test("takes nothing without the token, outside its folder, or without a time", async () => {
   const { send, held } = await server();
-  expect((await send("GET", "/", undefined, 0, "wrong")).status).toBe(401);
+  expect((await send("GET", "/", null, 0, "wrong")).status).toBe(401);
   expect((await send("PUT", "/app/x", "a", 1, "wrong")).status).toBe(401);
   expect((await send("PUT", "/app/..%2F..%2Fx", "a")).status).toBe(400);
   expect((await send("PUT", "/", "a")).status).toBe(400);
@@ -62,11 +98,11 @@ test("gives back only what the Mac sent, with the time it was sent with", async 
   const mac = await send("GET", "/backup/mac/typing-stats.json");
   expect(mac.status).toBe(200);
   expect(await mac.text()).toBe("{}");
-  expect(new Date(mac.headers.get("last-modified")!).getTime()).toBe(1_762_000_123_000);
+  expect(new Date(mac.headers.get("last-modified") ?? "").getTime()).toBe(1_762_000_123_000);
   expect((await send("GET", "/app/transcripts.jsonl")).status).toBe(404);
   expect((await send("GET", "/mac/..%2Fapp/transcripts.jsonl")).status).toBe(404);
   expect((await send("GET", "/mac/missing.json")).status).toBe(404);
-  expect((await send("GET", "/mac/typing-stats.json", undefined, 0, "wrong")).status).toBe(401);
+  expect((await send("GET", "/mac/typing-stats.json", null, 0, "wrong")).status).toBe(401);
 });
 
 test("gives back what it made for the iPhone, under personal/", async () => {
@@ -74,7 +110,7 @@ test("gives back what it made for the iPhone, under personal/", async () => {
   await send("PUT", "/personal/en.network", "net", 1_762_000_321);
   const personal = await send("GET", "/backup/personal/en.network");
   expect(await personal.text()).toBe("net");
-  expect(new Date(personal.headers.get("last-modified")!).getTime()).toBe(1_762_000_321_000);
+  expect(new Date(personal.headers.get("last-modified") ?? "").getTime()).toBe(1_762_000_321_000);
   expect((await send("GET", "/personal/../app/x")).status).toBe(404);
 });
 
@@ -85,29 +121,92 @@ test("a file replaced twice in one second keeps both versions, the first where -
   await send("PUT", "/keyboard/support/typing-memory.json", "", 1_762_000_500);
   await send("PUT", "/keyboard/support/typing-memory.json", "{}", 1_762_000_600);
   await send("PUT", "/keyboard/support/typing-memory.json", "[]", 1_762_000_700);
-  expect((await readdir(join(dir, "versions"))).sort()).toEqual(["2026-11-04T045605", "2026-11-04T045605.001", "2026-11-04T045605.002"]);
-  expect(await readFile(join(dir, "versions/2026-11-04T045605/keyboard/support/typing-memory.json"), "utf8")).toBe("learned");
-  expect(await readFile(join(dir, "versions/2026-11-04T045605.001/keyboard/support/typing-memory.json"), "utf8")).toBe("");
-  expect(await readFile(join(dir, "versions/2026-11-04T045605.002/keyboard/support/typing-memory.json"), "utf8")).toBe("{}");
-  expect(await readFile(join(dir, "mirror/keyboard/support/typing-memory.json"), "utf8")).toBe("[]");
+  expect((await readdir(path.join(dir, "versions"))).toSorted()).toEqual([
+    "2026-11-04T045605",
+    "2026-11-04T045605.001",
+    "2026-11-04T045605.002",
+  ]);
+  expect(
+    await readFile(
+      path.join(dir, "versions/2026-11-04T045605/keyboard/support/typing-memory.json"),
+      "utf-8",
+    ),
+  ).toBe("learned");
+  expect(
+    await readFile(
+      path.join(dir, "versions/2026-11-04T045605.001/keyboard/support/typing-memory.json"),
+      "utf-8",
+    ),
+  ).toBe("");
+  expect(
+    await readFile(
+      path.join(dir, "versions/2026-11-04T045605.002/keyboard/support/typing-memory.json"),
+      "utf-8",
+    ),
+  ).toBe("{}");
+  expect(
+    await readFile(path.join(dir, "mirror/keyboard/support/typing-memory.json"), "utf-8"),
+  ).toBe("[]");
 });
 
 test("gives Keystroke the iPhone's typing and dictation as counts by day and hour, never their text", async () => {
   const { send } = await server();
-  const hour = { day: "2026-11-05", hour: 17, app: "ph.telegra.Telegraph", seconds: 5.5, tally: { words: 6, characters: 26, keys: 27, deletes: 1, corrected: 0, picked: 0, emoji: 0, undone: 0 } };
-  await send("PUT", "/group/Library/typing.jsonl", `${JSON.stringify(hour)}\n${JSON.stringify({ ...hour, hour: 18 })}\n`);
+
+  const hour = {
+    day: "2026-11-05",
+    hour: 17,
+    app: "ph.telegra.Telegraph",
+    seconds: 5.5,
+    tally: {
+      words: 6,
+      characters: 26,
+      keys: 27,
+      deletes: 1,
+      corrected: 0,
+      picked: 0,
+      emoji: 0,
+      undone: 0,
+    },
+  };
+
+  await send(
+    "PUT",
+    "/group/Library/typing.jsonl",
+    `${JSON.stringify(hour)}\n${JSON.stringify({ ...hour, hour: 18 })}\n`,
+  );
   const said = new Date(2026, 10, 5, 9, 30).getTime() / 1000 - Date.UTC(2001, 0, 1) / 1000;
-  await send("PUT", "/app/transcripts.jsonl", `${JSON.stringify({ date: said, seconds: 3, text: "secret words here", typed: true })}\n`);
+  await send(
+    "PUT",
+    "/app/transcripts.jsonl",
+    `${JSON.stringify({ date: said, seconds: 3, text: "secret words here", typed: true })}\n`,
+  );
   const response = await send("GET", "/iphone/typing-stats.json");
   const text = await response.text();
   expect(text).not.toContain("secret");
-  const { days, sources } = JSON.parse(text);
-  const day = days["2026-11-05"];
-  expect(day.typed).toMatchObject({ keystrokes: 54, chars: 52, words: 12, backspaces: 2, activeMs: 11_000 });
-  expect(day.typed.hourChars[17]).toBe(26);
-  expect(day.voice).toMatchObject({ words: 3, chars: 17, timedChars: 17, timedMs: 3000, inserts: 1 });
-  expect(day.voice.hourChars[9]).toBe(17);
-  expect(sources.iikb).toMatchObject({ words: 3, inserts: 1 });
+
+  expect(JSON.parse(text)).toMatchObject({
+    days: {
+      "2026-11-05": {
+        typed: {
+          keystrokes: 54,
+          chars: 52,
+          words: 12,
+          backspaces: 2,
+          activeMs: 11_000,
+          hourChars: hours({ 17: 26, 18: 26 }),
+        },
+        voice: {
+          words: 3,
+          chars: 17,
+          timedChars: 17,
+          timedMs: 3000,
+          inserts: 1,
+          hourChars: hours({ 9: 17 }),
+        },
+      },
+    },
+    sources: { iikb: { words: 3, inserts: 1 } },
+  });
 });
 
 test("an iPad's files go to a backup of their own, said back in the listing, and it still gets what the server gives", async () => {
@@ -115,14 +214,30 @@ test("an iPad's files go to a backup of their own, said back in the listing, and
   dirs.push(`${dir}-ipad`);
   await send("PUT", "/app/transcripts.jsonl", "iphone");
   await send("PUT", "/personal/en.network", "net");
-  const ipad = (method: string, path: string, body?: string) =>
-    backup(dir, "secret")(new Request(`http://server${path}`, { method, body, headers: { authorization: "Bearer secret", "x-modified": "1762000000", "x-device": "iPad" } }));
+
+  const ipad = async (method: string, url: string, body: string | null = null) =>
+    await backup(
+      dir,
+      "secret",
+    )(
+      new Request(`http://server${url}`, {
+        method,
+        body,
+        headers: { authorization: "Bearer secret", "x-modified": "1762000000", "x-device": "iPad" },
+      }),
+    );
+
   expect((await ipad("PUT", "/app/transcripts.jsonl", "ipad")).status).toBe(204);
-  expect(await readFile(join(dir, "mirror/app/transcripts.jsonl"), "utf8")).toBe("iphone");
-  expect(await readFile(join(`${dir}-ipad`, "mirror/app/transcripts.jsonl"), "utf8")).toBe("ipad");
+  expect(await readFile(path.join(dir, "mirror/app/transcripts.jsonl"), "utf-8")).toBe("iphone");
+  expect(await readFile(path.join(`${dir}-ipad`, "mirror/app/transcripts.jsonl"), "utf-8")).toBe(
+    "ipad",
+  );
   const listing = await ipad("GET", "/");
   expect(listing.headers.get("x-device")).toBe("iPad");
-  expect(Object.keys(await listing.json()).sort()).toEqual(["app/transcripts.jsonl", "personal/en.network"]);
+  expect(Object.keys(Held.parse(await listing.json())).toSorted()).toEqual([
+    "app/transcripts.jsonl",
+    "personal/en.network",
+  ]);
   expect(await (await ipad("GET", "/personal/en.network")).text()).toBe("net");
   expect((await send("GET", "/")).headers.get("x-device")).toBe("iPhone");
 });

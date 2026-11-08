@@ -62,6 +62,13 @@ puts it back.
 It runs as the user service `iikb-backup` (dotfiles), on port 2592 behind `tailscale serve` at `/backup`, so
 only the tailnet reaches it, and takes requests with the token in `~/.config/iikb/backup.env`.
 
+What it answers, to the token:
+
+- `GET /`: every file it holds for the device and every file it gives back, `{ "app/transcripts.jsonl": [size, modified] }`, times in seconds, with the device named back in `X-Device`.
+- `PUT /<name>`: a file, with its modification time in `X-Modified`.
+- `GET /mac/<name>`, `GET /personal/<name>`: what the Mac sent and what the server made for the iPhone, with the time in `Last-Modified`. The iPhone's own files are never read back out, so its token can't take them.
+- `GET /iphone/typing-stats.json`: the iPhone's typing and dictation counts as Keystroke keeps the Mac's (`server/keystroke.ts`, docs/stats.md).
+
 A build gets the server from `Packages/KeyboardModules/Sources/KeyboardStore/Resources/Keys/backup.key`, kept out of git: the
 address on the first line, the token on the second. `scripts/phone` takes it from the main checkout and won't build
 without it, so no install of its leaves the iPhone unbacked. `scripts/sync` leaves it out of the Mac's trees, so a

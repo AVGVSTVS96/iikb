@@ -1,43 +1,85 @@
 #!/usr/bin/env bun
-/**
- * hex: talk to your hex sessions from the keyboard, DM and General first, through hex's voice API.
- *
- *   HEX_URL=http://127.0.0.1:8790 [VOICE_TOKEN=…] IIKB_TOKEN=secret bun extensions/hex.ts
- */
+import { z } from "zod";
+
 import { chats } from "./iikb.ts";
 
-const HEX = process.env["HEX_URL"] ?? "http://127.0.0.1:8790";
+const HEX = process.env.HEX_URL ?? "http://127.0.0.1:8790";
 const PINNED = ["DM", "General"];
 
-interface Thread { id: string; name: string; where: string; line?: string; at: string }
-interface Turn { from: "me" | "hex"; text: string }
-interface Chat { version: number; turns: Turn[]; waiting: { text: string }[] }
+const Tasks = z.object({
+  tasks: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      where: z.string(),
+      line: z.string().optional(),
+      at: z.string(),
+    }),
+  ),
+});
 
-const hex = async <T>(path: string, init?: RequestInit): Promise<T> => {
-  const token = process.env["VOICE_TOKEN"];
+const Chat = z.object({
+  version: z.number(),
+  turns: z.array(z.object({ from: z.enum(["me", "hex"]), text: z.string() })),
+  waiting: z.array(z.object({ text: z.string() })),
+});
+
+const hex = async (path: string, init?: RequestInit) => {
+  const token = process.env.VOICE_TOKEN ?? "";
+
   const response = await fetch(HEX + path, {
     ...init,
-    headers: { "content-type": "application/json", ...(token && { authorization: `Bearer ${token}` }) },
+    headers: {
+      "content-type": "application/json",
+      ...(token !== "" && { authorization: `Bearer ${token}` }),
+    },
   });
-  if (!response.ok) throw new Error((await response.text()) || `hex answered ${response.status}`);
-  return (response.status === 204 ? undefined : await response.json()) as T;
+
+  if (!response.ok) {
+    const said = await response.text();
+
+    throw new Error(said === "" ? `hex answered ${response.status}` : said);
+  }
+
+  return response;
+};
+
+const read = async <T>(schema: z.ZodType<T>, path: string) => {
+  const response = await hex(path);
+
+  return schema.parse(await response.json());
 };
 
 const thread = (id: string) => `/tasks/${encodeURIComponent(id)}/chat`;
+
+const rank = (where: string) => {
+  const pinned = PINNED.indexOf(where);
+
+  return pinned === -1 ? PINNED.length : pinned;
+};
 
 export default chats({
   name: "hex",
 
   list: async () => {
-    const { tasks } = await hex<{ tasks: Thread[] }>("/tasks");
-    const rank = (row: Thread) => (PINNED.includes(row.where) ? PINNED.indexOf(row.where) : PINNED.length);
+    const { tasks } = await read(Tasks, "/tasks");
+
     return tasks
-      .toSorted((a, b) => rank(a) - rank(b) || b.at.localeCompare(a.at))
-      .map((row) => ({ id: row.id, name: row.name, line: row.line, pinned: PINNED.includes(row.where) }));
+      .toSorted((a, b) => rank(a.where) - rank(b.where) || b.at.localeCompare(a.at))
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        ...(row.line !== undefined && { line: row.line }),
+        pinned: PINNED.includes(row.where),
+      }));
   },
 
   read: async (chat, after) => {
-    const { version, turns, waiting } = await hex<Chat>(thread(chat) + (after ? `?after=${after}` : ""));
+    const { version, turns, waiting } = await read(
+      Chat,
+      thread(chat) + (after === undefined || after === "" ? "" : `?after=${after}`),
+    );
+
     return {
       version: String(version),
       messages: [
@@ -47,5 +89,7 @@ export default chats({
     };
   },
 
-  send: (chat, text, id) => hex(thread(chat), { method: "POST", body: JSON.stringify({ text, key: `app-${id}` }) }),
+  send: async (chat, text, id) => {
+    await hex(thread(chat), { method: "POST", body: JSON.stringify({ text, key: `app-${id}` }) });
+  },
 });

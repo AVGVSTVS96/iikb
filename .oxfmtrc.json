@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "sortImports": true,
+  "ignorePatterns": [
+    "**/*.md",
+    "**/*.html",
+    "**/*.yml",
+    "App/**",
+    "Controls/**",
+    "Packages/**",
+    "copy/facts.json",
+    "web/site/**"
+  ]
+}

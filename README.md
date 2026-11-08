@@ -105,7 +105,7 @@ Put your team in `Config/Team.xcconfig` (`DEVELOPMENT_TEAM = <your team ID>`) an
 | `web/site/` | The product site and keyboard layout showcase. `scripts/site` builds it into `web/dist`. |
 | `web/Sources/` | The WebAssembly typing-engine tooling. `scripts/web` compiles the engine alongside the site. |
 | `UITests/` | Types through the real keyboard in the simulator. |
-| `brand/`, `copy/` | The logo, README header and site images, and the words they use. `bun copy/facts.mjs` counts every number the copy cites. |
+| `brand/`, `copy/` | The logo, README header and site images, and the words they use. `bun copy/facts.ts` counts every number the copy cites. |
 
 Tests:
 

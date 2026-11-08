@@ -96,7 +96,7 @@ struct Glyph: View {
     }
 }
 
-/// The app icon's mark, drawn: iikb flush left on the bottom margin of a black square, as brand/logo/gen.mjs draws it.
+/// The app icon's mark, drawn: iikb flush left on the bottom margin of a black square, as brand/logo/gen.ts draws it.
 struct Mark: View {
     var size: CGFloat
 

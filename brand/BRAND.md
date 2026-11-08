@@ -21,11 +21,11 @@ The app was already most of the way there (black pages, near-black cards, gray s
 
 One family, as the International Style used it.
 
-- **Wordmark:** Helvetica Neue Bold, tracked -45/1000, drawn from the font's own outlines by `logo/gen.mjs`.
+- **Wordmark:** Helvetica Neue Bold, tracked -45/1000, drawn from the font's own outlines by `logo/gen.ts`.
 - **Display** (titles, headlines, big numbers): Helvetica Neue Bold, tracked -0.02em at 34px and up to -0.035em at 96px and above; line-height 0.95 to 1.05. Big numbers in Bold or Medium.
 - **Text** on the site: Helvetica Neue Regular 17/1.45, small 14/1.4, labels 12/1.3 Medium. Sentence case. No tracked all-caps.
 - **In the app** only titles (large and inline nav titles), the stat tiles' numbers, the About mark and the space bar's corner label use Helvetica Neue (`AppStyle.display`, `Font.display`). Rows, labels and controls stay the system font, so the app keeps reading as iOS.
-- **On the web:** `"Helvetica Neue", Helvetica` from the visitor's system first (every Apple device has it), then TeX Gyre Heros (GUST Font License, a free Helvetica clone) shipped in `fonts/` for everyone else. Helvetica Neue is Apple's system font and isn't redistributed: `logo/gen.mjs` reads it from `.scratch/fonts` (extracted from the Mac's `/System/Library/Fonts/HelveticaNeue.ttc`), and only the outlines are committed. Labels, the spec list and code on the site are Commit Mono (OFL), as on bassim.im and autofork.
+- **On the web:** `"Helvetica Neue", Helvetica` from the visitor's system first (every Apple device has it), then TeX Gyre Heros (GUST Font License, a free Helvetica clone) shipped in `fonts/` for everyone else. Helvetica Neue is Apple's system font and isn't redistributed: `logo/gen.ts` reads it from `.scratch/fonts` (extracted from the Mac's `/System/Library/Fonts/HelveticaNeue.ttc`), and only the outlines are committed. Labels, the spec list and code on the site are Commit Mono (OFL), as on bassim.im and autofork.
 
 ## Color: the app's own
 
@@ -62,7 +62,7 @@ Dark is the app's dark: a black page, near-black cards. It follows the system th
 
 ## Logo
 
-`logo/gen.mjs` draws every mark from Helvetica Neue Bold's outlines (`bun logo/gen.mjs`, into `logo/out/`).
+`logo/gen.ts` draws every mark from Helvetica Neue Bold's outlines (`bun logo/gen.ts`, into `logo/out/`).
 
 - **Wordmark:** `wordmark-ink.svg`, `wordmark-paper.svg`.
 - **Icon:** `icon.svg` (full bleed, for iOS, which masks it), `icon-rounded.svg`, `icon-light.svg`. The wordmark white on black, flush left on a 13% margin, as wide as the margins allow. The app's icon is this, at 1024.
