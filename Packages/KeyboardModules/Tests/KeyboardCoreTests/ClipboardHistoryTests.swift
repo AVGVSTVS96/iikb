@@ -111,6 +111,11 @@ struct ClipboardKindTests {
         #expect(kind(" https://example.com/a \n") == .link(ClipLink(site: "example.com", path: "/a")), "space around a link leaves it a link")
     }
 
+    @Test func aCardNamesASiteAsChatGPTsPillsDo() {
+        let names = ["x.com", "github.com", "en.wikipedia.org", "news.ycombinator.com", "bbc.co.uk", "t.co"].map { ClipLink(site: $0, path: "").name }
+        #expect(names == ["x.com", "github", "wikipedia", "ycombinator", "bbc", "t.co"])
+    }
+
     @Test func textThatOnlyMentionsALinkStaysText() {
         #expect(kind("see https://example.com later") == .text)
         #expect(kind("example.com") == .text)

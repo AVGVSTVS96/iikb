@@ -133,7 +133,7 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     private func configure(_ row: ClipRow, _ item: ClipboardHistory.Item) {
         let compact = shown?.compact == true, theme = shown?.theme ?? .lightCurrent
         let detail = [ClipboardHistory.length(of: item.content, in: shown?.length ?? .characters), ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)]
-        let title = ClipTitle.make(item.content, font: ClipRow.font(compact: compact), label: theme.label.ui, secondary: theme.candidate.ui)
+        let title = ClipTitle.make(item.content, font: ClipRow.font(compact: compact), label: theme.label.ui, secondary: theme.candidate.ui, short: compact)
         row.show(
             text: item.content.preview, styled: title, detail: detail.compactMap { $0 }.joined(separator: " · "), pinned: item.pinned,
             compact: compact, theme: theme

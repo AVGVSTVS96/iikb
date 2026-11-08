@@ -56,6 +56,15 @@ public struct ClipLink: Hashable, Sendable {
     /// From its first `/`, without a trailing one; empty for a site's home page.
     public var path: String
 
+    /// The site as ChatGPT's source pills name it, for where a whole site won't fit: `github`, `wikipedia`, `bbc`; a
+    /// name of one or two letters keeps its ending, `x.com`.
+    public var name: String {
+        let labels = site.split(separator: ".")
+        let country = labels.count >= 3 && labels[labels.count - 1].count == 2 && labels[labels.count - 2].count <= 3
+        let name = labels[labels.count - (country ? 3 : 2)]
+        return name.count <= 2 ? site : String(name)
+    }
+
     public init(site: String, path: String) {
         self.site = site
         self.path = path
