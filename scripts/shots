@@ -1,6 +1,8 @@
 #!/bin/bash
 # Runs on the Mac. Types through a keyboard and screenshots each step: scripts/shots "iPhone 17" iPhone-17 system light [steps]
 set -euo pipefail
+# A run leaves its simulator booted for the next one, since each iOS 27.1 boot starts ~300 daemons at once; KEEP= shuts it down.
+KEEP=${KEEP-1}
 cd "$(dirname "$0")/.."
 NAME=$1 TYPE=$2 KEYBOARD=$3 APPEARANCE=$4
 ID=$(scripts/sim ensure "$NAME" "$TYPE")

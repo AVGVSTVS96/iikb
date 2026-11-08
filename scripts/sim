@@ -2,6 +2,8 @@
 # Runs on the Mac. Headless simulator helpers for screenshots and keyboard checks. Each scripts/mac slot has its own
 # simulators (SIMPREFIX, iikb<n>), and ensure shuts down the slot's others, so a slot boots one at a time.
 set -euo pipefail
+# A run leaves its simulator booted for the next one, since each iOS 27.1 boot starts ~300 daemons at once; KEEP= shuts it down.
+KEEP=${KEEP-1}
 cd "$(dirname "$0")/.."
 
 APP=${APP:-build/Build/Products/Debug-iphonesimulator/iikb.app}
