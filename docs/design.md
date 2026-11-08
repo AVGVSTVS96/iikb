@@ -1,6 +1,6 @@
 # Design
 
-iikb's look follows the Raycast keyboard for iOS (October 2026): one bar of suggestions with the More button at its left and the mic at its end, and big flat keys, with no AI tools. This file is the spec: every size is in points, every color is sRGB iikb. The Paper file "iikb · Raycast" (`01M66Y7ME0SWEVV7YJM62FBE02`) draws each frame from the same numbers.
+iikb has its own look, with the Raycast keyboard for iOS (October 2026) as one reference: one bar of suggestions with the More button at its left and the mic at its end, and big flat keys, with no AI tools. This file is the spec: every size is in points, every color is sRGB iikb. The Paper file "iikb · Raycast" (`01M66Y7ME0SWEVV7YJM62FBE02`) draws each frame from the same numbers.
 
 Where this file and a Paper frame disagree, this file wins.
 
