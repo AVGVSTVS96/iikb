@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. OPEN=1 unfolds the iPhone Duo first. The GIF and clipboard panels through the real keyboard, light and dark, screenshotting
+# Runs on the Mac. OPEN=1 unfolds the iPhone Duo first, its shots named -open; without it the Duo is folded, whatever the last run left. The GIF and clipboard panels through the real keyboard, light and dark, screenshotting
 # each step into shots/raw/panels/: scripts/paneltest ["iPhone Duo"] [iPhone-Duo] (ONLY=<test> runs one test; RUNTIME picks the iOS; ORIENTATION=landscape; COMPACT=1 turns on Compact Emoji & GIFs; TRANSCRIPTS, JSON lines as the app keeps them, fills Transcripts)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -14,7 +14,7 @@ xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "
   -derivedDataPath build/uitest -quiet
 scripts/sim boot "$ID"
 scripts/sim use "$ID" iikb
-[ -n "${OPEN:-}" ] && scripts/sim unfold "$ID"
+scripts/sim unfold "$ID" "$([ -n "${OPEN:-}" ] && echo 180 || echo 0)"
 scripts/sim allow "$ID"
 if [ -n "${TRANSCRIPTS:-}" ]; then
   data=$(xcrun simctl get_app_container "$ID" com.shahidy.iikb data)
@@ -22,7 +22,7 @@ if [ -n "${TRANSCRIPTS:-}" ]; then
 fi
 for appearance in ${APPEARANCES:-light dark}; do
   xcrun simctl ui "$ID" appearance "$appearance"
-  TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/panels/$slug-${ORIENTATION:-portrait}${COMPACT:+-compact}-$appearance" TEST_RUNNER_IIKB_ORIENTATION="${ORIENTATION:-portrait}" TEST_RUNNER_IIKB_COMPACT="${COMPACT:-}" \
+  TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/panels/$slug${OPEN:+-open}-${ORIENTATION:-portrait}${COMPACT:+-compact}-$appearance" TEST_RUNNER_IIKB_ORIENTATION="${ORIENTATION:-portrait}" TEST_RUNNER_IIKB_COMPACT="${COMPACT:-}" TEST_RUNNER_IIKB_OPEN="${OPEN:-}" \
     xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
     -derivedDataPath build/uitest -only-testing:AppUITests/ToolPanelTests${ONLY:+/$ONLY} > build/uitest/panels.log 2>&1 || failed=1
   grep -E "error:|XCTAssert|Test Case .*(passed|failed)|Executed" build/uitest/panels.log || true

@@ -61,28 +61,29 @@ final class MenuView: UIView {
     private static let footerHeight: CGFloat = 36, gap: CGFloat = 8, headWidth: CGFloat = 136
 
     private var shelfHeight: Double {
-        let room = bounds.height - Self.footerHeight - Self.gap * CGFloat(shelves.count + 1)
+        let room = bounds.height - Self.footerHeight - Self.gap * CGFloat(shelves.count + 2)
         return Double(max(min(room / CGFloat(max(shelves.count, 1)), 60), 0).rounded(.down))
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
         let height = CGFloat(shelfHeight)
-        var y = Self.gap / 2
+        var y = Self.gap
         for shelf in shelves {
             shelf.head.frame = CGRect(x: block.minX, y: y, width: Self.headWidth, height: height)
             shelf.content.frame = CGRect(x: block.minX + Self.headWidth + Self.gap, y: y, width: block.maxX - block.minX - Self.headWidth - Self.gap, height: height)
             y += height + Self.gap
         }
         let wide = block.maxX - block.minX > 600
-        let row = CGRect(x: block.minX, y: y + Self.gap / 2, width: block.maxX - block.minX, height: Self.footerHeight)
+        let row = CGRect(x: block.minX, y: y, width: block.maxX - block.minX, height: Self.footerHeight)
         let layouts = footer.filter { $0.event != .settings && $0.event != .nextKeyboard }
         let ends = footer.filter { $0.event == .settings || $0.event == .nextKeyboard }
         var left = row.minX
         for (event, button) in layouts {
-            style(button, event: event, titled: false, on: event == picked)
-            button.frame = CGRect(x: left, y: row.minY, width: 48, height: row.height)
-            left += 48 + 4
+            style(button, event: event, titled: true, on: event == picked)
+            let width = ceil(button.intrinsicContentSize.width) + 24
+            button.frame = CGRect(x: left, y: row.minY, width: width, height: row.height)
+            left += width + 4
         }
         var right = row.maxX
         for (event, button) in ends.reversed() {
@@ -93,7 +94,8 @@ final class MenuView: UIView {
         }
     }
 
-    /// A layout shows filled while it's the one in use; Next Keyboard and Settings always read as buttons.
+    /// Each layout says its name and shows filled while it's the one in use; Next Keyboard and Settings say theirs where
+    /// the bar is wide.
     private func style(_ button: UIButton, event: KeyboardEvent, titled: Bool, on: Bool) {
         let image = UIImage(systemName: event.symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .medium))
         button.setImage(image, for: .normal)
@@ -134,8 +136,6 @@ private final class ShelfHead: UIControl {
             $0.isUserInteractionEnabled = false
             addSubview($0)
         }
-        layer.cornerRadius = 12
-        layer.cornerCurve = .continuous
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -152,13 +152,13 @@ private final class ShelfHead: UIControl {
     override var isHighlighted: Bool { didSet { refresh() } }
 
     private func refresh() {
-        backgroundColor = isHighlighted ? theme.keyPressed.ui : .clear
+        alpha = isHighlighted ? 0.5 : 1
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
         let side: CGFloat = 30
-        tile.frame = CGRect(x: 6, y: (bounds.height - side) / 2, width: side, height: side)
+        tile.frame = CGRect(x: 0, y: (bounds.height - side) / 2, width: side, height: side)
         let text = tile.frame.maxX + 8
         more.frame = CGRect(x: bounds.width - 14, y: 0, width: 10, height: bounds.height)
         name.frame = CGRect(x: text, y: 0, width: more.frame.minX - text - 2, height: bounds.height)

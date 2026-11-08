@@ -197,12 +197,14 @@ private extension GifSearch.Feed {
 }
 
 /// One GIF: the key fill while it loads, then its frames, played by ImageIO one at a time while it's on screen. Held, it
-/// plays bigger with Copy under it (UIKit's context menu), or, moved, lifts out of the keyboard as the GIF's file, which
-/// the app takes in where it's dropped.
+/// plays bigger (UIKit's context menu preview, with no menu so the keyboard's short height goes to the GIF), and a tap on
+/// it copies it; moved, it lifts out of the keyboard as the GIF's file, which the app takes in where it's dropped.
 private final class GifTile: UIControl, UIDragInteractionDelegate {
     let gif: Gif
     var dropped: () -> Void = {}
     var copy: () -> Void = {}
+    /// UIControl keeps its own context menu's commit to itself, so the preview's tap comes through a delegate of its own.
+    private let peek = Peek()
     var isOnScreen = false { didSet { if isOnScreen != oldValue { isOnScreen ? play() : stop() } } }
     private let image = UIImageView()
     private var data: Data?
@@ -226,14 +228,11 @@ private final class GifTile: UIControl, UIDragInteractionDelegate {
         let drag = UIDragInteraction(delegate: self)
         drag.isEnabled = true
         addInteraction(drag)
-        isContextMenuInteractionEnabled = true
+        peek.preview = { [unowned self] in ClipPreview(image: image.image, gif: data) }
+        peek.picked = { [unowned self] in copy() }
+        addInteraction(UIContextMenuInteraction(delegate: peek))
     }
 
-    override func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
-        UIContextMenuConfiguration(identifier: nil) { [unowned self] in ClipPreview(image: image.image, gif: data) } actionProvider: { [unowned self] _ in
-            UIMenu(children: [UIAction(title: "Copy", image: UIImage(systemName: "square.on.square")) { _ in self.copy() }])
-        }
-    }
 
     func dragInteraction(_ interaction: UIDragInteraction, itemsForBeginning session: UIDragSession) -> [UIDragItem] {
         let provider = NSItemProvider()
@@ -295,6 +294,20 @@ private final class GifTile: UIControl, UIDragInteractionDelegate {
             self.data = data
             if isOnScreen { play() }
         }
+    }
+}
+
+/// A context menu that's only a preview, the tap on it its action.
+private final class Peek: NSObject, UIContextMenuInteractionDelegate {
+    var preview: () -> UIViewController? = { nil }
+    var picked: () -> Void = {}
+
+    func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
+        UIContextMenuConfiguration(identifier: nil, previewProvider: preview)
+    }
+
+    func contextMenuInteraction(_ interaction: UIContextMenuInteraction, willPerformPreviewActionForMenuWith configuration: UIContextMenuConfiguration, animator: any UIContextMenuInteractionCommitAnimating) {
+        animator.addCompletion { [picked] in picked() }
     }
 }
 

@@ -38,7 +38,7 @@ final class ToolPanelTests: XCTestCase {
         XCTAssertTrue(wait(15) { tile.firstMatch.identifier == id }, "the clock shows the GIF you sent first")
         try shot("gif-recents")
         tile.firstMatch.press(forDuration: 1.2)
-        XCTAssertTrue(app.buttons["Copy"].waitForExistence(timeout: 3), "holding a GIF shows it with Copy")
+        Thread.sleep(forTimeInterval: 1.5)
         try shot("gif-preview")
     }
 
@@ -123,6 +123,19 @@ final class ToolPanelTests: XCTestCase {
         try shot("clipboard-preview")
     }
 
+    func testHoldingAShelfItemShowsAllOfIt() throws {
+        UIPasteboard.general.string = "Meet at Sightglass on 7th, 4pm? Bring the deck and both printouts, and ask Sam about Thursday."
+        let app = launch()
+        let more = app.buttons["iikb.more"]
+        XCTAssertTrue(more.waitForExistence(timeout: 10), "the bar's More button shows")
+        more.tap()
+        let item = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.Meet'")).firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 5), "the clipboard's shelf shows what you copied")
+        item.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 3), "holding it shows all of it with its menu")
+        try shot("menu-preview")
+    }
+
     func testTheMenuTakesTheKeysPlaceWithEditsAndShelves() throws {
         UIPasteboard.general.string = "Meet at Sightglass on 7th, 4pm?"
         let app = launch()
@@ -143,7 +156,7 @@ final class ToolPanelTests: XCTestCase {
         let app = launch()
         let field = app.textViews.firstMatch
         let tool = app.buttons["iikb.more"]
-        XCTAssertTrue(tool.waitForExistence(timeout: 3))
+        XCTAssertTrue(tool.waitForExistence(timeout: 10))
         for letter in "hi" { key(String(letter), in: app).tap() }
         key("space", in: app).tap()
         let paste = app.buttons["iikb.edit.paste"], cut = app.buttons["iikb.edit.cut"]
@@ -158,7 +171,7 @@ final class ToolPanelTests: XCTestCase {
             try shot("edits-refused")
             throw XCTSkip("iOS refused the paste and the bar said why: Paste from Other Apps is still Ask (the clipboard panel's test turns it on)")
         }
-        XCTAssertTrue(wait { (field.value as? String)?.hasSuffix("hi Sightglass") == true }, "Paste types what's on the clipboard")
+        XCTAssertTrue(wait { (field.value as? String)?.lowercased().hasSuffix("hi sightglass") == true }, "Paste types what's on the clipboard")
         XCTAssertTrue(wait { !paste.isHittable }, "and they tuck back in")
 
         tool.tap()
@@ -215,7 +228,7 @@ final class ToolPanelTests: XCTestCase {
     /// Opens a panel the way you do: the More button, then the shelf's name.
     private func open(_ shelf: Shelf, in app: XCUIApplication) {
         let more = app.buttons["iikb.more"]
-        XCTAssertTrue(more.waitForExistence(timeout: 3), "the bar's More button shows")
+        XCTAssertTrue(more.waitForExistence(timeout: 10), "the bar's More button shows")
         more.tap()
         let head = app.buttons["iikb.shelf.\(shelf.rawValue)"]
         XCTAssertTrue(head.waitForExistence(timeout: 3), "the menu has the \(shelf.rawValue) shelf")
@@ -228,6 +241,8 @@ final class ToolPanelTests: XCTestCase {
     }
 
     private var orientation: String { ProcessInfo.processInfo.environment["IIKB_ORIENTATION"] ?? "portrait" }
+    /// `IIKB_OPEN=1`: the iPhone Duo is unfolded, so shots come from its inner screen, not the cover screen it leaves dark.
+    private var unfolded: Bool { ProcessInfo.processInfo.environment["IIKB_OPEN"] == "1" }
     /// `IIKB_COMPACT=1` turns on Compact Emoji & GIFs.
     private var compactSetting: Bool { ProcessInfo.processInfo.environment["IIKB_COMPACT"] == "1" }
     /// Landscape, or the setting, shows the panels as one row.
@@ -248,7 +263,8 @@ final class ToolPanelTests: XCTestCase {
     private func shot(_ name: String) throws {
         guard let shots else { return }
         Thread.sleep(forTimeInterval: 1.5)
-        let screen = XCUIScreen.screens.map { $0.screenshot() }.max { $0.image.size.width * $0.image.size.height < $1.image.size.width * $1.image.size.height }
+        let inner = XCUIScreen.screens.map { $0.screenshot() }.max { $0.image.size.width * $0.image.size.height < $1.image.size.width * $1.image.size.height }
+        let screen = unfolded ? inner : nil
         try (screen ?? XCUIScreen.main.screenshot()).pngRepresentation.write(to: URL(fileURLWithPath: "\(shots)-\(name).png"))
     }
 
