@@ -51,6 +51,18 @@ enum Probe {
     }
 }
 
+/// The five tabs. In a window narrower than `Arrangement.wide`, as a 13-inch iPad's Split View half, iPadOS's tab bar
+/// across the top has no room for all five and scrolls them, so there the window takes the bar an iPhone has, as its
+/// pages already take one column.
+private final class Tabs: UITabBarController {
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        let narrow = traitCollection.userInterfaceIdiom == .pad && view.bounds.width < Arrangement.wide
+        guard narrow != traitOverrides.contains(UITraitHorizontalSizeClass.self) else { return }
+        if narrow { traitOverrides.horizontalSizeClass = .compact } else { traitOverrides.remove(UITraitHorizontalSizeClass.self) }
+    }
+}
+
 final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
@@ -64,7 +76,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         VoiceProbe.runIfAsked()
         RankingProbe.runIfAsked()
         JudgeProbe.runIfAsked()
-        let tabs = UITabBarController(tabs: [
+        let tabs = Tabs(tabs: [
             UITab(title: "iikb", image: UIImage(systemName: "house"), identifier: Router.Destination.home.rawValue) { _ in HomeViewController() },
             UITab(title: "Transcripts", image: UIImage(systemName: "waveform"), identifier: Router.Destination.transcripts.rawValue) { _ in
                 Self.hosting(TranscriptsPage())
