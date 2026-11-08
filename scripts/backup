@@ -14,6 +14,10 @@ phone=${1:?usage: scripts/backup <iPhone UDID> [--smaller]}
 smaller=${2:-}
 id=${IIKB_APP:-com.shahidy.iikb}
 backup=${IIKB_BACKUP:-$HOME/.local/share/iikb/backup}
+mkdir -p "$backup"
+owner=$(cat "$backup/device" 2>/dev/null || true)
+[ -z "$owner" ] || [ "$owner" = "$phone" ] || { echo "$backup holds $owner's data, not $phone's: set IIKB_BACKUP to $phone's backup (an iPad's is ~/.local/share/iikb/backup-ipad)" >&2; exit 1; }
+[ -n "$owner" ] || echo "$phone" >"$backup/device"
 mkdir -p "$backup/mirror/app/recordings"
 have=$(cd "$backup/mirror/app/recordings" && ls | paste -sd, -)
 read -r -d '' mac <<'MAC' || true

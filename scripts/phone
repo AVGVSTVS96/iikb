@@ -159,7 +159,7 @@ MAC
 ) || true
 if [ "$fresh" = True ]; then
   mkdir -p "$backups" && date +%Y-%m-%dT%H%M%S >> "$backups/reinstalls"
-  echo "the install started iikb in a new, empty container; scripts/restore $phone puts its data back (docs/backup.md)" >&2
+  echo "the install started iikb in a new, empty container; IIKB_BACKUP=$backups scripts/restore $phone puts its data back (docs/backup.md)" >&2
 fi
 ssh mac 'cat > Developer/iikb-phone/unlocked' < scripts/unlocked
 ssh mac "pkill -f 'iikb-phone/unlocked $phone'; nohup /usr/bin/python3 -I Developer/iikb-phone/unlocked $phone >/dev/null 2>&1 </dev/null &"

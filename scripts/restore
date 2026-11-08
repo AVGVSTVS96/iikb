@@ -9,6 +9,8 @@
 # The app is quit first when its files go back, since it holds its transcripts in memory and would save over them.
 # What's on the iPhone is backed up first (scripts/backup), after the files to put back are picked, so whatever it
 # hadn't sent yet is kept under versions/ rather than lost, and the restore still puts back what it was asked for.
+# A backup keeps the UDID of the device it holds (device), and backup and restore refuse another device: an iPad's is
+# ~/.local/share/iikb/backup-ipad (IIKB_BACKUP), as scripts/phone iPad keeps it.
 # The memory goes back without the reset token it was saved under (MemoryStore), so it's kept even after a reset.
 # Usage: scripts/restore <iPhone UDID> [--at 2026-11-04T0300|now] [name…]
 set -euo pipefail
@@ -18,6 +20,8 @@ shift
 at=
 if [ "${1:-}" = --at ]; then at=$2; shift 2; fi
 backup=${IIKB_BACKUP:-$HOME/.local/share/iikb/backup}
+owner=$(cat "$backup/device" 2>/dev/null || true)
+[ -z "$owner" ] || [ "$owner" = "$phone" ] || { echo "$backup holds $owner's data, not $phone's: set IIKB_BACKUP to $phone's backup (an iPad's is ~/.local/share/iikb/backup-ipad)" >&2; exit 1; }
 stage=$(mktemp -d "$backup/restore.XXXX")
 trap 'rm -rf "$stage"; ssh mac rm -rf "/tmp/${stage##*/}"' EXIT
 python3 - "$backup" "$at" "$stage" "$phone" "$@" <<'PY'
