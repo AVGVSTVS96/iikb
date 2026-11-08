@@ -1,10 +1,11 @@
 import Foundation
 
 /// A service the keyboard tells what you type, which can answer with a hint over the suggestions (docs/sources.md).
-nonisolated public struct Source: Codable, Hashable, Sendable {
+nonisolated public struct Source: Codable, Hashable, Sendable, Identifiable {
     public var name: String
     public var url: URL
     public var token: String?
+    public var id: String { name + url.absoluteString }
 
     public init(name: String, url: URL, token: String? = nil) {
         self.name = name
@@ -15,16 +16,17 @@ nonisolated public struct Source: Codable, Hashable, Sendable {
     /// `iikb://source?name=…&url=…&token=…`, the link a source gives you to add it.
     public init?(link: URL) {
         guard link.scheme == "iikb", link.host() == "source",
-              let items = URLComponents(url: link, resolvingAgainstBaseURL: false)?.queryItems,
-              let name = items.first(where: { $0.name == "name" })?.value, !name.isEmpty,
-              let url = items.first(where: { $0.name == "url" })?.value.flatMap(URL.init(string:)), Self.allows(url)
+            let items = URLComponents(url: link, resolvingAgainstBaseURL: false)?.queryItems,
+            let name = items.first(where: { $0.name == "name" })?.value, !name.isEmpty,
+            let url = items.first(where: { $0.name == "url" })?.value.flatMap(URL.init(string:)), Self.allows(url)
         else { return nil }
         self.init(name: name, url: url, token: items.first { $0.name == "token" }?.value)
     }
 
     /// iOS lets a keyboard reach `https` anywhere, and `http` only on the local network (`localhost`, `.local`).
     public static func allows(_ url: URL) -> Bool {
-        url.scheme == "https" || url.scheme == "http" && url.host().map { $0 == "localhost" || $0.hasSuffix(".local") } == true
+        url.scheme == "https"
+            || url.scheme == "http" && url.host().map { $0 == "localhost" || $0.hasSuffix(".local") } == true
     }
 }
 
@@ -33,7 +35,9 @@ public enum SourceStore {
     private static let key = "sources"
 
     public static func load(sharing: Bool = true) -> [Source] {
-        (SettingsStore.value(forKey: key, sharing: sharing) as? Data).flatMap { try? JSONDecoder().decode([Source].self, from: $0) } ?? []
+        (SettingsStore.value(forKey: key, sharing: sharing) as? Data).flatMap {
+            try? JSONDecoder().decode([Source].self, from: $0)
+        } ?? []
     }
 
     public static func save(_ sources: [Source]) {

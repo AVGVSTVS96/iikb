@@ -1,10 +1,11 @@
 import Foundation
 
 /// A service whose chats the keyboard opens from the bar, to read them and write in them (docs/extensions.md).
-nonisolated public struct Extension: Codable, Hashable, Sendable {
+nonisolated public struct Extension: Codable, Hashable, Sendable, Identifiable {
     public var name: String
     public var url: URL
     public var token: String?
+    public var id: String { name + url.absoluteString }
 
     public init(name: String, url: URL, token: String? = nil) {
         self.name = name
@@ -15,9 +16,9 @@ nonisolated public struct Extension: Codable, Hashable, Sendable {
     /// `iikb://extension?name=…&url=…&token=…`, the link an extension gives you to add it.
     public init?(link: URL) {
         guard link.scheme == "iikb", link.host() == "extension",
-              let items = URLComponents(url: link, resolvingAgainstBaseURL: false)?.queryItems,
-              let name = items.first(where: { $0.name == "name" })?.value, !name.isEmpty,
-              let url = items.first(where: { $0.name == "url" })?.value.flatMap(URL.init(string:)), Source.allows(url)
+            let items = URLComponents(url: link, resolvingAgainstBaseURL: false)?.queryItems,
+            let name = items.first(where: { $0.name == "name" })?.value, !name.isEmpty,
+            let url = items.first(where: { $0.name == "url" })?.value.flatMap(URL.init(string:)), Source.allows(url)
         else { return nil }
         self.init(name: name, url: url, token: items.first { $0.name == "token" }?.value)
     }
@@ -28,7 +29,9 @@ public enum ExtensionStore {
     private static let key = "extensions"
 
     public static func load(sharing: Bool = true) -> [Extension] {
-        (SettingsStore.value(forKey: key, sharing: sharing) as? Data).flatMap { try? JSONDecoder().decode([Extension].self, from: $0) } ?? []
+        (SettingsStore.value(forKey: key, sharing: sharing) as? Data).flatMap {
+            try? JSONDecoder().decode([Extension].self, from: $0)
+        } ?? []
     }
 
     public static func save(_ extensions: [Extension]) {

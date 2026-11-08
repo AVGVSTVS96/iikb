@@ -1,5 +1,5 @@
-import UIKit
 import KeyboardCore
+import UIKit
 
 /// Apple's three suggestions with the word's emoji (as many as fit, and the rest a swipe left away), a round mic at the
 /// right end that starts and stops dictation, and the tools at the left end, all placed on the top row's keys by
@@ -46,7 +46,9 @@ public final class SuggestionBar: UIView {
     public var keys: [(minX: Double, maxX: Double)] = [] {
         didSet { if !keys.elementsEqual(oldValue, by: ==) { setNeedsLayout() } }
     }
-    public var toolbar = KeyboardMetrics.phone(width: 390).toolbar { didSet { if toolbar != oldValue { setNeedsLayout() } } }
+    public var toolbar = KeyboardMetrics.phone(width: 390).toolbar {
+        didSet { if toolbar != oldValue { setNeedsLayout() } }
+    }
     /// Whether the mic sits at the bar's right, or in the bottom row (Settings › Layout › Record Key), where the bar
     /// has none and the recording runs as the bar's own waveform.
     public var micInBar = true {
@@ -90,9 +92,10 @@ public final class SuggestionBar: UIView {
     override public init(frame: CGRect) {
         super.init(frame: frame)
         for slot in slots {
-            slot.addAction(UIAction { [unowned self, unowned slot] _ in
-                if let suggestion = slot.suggestion { onSelect(suggestion) }
-            }, for: .touchUpInside)
+            slot.addAction(
+                UIAction { [unowned self, unowned slot] _ in
+                    if let suggestion = slot.suggestion { onSelect(suggestion) }
+                }, for: .touchUpInside)
             slot.onHighlight = { [unowned self] in refreshDividers() }
             addSubview(slot)
         }
@@ -109,10 +112,11 @@ public final class SuggestionBar: UIView {
         strip.accessibilityIdentifier = "iikb.suggestion.emoji"
         addSubview(strip)
         mic.addAction(UIAction { [unowned self] _ in onMic() }, for: .touchUpInside)
-        cancel.addAction(UIAction { [unowned self] _ in
-            dissolve()
-            onCancel()
-        }, for: .touchUpInside)
+        cancel.addAction(
+            UIAction { [unowned self] _ in
+                dissolve()
+                onCancel()
+            }, for: .touchUpInside)
         mic.breathes = true
         capsule.backgroundColor = .black
         capsule.layer.cornerCurve = .continuous
@@ -159,14 +163,21 @@ public final class SuggestionBar: UIView {
     /// `notice` (why voice couldn't start, or a source's hint) stands in for the suggestions. Tapping it dismisses it.
     /// `recorded` is how many seconds the app has recorded, for the time beside the waveform; `saved` are the lengths of
     /// the dictations recorded and still to be written, and `waitingFor` what they wait for while the model gets ready.
-    public func update(mic: MicButton.Phase, recorded: Double, saved: [Double], waitingFor: String?, notice: String?, theme: KeyboardTheme) {
+    public func update(
+        mic: MicButton.Phase, recorded: Double, saved: [Double], waitingFor: String?, notice: String?,
+        theme: KeyboardTheme
+    ) {
         let grows = (mic == .listening) != (self.mic.phase == .listening)
-        let shown = CGRect(x: self.mic.center.x - self.mic.bounds.width / 2, y: self.mic.center.y - self.mic.bounds.height / 2, width: self.mic.bounds.width, height: self.mic.bounds.height)
+        let shown = CGRect(
+            x: self.mic.center.x - self.mic.bounds.width / 2, y: self.mic.center.y - self.mic.bounds.height / 2,
+            width: self.mic.bounds.width, height: self.mic.bounds.height)
         if mic == .listening { heard = recorded }
         if mic == .listening { cancel.isHidden = false }
         self.mic.show(mic, theme: theme)
         cancel.paint(theme)
-        waveform.show(mic, recorded: recorded, saved: waitingFor == nil ? 0 : saved.count, tint: micInBar ? .white : theme.label.ui)
+        waveform.show(
+            mic, recorded: recorded, saved: waitingFor == nil ? 0 : saved.count,
+            tint: micInBar ? .white : theme.label.ui)
         stack.show(mic, saved: saved, waitingFor: waitingFor, theme: theme)
         self.notice.text = notice
         self.notice.textColor = theme.candidate.ui
@@ -189,9 +200,11 @@ public final class SuggestionBar: UIView {
             case .card: return lift(shown, theme: theme)
             }
         }
-        morph(growing: mic == .listening, { self.layoutIfNeeded() }) { _ in
-            if self.mic.phase != .listening { self.cancel.isHidden = true }
-        }
+        morph(
+            growing: mic == .listening, { self.layoutIfNeeded() },
+            completion: { _ in
+                if self.mic.phase != .listening { self.cancel.isHidden = true }
+            })
     }
 
     /// The tools at the bar's left, where there's no pill row for them.
@@ -265,7 +278,9 @@ public final class SuggestionBar: UIView {
             UIView.animate(withDuration: 0.2, delay: 0, options: [.curveEaseOut]) {
                 ghost.alpha = 0
                 ghost.transform = CGAffineTransform(scaleX: 0.6, y: 0.6)
-            } completion: { _ in ghost.removeFromSuperview() }
+            } completion: { _ in
+                ghost.removeFromSuperview()
+            }
         }
         UIView.performWithoutAnimation { layoutIfNeeded() }
         cancel.isHidden = true
@@ -284,7 +299,8 @@ public final class SuggestionBar: UIView {
             let u = CGFloat(step) / CGFloat(steps)
             let along = u < 0.5 ? 4 * u * u * u : 1 - pow(-2 * u + 2, 3) / 2
             let thinning = pow(min(u / 0.65, 1), 3)
-            return liquid(left: capsule.minX + (circle.minX - capsule.minX) * along, mic: circle, neck: 1 - 0.78 * thinning)
+            return liquid(
+                left: capsule.minX + (circle.minX - capsule.minX) * along, mic: circle, neck: 1 - 0.78 * thinning)
         }
         let flow = CAKeyframeAnimation(keyPath: "path")
         flow.values = paths
@@ -341,7 +357,9 @@ public final class SuggestionBar: UIView {
         UIView.animate(withDuration: 0.4, delay: 0.42, options: [.curveEaseIn]) {
             card.transform = CGAffineTransform(translationX: 0, y: -(rest.maxY + 12))
             card.alpha = 0
-        } completion: { _ in card.removeFromSuperview() }
+        } completion: { _ in
+            card.removeFromSuperview()
+        }
         mic.transform = CGAffineTransform(scaleX: 0.4, y: 0.4)
         UIView.animate(springDuration: 0.45, bounce: 0.25, delay: 0.3, options: [.allowUserInteraction]) {
             self.mic.alpha = 1
@@ -390,7 +408,9 @@ public final class SuggestionBar: UIView {
         let width = max((end - start - gap * CGFloat(editButtons.count - 1)) / CGFloat(editButtons.count), 0)
         let height = min(toolbar.bar - 4, toolbar.button + 8)
         for (index, (_, button)) in editButtons.enumerated() {
-            let place = CGRect(x: start + CGFloat(index) * (width + gap), y: toolbar.top + (toolbar.bar - height) / 2, width: width, height: height)
+            let place = CGRect(
+                x: start + CGFloat(index) * (width + gap), y: toolbar.top + (toolbar.bar - height) / 2, width: width,
+                height: height)
             button.isHidden = more.isHidden
             button.transform = .identity
             button.bounds.size = place.size
@@ -423,7 +443,9 @@ public final class SuggestionBar: UIView {
     /// A divider shows only between two things shown without a pill.
     private func refreshDividers() {
         func hidesDivider(_ index: Int, leading: Bool) -> Bool {
-            if index == slots.count - 1, !emojiBeside, let pick = leading ? emoji.first : emoji.last { return pick.isHidden || pick.isHighlighted }
+            if index == slots.count - 1, !emojiBeside, let pick = leading ? emoji.first : emoji.last {
+                return pick.isHidden || pick.isHighlighted
+            }
             return slots[index].isHidden || slots[index].showsPill
         }
         for (index, divider) in dividers.enumerated() {
@@ -435,7 +457,8 @@ public final class SuggestionBar: UIView {
         super.layoutSubviews()
         let scale = traitCollection.displayScale
         guard !keys.isEmpty else { return }
-        let layout = BarLayout(toolbar, keys: keys, tools: tools.count, more: !more.isHidden, mic: micInBar, maximumSlot: maximumSlotWidth)
+        let layout = BarLayout(
+            toolbar, keys: keys, tools: tools.count, more: !more.isHidden, mic: micInBar, maximumSlot: maximumSlotWidth)
         let micPlace = CGRect(mic.phase == .listening ? layout.recording : layout.mic ?? layout.recording)
         mic.bounds.size = micPlace.size
         mic.center = CGPoint(x: micPlace.midX, y: micPlace.midY)
@@ -445,11 +468,14 @@ public final class SuggestionBar: UIView {
             top: -(toolbar.top + (toolbar.bar - toolbar.button) / 2), left: -around,
             bottom: -(toolbar.bar - toolbar.button) / 2, right: -around
         )
-        for (tool, frame) in zip(tools, layout.tools) { tool.button.place(CGRect(frame), glyph: toolbar.glyph, reach: reach) }
+        for (tool, frame) in zip(tools, layout.tools) {
+            tool.button.place(CGRect(frame), glyph: toolbar.glyph, reach: reach)
+        }
         if let frame = layout.more { more.place(CGRect(frame), glyph: toolbar.glyph, reach: reach) }
         placeEdits(end: CGFloat(layout.mic.map { $0.x - BarLayout.gap } ?? layout.maxX))
         for (slot, frame) in zip(slots, layout.slots) {
-            let minX = CGFloat(frame.x).rounded(scale: scale), maxX = CGFloat(frame.x + frame.width).rounded(scale: scale)
+            let minX = CGFloat(frame.x).rounded(scale: scale)
+            let maxX = CGFloat(frame.x + frame.width).rounded(scale: scale)
             slot.frame = CGRect(x: minX, y: frame.y, width: maxX - minX, height: frame.height)
         }
         if layout.emojiBeside != emojiBeside {
@@ -463,7 +489,9 @@ public final class SuggestionBar: UIView {
         let left = max((place.width - total) / 2, 0)
         for (index, pick) in emoji.enumerated() {
             let minX = (left + CGFloat(index) * pitch).rounded(scale: scale)
-            let glyph = CGRect(x: minX, y: 0, width: (left + CGFloat(index + 1) * pitch).rounded(scale: scale) - minX, height: place.height)
+            let glyph = CGRect(
+                x: minX, y: 0, width: (left + CGFloat(index + 1) * pitch).rounded(scale: scale) - minX,
+                height: place.height)
             let frameMinX = index == 0 ? 0 : glyph.minX
             let frameMaxX = index == emoji.count - 1 ? max(place.width, glyph.maxX) : glyph.maxX
             pick.frame = CGRect(x: frameMinX, y: 0, width: frameMaxX - frameMinX, height: place.height)
@@ -595,7 +623,8 @@ private final class SuggestionSlot: UIControl {
         guard let font = label.font else { return }
         let baseline = (bounds.midY + font.capHeight / 2).rounded(scale: traitCollection.displayScale)
         let width = min(label.intrinsicContentSize.width, bounds.width - 8)
-        label.frame = CGRect(x: (bounds.width - width) / 2, y: baseline - font.ascender, width: width, height: font.lineHeight)
+        label.frame = CGRect(
+            x: (bounds.width - width) / 2, y: baseline - font.ascender, width: width, height: font.lineHeight)
     }
 }
 

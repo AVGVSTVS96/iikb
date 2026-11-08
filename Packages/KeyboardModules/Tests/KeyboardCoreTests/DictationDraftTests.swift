@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import KeyboardCore
 
 /// A field that shows the keyboard only `window` characters on each side of the caret, as iOS does.
@@ -31,8 +32,12 @@ private final class LopsidedDocument: TestDocument {
 
 /// A field that shows the keyboard only the line the caret is in, as some hosts do.
 private final class LineDocument: TestDocument {
-    override var textBeforeInput: String? { String(text.prefix(cursor).split(separator: "\n", omittingEmptySubsequences: false).last ?? "") }
-    override var textAfterInput: String? { String(text.dropFirst(cursor + selection).split(separator: "\n", omittingEmptySubsequences: false).first ?? "") }
+    override var textBeforeInput: String? {
+        String(text.prefix(cursor).split(separator: "\n", omittingEmptySubsequences: false).last ?? "")
+    }
+    override var textAfterInput: String? {
+        String(text.dropFirst(cursor + selection).split(separator: "\n", omittingEmptySubsequences: false).first ?? "")
+    }
 }
 
 /// A field that never shows the keyboard its text.
@@ -42,7 +47,8 @@ private final class BlindDocument: TestDocument {
 }
 
 struct DictationDraftTests {
-    private let long = "The garden behind the old library has seven benches, a fountain that only runs in summer, and a gardener named Ruth who waters the roses every morning before the doors open."
+    private let long =
+        "The garden behind the old library has seven benches, a fountain that only runs in summer, and a gardener named Ruth who waters the roses every morning before the doors open."
 
     private func dictate(_ said: String, into document: TestDocument, id: String = "a", in engine: inout TypingEngine) {
         engine.documentChanged(document)
@@ -58,7 +64,11 @@ struct DictationDraftTests {
 
     private func send(_ document: TestDocument, _ engine: inout TypingEngine) -> [DictationDraft.Outcome] {
         engine.documentChanged(document)
-        host(document, &engine) { $0.text = ""; $0.cursor = 0; $0.selection = 0 }
+        host(document, &engine) {
+            $0.text = ""
+            $0.cursor = 0
+            $0.selection = 0
+        }
         return engine.takeDictations()
     }
 
@@ -79,7 +89,12 @@ struct DictationDraftTests {
         var engine = TypingEngine()
         let document = ClippedDocument()
         dictate("See you at noon.", into: document, in: &engine)
-        #expect(send(document, &engine) == [.init(id: "a", typed: "See you at noon.", final: "See you at noon.", sent: true, uncertain: false, kind: .text, before: "")])
+        #expect(
+            send(document, &engine) == [
+                .init(
+                    id: "a", typed: "See you at noon.", final: "See you at noon.", sent: true, uncertain: false,
+                    kind: .text, before: "")
+            ])
     }
 
     @Test func aDictationKeepsItsFieldAndTheTextBeforeIt() {
@@ -115,7 +130,10 @@ struct DictationDraftTests {
         engine.type("eight", in: document)
         host(document, &engine) { $0.cursor = $0.text.count }
         let final = send(document, &engine).map(\.final)
-        #expect(final == [long.replacingOccurrences(of: "Ruth", with: "rose").replacingOccurrences(of: "seven", with: "eight")])
+        #expect(
+            final == [
+                long.replacingOccurrences(of: "Ruth", with: "rose").replacingOccurrences(of: "seven", with: "eight")
+            ])
     }
 
     @Test func aSelectionTypedOverChangesTheDictation() {
@@ -135,7 +153,8 @@ struct DictationDraftTests {
         host(document, &engine) { $0.insert(" and tables") }
         host(document, &engine) { $0.select(" every morning") }
         host(document, &engine) { $0.insert("") }
-        let expected = long.replacingOccurrences(of: "benches", with: "benches and tables").replacingOccurrences(of: " every morning", with: "")
+        let expected = long.replacingOccurrences(of: "benches", with: "benches and tables").replacingOccurrences(
+            of: " every morning", with: "")
         #expect(send(document, &engine).map(\.final) == [expected])
     }
 
@@ -239,7 +258,10 @@ struct DictationDraftTests {
         dictate(long, into: document, in: &engine)
         moveTo("seven", in: document, &engine)
         engine.perform(.return, in: document)
-        host(document, &engine) { $0.text = ""; $0.cursor = 0 }
+        host(document, &engine) {
+            $0.text = ""
+            $0.cursor = 0
+        }
         #expect(engine.takeDictations().map(\.final) == [long])
     }
 
@@ -271,7 +293,10 @@ struct DictationDraftTests {
         engine.documentChanged(document)
         document.text += "."
         document.cursor += 1
-        host(document, &engine) { $0.text = ""; $0.cursor = 0 }
+        host(document, &engine) {
+            $0.text = ""
+            $0.cursor = 0
+        }
         #expect(engine.takeDictations().map(\.sent) == [true])
     }
 
@@ -279,10 +304,18 @@ struct DictationDraftTests {
         var engine = TypingEngine()
         let document = ClippedDocument(window: 30)
         dictate("Call the plumber about the sink.", into: document, in: &engine)
-        host(document, &engine) { $0.cursor = 0; $0.selection = $0.text.count }
+        host(document, &engine) {
+            $0.cursor = 0
+            $0.selection = $0.text.count
+        }
         host(document, &engine) { $0.insert("") }
         #expect(engine.takeDictations().isEmpty)
-        #expect(leave(&engine) == [.init(id: "a", typed: "Call the plumber about the sink.", final: "", sent: false, uncertain: false, kind: .text, before: "")])
+        #expect(
+            leave(&engine) == [
+                .init(
+                    id: "a", typed: "Call the plumber about the sink.", final: "", sent: false, uncertain: false,
+                    kind: .text, before: "")
+            ])
     }
 
     @Test func aFieldThatShowsNoTextIsNeverTakenForSent() {
@@ -298,7 +331,12 @@ struct DictationDraftTests {
         var engine = TypingEngine()
         let document = ClippedDocument()
         dictate("Call the plumber.", into: document, in: &engine)
-        #expect(leave(&engine) == [.init(id: "a", typed: "Call the plumber.", final: "Call the plumber.", sent: false, uncertain: false, kind: .text, before: "")])
+        #expect(
+            leave(&engine) == [
+                .init(
+                    id: "a", typed: "Call the plumber.", final: "Call the plumber.", sent: false, uncertain: false,
+                    kind: .text, before: "")
+            ])
         #expect(engine.takeDictations().isEmpty)
     }
 
@@ -323,7 +361,9 @@ struct DictationDraftTests {
         next.type("eight", in: document)
         let field = document.text
         let outcome = send(document, &next)
-        #expect(field == long.replacingOccurrences(of: "Ruth", with: "rose").replacingOccurrences(of: "seven", with: "eight"))
+        #expect(
+            field
+                == long.replacingOccurrences(of: "Ruth", with: "rose").replacingOccurrences(of: "seven", with: "eight"))
         #expect(outcome.map(\.final) == [field])
         #expect(outcome.map(\.uncertain) == [false])
     }
@@ -360,7 +400,10 @@ struct DictationDraftTests {
         var engine = TypingEngine()
         let document = ClippedDocument()
         dictate("Running late.", into: document, in: &engine)
-        host(document, &engine) { $0.cursor = 0; $0.selection = $0.text.count }
+        host(document, &engine) {
+            $0.cursor = 0
+            $0.selection = $0.text.count
+        }
         engine.perform(.delete, in: document)
         engine.type("Ok see you there", in: document)
         #expect(send(document, &engine).map(\.final) == [""])
@@ -370,13 +413,16 @@ struct DictationDraftTests {
     /// keyboard and the app make them, with the host reporting after each: what it became must be what lies between
     /// those lines, or say it may be wrong, which only a window that fits two places equally may do.
     @Test func randomEditsThroughAWindowEndAsTheField() {
-        let words = ["river", "stone", "bright", "seven", "maple", "quiet", "over", "the", "a", "lantern", "north", "and"]
+        let words = [
+            "river", "stone", "bright", "seven", "maple", "quiet", "over", "the", "a", "lantern", "north", "and",
+        ]
         let (head, tail) = ("Dear Sam,\n", "\nThanks")
-        var failures = 0, uncertain = 0
+        var failures = 0
+        var uncertain = 0
         for seed in 0..<UInt64(3000) {
-            var random = seed &* 6364136223846793005 &+ 1442695040888963407
+            var random = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
             func next(_ bound: Int) -> Int {
-                random = random &* 6364136223846793005 &+ 1442695040888963407
+                random = random &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
                 return Int((random >> 33) % UInt64(max(bound, 1)))
             }
             var engine = TypingEngine()
@@ -391,32 +437,52 @@ struct DictationDraftTests {
             for _ in 0..<(5 + next(20)) {
                 switch next(6) {
                 case 0:
-                    host(document, &engine) { $0.selection = 0; $0.cursor = inside() }
+                    host(document, &engine) {
+                        $0.selection = 0
+                        $0.cursor = inside()
+                    }
                 case 1:
-                    host(document, &engine) { $0.selection = 0; $0.cursor = inside() }
+                    host(document, &engine) {
+                        $0.selection = 0
+                        $0.cursor = inside()
+                    }
                     for _ in 0...next(3) {
                         engine.perform(.delete, in: document)
                         engine.documentChanged(document)
                     }
                 case 2:
-                    host(document, &engine) { $0.selection = 0; $0.cursor = inside() }
+                    host(document, &engine) {
+                        $0.selection = 0
+                        $0.cursor = inside()
+                    }
                     engine.type(" " + words[next(words.count)], in: document)
                     engine.documentChanged(document)
                 case 3:
-                    host(document, &engine) { $0.selection = 0; $0.cursor = inside() }
+                    host(document, &engine) {
+                        $0.selection = 0
+                        $0.cursor = inside()
+                    }
                     host(document, &engine) { $0.insert(words[next(words.count)]) }
                 case 4:
-                    host(document, &engine) { $0.cursor = inside(); $0.selection = 1 + next(10) }
+                    host(document, &engine) {
+                        $0.cursor = inside()
+                        $0.selection = 1 + next(10)
+                    }
                     host(document, &engine) { $0.insert("") }
                 default:
-                    host(document, &engine) { $0.cursor = inside(); $0.selection = 1 + next(10) }
+                    host(document, &engine) {
+                        $0.cursor = inside()
+                        $0.selection = 1 + next(10)
+                    }
                     engine.type(words[next(words.count)], in: document)
                     engine.documentChanged(document)
                 }
             }
             let field = String(document.text.dropFirst(head.count).dropLast(tail.count))
             let outcome = send(document, &engine)
-            if outcome.map(\.final) != [field] { outcome.first?.uncertain == true ? (uncertain += 1) : (failures += 1) }
+            if outcome.map(\.final) != [field] {
+                if outcome.first?.uncertain == true { uncertain += 1 } else { failures += 1 }
+            }
         }
         #expect(failures == 0)
         #expect(uncertain < 30)
