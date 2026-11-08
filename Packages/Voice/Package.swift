@@ -17,7 +17,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../KeyboardModules"),
-        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.0", traits: []),
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.3", traits: []),
     ],
     targets: [
         .target(
