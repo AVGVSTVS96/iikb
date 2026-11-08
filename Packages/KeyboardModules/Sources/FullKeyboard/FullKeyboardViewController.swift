@@ -70,6 +70,8 @@ open class FullKeyboardViewController: UIInputViewController {
     /// The chats panel's message line while it's open, which the keys type into in place of the app's field.
     private var line: LineDocument?
     private var document: any TextDocument { line ?? host }
+    /// What you'd begun in each chat you switched away from, by chat id.
+    private var drafts: [String: String] = [:]
     private let chats = Chats()
     private lazy var chatShelf: ChatShelf = {
         let shelf = ChatShelf(chats: chats)
@@ -180,7 +182,7 @@ open class FullKeyboardViewController: UIInputViewController {
         suggestionBar.onChat = { [unowned self] index in
             guard chats.list.indices.contains(index) else { return }
             feedback(.other)
-            chats.pick(chats.list[index])
+            switchChat(to: chats.list[index])
         }
         panelView.onClose = { [unowned self] in back() }
         panelView.onField = { [unowned self] in raiseKeys() }
@@ -796,6 +798,18 @@ open class FullKeyboardViewController: UIInputViewController {
         engine.documentChanged(line)
         chats.reload()
         chats.start(at: chat)
+        render()
+    }
+
+    /// Another chat from its pill, the line you'd begun kept with the chat you left and the one you'd begun in this chat
+    /// put back.
+    private func switchChat(to chat: Chats.Chat) {
+        guard let line, chat != chats.open else { return }
+        if let open = chats.open { drafts[open.id] = line.text.isEmpty ? nil : line.text }
+        line.clear()
+        line.insert(drafts.removeValue(forKey: chat.id) ?? "")
+        chats.pick(chat)
+        engine.documentChanged(line)
         render()
     }
 
