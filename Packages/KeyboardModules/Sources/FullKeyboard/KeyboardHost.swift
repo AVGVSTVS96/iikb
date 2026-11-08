@@ -1,4 +1,5 @@
 import KeyboardArbiter
+import OSLog
 import UIKit
 
 /// The app the keyboard is typing in, for sources, learning, suggestions and voice typing. iOS stopped telling keyboards since
@@ -24,6 +25,46 @@ enum KeyboardHost {
                 client.perform(NSSelectorFromString("startConnection"))
             }
             harvest()
+            probeLaunchServices()
+        }
+
+        private static var probed = false
+
+        /// What LaunchServices tells a keyboard about apps and the hosts that aren't apps, logged once per keyboard,
+        /// to learn whether the keyboard can tell them apart before it leaves one to start the microphone.
+        private static func probeLaunchServices() {
+            guard !probed else { return }
+            probed = true
+            let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
+            let selector = NSSelectorFromString("applicationProxyForIdentifier:")
+            guard let proxies = NSClassFromString("LSApplicationProxy") as AnyObject?, proxies.responds(to: selector)
+            else {
+                return log.notice("probe: no LSApplicationProxy")
+            }
+            for id in [
+                "com.shahidy.iikb", "ph.telegra.Telegraph", "net.whatsapp.WhatsApp", "com.apple.MobileSMS",
+                "com.apple.mobilesafari", "ph.telegra.Telegraph.Share",
+                "com.apple.MobileSMS.MessagesNotificationExtension",
+                "com.apple.mobilesms.compose", "com.apple.springboard", "com.apple.ScreenshotServicesService",
+                "com.apple.PaperKit.MarkupPhotoEditingExtension", "com.apple.SafariViewService", "com.example.none",
+            ] {
+                guard let proxy = proxies.perform(selector, with: id)?.takeUnretainedValue() as? NSObject else {
+                    log.notice("probe \(id, privacy: .public): no proxy")
+                    continue
+                }
+                let keys = [
+                    "isInstalled", "appTags", "isLaunchProhibited", "applicationType", "isPlaceholder", "bundleType",
+                ]
+                let found = keys.map { "\($0)=\(String(describing: value(proxy, $0)))" }.joined(separator: " ")
+                let bundle = NSSelectorFromString("bundleProxyForIdentifier:")
+                let kind =
+                    (NSClassFromString("LSBundleProxy") as AnyObject?).flatMap {
+                        $0.responds(to: bundle) ? $0.perform(bundle, with: id)?.takeUnretainedValue() : nil
+                    }.map { String(describing: Swift.type(of: $0)) } ?? "none"
+                log.notice(
+                    "probe \(id, privacy: .public): \(Swift.type(of: proxy), privacy: .public) bundle \(kind, privacy: .public) \(found, privacy: .public)"
+                )
+            }
         }
 
         /// Keeps the app the arbiter names now.
