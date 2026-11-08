@@ -274,6 +274,7 @@ fill() {
 # Screenshots each of the app's screens on the iPhone Duo's four screens, as duo does for the keyboard:
 # shots/raw/duo/app/<tag>-<screen>-<page>-<appearance>.png, filled as fill says; PAGES picks the pages, SCREENS the
 # screens; ARGS adds launch arguments to each (-iikbScrollToEnd YES shows each page's end); SIM names the simulator.
+# The keys are the default theme unless ARGS picks one, since the slot's simulator keeps whatever an earlier run set.
 duoapp() {
   local tag=$1 id; shift
   id=$(ensure "${SIM:-iPhone Duo}" iPhone-Duo)
@@ -282,6 +283,8 @@ duoapp() {
   use "$id" iikb
   unfold "$id" 0
   fill "$id"
+  local look="-iikbTheme standard -iikbThemeAppearance automatic"
+  [[ "${ARGS:-}" == *-iikbTheme* ]] && look=
   while read -r screen hinge orientation display; do
     [ -n "${SCREENS:-}" ] && [[ " $SCREENS " != *" $screen "* ]] && continue
     unfold "$id" "$hinge"
@@ -292,7 +295,7 @@ duoapp() {
         [ -n "${PAGES:-}" ] && [[ " $PAGES " != *" $page "* ]] && continue
         xcrun simctl terminate "$id" "$BUNDLE" 2>/dev/null || true
         hub "$id" orientation "$orientation"
-        xcrun simctl launch "$id" "$BUNDLE" -iikbOrientation "$([ "$orientation" = portrait ] && echo portrait || echo landscape)" $args ${ARGS:-} >/dev/null 2>&1 || true
+        xcrun simctl launch "$id" "$BUNDLE" -iikbOrientation "$([ "$orientation" = portrait ] && echo portrait || echo landscape)" $look $args ${ARGS:-} >/dev/null 2>&1 || true
         sleep "${SETTLE:-4}"
         mkdir -p shots/raw/duo/app
         xcrun simctl io "$id" screenshot --display="$display" "shots/raw/duo/app/$tag-$screen-$page-$appearance.png" >/dev/null 2>&1
