@@ -89,6 +89,11 @@ public final class TapMapView: UIView {
         let scale = scale(for: bounds.width)
         canvas.transform = CGAffineTransform(scaleX: scale, y: scale)
         canvas.center = CGPoint(x: bounds.midX, y: bounds.midY)
+        let text = min(1 / scale, 2)
+        if marks.textScale != text {
+            marks.textScale = text
+            marks.setNeedsDisplay()
+        }
         if abs(bounds.height - size.height * scale) > 0.5 { invalidateIntrinsicContentSize() }
     }
 
@@ -114,6 +119,9 @@ public final class TapMapView: UIView {
 }
 
 final class TapMarksView: UIView {
+    /// How much larger its names and marks draw than the keys around them, so they keep their size on screen when a
+    /// whole iPad keyboard is drawn small.
+    var textScale: CGFloat = 1
     private var aims: [Aim] = []
     private var keys: [(key: Key, frame: Rect)] = []
     private var mode = TapMapView.Mode.aim
@@ -160,7 +168,7 @@ final class TapMarksView: UIView {
         for (key, frame) in keys where key.label != nil {
             let rect = CGRect(frame)
             let name = NSAttributedString(string: TapMapPalette.name(of: key), attributes: [
-                .font: UIFont.systemFont(ofSize: key.label == " " ? 13 : 17, weight: .medium),
+                .font: UIFont.systemFont(ofSize: (key.label == " " ? 13 : 17) * textScale, weight: .medium),
                 .foregroundColor: UIColor.label.withAlphaComponent(dark ? 0.85 : 0.62),
                 .shadow: halo,
             ])
@@ -189,7 +197,8 @@ final class TapMarksView: UIView {
 
             tintColor.withAlphaComponent(0.45 * alpha).setFill()
             for tap in aim.recent {
-                UIBezierPath(ovalIn: CGRect(x: tap.x - 2, y: tap.y - 2, width: 4, height: 4)).fill()
+                let r = 2 * textScale
+                UIBezierPath(ovalIn: CGRect(x: tap.x - r, y: tap.y - r, width: 2 * r, height: 2 * r)).fill()
             }
 
             let (major, minor, angle) = Self.axes(of: aim.spread)
@@ -198,13 +207,13 @@ final class TapMarksView: UIView {
             tintColor.withAlphaComponent(0.12 * alpha).setFill()
             ring.fill()
             tintColor.withAlphaComponent(0.9 * alpha).setStroke()
-            ring.lineWidth = selected?.key == aim.key ? 2 : 1.25
+            ring.lineWidth = (selected?.key == aim.key ? 2 : 1.25) * textScale
             ring.stroke()
 
             let drift = UIBezierPath()
             drift.move(to: origin)
             drift.addLine(to: center)
-            drift.lineWidth = 1.5
+            drift.lineWidth = 1.5 * textScale
             drift.lineCapStyle = .round
             drift.stroke()
 
@@ -217,9 +226,10 @@ final class TapMarksView: UIView {
             cross.lineWidth = 1
             cross.stroke()
 
-            let dot = UIBezierPath(ovalIn: CGRect(x: center.x - 3, y: center.y - 3, width: 6, height: 6))
+            let r = 3 * textScale
+            let dot = UIBezierPath(ovalIn: CGRect(x: center.x - r, y: center.y - r, width: 2 * r, height: 2 * r))
             theme.key.ui.withAlphaComponent(alpha).setStroke()
-            dot.lineWidth = 3
+            dot.lineWidth = 3 * textScale
             dot.stroke()
             tintColor.withAlphaComponent(alpha).setFill()
             dot.fill()
@@ -252,20 +262,20 @@ final class TapMarksView: UIView {
     private func label(_ key: Key, in frame: Rect, share: Double?, emphasized: Bool) {
         let rect = CGRect(frame)
         let name = NSAttributedString(string: TapMapPalette.name(of: key), attributes: [
-            .font: UIFont.systemFont(ofSize: share == nil ? (key.label?.count == 1 && key.label != " " ? 20 : 13) : 11),
+            .font: UIFont.systemFont(ofSize: (share == nil ? (key.label?.count == 1 && key.label != " " ? 20 : 13) : 11) * textScale),
             .foregroundColor: share == nil ? UIColor.label.withAlphaComponent(0.3) : UIColor.secondaryLabel,
         ])
         guard let share else {
             name.draw(at: CGPoint(x: rect.midX - name.size().width / 2, y: rect.midY - name.size().height / 2))
             return
         }
-        name.draw(at: CGPoint(x: rect.minX + 5, y: rect.minY + 3))
+        name.draw(at: CGPoint(x: rect.minX + 5 * textScale, y: rect.minY + 3 * textScale))
         let number = NSAttributedString(string: TapMapPalette.percent(share), attributes: [
-            .font: UIFont.monospacedDigitSystemFont(ofSize: 13, weight: emphasized ? .semibold : .medium),
+            .font: UIFont.monospacedDigitSystemFont(ofSize: 13 * textScale, weight: emphasized ? .semibold : .medium),
             .foregroundColor: UIColor.label,
         ])
         let size = number.size()
-        number.draw(at: CGPoint(x: rect.midX - size.width / 2, y: rect.maxY - size.height - 4))
+        number.draw(at: CGPoint(x: rect.midX - size.width / 2, y: rect.maxY - size.height - 4 * textScale))
     }
 
     static func axes(of spread: (xx: Double, xy: Double, yy: Double)) -> (CGFloat, CGFloat, CGFloat) {

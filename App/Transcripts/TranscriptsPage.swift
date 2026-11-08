@@ -271,7 +271,7 @@ private struct FortnightChart: View {
             ForEach(days, id: \.date) { day in
                 let marked = Calendar.current.isDateInToday(day.date) || day.date == best?.date
                 BarMark(x: .value("Day", day.date, unit: .day), y: .value("Words", day.words), width: .ratio(0.64))
-                    .foregroundStyle(marked ? AnyShapeStyle(LinearGradient(colors: [.pink, .purple], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Color.pink.opacity(0.55)))
+                    .foregroundStyle(marked ? AnyShapeStyle(LinearGradient(colors: [.pink, .purple], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Color.pink.opacity(0.8)))
                     .clipShape(UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4, style: .continuous))
                     .annotation(position: .top, spacing: 4) {
                         if day.date == best?.date, day.words > 0 {
