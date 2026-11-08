@@ -320,7 +320,7 @@ private struct TranscriptDetail: View {
             Text(transcript.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().hour().minute()))
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Color.appSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
                 .padding(.horizontal, 4)
             Text(transcript.shown)
                 .font(.title3)
