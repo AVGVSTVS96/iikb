@@ -133,7 +133,7 @@ final class KeyView: UIView {
 
         switch shown.alignment {
         case .center:
-            let offset = isLetter ? metrics.letterOffset : -(theme.keyShape?.labelLift ?? 0)
+            let offset = isLetter ? ((numberRow ? metrics.numberRowLetterOffset : nil) ?? metrics.letterOffset) : -(theme.keyShape?.labelLift ?? 0)
             label.center = CGPoint(x: bounds.midX, y: bounds.midY + offset)
             icon.center = CGPoint(x: bounds.midX, y: bounds.midY)
         case .bottomLeading, .bottomTrailing:

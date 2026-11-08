@@ -22,15 +22,17 @@ public struct KeyboardMetrics: Hashable, Sendable {
     public var labelSize: Double
     public var secondarySize: Double
     public var symbolSize: Double
+    /// How far below the key's middle a lone character sits; an iPad's sit a little low, as Apple's do.
     public var letterOffset: Double = 0
     public var edgeInset = Size(width: 4, height: 3)
     /// How far in from the key's side a word in its corner (`.?123`) starts, a little further than a glyph.
     public var textInset: Double = 7
     public var textBaselineInset: Double = 8
     public var letterBaselineInset: Double = 9
-    /// A single character in the 13-inch's short row of digits (its number layer's `` ` `` to `>`), smaller than the
-    /// letter rows' as Apple's is; nil draws it at `letterSize`.
+    /// A single character in the 13-inch's short row of digits (its number layer's `` ` `` to `>`), smaller and lower
+    /// than the letter rows' as Apple's is; nil draws it at `letterSize` and `letterOffset`.
     public var numberRowLetterSize: Double?
+    public var numberRowLetterOffset: Double?
     public var secondaryCapTop: Double = 10.5
     /// An iPad's keys with two characters (`!` over `,`): their size, and the top of the upper one's capitals and the
     /// lower one's baseline as shares of the key's height, as Apple's grow with the key. The 13-inch's row of digits
@@ -216,7 +218,7 @@ extension KeyboardMetrics {
             columns: 11.2, sideInset: 6, keyGap: 12, rowGap: 9,
             keyHeight: 55.5, numberRowHeight: 0,
             topInset: 8, bottomInset: 8, cornerRadius: 9.5,
-            letterSize: 22, labelSize: 18.5, secondarySize: 12.5, symbolSize: 23,
+            letterSize: 22, labelSize: 18.5, secondarySize: 12.5, symbolSize: 23, letterOffset: 1.5,
             letterBaselineInset: 7.5, pairBaselineRatio: 0.243, wordsAsGlyphs: true, toolbar: .pad
         )
         guard landscape else { return metrics }
@@ -236,7 +238,7 @@ extension KeyboardMetrics {
             columns: 12.5, sideInset: 9, keyGap: 10, rowGap: large ? 9 : 8.75,
             keyHeight: large ? 55.5 : 55, numberRowHeight: 0,
             topInset: 8, bottomInset: 8, cornerRadius: 9.5,
-            letterSize: 22, labelSize: 15, secondarySize: 12.5, symbolSize: 23,
+            letterSize: 22, labelSize: 15, secondarySize: 12.5, symbolSize: 23, letterOffset: 1.5,
             letterBaselineInset: 7.5, wordsAsGlyphs: true, toolbar: .pad
         )
         guard landscape else { return metrics }
@@ -259,9 +261,9 @@ extension KeyboardMetrics {
             columns: 14.54, sideInset: 3.5, keyGap: 7, rowGap: 7,
             keyHeight: 61, numberRowHeight: 45.5,
             topInset: 6, bottomInset: 4, cornerRadius: 11.5,
-            letterSize: 22, labelSize: 17, secondarySize: 16, symbolSize: 21,
+            letterSize: 22, labelSize: 17, secondarySize: 16, symbolSize: 21, letterOffset: 1,
             edgeInset: Size(width: 11.5, height: 8), textInset: 14, textBaselineInset: 13.5, letterBaselineInset: 8,
-            numberRowLetterSize: 17.7, pairSize: 19, numberRowPairSize: 16, pairCapTopRatio: 0.22, pairBaselineRatio: 0.155,
+            numberRowLetterSize: 17.7, numberRowLetterOffset: 2.5, pairSize: 19, numberRowPairSize: 16, pairCapTopRatio: 0.22, pairBaselineRatio: 0.155,
             wordsAsGlyphs: true, toolbar: .pad
         )
         guard landscape else { return metrics }
@@ -293,6 +295,8 @@ extension KeyboardMetrics {
         metrics.numberRowLetterSize = metrics.numberRowLetterSize.map { $0 * type }
         metrics.secondaryCapTop = 15
         metrics.letterBaselineInset = 12.5
+        metrics.letterOffset = 0.5
+        metrics.numberRowLetterOffset = nil
         return metrics
     }
 }
