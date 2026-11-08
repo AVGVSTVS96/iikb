@@ -120,6 +120,7 @@ public final class SuggestionBar: UIView {
         strip.accessibilityIdentifier = "iikb.suggestion.emoji"
         addSubview(strip)
         chatStrip.accessibilityIdentifier = "iikb.chats"
+        chatStrip.fadesEnds = true
         addSubview(chatStrip)
         mic.addAction(UIAction { [unowned self] _ in onMic() }, for: .touchUpInside)
         cancel.addAction(

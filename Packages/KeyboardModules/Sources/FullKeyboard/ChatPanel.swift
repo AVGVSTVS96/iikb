@@ -39,6 +39,8 @@ final class ChatPanel: UIView, PanelContent {
     private let message = PanelNotice()
     /// What went wrong, under the messages, when there are messages to keep showing.
     private let trouble = UILabel()
+    /// The open chat's name over the messages while the keys are up, where the bar's pills that name it are gone.
+    private let title = UILabel()
 
     init(chats: Chats) {
         self.chats = chats
@@ -62,7 +64,9 @@ final class ChatPanel: UIView, PanelContent {
         well.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapMessages)))
         message.accessibilityIdentifier = "iikb.chat.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
-        [well, message].forEach(addSubview)
+        title.font = .systemFont(ofSize: 13, weight: .semibold)
+        title.textAlignment = .center
+        [well, title, message].forEach(addSubview)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -74,6 +78,7 @@ final class ChatPanel: UIView, PanelContent {
     /// The box shows `line`; `typing` is whether the keys are up under it.
     func show(_ line: LineDocument, typing: Bool) {
         self.line = line
+        if typing != self.typing { setNeedsLayout() }
         self.typing = typing
     }
 
@@ -87,6 +92,8 @@ final class ChatPanel: UIView, PanelContent {
                 line, placeholder: chats.open.map { "Message \($0.name)" } ?? "Message", caret: typing, sends: !typing,
                 theme: theme)
         }
+        title.text = chats.open?.name
+        title.textColor = theme.candidate.ui
         let next = Shown(revision: chats.revision, theme: theme)
         guard next != shown else { return }
         shown = next
@@ -117,7 +124,9 @@ final class ChatPanel: UIView, PanelContent {
     override func layoutSubviews() {
         super.layoutSubviews()
         let wasAtEnd = thread.contentOffset.y >= thread.contentSize.height - thread.bounds.height - 1
-        well.frame = bounds
+        title.isHidden = !typing || title.text == nil
+        title.frame = CGRect(x: 0, y: 0, width: bounds.width, height: title.isHidden ? 0 : 20)
+        well.frame = bounds.inset(by: UIEdgeInsets(top: title.frame.height, left: 0, bottom: 0, right: 0))
         thread.frame = well.bounds
         CATransaction.begin()
         CATransaction.setDisableActions(true)
