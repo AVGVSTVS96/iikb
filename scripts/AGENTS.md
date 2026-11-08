@@ -1,6 +1,36 @@
 # scripts
 
-The command list is in the root AGENTS.md, "Build and test". This is how the bigger ones work.
+The everyday commands are in the root AGENTS.md, "Build and test"; the rest are below, then how the bigger ones work.
+
+```sh
+scripts/mac 'scripts/sim all v7'                # screenshots: system vs iikb, light and dark, 8 devices
+scripts/mac 'scripts/sim variants "iPhone 17" v7'  # return key types, keyboard types, landscape
+scripts/mac 'scripts/sim duo v8'                # Apple's keyboard and iikb on the iPhone Duo's four screens, folded and open (unfolded with Device Hub's hinge event, scripts/devicehub.c)
+scripts/mac 'KEYBOARDS="system iikb" scripts/padshots v1'  # every keyboard state (typing, layers, tray, More, panels, floating) on iPad mini, Pro 11 and Pro 13, portrait and landscape, light and dark, Apple's beside it: shots/raw/pad/v1/ (landscape shots come out turned; key frames in each -empty.txt)
+scripts/mac 'scripts/capture "iPhone 17" iPhone-17 iikb'  # frames of held keys: pop-ups, accent panel (CAPTURE=menu: the 123 menu)
+scripts/mac 'scripts/shots "iPhone 17" iPhone-17 system light "hel:hel|helo:o"'  # type through a keyboard, screenshot each step
+scripts/mac 'scripts/sim taps "iPhone 17 Pro Max" iPhone-17-Pro-Max touches.json t1'  # the app's Stats › Taps screen with a touch model
+scripts/keystroke                               # the Mac `ssh mac` reaches shares Keystroke's typing-stats.json with Stats (mac/share, docs/computers.md) and gets the backup key for Keystroke's iPhone view
+scripts/mac scripts/sourcetest                  # a source through the real keyboard, scripts/source.py standing in for it; prints every update it was sent
+scripts/mac scripts/chattest                    # an extension's chats through the real keyboard, scripts/chats.ts standing in for it (EXTENSION=<url> for a real one): a message typed and sent, its reply shown, light and dark, shots in shots/raw/extensions/
+scripts/mac scripts/voicetest                   # the bar's mic through the real keyboard, scripts/voiceapp.py standing in for the app; screenshots light and dark
+scripts/mac scripts/sharetest                   # a transcript's recording sent from its menu and its page (made-up words), light and dark, shots in shots/raw/share/
+scripts/mac scripts/controltest                 # Control Center's iikb Mic end to end: the app's microphone on, the control added and tapped, the app's switch off, light and dark, shots in shots/raw/control/
+scripts/mac scripts/edittest                    # what dictations become: a long one edited in the middle and a short one edited at its end, each sent, checked in its transcript (made-up text)
+scripts/voiceprobe v3 clip.wav                  # on the iPhone: a Parakeet's load and write times in the installed iikb (scripts/phone)
+scripts/judgeprobe questions.jsonl             # on the iPhone: Apple's on-device model choosing among written forms or answering in its own words, cold, warm and prewarmed, in the installed iikb
+scripts/eval                                    # scorer here on Linux: the phrase corpus typed with tap noise and with biased thumbs, checked against scripts/eval.expected (scripts/mac scripts/eval adds the UITextChecker baseline)
+scripts/gate                                    # the bar on everyday text (scripts/gate.txt) through TypingEngine: fresh, with awkward contact names, and on the iPhone's own network and memory from the backup; scripts/phone installs no build that fails it (about 2 min)
+scripts/voiceloop [--cached]                    # dictation end to end: Bassim's dictations and a spoken set (macOS voices, whispered, in his loud rooms) through Parakeet on the Mac and the app's and keyboard's text path here, scored against what each should type, errors ranked by kind into voicebench/categories.txt (about 15 s warm; scripts/AGENTS.md)
+scripts/formats                                 # what dictation types for versions, decimals, percentages, domains and emails, and the "point", "dot" and "at" that stay words (scripts/formats.txt); scripts/phone installs no build that fails it (seconds after scripts/gate)
+scripts/web                                     # web demo into web/dist (swift.org 6.4.0 toolchain + its Wasm SDK + binaryen; on the Mac: rsync, then run it there)
+scripts/lexicon                                 # rebuild en.lexicon (downloads ~1 GB, streams ~30 GB of 2-grams)
+scripts/personal record.jsonl [en.network [out]] # fine-tune en.network on your typing (the server does it when the record changes)
+scripts/network                                 # retrain en.network (downloads ~20 GB, about three hours on the Mac's GPU)
+scripts/mac scripts/applebar in.txt out.txt     # Apple's own suggestion bar before each word and after its first two letters, typed through the system keyboard in the simulator, for head-to-heads
+python3 scripts/barmatch.py apple.txt iikb.txt   # the suggestion bar's measure: how many of Apple's bar words iikb's bar shows on the same text, how often the bars are the same, and where each has the word typed next
+uv run --with pillow --with numpy --with scipy scripts/shotdiff.py v7   # key-by-key geometry vs Apple
+```
 
 ## Simulators
 
