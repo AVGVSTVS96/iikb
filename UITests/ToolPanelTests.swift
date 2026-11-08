@@ -136,6 +136,56 @@ final class ToolPanelTests: XCTestCase {
         try shot("menu-preview")
     }
 
+    /// Made-up and public items of every kind, oldest first.
+    private static let kinds = [
+        "Meet at Sightglass on 7th, 4pm?", "#FF6B00", "(415) 555-0132", "hello@example.com",
+        "https://en.wikipedia.org/wiki/International_Typographic_Style", "https://www.youtube.com/watch?v=aircAruvnKk",
+        "https://github.com/swiftlang/swift/pull/80000", "https://x.com/vercel/status/1985000000000000001?s=46",
+    ]
+
+    func testCopiedItemsShowByKind() throws {
+        UIPasteboard.general.string = Self.kinds[0]
+        var app = launch()
+        open(.clipboard, in: app)
+        let message = app.buttons["iikb.clipboard.message"]
+        if message.waitForExistence(timeout: 2), message.label.contains("Paste from Other Apps") {
+            message.tap()
+            try allowPasteFromOtherApps()
+            app = launch()
+            open(.clipboard, in: app)
+        }
+        app.buttons["iikb.panel.back"].tap()
+        let more = app.buttons["iikb.more"]
+        for item in Self.kinds.dropFirst() {
+            UIPasteboard.general.string = item
+            more.tap()
+            XCTAssertTrue(app.buttons["iikb.shelf.clipboard"].waitForExistence(timeout: 3))
+            more.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        more.tap()
+        let link = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.https://x.com/vercel'")).firstMatch
+        XCTAssertTrue(link.waitForExistence(timeout: 5), "the shelf shows the link")
+        Thread.sleep(forTimeInterval: 3)
+        try shot("menu-kinds")
+        app.buttons["iikb.shelf.clipboard"].tap()
+        XCTAssertTrue(link.waitForExistence(timeout: 5), "the panel shows the link")
+        XCTAssertEqual(link.staticTexts["iikb.clip.detail"].label.contains("chars"), false, "a link says how long ago, not how long")
+        Thread.sleep(forTimeInterval: 2)
+        try shot("clipboard-kinds")
+        link.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 3))
+        try shot("clipboard-link-preview")
+        app.terminate()
+
+        let page = XCUIApplication()
+        page.launchArguments = ["-iikbTab", "clipboard", "-iikbOrientation", orientation]
+        page.launch()
+        XCTAssertTrue(page.staticTexts["x.com"].firstMatch.waitForExistence(timeout: 10), "the app's Clipboard writes a link by its site")
+        Thread.sleep(forTimeInterval: 2)
+        try shot("app-clipboard-kinds")
+    }
+
     func testTheMenuTakesTheKeysPlaceWithEditsAndShelves() throws {
         UIPasteboard.general.string = "Meet at Sightglass on 7th, 4pm?"
         let app = launch()

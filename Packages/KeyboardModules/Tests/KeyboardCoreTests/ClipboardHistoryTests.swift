@@ -99,3 +99,45 @@ struct ClipboardPasteTests {
         #expect(engine.query == "ferry")
     }
 }
+
+struct ClipboardKindTests {
+    private func kind(_ text: String) -> ClipboardHistory.Item.Content.Kind { ClipboardHistory.Item.Content.text(text).kind }
+
+    @Test func aLinkShowsItsSiteAndPathWithoutWhatOnlyTracks() {
+        #expect(kind("https://x.com/vercel/status/1985000000000000001?s=46&t=abc") == .link(ClipLink("https://x.com/vercel/status/1985000000000000001")!))
+        #expect(ClipLink("https://x.com/vercel/status/1985000000000000001?s=46&t=abc") == ClipLink(site: "x.com", path: "/vercel/status/1985000000000000001"))
+        #expect(ClipLink("  HTTPS://www.Example.com/  ".trimmingWhitespace) == ClipLink(site: "example.com", path: ""))
+        #expect(ClipLink("http://user@docs.example.org:8080/a/b/#top") == ClipLink(site: "docs.example.org", path: "/a/b"))
+        #expect(kind(" https://example.com/a \n") == .link(ClipLink(site: "example.com", path: "/a")), "space around a link leaves it a link")
+    }
+
+    @Test func textThatOnlyMentionsALinkStaysText() {
+        #expect(kind("see https://example.com later") == .text)
+        #expect(kind("example.com") == .text)
+        #expect(kind("https://localhost") == .text)
+        #expect(kind("ftp://example.com/file") == .text)
+    }
+
+    @Test func addressesNumbersAndColorsShowByKind() {
+        #expect(kind("hello@example.com") == .email)
+        #expect(kind("hello@example") == .text)
+        #expect(kind("@vercel") == .text)
+        #expect(kind("(415) 555-0132") == .phone)
+        #expect(kind("+44 20 7946 0958") == .phone)
+        #expect(kind("482913") == .text, "a code stays text")
+        #expect(kind("2026-11-08") == .text, "a date stays text")
+        #expect(kind("#FF6B00") == .color(red: 255, green: 107, blue: 0))
+        #expect(kind("#0af") == .color(red: 0, green: 170, blue: 255))
+        #expect(kind("#hashtag") == .text)
+        #expect(ClipboardHistory.Item.Content.image("a.png").kind == .image)
+    }
+
+    @Test func onlyPlainTextSaysItsLength() {
+        #expect(ClipboardHistory.length(of: .text("https://example.com/a"), in: .characters) == nil)
+        #expect(ClipboardHistory.length(of: .text("hello there"), in: .words) == "2 words")
+    }
+}
+
+private extension String {
+    var trimmingWhitespace: String { String(drop { $0.isWhitespace }.reversed().drop { $0.isWhitespace }.reversed()) }
+}

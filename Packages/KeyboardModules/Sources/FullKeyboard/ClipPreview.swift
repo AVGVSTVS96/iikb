@@ -8,8 +8,13 @@ final class ClipPreview: UIViewController {
     private let image: UIImage?
     private let gif: Data?
 
-    init(text: String) {
+    private var heading: NSAttributedString?
+
+    /// `heading`, when there is one, is how the clip's row writes it (`ClipTitle`), over all of it: a link's site over
+    /// the whole link.
+    init(text: String, heading: NSAttributedString? = nil) {
         self.text = text
+        self.heading = heading
         image = nil
         gif = nil
         super.init(nibName: nil, bundle: nil)
@@ -50,7 +55,15 @@ final class ClipPreview: UIViewController {
     /// The text in place of what it showed, as a long clip's whole text once it's read.
     func show(_ text: String) {
         guard let view = view as? UITextView else { return }
-        view.text = text
+        if let heading {
+            let full = NSMutableAttributedString(attributedString: heading)
+            let gap = NSMutableParagraphStyle()
+            gap.paragraphSpacingBefore = 6
+            full.append(NSAttributedString(string: "\n" + text.trimmingCharacters(in: .whitespacesAndNewlines), attributes: [.font: UIFont.systemFont(ofSize: 15), .foregroundColor: UIColor.secondaryLabel, .paragraphStyle: gap]))
+            view.attributedText = full
+        } else {
+            view.text = text
+        }
         let width: CGFloat = 340
         let height = view.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
         preferredContentSize = CGSize(width: width, height: min(height, 480))

@@ -143,6 +143,9 @@ struct ClipboardPage: View {
             .background(beside && item.content == shownInFull?.content ? Color.appPicked : .clear)
             .contextMenu {
                 Button("Copy", systemImage: "doc.on.doc") { copy(item) }
+                if case .link = item.content.kind, let url = URL(string: item.content.preview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "") {
+                    Link(destination: url) { Label("Open", systemImage: "safari") }
+                }
                 if case .text(let text) = item.content { ShareLink(item: text) }
                 if case .textFile(let name, _) = item.content { ShareLink(item: store.file(name)) }
                 Button(item.pinned ? "Unpin" : "Pin", systemImage: item.pinned ? "pin.slash" : "pin") {
@@ -230,6 +233,10 @@ private struct ClipDetail: View {
                         .frame(width: 34, height: 34)
                 }
                 .accessibilityLabel(copied ? "Copied" : "Copy")
+                if case .link = item.content.kind, let url = URL(string: item.content.preview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "") {
+                    Link(destination: url) { Image(systemName: "safari").frame(width: 34, height: 34) }
+                        .accessibilityLabel("Open")
+                }
                 Group {
                     if case .textFile(let name, _) = item.content { ShareLink(item: store.file(name)) { share } }
                     if case .text(let text) = item.content { ShareLink(item: text) { share } }
@@ -249,12 +256,21 @@ private struct ClipDetail: View {
             Group {
                 switch item.content {
                 case .text(let text), .textFile(_, let text):
-                    Text((fullText ?? text).trimmingCharacters(in: .whitespacesAndNewlines))
-                        .font(.title3)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(20)
-                        .frame(maxHeight: .infinity, alignment: .top)
+                    VStack(alignment: .leading, spacing: 10) {
+                        if case .link(let link) = item.content.kind {
+                            HStack(spacing: 10) {
+                                SiteIcon(site: link.site, side: 28)
+                                Text(link.site).font(.title3.weight(.semibold))
+                            }
+                        }
+                        Text((fullText ?? text).trimmingCharacters(in: .whitespacesAndNewlines))
+                            .font(item.content.kind == .text ? .title3 : .body)
+                            .foregroundStyle(item.content.kind == .text ? Color.primary : Color.appSecondary)
+                            .textSelection(.enabled)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .frame(maxHeight: .infinity, alignment: .top)
                 case .image(let name):
                     FullImage(file: store.file(name))
                 }
@@ -310,9 +326,7 @@ private struct ClipRow: View {
             VStack(alignment: .leading, spacing: 5) {
                 switch item.content {
                 case .text(let text), .textFile(_, let text):
-                    Text(String(text.prefix(300)).trimmingCharacters(in: .whitespacesAndNewlines))
-                        .lineLimit(4)
-                        .foregroundStyle(.primary)
+                    ClipTitle(content: item.content, text: text)
                 case .image(let name):
                     if let image = thumbnail(name) {
                         Image(uiImage: image)
@@ -344,5 +358,76 @@ private struct ClipRow: View {
             }
         }
         .row()
+    }
+}
+
+/// A row's text by its kind (docs/design.md, "Clipboard"): a link as ChatGPT shows one, its site's icon, its site and
+/// its path on one line, cut short; an address or a phone number after its glyph; a color after a swatch of it; any
+/// other text up to four lines.
+private struct ClipTitle: View {
+    let content: ClipboardHistory.Item.Content
+    let text: String
+
+    private var plain: String { String(text.prefix(300)).trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    var body: some View {
+        switch content.kind {
+        case .link(let link):
+            HStack(spacing: 8) {
+                SiteIcon(site: link.site, side: 20)
+                Text("\(Text(link.site).fontWeight(.semibold))\(Text(link.path.removingPercentEncoding ?? link.path).foregroundStyle(Color.appSecondary))")
+                    .lineLimit(1)
+            }
+        case .email: glyph("envelope")
+        case .phone: glyph("phone")
+        case .color(let red, let green, let blue):
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Color(red: Double(red) / 255, green: Double(green) / 255, blue: Double(blue) / 255))
+                    .overlay(Circle().strokeBorder(Color.appEdge))
+                    .frame(width: 20, height: 20)
+                Text(plain.uppercased()).monospaced()
+            }
+        case .text, .image:
+            Text(plain).lineLimit(4)
+        }
+    }
+
+    private func glyph(_ name: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: name)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.appSecondary)
+                .frame(width: 20, height: 20)
+            Text(plain).lineLimit(1)
+        }
+    }
+}
+
+/// A link's site icon (`LinkIcons`), or a globe until it comes or when the site has none.
+private struct SiteIcon: View {
+    let site: String
+    let side: CGFloat
+    @State private var icon: UIImage?
+
+    init(site: String, side: CGFloat) {
+        self.site = site
+        self.side = side
+        _icon = State(initialValue: LinkIcons.shared.cached(site))
+    }
+
+    var body: some View {
+        Group {
+            if let icon {
+                Image(uiImage: icon).resizable()
+            } else {
+                Image(systemName: "globe")
+                    .font(.system(size: side * 0.62, weight: .medium))
+                    .foregroundStyle(Color.appSecondary)
+            }
+        }
+        .frame(width: side, height: side)
+        .accessibilityHidden(true)
+        .task(id: site) { icon = await LinkIcons.shared.icon(site) }
     }
 }

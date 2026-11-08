@@ -228,6 +228,8 @@ nonisolated private struct Disk: Sendable {
         let content: ClipboardHistory.Item.Content?
         if pasteboard.hasStrings {
             content = pasteboard.string.flatMap(saveText)
+        } else if pasteboard.hasURLs {
+            content = pasteboard.url.flatMap { saveText($0.absoluteString) }
         } else if pasteboard.hasImages {
             content = Self.imageData(pasteboard).map(saveImage)
         } else {

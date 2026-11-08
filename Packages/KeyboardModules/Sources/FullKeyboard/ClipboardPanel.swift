@@ -118,15 +118,27 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let row = collectionView.dequeueReusableCell(withReuseIdentifier: "clip", for: indexPath) as! ClipRow
         let item = items[indexPath.item]
-        let detail = [ClipboardHistory.length(of: item.content, in: shown?.length ?? .characters), ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)]
-        row.show(
-            text: item.content.preview, detail: detail.compactMap { $0 }.joined(separator: " · "), pinned: item.pinned,
-            compact: shown?.compact == true, theme: shown?.theme ?? .lightCurrent
-        )
+        configure(row, item)
         row.accessibilityIdentifier = "iikb.clip.\(item.content.label)"
-        row.shown = item.content
         if case .image(let name) = item.content { thumbnail(name, for: row) }
+        if let site = ClipTitle.site(item.content), LinkIcons.shared.cached(site) == nil {
+            Task {
+                guard await LinkIcons.shared.icon(site) != nil, row.shown == item.content else { return }
+                configure(row, item)
+            }
+        }
         return row
+    }
+
+    private func configure(_ row: ClipRow, _ item: ClipboardHistory.Item) {
+        let compact = shown?.compact == true, theme = shown?.theme ?? .lightCurrent
+        let detail = [ClipboardHistory.length(of: item.content, in: shown?.length ?? .characters), ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)]
+        let title = ClipTitle.make(item.content, font: ClipRow.font(compact: compact), label: theme.label.ui, secondary: theme.candidate.ui)
+        row.show(
+            text: item.content.preview, styled: title, detail: detail.compactMap { $0 }.joined(separator: " · "), pinned: item.pinned,
+            compact: compact, theme: theme
+        )
+        row.shown = item.content
     }
 
     func collectionView(_ collectionView: UICollectionView, contextMenuConfigurationForItemsAt indexPaths: [IndexPath], point: CGPoint) -> UIContextMenuConfiguration? {
@@ -148,7 +160,8 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
 
     private func preview(_ content: ClipboardHistory.Item.Content) -> ClipPreview {
         switch content {
-        case .text(let text): return ClipPreview(text: text)
+        case .text(let text):
+            return ClipPreview(text: text, heading: ClipTitle.heading(content))
         case .textFile(_, let start):
             let preview = ClipPreview(text: start)
             Task { [store] in if let text = await store.text(content) { preview.show(text) } }
@@ -224,8 +237,11 @@ final class ClipRow: UICollectionViewCell {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    /// `text` nil shows the thumbnail; `detail` is the length and age, "312 chars · 5m".
-    func show(text string: String?, detail: String, pinned: Bool, compact: Bool, theme: KeyboardTheme) {
+    static func font(compact: Bool) -> UIFont { .systemFont(ofSize: compact ? 14 : 16) }
+
+    /// `text` nil shows the thumbnail; `styled`, when there is one, is how the text is written (`ClipTitle`); `detail`
+    /// is the length and age, "312 chars · 5m".
+    func show(text string: String?, styled: NSAttributedString? = nil, detail: String, pinned: Bool, compact: Bool, theme: KeyboardTheme) {
         self.pinned = pinned
         self.compact = compact
         fill = compact ? theme.key.ui : .clear
@@ -233,13 +249,13 @@ final class ClipRow: UICollectionViewCell {
         pin.tintColor = theme.candidate.ui
         pin.isHidden = !pinned
         text.textColor = theme.label.ui
-        text.font = .systemFont(ofSize: compact ? 14 : 16)
+        text.font = Self.font(compact: compact)
         text.numberOfLines = compact ? 2 : 1
         age.textColor = theme.candidate.ui
         age.font = .monospacedDigitSystemFont(ofSize: compact ? 11 : 13, weight: .regular)
         age.text = detail
         age.textAlignment = compact ? .left : .right
-        text.text = string.map { String($0.prefix(300)).split(whereSeparator: \.isNewline).joined(separator: " ") }
+        if let styled { text.attributedText = styled } else { text.text = string.map { String($0.prefix(300)).split(whereSeparator: \.isNewline).joined(separator: " ") } }
         text.isHidden = string == nil
         image.isHidden = string != nil
         if string != nil { image.image = nil }

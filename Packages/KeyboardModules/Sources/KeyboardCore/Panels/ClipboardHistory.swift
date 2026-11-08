@@ -98,9 +98,10 @@ public struct ClipboardHistory: Codable, Hashable, Sendable {
         return "\(short(count)) \(name)"
     }
 
-    /// A text item's length; nil for an image, and for a text kept in a file, of which a row has only the start.
+    /// A text item's length; nil for an image, a link, an address, a number or a color, which a row shows by kind, and
+    /// for a text kept in a file, of which a row has only the start.
     public static func length(of content: Item.Content, in unit: ClipboardLength) -> String? {
-        guard case .text(let text) = content else { return nil }
+        guard case .text(let text) = content, content.kind == .text else { return nil }
         return length(of: text, in: unit)
     }
 
