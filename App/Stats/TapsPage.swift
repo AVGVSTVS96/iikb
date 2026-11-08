@@ -23,10 +23,10 @@ struct TapsPage: View {
             }
         }
         .onAppear {
-            model.screen = window
+            model.screen = ThisDevice.screen
             model.reload()
         }
-        .onChange(of: window) { _, size in model.screen = size }
+        .onChange(of: window) { _, _ in model.screen = ThisDevice.screen }
     }
 
     @ViewBuilder private func content(_ board: TapBoard) -> some View {
@@ -42,7 +42,7 @@ struct TapsPage: View {
             } second: {
                 ScrollViewReader { reader in
                     Column(top: 4) {
-                        Numbers(summary: summary)
+                        Numbers(summary: summary, perScreen: model.layouts.count > 1)
                         detail(board)
                         Misses(summary: summary, selected: model.selected) { pick($0, reader: $1 ? reader : nil, anchor: "detail") }
                     }
@@ -52,7 +52,7 @@ struct TapsPage: View {
         } else {
             ScrollViewReader { reader in
                 Column(top: 4) {
-                    Numbers(summary: summary)
+                    Numbers(summary: summary, perScreen: model.layouts.count > 1)
                     map(board, reader: reader)
                     detail(board)
                     Thumbs(board: board, summary: summary)
@@ -167,17 +167,25 @@ struct TapsPage: View {
         notify_cancel(token)
     }
 
-    private var isDuo: Bool { Duo.isDuo(short: min(screen.width, screen.height)) }
+    private var isDuo: Bool { !ThisDevice.isPad && Duo.isDuo(short: min(screen.width, screen.height)) }
+
+    private var device: DeviceClass { DeviceClass(isPad: ThisDevice.isPad, shortSide: min(screen.width, screen.height)) }
 
     /// The letters of the screen the app is on now, whose taps show first.
     private var current: String {
-        LayoutContext(device: .phone, layer: .letters, isLandscape: screen.width > screen.height, isOpen: Duo.isOpen(short: min(screen.width, screen.height))).signature
+        LayoutContext(device: device, layer: .letters, isLandscape: screen.width > screen.height, isOpen: Duo.isOpen(short: min(screen.width, screen.height))).signature
+    }
+
+    /// Keyboards this device types on: its own, and on an iPad the floating one, which is an iPhone's.
+    private func typesHere(_ signature: String) -> Bool {
+        guard let context = LayoutContext(signature: signature) else { return false }
+        return context.device == device || ThisDevice.isPad && context.device == .phone
     }
 
     func reload() {
         guard screen != .zero else { return }
         touches = MemoryStore.sharedTouches() ?? TouchModel()
-        layouts = touches.signatures.filter { LayoutContext(signature: $0.signature) != nil }
+        layouts = touches.signatures.filter { typesHere($0.signature) }
         let kept = signature.flatMap { name in layouts.contains { $0.signature == name } ? name : nil }
         let picked = kept ?? layouts.first { $0.signature == current }?.signature ?? layouts.first?.signature
         if picked == signature { rebuild() } else { signature = picked }
@@ -197,15 +205,16 @@ struct TapsPage: View {
         revision += 1
     }
 
-    /// The screen and hold a touch model was kept for: on the iPhone Duo, folded or open, portrait or landscape.
+    /// The screen and hold a touch model was kept for: portrait or landscape, on the iPhone Duo folded or open, and on
+    /// an iPad the floating keyboard.
     func title(of signature: String) -> String {
         guard let context = LayoutContext(signature: signature) else { return signature }
-        let screen = if context.device != .phone {
-            "iPad, \(context.isLandscape ? "landscape" : "portrait")"
+        let screen = if ThisDevice.isPad, context.device == .phone {
+            "Floating"
         } else if isDuo {
             Duo.Screen(open: context.isOpen, landscape: context.isLandscape).name
         } else {
-            "iPhone, \(context.isLandscape ? "landscape" : "portrait")"
+            context.isLandscape ? "Landscape" : "Portrait"
         }
         let layer = switch context.layer {
         case .letters: ""
@@ -289,6 +298,8 @@ enum TapColor {
 /// how many taps it's learned from and how far you aim from the keys' centers.
 private struct Numbers: View {
     let summary: TapSummary
+    /// Whether other screens keep taps of their own, so the count is this screen's, not all Home counts.
+    let perScreen: Bool
 
     /// How many points your last taps land on target above or below all of them, once it's a whole point.
     private var trend: Int? {
@@ -298,23 +309,15 @@ private struct Numbers: View {
     }
 
     var body: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("On target")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.appSecondary)
-                LeadNumber(value: TapMapPalette.percent(summary.onTarget), size: 52) {
-                    if let trend { TrendChip(points: trend) }
-                }
+        StatCard(symbol: "scope", color: .blue, title: "On target") {
+            LeadNumber(value: TapMapPalette.percent(summary.onTarget), size: 52) {
+                if let trend { TrendChip(points: trend) }
             }
             Meter(share: summary.onTarget)
-            Text(caption)
-                .font(.footnote)
-                .foregroundStyle(Color.appSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+            Caption(caption)
             Rectangle().fill(Color.appDivider).frame(height: 1)
             Figures {
-                Figure(value: summary.taps.formatted(), label: summary.taps == 1 ? "tap learned" : "taps learned")
+                Figure(value: summary.taps.formatted(), label: perScreen ? "taps on this screen" : summary.taps == 1 ? "tap learned" : "taps learned")
                 Figure(value: String(format: "%.1f pt", summary.offCenter), label: "aim off center")
             }
         }
@@ -642,7 +645,7 @@ private struct Thumbs: View {
     let summary: TapSummary
 
     var body: some View {
-        Card(header: "How your thumbs pull", footer: "Each arrow runs from a key’s center to where you aim for it, drawn \(Int(TapPullView.magnification))× as long.") {
+        StatCard(symbol: "arrow.up.and.down.and.arrow.left.and.right", color: .blue, title: "How your thumbs pull") {
             Drawing(make: { TapPullView() }, update: { $0.show(board.aims, keys: board.keys, size: board.size) }) { width in
                 board.size.height * width / board.size.width
             }
@@ -667,6 +670,7 @@ private struct Thumbs: View {
                     .accessibilityElement(children: .combine)
                 }
             }
+            Caption("Each arrow runs from a key’s center to where you aim for it, drawn \(Int(TapPullView.magnification))× as long.")
         }
     }
 }
@@ -716,7 +720,7 @@ private struct Misses: View {
 
     var body: some View {
         if !shown.isEmpty {
-            Card(header: "Misses by key", footer: "Each letter’s taps that land on another key, most missed first.") {
+            StatCard(symbol: "xmark.circle.fill", color: .orange, title: "Misses by key") {
                 chart
                 VStack(spacing: 0) {
                     ForEach(shown.prefix(3), id: \.key) { miss in
@@ -724,6 +728,7 @@ private struct Misses: View {
                         if miss.key != shown.prefix(3).last?.key { Rectangle().fill(Color.appDivider).frame(height: 1) }
                     }
                 }
+                Caption("Each letter’s taps that land on another key, most missed first.")
             }
         }
     }

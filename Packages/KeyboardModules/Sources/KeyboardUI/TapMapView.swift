@@ -152,15 +152,16 @@ final class TapMarksView: UIView {
             context.draw(image, in: bounds)
             context.restoreGState()
         }
+        let dark = traitCollection.userInterfaceStyle == .dark
         let halo = NSShadow()
-        halo.shadowColor = theme.key.ui
-        halo.shadowBlurRadius = 3
+        halo.shadowColor = dark ? UIColor.black.withAlphaComponent(0.7) : theme.key.ui
+        halo.shadowBlurRadius = dark ? 4 : 3
         halo.shadowOffset = .zero
         for (key, frame) in keys where key.label != nil {
             let rect = CGRect(frame)
             let name = NSAttributedString(string: TapMapPalette.name(of: key), attributes: [
                 .font: UIFont.systemFont(ofSize: key.label == " " ? 13 : 17, weight: .medium),
-                .foregroundColor: UIColor.label.withAlphaComponent(0.62),
+                .foregroundColor: UIColor.label.withAlphaComponent(dark ? 0.85 : 0.62),
                 .shadow: halo,
             ])
             let size = name.size()

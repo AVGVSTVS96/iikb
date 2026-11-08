@@ -5,7 +5,7 @@ import SwiftUI
 /// One device's typing or talking, in its color: how fast, large, with how lately compares, then words or speed a day,
 /// the hours you do it in, how fast you type, and what only that device knows: where your typed words came from and the
 /// apps typed in on the iPhone, your dictations, or the apps you dictate into on the Mac; then the past year. Wide, the
-/// speed and the history take the first pane and the rest the second.
+/// speed, the history and the hours take the first pane and the rest the second.
 struct DeviceStats: View {
     let kind: Activity.Kind
     let activity: Activity
@@ -20,21 +20,22 @@ struct DeviceStats: View {
                 Column(top: 4) {
                     Speed(kind: kind, activity: activity, device: device)
                     History(activity: activity, kinds: [kind])
+                    Rhythm(activity: activity, kinds: [kind])
                 }
             } second: {
-                Column(top: 4) { details }
+                Column(top: 4) { details(rhythm: false) }
             }
         } else {
             Column(top: 4) {
                 Speed(kind: kind, activity: activity, device: device)
                 History(activity: activity, kinds: [kind])
-                details
+                details(rhythm: true)
             }
         }
     }
 
-    @ViewBuilder private var details: some View {
-        Rhythm(activity: activity, kinds: [kind])
+    @ViewBuilder private func details(rhythm: Bool) -> some View {
+        if rhythm { Rhythm(activity: activity, kinds: [kind]) }
         if kind == .typed, !activity.speeds.isEmpty { Speeds(speeds: activity.speeds) }
         if device == .iPhone, kind == .typed { WordSources(channel: activity.total(.typed)) }
         if device == .iPhone, kind == .said { Dictations() }
@@ -102,14 +103,9 @@ private struct Speed: View {
     }
 
     var body: some View {
-        Card(footer: footer) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(kind == .typed ? "Typing speed" : "Talking speed")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.appSecondary)
-                LeadNumber(value: all.speed.map { "\(Int($0.rounded())) wpm" } ?? "–", size: 52) {
-                    if let trend { TrendChip(points: trend) }
-                }
+        StatCard(symbol: kind == .typed ? "speedometer" : "waveform", color: kind.color, title: kind == .typed ? "Typing speed" : "Talking speed") {
+            LeadNumber(value: all.speed.map { "\(Int($0.rounded())) wpm" } ?? "–", size: 52) {
+                if let trend { TrendChip(points: trend) }
             }
             Text(caption)
                 .font(.footnote)
@@ -126,6 +122,7 @@ private struct Speed: View {
                     Figure(value: today.formatted(), label: "today")
                 }
             }
+            if let footer { Caption(footer) }
         }
     }
 
@@ -166,7 +163,7 @@ private struct WordSources: View {
             SegmentedBar.Part(name: "Autocorrected", share: Double(corrected) / Double(words), color: TapColor.miss),
             SegmentedBar.Part(name: "From the bar", share: Double(picked) / Double(words), color: Color.appSecondary.opacity(0.45)),
         ]
-        Card(header: "Your typed words", footer: "Taken back: autocorrect’s fixes you undid with the bar. Deleted: your taps on the delete key.") {
+        StatCard(symbol: "character.cursor.ibeam", color: .blue, title: "Your typed words") {
             SegmentedBar(parts: parts)
             Rectangle().fill(Color.appDivider).frame(height: 1)
             Figures {
@@ -174,6 +171,7 @@ private struct WordSources: View {
                 Figure(value: channel.keys > 0 ? share(channel.deletes, of: channel.keys) : "–", label: "deleted")
                 Figure(value: channel.emoji.formatted(), label: "emoji")
             }
+            Caption("Taken back: autocorrect’s fixes you undid with the bar. Deleted: your taps on the delete key.")
         }
     }
 
@@ -253,7 +251,7 @@ private struct Apps: View {
 
     var body: some View {
         let top = Double(max(rows.map(\.words).max() ?? 1, 1))
-        Card(header: kind == .typed ? "Where you type" : "Where you dictate") {
+        StatCard(symbol: "square.grid.2x2.fill", color: .purple, title: kind == .typed ? "Where you type" : "Where you dictate") {
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(rows, id: \.name) { app in
                     VStack(alignment: .leading, spacing: 6) {
@@ -286,11 +284,13 @@ private struct Dictations: View {
         let lengths = all.map(\.seconds).sorted()
         let models = Dictionary(grouping: all.compactMap(\.model), by: \.self).max { $0.value.count < $1.value.count }?.key
         if !lengths.isEmpty {
-            Box(header: "Your dictations") {
-                Fact(title: "Typical length", value: Self.length(lengths[lengths.count / 2]))
-                Fact(title: "Longest", value: Self.length(lengths.last ?? 0))
-                Fact(title: "Not typed", value: all.count(where: { !$0.typed }).formatted())
-                if let models { Fact(title: "Written most by", value: models) }
+            StatCard(symbol: "text.bubble.fill", color: .pink, title: "Your dictations") {
+                StatGrid {
+                    Stat(label: "Typical length", value: Self.length(lengths[lengths.count / 2]))
+                    Stat(label: "Longest", value: Self.length(lengths.last ?? 0))
+                    Stat(label: "Not typed", value: all.count(where: { !$0.typed }).formatted())
+                    if let models { Stat(label: "Written most by", value: models) }
+                }
             }
         }
     }

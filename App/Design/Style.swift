@@ -107,9 +107,20 @@ struct Mark: View {
 }
 
 /// The device iikb runs on: what people call it, "iPhone" or "iPad", wherever the app says where something is kept,
-/// and whether it can tap back, which an iPad, with no Taptic Engine, can't.
+/// whether it can tap back, which an iPad, with no Taptic Engine, can't, and the keyboard it gets.
 enum ThisDevice {
     static let name = UIDevice.current.model
-    static let symbol = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
-    static let hasHaptics = UIDevice.current.userInterfaceIdiom != .pad
+    static let isPad = UIDevice.current.userInterfaceIdiom == .pad
+    static let symbol = isPad ? "ipad" : "iphone"
+    static let hasHaptics = !isPad
+
+    /// The whole screen, turned as the app is: an iPad's keyboard spans it in Split View and Stage Manager too.
+    @MainActor static var screen: CGSize {
+        (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.size ?? CGSize(width: 390, height: 844)
+    }
+
+    /// The keyboard KeyboardCore lays out on this device, by its screen, never the app's window.
+    @MainActor static var keyboard: DeviceClass {
+        DeviceClass(isPad: isPad, shortSide: min(screen.width, screen.height))
+    }
 }

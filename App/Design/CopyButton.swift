@@ -95,7 +95,7 @@ struct CopyRow: View {
     }
 }
 
-private extension Color {
+extension Color {
     /// iOS's green, a shade darker on light pages so "Copied" reads against them.
     static let copied = Color(UIColor { $0.userInterfaceStyle == .dark ? .systemGreen : UIColor(red: 0x24 / 255, green: 0x8A / 255, blue: 0x3D / 255, alpha: 1) })
 }

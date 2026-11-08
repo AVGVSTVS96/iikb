@@ -94,7 +94,7 @@ struct TranscriptsPage: View {
         let picked = beside && transcript.id == (selected ?? store.all.first?.id)
         Group {
             if beside {
-                Button { selected = transcript.id } label: { Row(transcript: transcript, picked: picked) }
+                Button { selected = transcript.id } label: { Row(transcript: transcript) }
             } else {
                 NavigationLink(value: transcript.id) { Row(transcript: transcript) }
             }
@@ -125,14 +125,12 @@ struct TranscriptsPage: View {
 
 private struct Row: View {
     let transcript: Transcript
-    /// The one open beside the list reads in full contrast, typed or not.
-    var picked = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(transcript.shown)
                 .lineLimit(3)
-                .foregroundStyle(picked || transcript.typed && !transcript.text.isEmpty ? Color.primary : Color.appSecondary)
+                .foregroundStyle(transcript.text.isEmpty ? Color.appSecondary : Color.primary)
             HStack(spacing: 6) {
                 Text(transcript.date, format: .dateTime.hour().minute())
                 Text("·")
@@ -188,7 +186,8 @@ private struct Summary: View {
     }
 
     private var words: Int { transcripts.reduce(0) { $0 + $1.words } }
-    private var seconds: Double { transcripts.reduce(0) { $0 + $1.seconds } }
+    /// Time talking, as Stats counts it: only dictations something was heard in.
+    private var seconds: Double { transcripts.filter { !$0.text.isEmpty }.reduce(0) { $0 + $1.seconds } }
 
     private var fortnight: [Day] {
         let calendar = Calendar.current
@@ -199,7 +198,7 @@ private struct Summary: View {
     }
 
     /// How many percent more or fewer words the last seven days hold than the seven before, once both have some; from
-    /// ten times as many, the chip says how many times.
+    /// ten times as many, the chip says how many times, up to twenty, past which the week before was too little to say.
     private func trend(_ days: [Day]) -> Int? {
         let before = days.prefix(7).reduce(0) { $0 + $1.words }, lately = days.suffix(7).reduce(0) { $0 + $1.words }
         guard before > 0, lately > 0 else { return nil }
@@ -231,7 +230,9 @@ private struct Summary: View {
                         .foregroundStyle(Color.appSecondary)
                         .lineLimit(1)
                     if let trend = trend(days) {
-                        if trend >= 900 {
+                        if trend >= 1900 {
+                            EmptyView()
+                        } else if trend >= 900 {
                             TrendChip(points: trend / 100 + 1, unit: "× last week", signed: false)
                         } else {
                             TrendChip(points: trend, unit: "% this week")
@@ -268,13 +269,13 @@ private struct FortnightChart: View {
         let best = days.max { $0.words < $1.words }
         Chart {
             ForEach(days, id: \.date) { day in
-                let strength = Calendar.current.isDateInToday(day.date) || day.date == best?.date ? 1.0 : 0.45
+                let marked = Calendar.current.isDateInToday(day.date) || day.date == best?.date
                 BarMark(x: .value("Day", day.date, unit: .day), y: .value("Words", day.words), width: .ratio(0.64))
-                    .foregroundStyle(LinearGradient(colors: [.pink.opacity(strength), .purple.opacity(strength)], startPoint: .top, endPoint: .bottom))
+                    .foregroundStyle(marked ? AnyShapeStyle(LinearGradient(colors: [.pink, .purple], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Color.pink.opacity(0.55)))
                     .clipShape(UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4, style: .continuous))
                     .annotation(position: .top, spacing: 4) {
                         if day.date == best?.date, day.words > 0 {
-                            Text(day.words.formatted(.number.notation(.compactName)))
+                            Text(Format.compact(day.words))
                                 .font(.caption2.weight(.semibold))
                                 .monospacedDigit()
                                 .foregroundStyle(Color.pink)
@@ -286,7 +287,7 @@ private struct FortnightChart: View {
                     .foregroundStyle(Color.appSecondary.opacity(0.6))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                     .annotation(position: .top, alignment: .leading, spacing: 2) {
-                        Text("avg \(average.formatted(.number.notation(.compactName)))")
+                        Text("avg \(Format.compact(average))")
                             .font(.caption2)
                             .monospacedDigit()
                             .foregroundStyle(Color.appSecondary)
@@ -312,13 +313,13 @@ private struct TranscriptDetail: View {
 
     var body: some View {
         Column(top: beside ? 4 : 8) {
-            HStack {
+            HStack(spacing: 4) {
                 Text(transcript.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().hour().minute()))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Color.appSecondary)
-                Spacer()
+                Spacer(minLength: 8)
                 CopyButton(text: transcript.text)
-                ShareLink(item: transcript.text) { Image(systemName: "square.and.arrow.up") }
+                ShareLink(item: transcript.text) { Image(systemName: "square.and.arrow.up").frame(width: 34, height: 34) }
             }
             .font(.body.weight(.semibold))
             .foregroundStyle(.primary)

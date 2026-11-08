@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Everything one device wrote, typed and said together, in typing's blue and dictation's pink: today, words or speed
 /// a day over 7, 30 or 90 days, your records, the hours and speeds you write at, where your words went, the past year
-/// and all of it. Wide, today, the history and the records take the first pane and the rest the second.
+/// and all of it. Wide, today, the history, the records and the hours take the first pane and the rest the second.
 struct Overview: View {
     let activity: Activity
     let device: StatsPage.Device
@@ -29,10 +29,10 @@ struct Overview: View {
         Today(activity: activity, device: device)
         History(activity: activity, kinds: [.typed, .said])
         Records(activity: activity)
+        Rhythm(activity: activity, kinds: [.typed, .said])
     }
 
     @ViewBuilder private var second: some View {
-        Rhythm(activity: activity, kinds: [.typed, .said])
         if !activity.speeds.isEmpty { Speeds(speeds: activity.speeds) }
         Talking(activity: activity)
         Year(activity: activity)
@@ -98,6 +98,20 @@ struct StatCard<Accessory: View, Content: View>: View {
 extension StatCard where Accessory == EmptyView {
     init(symbol: String, color: Color, title: String, subtitle: String? = nil, @ViewBuilder content: () -> Content) {
         self.init(symbol: symbol, color: color, title: title, subtitle: subtitle, accessory: { EmptyView() }, content: content)
+    }
+}
+
+/// A card's note on what it shows, in gray under it.
+struct Caption: View {
+    let text: String
+
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(Color.appSecondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -221,11 +235,17 @@ enum Format {
         count >= 10000 ? Double(count).formatted(.number.notation(.compactName).precision(.fractionLength(0 ... 1))).lowercased() : count.formatted()
     }
 
-    /// The round number at or above `value` a chart's top reads: 1, 2, 2.5 or 5 times a power of ten.
+    /// The round number at or above `value` a chart's top reads, close enough that the tallest bar nears it: 1, 2,
+    /// 2.5, 3, 4, 5, 6 or 8 times a power of ten.
     static func roundUp(_ value: Double) -> Double {
         guard value > 0 else { return 1 }
         let power = pow(10, floor(log10(value)))
-        return ([1, 2, 2.5, 5, 10].first { $0 * power >= value } ?? 10) * power
+        return ([1, 2, 2.5, 3, 4, 5, 6, 8, 10].first { $0 * power >= value } ?? 10) * power
+    }
+
+    /// 860, 8.6k, 21k: a chart's label, short at any size.
+    static func compact(_ count: Int) -> String {
+        count.formatted(.number.notation(.compactName).precision(.fractionLength(0 ... 1))).lowercased()
     }
 
     static func speed(_ speed: Double?) -> String { speed.map { "\(Int($0.rounded()))" } ?? "–" }
@@ -386,7 +406,7 @@ struct History: View {
         let top = Format.roundUp(measure == .words
             ? dates.map { date in kinds.reduce(0) { $0 + Double(activity.channel($1, on: date).words) } }.max() ?? 0
             : points.map(\.value).max() ?? 0)
-        StatCard(symbol: "chart.bar.fill", color: .indigo, title: "History", subtitle: measure == .words ? "Words written per day" : "Words a minute per day") {
+        StatCard(symbol: "chart.bar.fill", color: .indigo, title: "History", subtitle: measure == .words ? "Words \(kinds == [.said] ? "said" : kinds == [.typed] ? "typed" : "written") per day" : "Words a minute per day") {
             HStack(spacing: 6) {
                 ChoicePills(values: Measure.allCases, selection: $measure) { $0.rawValue }
                 ChoicePills(values: [7, 30, 90], selection: $span) { "\($0)D" }
@@ -637,12 +657,12 @@ struct Speeds: View {
 
     var body: some View {
         let low = percentile(0.1) / 5 * 5, high = (percentile(0.9) + 4) / 5 * 5, median = percentile(0.5)
-        StatCard(symbol: "speedometer", color: .blue, title: "Typing speed", subtitle: "Usually \(low)–\(high) wpm · median ~\(median) wpm") {
+        StatCard(symbol: "speedometer", color: .blue, title: "Speed range", subtitle: "Usually \(low)–\(high) wpm · median ~\(median) wpm") {
             Chart(bands, id: \.speed) { band in
                 BarMark(x: .value("WPM", "\(band.speed)"), y: .value("Stretches", band.count), width: .ratio(0.78))
-                    .foregroundStyle(
-                        LinearGradient(colors: [Color.cyan, .blue, .indigo].map { $0.opacity(band.speed >= low && band.speed <= high ? 1 : 0.45) }, startPoint: .top, endPoint: .bottom)
-                    )
+                    .foregroundStyle(band.speed >= low && band.speed <= high
+                        ? AnyShapeStyle(LinearGradient(colors: [Color.cyan, .blue, .indigo], startPoint: .top, endPoint: .bottom))
+                        : AnyShapeStyle(Color.appSecondary.opacity(0.5)))
                     .clipShape(UnevenRoundedRectangle(topLeadingRadius: 2, topTrailingRadius: 2, style: .continuous))
             }
             .chartXScale(domain: bands.map { "\($0.speed)" })
@@ -656,9 +676,7 @@ struct Speeds: View {
             .chartYAxis(.hidden)
             .frame(height: 130)
             .accessibilityLabel("Typing speed: usually \(low) to \(high) words a minute, median about \(median)")
-            Text("Words a minute, each column a stretch of typing")
-                .font(.caption)
-                .foregroundStyle(Color.appSecondary)
+            Caption("Words a minute, each column a stretch of typing")
         }
     }
 }
@@ -689,7 +707,7 @@ private struct Talking: View {
         let said = activity.total(.said), typed = activity.total(.typed)
         let all = said.words + typed.words
         if all > 0 {
-            StatCard(symbol: "waveform", color: .pink, title: "Dictation", subtitle: "Voice to text, in every total") {
+            StatCard(symbol: "waveform", color: .pink, title: "Dictation", subtitle: "All time") {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         SlotText(said.words.formatted())
@@ -699,7 +717,7 @@ private struct Talking: View {
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Color.appSecondary)
                     }
-                    Split(parts: [(Activity.Kind.said.color, Double(said.words)), (Activity.Kind.typed.color.opacity(0.35), Double(typed.words))])
+                    Split(parts: [(Activity.Kind.said.color, Double(said.words)), (Activity.Kind.typed.color, Double(typed.words))])
                     Text("\((Double(said.words) / Double(all)).formatted(.percent.precision(.fractionLength(0)))) of everything you’ve written")
                         .font(.footnote)
                         .foregroundStyle(Color.appSecondary)
@@ -722,7 +740,7 @@ private struct Talking: View {
                                 HStack(alignment: .firstTextBaseline) {
                                     Text(app.name).font(.subheadline.weight(.medium)).lineLimit(1)
                                     Spacer()
-                                    Text("\(Format.short(app.words)) words")
+                                    Text("\(app.words.formatted()) words")
                                         .font(.footnote)
                                         .monospacedDigit()
                                         .foregroundStyle(Color.appSecondary)
@@ -825,7 +843,7 @@ struct Year: View {
             let x = left + CGFloat(week) * (cell + gap)
             let first = start.adding(days: week * 7)
             let month = calendar.component(.month, from: first)
-            if month != lastMonth, week < weeks - 2 {
+            if month != lastMonth, x + 22 <= size.width {
                 if lastMonth != -1 || calendar.component(.day, from: first) <= 7 {
                     context.draw(Text(first.formatted(.dateTime.month(.abbreviated))).font(.system(size: 9, weight: .medium)).foregroundStyle(label), at: CGPoint(x: x, y: 5), anchor: .leading)
                 }

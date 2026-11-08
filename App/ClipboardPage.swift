@@ -206,12 +206,40 @@ private struct ClipDetail: View {
         return length.map { "\(time) · \($0)" } ?? time
     }
 
+    private var share: some View {
+        Image(systemName: "square.and.arrow.up").frame(width: 34, height: 34).accessibilityLabel("Share")
+    }
+
     var body: some View {
         Column(top: 4) {
-            Text(detail)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Color.appSecondary)
-                .padding(.horizontal, 4)
+            HStack(spacing: 4) {
+                Text(detail)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.appSecondary)
+                Spacer(minLength: 8)
+                Button(action: copy) {
+                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        .contentTransition(.symbolEffect(.replace))
+                        .foregroundStyle(copied ? Color.copied : .primary)
+                        .frame(width: 34, height: 34)
+                }
+                .accessibilityLabel(copied ? "Copied" : "Copy")
+                Group {
+                    if case .textFile(let name, _) = item.content { ShareLink(item: store.file(name)) { share } }
+                    if case .text(let text) = item.content { ShareLink(item: text) { share } }
+                }
+                Button {
+                    store.setPinned(!item.pinned, item.content)
+                    changed()
+                } label: {
+                    Image(systemName: item.pinned ? "pin.fill" : "pin").frame(width: 34, height: 34)
+                }
+                .accessibilityLabel(item.pinned ? "Unpin" : "Pin")
+            }
+            .font(.body.weight(.semibold))
+            .foregroundStyle(.primary)
+            .buttonStyle(.plain)
+            .padding(.horizontal, 4)
             Group {
                 switch item.content {
                 case .text(let text), .textFile(_, let text):
@@ -227,26 +255,6 @@ private struct ClipDetail: View {
             .background(Color.appCard, in: .rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
             .clipShape(.rect(cornerRadius: AppStyle.cardRadius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: AppStyle.cardRadius, style: .continuous).strokeBorder(Color.appEdge))
-            Box {
-                ActionRow(title: copied ? "Copied" : "Copy", symbol: copied ? "checkmark" : "doc.on.doc", action: copy)
-                if case .textFile(let name, _) = item.content { ShareLink("Share", item: store.file(name)).row() }
-                if case .text(let text) = item.content {
-                    ShareLink(item: text) {
-                        HStack {
-                            Text("Share")
-                            Spacer()
-                            Image(systemName: "square.and.arrow.up").font(.subheadline.weight(.semibold))
-                        }
-                        .foregroundStyle(Color.blue)
-                        .row()
-                    }
-                    .buttonStyle(.plain)
-                }
-                ActionRow(title: item.pinned ? "Unpin" : "Pin", symbol: item.pinned ? "pin.slash" : "pin") {
-                    store.setPinned(!item.pinned, item.content)
-                    changed()
-                }
-            }
             Box {
                 ActionRow(title: "Delete", role: .destructive) {
                     store.remove(item.content)
