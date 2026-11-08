@@ -7,7 +7,8 @@ Voice typing is two steps that never wait on each other, joined by `Listener`: t
 ## Opening the app and going back
 
 - The keyboard opens the app by `iikb://dictate` (FullKeyboard/AGENTS.md, "Opening apps and knowing the host").
-- `KeyboardHost` names the app you were typing in, in that link, and the app opens it once the microphone is on, with `LSApplicationWorkspace` (all private) or else the app's own link; if that fails its screen asks you to swipe back.
+- `KeyboardHost` names the app you were typing in, in that link, and the app opens it once the microphone is on, with `LSApplicationWorkspace` (all private) or else the app's own link. Where it can't (Split View on the open Duo or an iPad, where iikb takes the other app's place), iikb stays on whatever page it was on.
+- The app has no screen of its own for a dictation: the tab bar's accessory (`DictationBar`, where Music shows what's playing) shows the keyboard's recording capsule while you talk, the model writing, or why it couldn't, drawn from `Listener.shown`, so it goes by itself once nothing is recorded, written or failed, and nothing is left to dismiss. A full-screen screen presented on each link (until Nov 8) stuck on its red circle with Close in Split View, since it learned of the dictation only from a callback it could miss.
 - `HostApp` sends you back to the app the keyboard named, unless that's iikb itself, which iOS would quit, losing a Parakeet still getting ready; then it keeps the microphone on for Keep Mic On so the next dictation starts from the keyboard without opening the app.
 - No Live Activity is needed for this, and iikb starts none: iOS shows its own mic indicator.
 - Once recording, the app may keep the microphone running in the background (Keep Mic On, up to Until Turned Off, as Wispr Flow's Flow Sessions do). While it does, the mic beside the suggestions starts and stops dictation with Darwin notifications, never opening the app.

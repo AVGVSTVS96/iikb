@@ -5,10 +5,10 @@ import UIKit
 /// one place in the time the app took to hear it, so they move at the speed of the recording, never on a timer of the
 /// keyboard's own. While dictations wait for the model, it counts them at its right. In the bar it lies over the mic's
 /// capsule, masked to it, or on its own where the mic is the Record Key, `insets` in from its ends.
-final class Waveform: UIView {
+public final class Waveform: UIView {
     private static let pitch: CGFloat = 5
     private static let barWidth: CGFloat = 2.5
-    var insets: (leading: CGFloat, trailing: CGFloat) = (0, 0) {
+    public var insets: (leading: CGFloat, trailing: CGFloat) = (0, 0) {
         didSet { if insets != oldValue { setNeedsLayout() } }
     }
     private let time = UILabel()
@@ -26,7 +26,7 @@ final class Waveform: UIView {
     private var phase = MicButton.Phase.off
     private var tint = UIColor.white
 
-    override init(frame: CGRect) {
+    override public init(frame: CGRect) {
         super.init(frame: frame)
         isUserInteractionEnabled = false
         alpha = 0
@@ -44,11 +44,11 @@ final class Waveform: UIView {
         for view in [time, track, saved] { addSubview(view) }
     }
 
-    required init?(coder: NSCoder) { fatalError() }
+    public required init?(coder: NSCoder) { fatalError() }
 
     /// `saved` is how many dictations wait for the model while you talk. A new recording starts from quiet bars and
     /// comes in as the capsule uncovers it; a stopped one holds still and goes quickly, under the shrinking capsule.
-    func show(_ phase: MicButton.Phase, recorded: Double, saved count: Int, tint: UIColor) {
+    public func show(_ phase: MicButton.Phase, recorded: Double, saved count: Int, tint: UIColor) {
         let started = phase == .listening && self.phase != .listening
         let stopped = phase != .listening && self.phase == .listening
         if stopped { freeze() }
@@ -84,7 +84,7 @@ final class Waveform: UIView {
         }
     }
 
-    func hear(_ level: Float, recorded: Double) {
+    public func hear(_ level: Float, recorded: Double) {
         guard phase == .listening, track.bounds.width > 0 else { return }
         let interval = min(max(recorded - lastRecorded, 0.03), 0.25)
         self.recorded = recorded
@@ -161,7 +161,7 @@ final class Waveform: UIView {
         String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 
-    override func layoutSubviews() {
+    override public func layoutSubviews() {
         super.layoutSubviews()
         layoutContent()
     }

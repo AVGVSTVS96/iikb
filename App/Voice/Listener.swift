@@ -36,10 +36,11 @@ import UIKit
     /// Every one of 628 real dictations had a sample past 200 of 32767; a recording of a second or more with none past
     /// 100, or with no sound at all, is the input gone deaf.
     private static let silence: Float = 100 / 32767
-    /// Why the last dictation couldn't be made or written down, for the app's screen.
-    private(set) var failure: (title: String, reason: String)?
-    var onChange: (() -> Void)?
-    var onLevel: ((Float) -> Void)?
+    /// Why the last dictation couldn't be made or written down, for the app's `DictationBar` until you dismiss it or
+    /// dictate again.
+    private var failure: (title: String, reason: String)?
+    /// Each level the microphone hears while recording, with the seconds recorded so far, for the app's waveform.
+    var onLevel: ((Float, Double) -> Void)?
 
     var isMicOn: Bool { microphone.isOn }
     /// Turned off, and on only till what's being said and written is done.
@@ -47,13 +48,24 @@ import UIKit
     var isListening: Bool { recording != nil && tail == nil }
     var isWriting: Bool { !writing.isEmpty }
 
+    /// What the app's `DictationBar` shows, nil once nothing is being recorded or written down and nothing failed.
+    var shown: DictationBar.State? {
+        if isListening { return .listening }
+        if isWriting { return .writing(waiting: VoiceModel.shared.waiting) }
+        return failure.map { .failed(title: $0.title, reason: $0.reason) }
+    }
+
+    func dismissFailure() {
+        failure = nil
+    }
+
     private init() {
         microphone.onLost = { Task { await Listener.shared.lose() } }
         microphone.onInterrupted = { Task { await Listener.shared.lose(comingBack: true) } }
         microphone.onFreed = { Listener.shared.comeBack() }
         microphone.onLevel = { level, recorded in
             Listener.shared.recording?.recorded = recorded
-            Listener.shared.onLevel?(level)
+            Listener.shared.onLevel?(level, recorded)
         }
         VoiceModel.shared.onState = {
             guard Listener.shared.isWriting, VoiceModel.shared.waiting != Dictation.status.waiting else { return }
@@ -271,7 +283,6 @@ import UIKit
         status.writing = writing.filter(\.typed).map(\.recorded)
         status.waiting = VoiceModel.shared.waiting
         Dictation.publish(status)
-        onChange?()
     }
 
     private enum Failure: LocalizedError {

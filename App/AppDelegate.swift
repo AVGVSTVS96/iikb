@@ -51,10 +51,32 @@ enum Probe {
     }
 }
 
-/// The five tabs. In a window narrower than `Arrangement.wide`, as a 13-inch iPad's Split View half, iPadOS's tab bar
-/// across the top has no room for all five and scrolls them, so there the window takes the bar an iPhone has, as its
-/// pages already take one column.
+/// The five tabs, with the dictation going on in their accessory (`DictationBar`) for as long as `Listener` has one to
+/// show. In a window narrower than `Arrangement.wide`, as a 13-inch iPad's Split View half, iPadOS's tab bar across the
+/// top has no room for all five and scrolls them, so there the window takes the bar an iPhone has, as its pages already
+/// take one column.
 private final class Tabs: UITabBarController {
+    private let dictation = DictationBar()
+    private lazy var accessory = UITabAccessory(contentView: dictation)
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        Listener.shared.onLevel = { [dictation] in dictation.hear($0, recorded: $1) }
+    }
+
+    override func updateProperties() {
+        super.updateProperties()
+        let shown = LaunchOptions.dictation ?? Listener.shared.shown
+        if let shown { dictation.show(shown) }
+        guard (shown != nil) != (bottomAccessory != nil) else { return }
+        setBottomAccessory(shown == nil ? nil : accessory, animated: viewIfLoaded?.window != nil)
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if LaunchOptions.dictation == .listening { LaunchOptions.speak(into: dictation) }
+    }
+
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
         let narrow = traitCollection.userInterfaceIdiom == .pad && view.bounds.width < Arrangement.wide
@@ -124,14 +146,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             Task { try? await Listener.shared.turnMicOn() }
             return
         }
-        guard let request = contexts.lazy.compactMap({ Dictation.Request($0.url) }).first, let root = window?.rootViewController else { return }
+        guard let request = contexts.lazy.compactMap({ Dictation.Request($0.url) }).first else { return }
         let fromSelf = request.host == Bundle.main.bundleIdentifier
         Task { await listen(thenOpen: fromSelf ? nil : request.host) }
-        guard !fromSelf, !(root.presentedViewController is DictationViewController) else { return }
-        root.dismiss(animated: false)
-        let dictation = DictationViewController()
-        dictation.modalPresentationStyle = .fullScreen
-        root.present(dictation, animated: false)
     }
 
     /// Starts listening while iikb is in front, the only place iOS lets a recording begin, then reopens the app you were

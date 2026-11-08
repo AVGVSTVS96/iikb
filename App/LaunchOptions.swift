@@ -12,6 +12,26 @@ enum LaunchOptions {
     }
 
     static var focus: Bool { defaults.bool(forKey: "iikbFocus") }
+    /// `-iikbDictation listening`, `writing`, `loading` or `failed` shows the tab bar's `DictationBar` in that state, for
+    /// screenshots, since a simulator's microphone can't be relied on to record.
+    static var dictation: DictationBar.State? {
+        switch defaults.string(forKey: "iikbDictation") {
+        case "listening": .listening
+        case "writing": .writing(waiting: nil)
+        case "loading": .writing(waiting: "Model loading…")
+        case "failed": .failed(title: "Couldn’t listen", reason: "iikb needs the microphone. Turn it on in Settings › Apps › iikb.")
+        default: nil
+        }
+    }
+
+    /// Seven seconds of a voice into the bar's waveform, for the listening screenshot.
+    @MainActor static func speak(into bar: DictationBar) {
+        bar.layoutIfNeeded()
+        for step in 0 ..< 82 {
+            let wave = abs(sin(Double(step) * 0.55)) * (0.6 + 0.4 * abs(sin(Double(step) * 0.13)))
+            bar.hear(Float(0.002 + 0.08 * wave * wave), recorded: Double(step + 1) * 0.085)
+        }
+    }
     /// `-iikbScrollToEnd YES` opens every page scrolled to its end, for screenshots of what sits above the tab bar.
     static var scrollsToEnd: Bool { defaults.bool(forKey: "iikbScrollToEnd") }
     static var scrollAnchor: UnitPoint { scrollsToEnd ? .bottom : .top }

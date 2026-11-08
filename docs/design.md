@@ -306,7 +306,7 @@ open, landscape 951 × 669       open, portrait 669 × 951      folded 466 × 67
     - **About iikb**.
 - Settings › Apps › iikb has the same pages for the keyboard's switches (Theme; Layout with Split Keyboard and One-Handed Keyboard; Typing; Sound & Haptics; Voice Typing), and says the app also picks the voice model and adds sources.
 - Full Access and Paste from Other Apps are read from TCC, where iOS keeps them for the app (`AppStatus`), and with Add iikb each time the app comes forward, so Home's setup steps check off as you come back from Settings and leave once all three are on.
-- The dictation screen (opened by the keyboard's mic) is the record-red circle swelling with your voice over a readable-width hint; if it couldn't listen it says why, with Close.
+- A dictation shows in the tab bar's accessory, over any page, only while there is one: while you talk, the keyboard's recording at the bar's width, a gray circle with `xmark` that throws it away, then the record-red capsule with the time and waveform in white and `stop.fill` at its end, which stops it; while it's written down, a spinner, Writing it down, and what it waits for (Model loading…); if it couldn't listen or write, an orange triangle, what failed, and an `xmark` that dismisses it; a tap on the rest says why. The keyboard's mic opens the app on the page it was on.
 
 ## Out of this design
 
