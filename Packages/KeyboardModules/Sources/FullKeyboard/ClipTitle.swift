@@ -6,7 +6,8 @@ import UIKit
 /// a link as ChatGPT shows one, its site's icon, its site and then its path, cut short; an address or a phone number
 /// after its glyph; a color after a swatch of it. Nil for plain text and images, which rows show as they always have.
 enum ClipTitle {
-    /// `short` names a link's site as `ClipLink.name` does, for a card too narrow for the whole site.
+    /// `short` writes a link as ChatGPT's source pills do, its icon and `ClipLink.name` alone, for a card too narrow
+    /// for its site and path.
     static func make(_ content: ClipboardHistory.Item.Content, font: UIFont, label: UIColor, secondary: UIColor, short: Bool = false) -> NSAttributedString? {
         guard case .text(let text) = content else { return nil }
         let plain = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -30,7 +31,7 @@ enum ClipTitle {
             glyph(LinkIcons.shared.cached(link.site) ?? symbol("globe"))
             title.append(NSAttributedString(string: short ? link.name : link.site, attributes: [.font: font.withWeight(.semibold), .foregroundColor: label]))
             let path = link.path.removingPercentEncoding ?? link.path
-            if !path.isEmpty {
+            if !path.isEmpty, !short {
                 title.append(NSAttributedString(string: path, attributes: [.font: font, .foregroundColor: secondary]))
             }
         case .email:
