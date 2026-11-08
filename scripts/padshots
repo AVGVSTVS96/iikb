@@ -3,7 +3,8 @@
 # through the real extension on each iPad, portrait and landscape, light and dark, into shots/raw/pad/<tag>/:
 # scripts/padshots <tag>. DEVICES ("iPad Pro 11:iPad-Pro-11-inch-M5-12GB" …), ORIENTATIONS, APPEARANCES and STATES
 # (layers tray more emoji gif clipboard window floating) narrow it; KEYBOARDS="system iikb" shoots Apple's beside it;
-# WINDOW (600x834) drags the app's window to that size for the window state, as Split View and Stage Manager make it.
+# WINDOW (600x834) drags the app's window to that size for the window state, as Split View and Stage Manager make it;
+# FLOATING=true shoots every state with the keyboard floating, which a pinch can't do to a third-party keyboard.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 tag=${1:?tag}
@@ -28,6 +29,8 @@ for spec in "${specs[@]}"; do
   for orientation in ${ORIENTATIONS:-portrait landscape}; do
     for appearance in ${APPEARANCES:-light dark}; do
       xcrun simctl terminate "$ID" com.shahidy.iikb 2>/dev/null || true
+      # iPadOS keeps the keyboard floating across keyboards and launches, so the last run's floating state would float this one.
+      xcrun simctl spawn "$ID" defaults write com.apple.keyboard.preferences KeyboardIsFloating -bool "${FLOATING:-false}"
       xcrun simctl ui "$ID" appearance "$appearance"
       sleep 2
       TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/pad/$tag/$slug-$orientation-$keyboard-$appearance" TEST_RUNNER_IIKB_ORIENTATION=$orientation \
