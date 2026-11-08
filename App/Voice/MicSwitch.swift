@@ -18,8 +18,8 @@ private struct EndsWithCards: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { trailing = $0 }
             .offset(x: min(0, safeTrailing - AppStyle.margin - trailing))
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { trailing = $0 }
     }
 }
 

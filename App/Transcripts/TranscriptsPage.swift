@@ -81,7 +81,7 @@ struct TranscriptsPage: View {
                     }
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, AppStyle.margin)
             .padding(.top, 4)
             .padding(.bottom, 40)
             .frame(maxWidth: Arrangement.wide)
