@@ -29,6 +29,8 @@ final class HomeViewController: UIHostingController<AnyView> {
         field.backgroundColor = .clear
         field.textContainerInset = UIEdgeInsets(top: 16, left: 14, bottom: 16, right: 14)
         field.accessibilityLabel = "Try iikb"
+        field.inputAssistantItem.leadingBarButtonGroups = []
+        field.inputAssistantItem.trailingBarButtonGroups = []
         LaunchOptions.configure(field)
         state.typed = !field.text.isEmpty
         NotificationCenter.default.addObserver(self, selector: #selector(refresh), name: UIApplication.didBecomeActiveNotification, object: nil)
@@ -75,45 +77,49 @@ final class HomeViewController: UIHostingController<AnyView> {
     }
 }
 
-/// Wide, one dashboard when it fits the window's height (an iPad upright): the field across the top, what iikb has
-/// gathered, then the settings' cards three across, voice typing's over the keyboard's; when it doesn't, the field and
-/// what iikb has gathered take the first half and the cards the second, so the field stays above the keys while you
-/// try them. Elsewhere, one column.
+/// Wide, one dashboard that fills the window, every card a grid gap apart: when it fits the window's height (an iPad
+/// upright), the field across the top taking what the rest leaves, what iikb has gathered, then the settings' cards
+/// three across, voice typing's over the keyboard's; when it doesn't, the field over what iikb has gathered beside the
+/// cards two across, so the field stays above the keys while you try them. Elsewhere, one column.
 struct HomeView: View {
     let state: HomeState
     let field: UITextView
     private let status = AppStatus.shared
     @Environment(\.arrangement) private var arrangement
-    @Environment(\.window) private var window
 
     var body: some View {
         Group {
             switch arrangement {
             case .side:
                 ViewThatFits(in: .vertical) {
-                    VStack(alignment: .leading, spacing: 28) {
-                        tryIt.frame(height: min(max(window.height * 0.28, 200), 340))
+                    VStack(alignment: .leading, spacing: 12) {
+                        tryIt.frame(minHeight: 200, maxHeight: .infinity)
                         if !status.isSetUp { setUp }
-                        VStack(spacing: 12) {
-                            stats
-                            shortcutCards(across: 3)
-                        }
+                        stats
+                        shortcutCards(across: 3)
                     }
-                    .padding(.horizontal, 16)
+                    .padding([.horizontal, .bottom], 16)
                     .padding(.top, 12)
-                    .padding(.bottom, 40)
-                    Panes {
-                        VStack(alignment: .leading, spacing: 12) {
-                            tryIt.frame(maxHeight: 300)
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(spacing: 12) {
+                            tryIt.frame(minHeight: 160, maxHeight: .infinity)
                             stats
-                            Spacer(minLength: 0)
                         }
-                        .padding(.horizontal, 16)
+                        .padding([.leading, .bottom], 16)
                         .padding(.top, 12)
-                    } second: {
-                        Column(top: 12) {
-                            if !status.isSetUp { setUp }
-                            shortcutCards(across: 2)
+                        if status.isSetUp {
+                            shortcutCards(across: 2, fills: true)
+                                .padding([.trailing, .bottom], 16)
+                                .padding(.top, 12)
+                        } else {
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 28) {
+                                    setUp
+                                    shortcutCards(across: 2)
+                                }
+                                .padding([.trailing, .bottom], 16)
+                                .padding(.top, 12)
+                            }
                         }
                     }
                 }
@@ -181,14 +187,22 @@ struct HomeView: View {
         }
     }
 
-    private func shortcutCards(across: Int) -> some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: across), spacing: 12) {
-            ForEach(Self.shortcuts, id: \.self) { page in
-                Button { Router.shared.show(.settings, settings: page) } label: {
-                    Tile(symbol: page.glyph.0, color: page.glyph.1, title: page.title, detail: page.value)
+    /// The cards `across` a row; filling, their rows share the height they're given.
+    private func shortcutCards(across: Int, fills: Bool = false) -> some View {
+        let rows = stride(from: 0, to: Self.shortcuts.count, by: across).map { Array(Self.shortcuts[$0 ..< min($0 + across, Self.shortcuts.count)]) }
+        return VStack(spacing: 12) {
+            ForEach(rows, id: \.self) { row in
+                HStack(spacing: 12) {
+                    ForEach(row, id: \.self) { page in
+                        Button { Router.shared.show(.settings, settings: page) } label: {
+                            Tile(symbol: page.glyph.0, color: page.glyph.1, title: page.title, detail: page.value)
+                        }
+                        .buttonStyle(CardPress())
+                        .accessibilityIdentifier("home-\(page.rawValue)")
+                    }
                 }
-                .buttonStyle(CardPress())
-                .accessibilityIdentifier("home-\(page.rawValue)")
+                .frame(maxHeight: fills ? .infinity : nil)
+                .fixedSize(horizontal: false, vertical: !fills)
             }
         }
     }

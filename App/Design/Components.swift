@@ -114,6 +114,7 @@ struct Box<Content: View>: View {
                     .font(.footnote)
                     .foregroundStyle(Color.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 560, alignment: .leading)
                     .padding(.horizontal, 20)
             }
         }
@@ -240,8 +241,8 @@ struct ActionRow: View {
     }
 }
 
-/// A Raycast tile: a glyph at its top left and, right under it, a title and a line in gray, so tiles side by side
-/// line up whatever their text.
+/// A Raycast tile: a glyph at its top left and a title and a line in gray at its bottom left, as a widget sets them out
+/// when it's taller than they need.
 struct Tile: View {
     let symbol: String
     let color: Color
@@ -249,8 +250,9 @@ struct Tile: View {
     var detail: String? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 0) {
             Glyph(symbol: symbol, color: color, size: 34)
+            Spacer(minLength: 14)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.body.weight(.medium))
@@ -262,7 +264,6 @@ struct Tile: View {
                         .lineLimit(2)
                 }
             }
-            Spacer(minLength: 0)
         }
         .padding(18)
         .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
