@@ -63,6 +63,34 @@ reach() {
 }
 reach
 build=../iikb-build
+find_phone() {
+  ssh mac sh -s "$kind" <<'MAC'
+xcrun devicectl list devices --json-output /tmp/iikb-phone-$1.json >/dev/null && /usr/bin/python3 -c "
+import json, sys
+for d in json.load(open('/tmp/iikb-phone-$1.json'))['result']['devices']:
+    h, c = d['hardwareProperties'], d['connectionProperties']
+    if h.get('deviceType') == sys.argv[1] and h.get('reality') == 'physical' and c.get('transportType'): print(h['udid']); break" "$1"
+MAC
+}
+installed_build() {
+  ssh mac sh -s "$phone" <<'MAC'
+xcrun devicectl device info apps --device "$1" --bundle-id com.shahidy.iikb --json-output /tmp/iikb-apps-$1.json >/dev/null 2>&1 &&
+/usr/bin/python3 -c "import json; print(next((a.get('bundleVersion', '') for a in json.load(open('/tmp/iikb-apps-$1.json'))['result']['apps']), ''))"
+MAC
+}
+# Waits for the device unlocked and in reach, and reads the build on it.
+reach() {
+  until phone=$(find_phone) && [ -n "$phone" ]; do
+    echo "waiting for the $kind to be unlocked and on the Mac's Wi-Fi or cable" >&2
+    sleep 30
+  done
+  until installed=$(installed_build); do
+    echo "waiting for the $kind to be unlocked: it was reached but locked" >&2
+    sleep 30
+  done
+}
+# The wait for the device comes before the lock, so a run for a device out of reach never holds up another's install.
+reach
 exec 9>"$build.lock"
 flock 9
 stamp=$build.installed
