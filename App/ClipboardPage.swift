@@ -198,9 +198,12 @@ private struct ClipDetail: View {
     let changed: () -> Void
     @State private var fullText: String?
 
+    private var time: String {
+        Date(timeIntervalSince1970: item.found).formatted(.dateTime.weekday(.wide).month(.abbreviated).day().hour().minute())
+    }
+
     /// When it was copied, and how long all of it is, once a text kept in a file is read.
     private var detail: String {
-        let time = Date(timeIntervalSince1970: item.found).formatted(.dateTime.weekday(.wide).month(.abbreviated).day().hour().minute())
         let unit = SettingsModel.shared.settings.clipboardLength
         let length = fullText.map { ClipboardHistory.length(of: $0, in: unit) } ?? ClipboardHistory.length(of: item.content, in: unit)
         return length.map { "\(time) · \($0)" } ?? time
@@ -213,9 +216,12 @@ private struct ClipDetail: View {
     var body: some View {
         Column(top: 4, fills: true) {
             HStack(spacing: 4) {
-                Text(detail)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.appSecondary)
+                ViewThatFits(in: .horizontal) {
+                    Text(detail).lineLimit(1)
+                    Text(time).lineLimit(1)
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.appSecondary)
                 Spacer(minLength: 8)
                 Button(action: copy) {
                     Image(systemName: copied ? "checkmark" : "doc.on.doc")

@@ -131,6 +131,8 @@ struct ChoicePills<Value: Hashable>: View {
                 } label: {
                     Text(title(value))
                         .font(.footnote.weight(.semibold))
+                        .lineLimit(1)
+                        .fixedSize()
                         .foregroundStyle(picked ? Color.appPillLabel : Color.appSecondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
@@ -472,7 +474,7 @@ struct History: View {
         StatGrid {
             Stat(label: "Words · \(span)d", value: Format.short(now.words), detail: words?.text, detailColor: words.map { $0.up ? .green : .orange } ?? .appSecondary)
             Stat(label: "Per active day", value: Format.short(active > 0 ? now.words / active : 0))
-            Stat(label: "Speed", value: Format.speed(speed(now)), unit: "wpm", detail: pace?.text, detailColor: pace.map { $0.up ? .green : .orange } ?? .appSecondary)
+            Stat(label: kinds.count > 1 ? "Overall speed" : "Speed", value: Format.speed(speed(now)), unit: "wpm", detail: pace?.text, detailColor: pace.map { $0.up ? .green : .orange } ?? .appSecondary)
             Stat(label: "Active days", value: "\(active)", unit: "of \(span)")
         }
     }
