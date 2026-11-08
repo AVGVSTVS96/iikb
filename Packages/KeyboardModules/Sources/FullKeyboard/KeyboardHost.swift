@@ -6,7 +6,7 @@ import UIKit
 /// (`KeyboardArbiter`), names the app it is serving with that app's process ID, sometimes an app you already left. So
 /// each name is kept under its process ID, only until the keyboard next appears, when the host can change, and the host
 /// is the name kept under the host's ID or none. Dictus found and measured this (getdictus/dictus-ios#538, MIT). None of
-/// it is API: a missing step answers nil, and the App Store build (`APP_STORE`, scripts/testflight) leaves it all out.
+/// it is API: a missing step answers nil, and the App Store build (`APP_STORE`, ci_scripts/) leaves it all out.
 enum KeyboardHost {
     #if APP_STORE
         static func appeared() {}

@@ -81,7 +81,7 @@ Then on the phone: Settings › General › Keyboard › Keyboards › Add New K
 
 ### Build it yourself
 
-The TestFlight build leaves out the few private iOS calls App Review doesn't allow (`scripts/testflight`), such as returning you to the app you were typing in after dictation. A build of your own keeps them.
+The TestFlight build leaves out the few private iOS calls App Review doesn't allow (`ci_scripts/`), such as returning you to the app you were typing in after dictation. A build of your own keeps them.
 
 On a Mac, with Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen):
 
