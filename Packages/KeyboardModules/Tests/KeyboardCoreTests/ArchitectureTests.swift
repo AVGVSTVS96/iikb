@@ -5,30 +5,43 @@ struct ArchitectureTests {
     static let root = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../../..").standardized
 
     @Test func coreImportsNothing() throws {
-        let sources = Self.files(in: "Packages/KeyboardModules/Sources/KeyboardCore").filter { $0.pathExtension == "swift" }
+        let sources = Self.files(in: "Packages/KeyboardModules/Sources/KeyboardCore").filter {
+            $0.pathExtension == "swift"
+        }
         #expect(sources.count > 20)
         for file in sources {
-            let imports = try String(contentsOf: file, encoding: .utf8).split(separator: "\n").filter { $0.hasPrefix("import ") }
+            let imports = try String(contentsOf: file, encoding: .utf8).split(separator: "\n").filter {
+                $0.hasPrefix("import ")
+            }
             #expect(imports.isEmpty, "\(file.lastPathComponent): \(imports)")
         }
     }
 
     @Test func everyTimerIsOneAgentsAllows() throws {
-        let waits = ["asyncAfter", "afterDelay", "Timer.", "Timer(", ".sleep(", "usleep(", "makeTimerSource", "timeoutInterval", "timeout:"]
+        let waits = [
+            "asyncAfter", "afterDelay", "Timer.", "Timer(", ".sleep(", "usleep(", "makeTimerSource", "timeoutInterval",
+            "timeout:",
+        ]
         let timers = ["key repeat", "long-press", "source answer", "Keep Mic On", "stop waits for quiet"]
-        let sources = ["App", "Keyboard", "web/Sources", "Packages/KeyboardModules/Sources"].flatMap(Self.files).filter { $0.pathExtension == "swift" }
+        let sources = ["App", "Keyboard", "web/Sources", "Packages/KeyboardModules/Sources"].flatMap(Self.files).filter
+        { $0.pathExtension == "swift" }
         #expect(sources.count > 100)
         for file in sources {
-            for (number, line) in try String(contentsOf: file, encoding: .utf8).split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            let lines = try Self.lines(of: file)
+            for (number, line) in lines.enumerated() {
                 let code = line.trimmingCharacters(in: .whitespaces)
                 guard !code.hasPrefix("//"), waits.contains(where: code.contains) else { continue }
                 let place = "\(Self.relative(file)):\(number + 1)"
-                guard let marker = code.range(of: "// timer: ") else {
-                    Issue.record("\(place) waits on a clock. iikb follows real events (a Darwin notification, the recording's end, textDidChange); AGENTS.md › Rules lists the only timers. If this is one of them, mark the line with `// timer: <which>`, one of: \(timers.joined(separator: ", ")).")
+                guard let which = Self.marker("timer", at: number, in: lines) else {
+                    Issue.record(
+                        "\(place) waits on a clock. iikb follows real events (a Darwin notification, the recording's end, textDidChange); AGENTS.md › Rules lists the only timers. If this is one of them, mark the line, or the line above it, with `// timer: <which>`, one of: \(timers.joined(separator: ", "))."
+                    )
                     continue
                 }
-                let which = code[marker.upperBound...]
-                #expect(timers.contains(where: which.hasPrefix) || which.hasPrefix("unlisted ("), "\(place) marks `// timer: \(which)`, which AGENTS.md › Rules doesn't list; use one of: \(timers.joined(separator: ", ")).")
+                #expect(
+                    timers.contains(where: which.hasPrefix) || which.hasPrefix("unlisted ("),
+                    "\(place) marks `// timer: \(which)`, which AGENTS.md › Rules doesn't list; use one of: \(timers.joined(separator: ", "))."
+                )
             }
         }
     }
@@ -40,17 +53,27 @@ struct ArchitectureTests {
         let reasons = ["iOS stopped it", "a picked microphone came or went", "in front"]
         var restarts = 0
         for file in Self.files(in: "App").filter({ $0.pathExtension == "swift" }) {
-            let lines = try String(contentsOf: file, encoding: .utf8).split(separator: "\n", omittingEmptySubsequences: false)
-            for (number, line) in lines.enumerated() where line.contains("restart(") && !line.contains("func restart(") && !line.trimmingCharacters(in: .whitespaces).hasPrefix("//") {
+            let lines = try Self.lines(of: file)
+            for (number, line) in lines.enumerated()
+            where line.contains("restart(") && !line.contains("func restart(")
+                && !line.trimmingCharacters(in: .whitespaces).hasPrefix("//")
+            {
                 restarts += 1
                 let place = "\(Self.relative(file)):\(number + 1)"
-                guard let marker = line.range(of: "// restart: "), let reason = reasons.first(where: line[marker.upperBound...].hasPrefix) else {
-                    Issue.record("\(place) restarts the microphone without saying why; mark it `// restart: <why>`, one of: \(reasons.joined(separator: ", ")).")
+                guard let marker = Self.marker("restart", at: number, in: lines),
+                    let reason = reasons.first(where: marker.hasPrefix)
+                else {
+                    Issue.record(
+                        "\(place) restarts the microphone without saying why; mark it, or the line above it, `// restart: <why>`, one of: \(reasons.joined(separator: ", "))."
+                    )
                     continue
                 }
                 guard reason == "in front" else { continue }
                 let body = lines[..<number].reversed().prefix { !$0.contains("func ") }
-                #expect(body.contains { $0.contains("inFront") }, "\(place) restarts the microphone by choice in a function that doesn't check `Microphone.inFront` first.")
+                #expect(
+                    body.contains { $0.contains("inFront") },
+                    "\(place) restarts the microphone by choice in a function that doesn't check `Microphone.inFront` first."
+                )
             }
         }
         #expect(restarts >= 4)
@@ -59,27 +82,39 @@ struct ArchitectureTests {
     /// A probe's launch is the iikb the keyboard dictates into, so quitting it while the microphone is on turned it off.
     @Test func onlyAFinishedProbeQuits() throws {
         for file in Self.files(in: "App").filter({ $0.pathExtension == "swift" }) {
-            for (number, line) in try String(contentsOf: file, encoding: .utf8).split(separator: "\n", omittingEmptySubsequences: false).enumerated()
+            let lines = try Self.lines(of: file)
+            for (number, line) in lines.enumerated()
             where line.contains("exit(") && !line.trimmingCharacters(in: .whitespaces).hasPrefix("//") {
-                #expect(line.contains("// exit: a probe's launch is done") && file.lastPathComponent == "AppDelegate.swift",
-                        "\(Self.relative(file)):\(number + 1) quits iikb; a probe ends with `Probe.end()`, which stays while the microphone is on.")
+                #expect(
+                    Self.marker("exit", at: number, in: lines) == "a probe's launch is done"
+                        && file.lastPathComponent == "AppDelegate.swift",
+                    "\(Self.relative(file)):\(number + 1) quits iikb; a probe ends with `Probe.end()`, which stays while the microphone is on."
+                )
             }
         }
     }
 
     @Test func keptDataGoesThroughStoredFile() throws {
-        let direct = ["Data(contentsOf:", "NSData(contentsOf:", "String(contentsOf:", "String(contentsOfFile:", ".write(to:", ".write(toFile:",
-                      "FileHandle(forWritingTo:", "FileHandle(forUpdating", "FileHandle(forReadingFrom:", "createFile(atPath:", "contents(atPath:",
-                      "AVAudioFile(forWriting:", "O_CREAT"]
-        let sources = ["App", "Packages/KeyboardModules/Sources"].flatMap(Self.files).filter { $0.pathExtension == "swift" && $0.lastPathComponent != "StoredFile.swift" }
+        let direct = [
+            "Data(contentsOf:", "NSData(contentsOf:", "String(contentsOf:", "String(contentsOfFile:", ".write(to:",
+            ".write(toFile:",
+            "FileHandle(forWritingTo:", "FileHandle(forUpdating", "FileHandle(forReadingFrom:", "createFile(atPath:",
+            "contents(atPath:",
+            "AVAudioFile(forWriting:", "O_CREAT",
+        ]
+        let sources = ["App", "Packages/KeyboardModules/Sources"].flatMap(Self.files).filter {
+            $0.pathExtension == "swift" && $0.lastPathComponent != "StoredFile.swift"
+        }
         #expect(sources.count > 100)
         for file in sources {
-            for (number, line) in try String(contentsOf: file, encoding: .utf8).split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            let lines = try Self.lines(of: file)
+            for (number, line) in lines.enumerated() {
                 let code = line.trimmingCharacters(in: .whitespaces)
                 guard !code.hasPrefix("//"), direct.contains(where: code.contains) else { continue }
-                let reason = code.range(of: "// file: ").map { code[$0.upperBound...].trimmingCharacters(in: .whitespaces) } ?? ""
-                if reason.isEmpty {
-                    Issue.record("\(Self.relative(file)):\(number + 1) reads or writes a file directly. Kept data goes through StoredFile (KeyboardStore/StoredFile.swift), which never saves over a file it couldn't read; if this isn't kept data, mark the line `// file: <what it is>`.")
+                if Self.marker("file", at: number, in: lines)?.trimmingCharacters(in: .whitespaces).isEmpty != false {
+                    Issue.record(
+                        "\(Self.relative(file)):\(number + 1) reads or writes a file directly. Kept data goes through StoredFile (KeyboardStore/StoredFile.swift), which never saves over a file it couldn't read; if this isn't kept data, mark the line, or the line above it, `// file: <what it is>`."
+                    )
                 }
             }
         }
@@ -90,7 +125,10 @@ struct ArchitectureTests {
         var words = Set(files.map { $0.deletingPathExtension().lastPathComponent })
         for file in files where file.pathExtension != "md" {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
-            let code = file.pathExtension == "swift" ? text.split(separator: "\n").map { $0.split(separator: "//", maxSplits: 1).first ?? "" }.joined(separator: " ") : text
+            let code =
+                file.pathExtension == "swift"
+                ? text.split(separator: "\n").map { $0.split(separator: "//", maxSplits: 1).first ?? "" }.joined(
+                    separator: " ") : text
             words.formUnion(code.split { !($0.isLetter || $0.isNumber || $0 == "_") }.map(String.init))
         }
         let docs = files.filter { $0.lastPathComponent == "AGENTS.md" }
@@ -100,10 +138,18 @@ struct ArchitectureTests {
             for quoted in agents.split(separator: "`").enumerated().filter({ $0.offset % 2 == 1 }).map(\.element) {
                 let name = quoted.split(separator: "(").first ?? quoted
                 let parts = name.split(separator: ".", omittingEmptySubsequences: false)
-                guard parts.allSatisfy({ $0.first.map { $0.isLetter || $0 == "_" } == true && $0.allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" } }),
-                      parts.count == 1 || parts[0].first!.isUppercase else { continue }
+                guard
+                    parts.allSatisfy({
+                        $0.first.map { $0.isLetter || $0 == "_" } == true
+                            && $0.allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" }
+                    }),
+                    parts.count == 1 || parts[0].first!.isUppercase
+                else { continue }
                 let stale = parts.contains { !words.contains(String($0)) }
-                #expect(!stale, "\(Self.relative(doc)) names `\(quoted)`, which no code declares or uses; rename it to what replaced it or drop it.")
+                #expect(
+                    !stale,
+                    "\(Self.relative(doc)) names `\(quoted)`, which no code declares or uses; rename it to what replaced it or drop it."
+                )
             }
         }
     }
@@ -112,11 +158,21 @@ struct ArchitectureTests {
     @Test func controlsSpellsTheAppsMicNames() throws {
         let control = try String(contentsOf: Self.root.appending(path: "Controls/MicControl.swift"), encoding: .utf8)
         let store = try ["Dictation.swift", "AppLink.swift"].map {
-            try String(contentsOf: Self.root.appending(path: "Packages/KeyboardModules/Sources/KeyboardStore/\($0)"), encoding: .utf8)
+            try String(
+                contentsOf: Self.root.appending(path: "Packages/KeyboardModules/Sources/KeyboardStore/\($0)"),
+                encoding: .utf8)
         }.joined()
-        for name in ["\"com.shahidy.iikb.dictation.micoff\"", "\"com.shahidy.iikb.mic\"", "\"mic.lock\"", "\"iikb://mic\""] {
-            #expect(store.contains(name), "KeyboardStore no longer has \(name); spell the new name the same in Controls/MicControl.swift and here.")
-            #expect(control.contains(name), "Controls/MicControl.swift doesn't spell \(name) as KeyboardStore does, so iikb Mic would miss the app.")
+        for name in [
+            "\"com.shahidy.iikb.dictation.micoff\"", "\"com.shahidy.iikb.mic\"", "\"mic.lock\"", "\"iikb://mic\"",
+        ] {
+            #expect(
+                store.contains(name),
+                "KeyboardStore no longer has \(name); spell the new name the same in Controls/MicControl.swift and here."
+            )
+            #expect(
+                control.contains(name),
+                "Controls/MicControl.swift doesn't spell \(name) as KeyboardStore does, so iikb Mic would miss the app."
+            )
         }
     }
 
@@ -125,21 +181,44 @@ struct ArchitectureTests {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated()
             where ["<<<<<<<", "|||||||", ">>>>>>>"].contains(where: { line == $0 || line.hasPrefix($0 + " ") }) {
-                Issue.record("\(Self.relative(file)):\(number + 1) is a merge conflict marker; keep the side that's right, merge the two, and delete the markers.")
+                Issue.record(
+                    "\(Self.relative(file)):\(number + 1) is a merge conflict marker; keep the side that's right, merge the two, and delete the markers."
+                )
             }
         }
     }
 
     static func files(in folder: String) -> [URL] {
-        let skipped: Set = [".git", "build", ".build", ".swiftpm", "DerivedData", "node_modules", "dist", "raw", "xtool", ".scratch", ".vercel"]
-        guard let walk = FileManager.default.enumerator(at: root.appending(path: folder), includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey]) else { return [] }
+        let skipped: Set = [
+            ".git", "build", ".build", ".swiftpm", "DerivedData", "node_modules", "dist", "raw", "xtool", ".scratch",
+            ".vercel",
+        ]
+        guard
+            let walk = FileManager.default.enumerator(
+                at: root.appending(path: folder), includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey])
+        else { return [] }
         var files: [URL] = []
         for case let url as URL in walk {
-            if skipped.contains(url.lastPathComponent) { walk.skipDescendants(); continue }
+            if skipped.contains(url.lastPathComponent) {
+                walk.skipDescendants()
+                continue
+            }
             let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
             if values?.isRegularFile == true, values?.fileSize ?? 0 < 2_000_000 { files.append(url) }
         }
         return files
+    }
+
+    static func lines(of file: URL) throws -> [Substring] {
+        try String(contentsOf: file, encoding: .utf8).split(separator: "\n", omittingEmptySubsequences: false)
+    }
+
+    /// A marker such as `// file: <what>` ends its line or is the whole line above it, where formatting leaves it.
+    static func marker(_ name: String, at number: Int, in lines: [Substring]) -> Substring? {
+        let tag = "// \(name): "
+        if let found = lines[number].range(of: tag) { return lines[number][found.upperBound...] }
+        let above = number > 0 ? lines[number - 1].drop { $0 == " " } : ""
+        return above.hasPrefix(tag) ? above.dropFirst(tag.count) : nil
     }
 
     static func relative(_ file: URL) -> String {

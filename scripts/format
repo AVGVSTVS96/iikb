@@ -1,0 +1,10 @@
+#!/bin/sh
+# swift format, as .swift-format sets it, on every tracked Swift file; --check fails on what it would change.
+set -e
+cd "$(dirname "$0")/.."
+files=$(git ls-files '*.swift')
+if [ "${1:-}" = --check ]; then
+    swift format lint --strict --parallel $files || { echo "scripts/format fixes the layout; the rest is by hand" >&2; exit 1; }
+else
+    swift format -i --parallel $files
+fi
