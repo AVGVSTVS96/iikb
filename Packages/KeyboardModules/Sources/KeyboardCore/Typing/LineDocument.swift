@@ -36,7 +36,7 @@ public final class LineDocument: TextDocument {
             placeCaret(at: selection.lowerBound + string.count)
             return
         }
-        insert(String(string[..<end]))
+        if end != string.startIndex { insert(String(string[..<end])) }
         returned = text
         clear()
     }

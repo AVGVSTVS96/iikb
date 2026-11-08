@@ -4,12 +4,14 @@ import UIKit
 /// A chat's message box, as Messages draws one: it wraps and grows to the height its owner allows, then scrolls,
 /// keeping the caret in view. It draws a `LineDocument` the keys type into and turns touches into caret and selection
 /// changes; its owner applies them to the document and shows it again.
-public final class MessageField: UIView, UIGestureRecognizerDelegate {
+public final class MessageField: UIView, UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate {
     /// The caret or selection a touch picked, in characters.
     public var onSelect: (Range<Int>) -> Void = { _ in }
     public var onSend: () -> Void = {}
     /// Any tap on the field, before the `onSelect` it brings.
     public var onTap: () -> Void = {}
+    /// Cut, Copy or Paste picked from the selection's menu, for the selection the owner holds.
+    public var onEdit: (SuggestionBar.Edit) -> Void = { _ in }
 
     private let canvas = Canvas()
     private let highlight = UIView()
@@ -19,6 +21,8 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate {
     private var shown: Shown?
     private var drag: Drag?
     private var taps = 1
+    private lazy var menu = UIEditMenuInteraction(delegate: self)
+    private var menuWanted = false
 
     private struct Shown: Equatable {
         var text: String
@@ -76,6 +80,7 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate {
         pan.delegate = self
         addGestureRecognizer(pan)
         canvas.panGestureRecognizer.require(toFail: pan)
+        addInteraction(menu)
         registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _) in self.showShadow() }
     }
 
@@ -121,7 +126,13 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate {
         }
         if next.canSend != last?.canSend { showSend(next.canSend, animated: last != nil && window != nil) }
         if next.text != last?.text || next.selection != last?.selection || next.caret != last?.caret { blink() }
+        if next.text != last?.text || next.selection != last?.selection { menu.dismissMenu() }
         setNeedsLayout()
+    }
+
+    /// The height for `size.width` at up to five lines, within `size.height`.
+    override public func sizeThatFits(_ size: CGSize) -> CGSize {
+        CGSize(width: size.width, height: min(height(for: size.width, lines: 5), size.height))
     }
 
     /// The height the field wants at `width`, growing a line at a time up to `lines`, past which it scrolls.
@@ -154,6 +165,48 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate {
         guard let shown, let range = textRange(shown.selection) else { return }
         let end = canvas.caretRect(for: drag == .start ? range.start : range.end)
         canvas.scrollRectToVisible(end.insetBy(dx: 0, dy: -Self.inset.top), animated: false)
+        guard menuWanted else { return }
+        menuWanted = false
+        showMenu()
+    }
+
+    private func showMenu() {
+        guard shown?.selection.isEmpty == false else { return }
+        let target = selectionBox
+        menu.presentEditMenu(
+            with: UIEditMenuConfiguration(identifier: nil, sourcePoint: CGPoint(x: target.midX, y: target.minY)))
+    }
+
+    private var selectionBox: CGRect {
+        canvas.convert(highlight.frame, to: self).intersection(bounds)
+    }
+
+    public func editMenuInteraction(
+        _ interaction: UIEditMenuInteraction, targetRectFor configuration: UIEditMenuConfiguration
+    ) -> CGRect {
+        selectionBox
+    }
+
+    public func editMenuInteraction(
+        _ interaction: UIEditMenuInteraction, menuFor configuration: UIEditMenuConfiguration,
+        suggestedActions: [UIMenuElement]
+    ) -> UIMenu? {
+        guard let shown, !shown.selection.isEmpty else { return nil }
+        var actions = [
+            UIAction(title: "Cut") { [unowned self] _ in onEdit(.cut) },
+            UIAction(title: "Copy") { [unowned self] _ in onEdit(.copy) },
+        ]
+        if UIPasteboard.general.hasStrings {
+            actions.append(UIAction(title: "Paste") { [unowned self] _ in onEdit(.paste) })
+        }
+        if shown.selection.count < shown.text.count {
+            actions.append(
+                UIAction(title: "Select All") { [unowned self] _ in
+                    menuWanted = true
+                    onSelect(0..<shown.text.count)
+                })
+        }
+        return UIMenu(children: actions)
     }
 
     private func drawSelection() {
@@ -238,7 +291,11 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate {
         onTap()
         guard let shown, !shown.text.isEmpty else { return onSelect(0..<0) }
         let at = offset(at: tap.location(in: canvas))
+        menuWanted = taps > 1
         switch taps {
+        case 1
+        where shown.selection.count > 0 && (shown.selection.lowerBound...shown.selection.upperBound).contains(at):
+            showMenu()
         case 1: onSelect(at..<at)
         case 2: onSelect(word(at: tap.location(in: canvas)) ?? at..<at)
         default: onSelect(0..<shown.text.count)
@@ -249,7 +306,8 @@ public final class MessageField: UIView, UIGestureRecognizerDelegate {
         guard let shown, let drag else { return }
         if pan.state == .ended || pan.state == .cancelled {
             self.drag = nil
-            return
+            menuWanted = drag != .caret
+            return setNeedsLayout()
         }
         guard !shown.text.isEmpty else { return }
         let at = offset(at: pan.location(in: canvas))

@@ -80,14 +80,6 @@ struct LineDocumentTests {
         #expect(line.selection == 2..<2)
     }
 
-    @Test func returnOverASelectionSendsWhatTypingLeft() {
-        let line = LineDocument("on my way")
-        line.select(3..<5)
-        line.insert("\n")
-        #expect(line.takeReturned() == "on  way")
-        #expect(line.selection == 0..<0)
-    }
-
     @Test func theEngineTypesOverASelection() {
         var engine = TypingEngine(traits: InputTraits(returnKind: .send, returnRequiresText: true))
         let line = LineDocument()
@@ -116,5 +108,16 @@ struct LineDocumentTests {
         engine.perform(.delete, in: line)
         #expect(line.text == "Calllater")
         #expect(engine.documentChanged(line) == .current)
+    }
+
+    @Test func returnSendsAllOfTheLineEvenWithAWordSelected() {
+        let line = LineDocument("Can you check the build")
+        line.select(0..<3)
+        line.insert("\n")
+        #expect(
+            line.takeReturned() == "Can you check the build",
+            "send sends the message, as Messages' does, not what typing over the word would leave")
+        #expect(line.text.isEmpty)
+        #expect(line.selection == 0..<0)
     }
 }
