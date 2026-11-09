@@ -1,0 +1,10 @@
+# The made-up data scripts/sim fill puts in the app, for shots that show no one's own: written fresh by shots/demo/make.py,
+# so its dates count back from now. set -a; source shots/demo/env; set +a
+python3 shots/demo/make.py build/demo
+TOUCHES=build/demo/touches.json
+TYPING=build/demo/typing.jsonl
+TRANSCRIPTS=build/demo/transcripts.jsonl
+RECORDINGS=build/demo/recordings
+MAC=build/demo/mac.json
+CLIPBOARD=build/demo/clipboard.json
+APPNAMES=build/demo/app-names.json

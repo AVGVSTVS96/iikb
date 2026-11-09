@@ -3,8 +3,8 @@ keyboard's start with listening and a voice's worth of levels, and finish with w
 stopped it. The first waits for the model to get ready, and meanwhile the keyboard starts a second; the first is typed as
 the second records. Then it leaves one for a keyboard that has closed, which isn't typed. The last dictation ends the way a
 quit app does, mid-writing: the status stays, the lock goes. scripts/voiceapp.py <simulator id> <App Group container>
-[listening|saved|waiting|cancel], which holds one state until it's killed, for screenshots of the bar: talking; talking with two
-saved; three saved waiting for the model; with cancel, listens from each start until the keyboard cancels; or, with
+[listening|saved|writing|waiting|cancel], which holds one state until it's killed, for screenshots of the bar: talking; talking with two
+saved; one being written down; three saved waiting for the model; with cancel, listens from each start until the keyboard cancels; or, with
 stops, listens from each start until the keyboard stops it, then writes it down for a second and types it. With edited (<transcript id> <file>)..., it answers each dictation in turn with a file's
 text, left for the keyboard with that transcript's id, so the keyboard follows what it becomes."""
 import fcntl, json, math, os, struct, subprocess, sys, threading, time, uuid
@@ -74,6 +74,9 @@ if sys.argv[3:] == ["listening"]:
 if sys.argv[3:] == ["saved"]:
     publish(listening=True, writing=[5.2, 3.1], waiting=True)
     speak(threading.Event())
+if sys.argv[3:] == ["writing"]:
+    publish(writing=[5.2])
+    threading.Event().wait()
 if sys.argv[3:] == ["waiting"]:
     publish(writing=[5.2, 3.1, 8.4], waiting=True)
     threading.Event().wait()

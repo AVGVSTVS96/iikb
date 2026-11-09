@@ -1,0 +1,34 @@
+name: shots
+on:
+  workflow_dispatch:
+jobs:
+  parity:
+    runs-on: xcode-27
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - run: sudo xcode-select -s /Applications/Xcode_27.1.app
+      - run: brew install --quiet xcodegen
+      - run: printf %s "$KLIPY_KEY" > Packages/KeyboardModules/Sources/FullKeyboard/Resources/Keys/klipy.key
+        env:
+          KLIPY_KEY: ${{ secrets.KLIPY_KEY }}
+      # GitHub's release downloads, FluidAudio's binaries among them, time out now and then.
+      - run: |
+          xcodegen generate -q
+          for try in 1 2 3; do
+            xcodebuild -resolvePackageDependencies -project iikb.xcodeproj -scheme iikb -derivedDataPath build/uitest -quiet && break
+            sleep 30
+          done
+      - run: scripts/parity
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity
+          path: shots/raw/parity/
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: |
+            build/uitest/*.log
+            build/uitest/*.ips

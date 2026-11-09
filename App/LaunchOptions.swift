@@ -86,8 +86,8 @@ enum LaunchOptions {
         MemoryStore.reset()
     }
 
-    /// `-iikbOneHanded left`, `-iikbCompactPanels YES`, `-iikbAutoCapitalization YES` and `-iikbMicKey YES` set those
-    /// settings for a test.
+    /// `-iikbOneHanded left`, `-iikbCompactPanels YES`, `-iikbAutoCapitalization YES`, `-iikbAutoCorrection YES` and
+    /// `-iikbMicKey YES` set those settings for a test.
     static func applySettings() {
         if let hand = defaults.string(forKey: "iikbOneHanded").flatMap(OneHanded.init) { SettingsStore.set(hand) }
         if defaults.object(forKey: "iikbCompactPanels") != nil {
@@ -95,6 +95,9 @@ enum LaunchOptions {
         }
         if defaults.object(forKey: "iikbAutoCapitalization") != nil {
             SettingsStore.set(defaults.bool(forKey: "iikbAutoCapitalization"), for: \.autoCapitalization)
+        }
+        if defaults.object(forKey: "iikbAutoCorrection") != nil {
+            SettingsStore.set(defaults.bool(forKey: "iikbAutoCorrection"), for: \.autoCorrection)
         }
         if defaults.object(forKey: "iikbMicKey") != nil {
             SettingsStore.set(defaults.bool(forKey: "iikbMicKey"), for: \.micKey)
