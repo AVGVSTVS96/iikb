@@ -18,7 +18,7 @@ git -C "$repo" show origin/main:android/download/vercel.json > "$site/vercel.jso
 git -C "$repo" show origin/main:brand/logo/out/favicon.svg > "$site/favicon.svg"
 git -C "$repo" show origin/main:android/download/index.html |
   sed -e "s/__VERSION__/$version/g" -e "s/__SHA__/$sha/g" \
-    -e "s/__SIZE__/$(numfmt --to=si --suffix=B --format=%.0f "$(stat -c %s "$apk")" | sed 's/MB/ MB/')/g" \
+    -e "s/__SIZE__/$(numfmt --to=si --round=nearest --suffix=B --format=%.0f "$(stat -c %s "$apk")" | sed 's/MB/ MB/')/g" \
     -e "s/__DATE__/$(date -d "@$(stat -c %Y "$apk")" '+%b %-d')/g" > "$site/index.html"
 ln -f "$apk" "$site/iikb.apk"
 
