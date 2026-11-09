@@ -17,8 +17,8 @@ final class ChatPanel: UIView, PanelContent {
     var onBrowse: () -> Void = {}
     /// A tap or a drag in the box placed the caret or selected, as offsets into its text.
     var onSelect: (Range<Int>) -> Void = { _ in }
-    /// Cut, Copy or Paste from the box's edit menu.
-    var onEdit: (SuggestionBar.Edit) -> Void = { _ in }
+    /// iOS replaced a range of the box's text, by its edit menu's Cut or Paste.
+    var onReplace: (Range<Int>, String) -> Void = { _, _ in }
     var field: PanelField { .own(composer) }
     private let composer = MessageField()
     private var line: LineDocument?
@@ -63,7 +63,7 @@ final class ChatPanel: UIView, PanelContent {
         composer.onMic = { [unowned self] in onMic() }
         composer.onTap = { [unowned self] in if !typing { onFocus() } }
         composer.onSelect = { [unowned self] in onSelect($0) }
-        composer.onEdit = { [unowned self] in onEdit($0) }
+        composer.onReplace = { [unowned self] in onReplace($0, $1) }
         well.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapMessages)))
         message.accessibilityIdentifier = "iikb.chat.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
@@ -93,7 +93,8 @@ final class ChatPanel: UIView, PanelContent {
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
         if let line {
             composer.show(
-                line, placeholder: chats.open.map { "Message \($0.name)" } ?? "Message", caret: typing, mic: mic,
+                line, placeholder: chats.open.map { "Message \($0.name)" } ?? "Message", caret: typing && fullAccess(),
+                mic: mic,
                 theme: theme)
         }
         title.text = chats.open?.name

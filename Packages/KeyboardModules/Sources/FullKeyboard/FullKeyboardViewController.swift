@@ -111,7 +111,13 @@ open class FullKeyboardViewController: UIInputViewController {
             toggleVoice()
         }
         panel.onFocus = { [unowned self] in raiseKeys() }
-        panel.onEdit = { [unowned self] in edit($0) }
+        panel.onReplace = { [unowned self] range, text in
+            guard let line else { return }
+            line.select(range)
+            line.insert(text.replacingOccurrences(of: "\n", with: " "))
+            engine.documentChanged(line)
+            render()
+        }
         panel.onBrowse = { [unowned self] in
             keysUp = false
             render()
