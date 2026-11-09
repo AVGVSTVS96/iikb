@@ -45,7 +45,7 @@ class Dictation(context: Context, private val typist: Typist) {
     private val main = Handler(Looper.getMainLooper())
     private val model = VoiceModel.of(context)
     private val writer = Executors.newSingleThreadExecutor { Thread(it, "iikb-dictation") }
-    private val microphone = Microphone(::heard) { stop() }
+    private val microphone = Microphone(context, ::heard) { stop() }
     private val speech = AndroidSpeech(context, { heard(it, (System.currentTimeMillis() - started) / 1000.0) }, ::spoken)
 
     var onChange: () -> Unit = {}
