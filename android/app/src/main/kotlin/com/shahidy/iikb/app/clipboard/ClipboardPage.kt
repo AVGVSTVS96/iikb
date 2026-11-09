@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.Settings
@@ -60,6 +61,7 @@ import com.shahidy.iikb.app.design.Rows
 import com.shahidy.iikb.app.design.SearchField
 import com.shahidy.iikb.app.design.SectionPills
 import com.shahidy.iikb.app.glyph
+import com.shahidy.iikb.app.Type
 import com.shahidy.iikb.app.palette
 import com.shahidy.iikb.app.transcripts.share
 import com.shahidy.iikb.app.transcripts.title
@@ -204,7 +206,7 @@ private fun ClipRow(row: Clips.Row, copied: Boolean, clips: Clips, copy: (Clips.
     Box {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 56.dp).combinedClickable(onLongClick = { menu = true }) { copy(row) }
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -216,7 +218,10 @@ private fun ClipRow(row: Clips.Row, copied: Boolean, clips: Clips, copy: (Clips.
                     }
                 } else {
                     val time = row.time().format(if (row.pinned) dated else clock)
-                    Text(listOfNotNull(time, row.length).joinToString(" · "), color = palette.secondary, fontSize = 13.sp, maxLines = 1)
+                    Text(
+                        listOfNotNull(time, row.length).joinToString(" · "), color = palette.secondary, maxLines = 1,
+                        style = TextStyle(fontSize = 13.sp, fontFeatureSettings = "tnum"),
+                    )
                 }
             }
             if (row.pinned) Icon(Symbols["pin.fill"], "Pinned", tint = palette.secondary, modifier = Modifier.size(17.7.dp))
@@ -243,7 +248,7 @@ private fun Title(row: Clips.Row) {
                 Modifier.size(20.dp).background(Color(row.color ?: 0), CircleShape)
                     .border(BorderStroke(1.dp, palette.edge), CircleShape),
             )
-            Text(plain.uppercase(), color = palette.label, fontSize = 17.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
+            Text(plain.uppercase(), color = palette.label, fontSize = 17.sp, fontFamily = Type.mono, maxLines = 1)
         }
         else -> Text(plain, color = palette.label, fontSize = 17.sp, lineHeight = 22.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
     }

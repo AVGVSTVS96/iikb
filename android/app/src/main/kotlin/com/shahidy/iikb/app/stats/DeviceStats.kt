@@ -83,7 +83,7 @@ private fun Speed(kind: Kind, activity: Activity) {
         if (kind == Kind.TYPED) "Typing speed" else "Talking speed",
     ) {
         LeadNumber(all.speed?.let { "${it.roundToInt()} wpm" } ?: "–", 52f, trend?.let { { TrendChip(it) } })
-        Caption(lines.joinToString(" "))
+        Caption(lines.joinToString(" "), lines = 3)
         Hairline()
         Figures(
             listOf(

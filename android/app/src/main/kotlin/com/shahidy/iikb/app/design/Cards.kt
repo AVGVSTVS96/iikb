@@ -75,6 +75,9 @@ object Tints {
     fun cyan(p: Palette) = if (p.isDark) Color(0xFF64D2FF) else Color(0xFF32ADE6)
     fun gray(p: Palette) = Color(0xFF8E8E93)
 
+    /** A field's placeholder, iOS's `placeholderText`. */
+    fun placeholder(p: Palette) = if (p.isDark) Color(0x4DEBEBF5) else Color(0x4D3C3C43)
+
     /** Taps' misses (TapMapPalette.miss). */
     fun miss(p: Palette) = if (p.isDark) Color(0xFFD95926) else Color(0xFFEB6834)
 
@@ -130,9 +133,10 @@ fun StatCard(
     }
 }
 
-/** A card's note on what it shows, in gray. */
+/** A card's note on what it shows, in gray, taking at least `lines` lines' room. */
 @Composable
-fun Caption(text: String) = Text(text, color = palette().secondary, fontSize = 13.sp, lineHeight = 17.sp)
+fun Caption(text: String, lines: Int = 1) =
+    Text(text, color = palette().secondary, fontSize = 13.sp, lineHeight = 18.sp, minLines = lines)
 
 @Composable
 fun Hairline() = Box(Modifier.fillMaxWidth().height(1.dp).background(palette().divider))
@@ -478,13 +482,13 @@ fun SearchField(text: String, placeholder: String, onChange: (String) -> Unit) {
             .border(BorderStroke(1.dp, palette.edge), CircleShape).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(glyph(Glyphs.SEARCH, 2f), null, tint = palette.secondary, modifier = Modifier.size(18.dp))
+        Icon(glyph(Glyphs.SEARCH, 2f), null, tint = palette.secondary, modifier = Modifier.size(22.dp))
         androidx.compose.foundation.text.BasicTextField(
             text, onChange, Modifier.weight(1f), singleLine = true,
             textStyle = TextStyle(color = palette.label, fontSize = 17.sp),
             cursorBrush = androidx.compose.ui.graphics.SolidColor(palette.accent),
             decorationBox = { inner ->
-                if (text.isEmpty()) Text(placeholder, color = palette.secondary, fontSize = 17.sp, maxLines = 1)
+                if (text.isEmpty()) Text(placeholder, color = Tints.placeholder(palette), fontSize = 17.sp, maxLines = 1)
                 inner()
             },
         )

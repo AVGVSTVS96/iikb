@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -257,7 +258,7 @@ private fun Privacy() {
         footer = if (transcripts == 0) {
             "You haven’t dictated anything yet."
         } else {
-            "Deletes all $transcripts transcripts from this phone."
+            "Deletes all ${"%,d".format(transcripts)} transcripts and their sound from this phone."
         },
     ) {
         ActionRow("Delete All Transcripts", destructive = true, enabled = transcripts > 0) {
@@ -324,9 +325,12 @@ private fun Changelog() {
         Section(dayTitle(date)) {
             changes.forEachIndexed { index, change ->
                 if (index > 0) Divider()
-                Row(Modifier.row(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(Modifier.row(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     RowText(change.change, modifier = Modifier.weight(1f))
-                    Text(change.build.toString(), color = palette().secondary, fontSize = Type.body)
+                    Text(
+                        change.build.toString(), color = palette().secondary,
+                        style = TextStyle(fontSize = Type.body, fontFeatureSettings = "tnum"),
+                    )
                 }
             }
         }

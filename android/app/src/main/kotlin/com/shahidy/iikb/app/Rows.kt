@@ -73,8 +73,16 @@ import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import com.shahidy.iikb.R
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -87,13 +95,25 @@ object Type {
     val footnote = 13.sp
     val title3 = 20.sp
 
-    /** Material's styles without its letter spacing, tracked a little tight as SF Pro's text sizes are. */
+    /** SF Mono's stand-in, Roboto Mono, bundled since Android's own monospace has no slashed zero. */
+    val mono = FontFamily(Font(R.font.roboto_mono))
+
+    /**
+     * Material's styles set as SF Pro's text sizes run: a line of text as tall as its font, as UIKit sets one, lines
+     * apart by iOS's leading at that size, and tracked a little open, since Roboto is narrower than SF Pro and would fit
+     * more on each line.
+     */
     val typography = Typography().run {
-        val tight = { style: TextStyle -> style.copy(letterSpacing = (-0.01).em) }
+        val ios = { style: TextStyle ->
+            style.copy(
+                letterSpacing = 0.01.em, lineHeight = 1.3.em,
+                lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+            )
+        }
         Typography(
-            tight(displayLarge), tight(displayMedium), tight(displaySmall), tight(headlineLarge), tight(headlineMedium),
-            tight(headlineSmall), tight(titleLarge), tight(titleMedium), tight(titleSmall), tight(bodyLarge),
-            tight(bodyMedium), tight(bodySmall), tight(labelLarge), tight(labelMedium), tight(labelSmall),
+            ios(displayLarge), ios(displayMedium), ios(displaySmall), ios(headlineLarge), ios(headlineMedium),
+            ios(headlineSmall), ios(titleLarge), ios(titleMedium), ios(titleSmall), ios(bodyLarge),
+            ios(bodyMedium), ios(bodySmall), ios(labelLarge), ios(labelMedium), ios(labelSmall),
         )
     }
 }
@@ -437,8 +457,14 @@ fun Stops(title: String, name: String, stops: List<Pair<String, String>>, low: S
                 val color = if (stop <= index) palette.accent else palette.secondary.copy(alpha = 0.45f)
                 drawCircle(color, 4.dp.toPx(), Offset(thumb / 2 + stop * step, y))
             }
-            drawCircle(Color.Black.copy(alpha = 0.12f), thumb / 2 + 1.dp.toPx(), Offset(x, y + 1.dp.toPx()))
-            drawCircle(Color.White, thumb / 2, Offset(x, y))
+            drawIntoCanvas {
+                val paint = Paint().asFrameworkPaint().apply {
+                    isAntiAlias = true
+                    color = android.graphics.Color.WHITE
+                    setShadowLayer(3.dp.toPx(), 0f, 1.dp.toPx(), Color.Black.copy(alpha = 0.25f).toArgb())
+                }
+                it.nativeCanvas.drawCircle(x, y, thumb / 2, paint)
+            }
         }
         Box(Modifier.fillMaxWidth()) {
             val style = TextStyle(color = palette.secondary, fontSize = Type.footnote)
