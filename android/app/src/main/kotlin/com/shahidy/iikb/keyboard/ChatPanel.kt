@@ -6,6 +6,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Row
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -87,6 +91,13 @@ fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
         Modifier.fillMaxSize().background(look.card)
             .padding(start = state.minX.dp, end = state.endInset.dp, top = 8.dp, bottom = if (state.keysUp) 0.dp else 8.dp),
     ) {
+        val title = chats.open?.name
+        if (state.keysUp && title != null) {
+            Text(
+                title, color = look.secondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(20.dp),
+            )
+        }
         Box(
             Modifier.weight(1f).fillMaxWidth()
                 .clickable(remember { MutableInteractionSource() }, indication = null) { if (state.keysUp) actions.browse() },
@@ -98,7 +109,7 @@ fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
             }
         }
         Spacer(Modifier.size(6.dp))
-        MessageBox(line, chats.open?.let { "Message ${it.name}" } ?: "Message", caret = state.keysUp, sends = !state.keysUp)
+        MessageBox(line, title?.let { "Message $it" } ?: "Message", caret = state.keysUp, mic = state.mic)
     }
 }
 
@@ -109,7 +120,7 @@ private fun Notice(text: String) {
     }
 }
 
-/** The messages from the newest up, the newest at the bottom, the oldest shown going soft at the top. */
+/** The messages from the newest up, the newest at the bottom, going soft where they scroll past either end. */
 @Composable
 private fun Thread(messages: List<Chats.Message>, problem: String?) {
     val look = LocalColors.current
@@ -117,7 +128,7 @@ private fun Thread(messages: List<Chats.Message>, problem: String?) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val widest = minOf(maxWidth * 0.75f, 520.dp)
         LazyColumn(
-            Modifier.fillMaxSize().fadeTop(),
+            Modifier.fillMaxSize().fadeBothEnds(),
             state = list, reverseLayout = true,
         ) {
             problem?.let {
@@ -142,11 +153,14 @@ private fun Thread(messages: List<Chats.Message>, problem: String?) {
     }
 }
 
-/** The top 14 dp fade out, so a message scrolled up goes soft rather than cut. */
-private fun Modifier.fadeTop() = graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
+/** 14 dp at the top and bottom fade out, so a message scrolled past the top or under the box goes soft rather than cut. */
+private fun Modifier.fadeBothEnds() = graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
     drawContent()
-    val fade = (14.dp.toPx() / size.height).coerceAtMost(1f)
-    drawRect(Brush.verticalGradient(0f to Color.Transparent, fade to Color.Black), blendMode = BlendMode.DstIn)
+    val fade = (14.dp.toPx() / size.height).coerceAtMost(0.5f)
+    drawRect(
+        Brush.verticalGradient(0f to Color.Transparent, fade to Color.Black, 1 - fade to Color.Black, 1f to Color.Transparent),
+        blendMode = BlendMode.DstIn,
+    )
 }
 
 /**
@@ -211,15 +225,16 @@ fun markdown(text: String): AnnotatedString = buildAnnotatedString {
 
 /**
  * The message box: what the keys typed (or the placeholder), the caret while the keys are up, growing a line at a time
- * to five, past which it scrolls; with the keys down and something written, the send button. A tap brings the keys up.
+ * to five, past which it scrolls; its own mic and send, so a message can be said and sent with the keys down, send
+ * dimmed until there's something to send. A tap brings the keys up.
  */
 @Composable
-private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, sends: Boolean) {
+private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, mic: String) {
     val look = LocalColors.current
     val actions = LocalActions.current
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val empty = line.text.isEmpty()
-    val canSend = sends && line.text.isNotBlank()
+    val canSend = line.text.isNotBlank()
     val scroll = rememberScrollState()
     Box(
         Modifier.fillMaxWidth().heightIn(min = 40.dp)
@@ -230,7 +245,7 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, 
             }
             .clickable(remember { MutableInteractionSource() }, indication = null) { if (!caret) actions.raiseKeys() },
     ) {
-        Box(Modifier.heightIn(max = (22 * 5 + 18).dp).verticalScroll(scroll).padding(start = 14.dp, end = 40.dp, top = 9.dp, bottom = 9.dp)) {
+        Box(Modifier.heightIn(max = (22 * 5 + 18).dp).verticalScroll(scroll).padding(start = 14.dp, end = (2 * 28 + 3 * 6).dp, top = 9.dp, bottom = 9.dp)) {
             BasicText(
                 if (empty) AnnotatedString(placeholder) else AnnotatedString(line.text),
                 style = TextStyle(fontSize = 17.sp, lineHeight = 22.sp, color = if (empty) look.secondary else look.label),
@@ -248,13 +263,20 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, 
             )
         }
         LaunchedScrollToEnd(scroll, line.text)
-        AnimatedVisibility(
-            canSend, Modifier.align(Alignment.BottomEnd).padding(6.dp),
-            enter = fadeIn() + scaleIn(initialScale = 0.5f), exit = fadeOut() + scaleOut(targetScale = 0.5f),
-        ) {
+        val sendable by animateFloatAsState(if (canSend) 1f else 0.3f, spring(dampingRatio = 0.8f), label = "send")
+        Row(Modifier.align(Alignment.BottomEnd).padding(6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val listening = mic == "LISTENING"
             Box(
-                Modifier.size(28.dp).background(look.accent, CircleShape)
-                    .clickable(remember { MutableInteractionSource() }, indication = null) { actions.send() },
+                Modifier.size(28.dp).alpha(if (mic == "WRITING") 0.5f else 1f)
+                    .background(if (listening) look.record else look.mic, CircleShape)
+                    .clickable(remember { MutableInteractionSource() }, indication = null) { actions.mic() },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (listening) Glyph("stop.fill", Color.White, 12.dp) else Glyph("waveform", look.micGlyph, 16.dp)
+            }
+            Box(
+                Modifier.size(28.dp).alpha(sendable).background(look.accent, CircleShape)
+                    .clickable(remember { MutableInteractionSource() }, indication = null, enabled = canSend) { actions.send() },
                 contentAlignment = Alignment.Center,
             ) { Glyph("arrow.up", look.accentLabel, 15.dp) }
         }

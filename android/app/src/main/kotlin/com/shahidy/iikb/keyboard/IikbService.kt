@@ -444,6 +444,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             Colors.of(frame.theme), bar.blockMinX.toFloat(), bar.blockMaxX.toFloat(),
             if (menuShown) null else frame.panel, frame.query, keysUp, bar.field.toFloat(), frame.width.toFloat(),
             Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }, hasChats,
+            dictation.phase.name,
         )
     }
 
@@ -750,7 +751,11 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
             !dictation.start(fieldCount, app)
         ) {
-            openApp(MainActivity.VOICE)
+            return openApp(MainActivity.VOICE)
+        }
+        if (chatOpen && keysUp) {
+            keysUp = false
+            render()
         }
     }
 
@@ -763,6 +768,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         val mic = view?.mic ?: return
         mic.ready = settings.bool(MIC_ON) && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         mic.show(dictation.phase, dictation.recorded, dictation.saved, dictation.waitingFor)
+        if (chatOpen) render()
     }
 
     // Dictation.Typist

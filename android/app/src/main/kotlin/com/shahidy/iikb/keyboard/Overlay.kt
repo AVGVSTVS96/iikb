@@ -53,8 +53,10 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         fun openChat(id: String)
         /** The chat's messages tapped with the keys up: they go down, so there's room to read. */
         fun browse()
-        /** The send button, with the keys down: what's in the chat's line goes. */
+        /** The message box's send: what's in the chat's line goes. */
         fun send()
+        /** The message box's mic: a dictation into the chat's line starts or stops. */
+        fun mic()
     }
 
     /** An open chat's message line, which the keys type into, and its caret. */
@@ -67,6 +69,8 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         val field: Float, val width: Float, val line: Line? = null,
         /** The menu has a Chats shelf: an extension is added, and the keyboard is a phone's width or more. */
         val chats: Boolean = false,
+        /** The dictation's phase, `OFF`, `LISTENING` or `WRITING`, which a chat's own mic shows. */
+        val mic: String = "OFF",
     ) {
         /** The space from the keys block's right edge to the keyboard's, which a panel keeps clear as on the left. */
         val endInset get() = width - maxX
@@ -125,12 +129,12 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
 /** The theme's colors, as the overlay paints with them. */
 data class Colors(
     val card: Color, val label: Color, val secondary: Color, val key: Color, val keyLabel: Color, val field: Color,
-    val accent: Color, val accentLabel: Color, val pill: Color, val shadow: Color, val record: Color, val dark: Boolean,
+    val accent: Color, val accentLabel: Color, val mic: Color, val micGlyph: Color, val pill: Color, val shadow: Color, val record: Color, val dark: Boolean,
 ) {
     companion object {
         fun of(theme: Theme) = Colors(
             Color(theme.card), Color(theme.label), Color(theme.candidate), Color(theme.letter.top),
-            Color(theme.letter.label), Color(theme.searchField), Color(theme.prominent), Color(theme.prominentLabel), Color(theme.candidatePill),
+            Color(theme.letter.label), Color(theme.searchField), Color(theme.prominent), Color(theme.prominentLabel), Color(theme.mic), Color(theme.micGlyph), Color(theme.candidatePill),
             Color(theme.shadow), Color(theme.record), androidx.core.graphics.ColorUtils.calculateLuminance(theme.card) < 0.5,
         )
     }
