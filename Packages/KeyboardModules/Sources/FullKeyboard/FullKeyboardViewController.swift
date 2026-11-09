@@ -874,19 +874,16 @@ open class FullKeyboardViewController: UIInputViewController {
         keysUp = false
     }
 
-    /// What return took from the line goes to the open chat; if it can't, it comes back to the line, unless you've
-    /// begun another.
+    /// What return took from the line goes to the open chat, which keeps it until its extension has it. With no chat
+    /// open to keep it, it comes back to the line.
     private func send(_ text: String) {
         engine.documentChanged(document)
         render()
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        Task { [weak self] in
-            guard let self, !(await chats.send(text)), let line, line.text.isEmpty else { return }
-            line.insert(text)
-            engine.documentChanged(line)
-            render()
-        }
+        guard !text.isEmpty, !chats.send(text), let line else { return }
+        line.insert(text)
+        engine.documentChanged(line)
+        render()
     }
 
     /// Stops a dictation in progress, so what was heard is typed. Otherwise starts one, even while the last is still

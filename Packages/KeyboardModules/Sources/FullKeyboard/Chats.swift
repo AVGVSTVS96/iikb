@@ -3,7 +3,8 @@ import KeyboardStore
 
 /// The chats of the extensions you added (docs/extensions.md): every extension's list, pinned chats first, and the open
 /// chat's messages, which it asks for again as soon as each answer comes, so the extension holds the request until
-/// they change and a reply shows the moment it's written. It stops when the panel closes.
+/// they change and a reply shows the moment it's written. It stops when the panel closes. What you send is kept until
+/// its extension has it (`UnsentStore`), and goes again whenever the keyboard appears or an extension answers.
 final class Chats {
     nonisolated struct Chat: Hashable, Sendable {
         let service: Extension
@@ -11,6 +12,8 @@ final class Chats {
         let name: String
         let line: String?
         let pinned: Bool
+
+        func holds(_ message: UnsentMessage) -> Bool { message.service == service.id && message.chat == id }
     }
 
     nonisolated struct Message: Decodable, Hashable, Sendable {
@@ -24,7 +27,15 @@ final class Chats {
     var changed: () -> Void = {}
     private(set) var list: [Chat] = []
     private(set) var open: Chat?
-    private(set) var messages: [Message] = []
+    /// The open chat as its extension last gave it, then what you sent that the extension doesn't have yet.
+    var messages: [Message] {
+        guard let open else { return [] }
+        return said + unsent.filter { open.holds($0) }.map { Message(from: "me", text: $0.text, pending: true) }
+    }
+    private var said: [Message] = []
+    private var unsent: [UnsentMessage] = []
+    /// Counts the open chat's answers, so a send knows whether one came while it was on its way.
+    private var answers = 0
     /// The open chat's messages have come at least once.
     private(set) var loaded = false
     /// Every extension has answered with its chats, or failed to.
@@ -36,9 +47,11 @@ final class Chats {
     private(set) var services: [Extension] = []
     private var listing: Task<Void, Never>?
     private var reading: Task<Void, Never>?
+    private var sending: Task<Void, Never>?
 
     func reload() {
         services = ExtensionStore.load()
+        deliver()
     }
 
     /// Every extension's chats, pinned first, kept on show until the new list comes; then, `opening` them (the panel
@@ -56,13 +69,14 @@ final class Chats {
             list = all.filter(\.pinned) + all.filter { !$0.pinned }
             listed = true
             problem = unreachable.isEmpty ? nil : "Can’t reach \(unreachable.joined(separator: ", "))."
+            deliver()
             if opening { pick(list.first { $0.id == kept } ?? list.first) } else { report() }
         }
     }
 
     func pick(_ chat: Chat?) {
         reading?.cancel()
-        if chat != open { (messages, loaded) = ([], false) }
+        if chat != open { (said, loaded) = ([], false) }
         open = chat
         report()
         guard let chat else { return }
@@ -75,18 +89,51 @@ final class Chats {
         (listing, reading) = (nil, nil)
     }
 
-    /// Sends `text` to the open chat, shown as pending until the chat's next messages carry it. False when it couldn't.
-    func send(_ text: String) async -> Bool {
+    /// Keeps `text` for the open chat, shown as pending, and sends it. False with no chat open to keep it for.
+    func send(_ text: String) -> Bool {
         guard let chat = open else { return false }
-        messages.append(Message(from: "me", text: text, pending: true))
-        report()
-        let sent = await Self.send(text, to: chat)
-        if !sent, open == chat {
-            messages.removeAll { $0.pending == true && $0.text == text }
-            problem = "Not sent: \(chat.service.name) didn’t answer."
+        UnsentStore.add(UnsentMessage(service: chat.service.id, chat: chat.id, text: text))
+        deliver()
+        return true
+    }
+
+    /// Sends what's kept, oldest first, each to its chat's extension until the extension has it. A chat whose message
+    /// can't go waits for the next send, answer or keyboard, and the other chats' go on. One the open chat's next
+    /// answer hasn't shown yet stays in it as pending.
+    private func deliver() {
+        let kept = UnsentStore.load()
+        if kept != unsent {
+            unsent = kept
             report()
         }
-        return sent
+        guard sending == nil else { return }
+        sending = Task { [weak self] in
+            var waiting: Set<String> = []
+            while let self, let (next, service) = oldest(outside: waiting) {
+                let answered = answers
+                guard await Self.send(next, to: service) else {
+                    waiting.insert(next.service + next.chat)
+                    problem = "Can’t reach \(service.name). What you sent is kept and goes again."
+                    continue
+                }
+                UnsentStore.remove(next)
+                unsent.removeAll { $0 == next }
+                if let open, open.holds(next), answers == answered {
+                    said.append(Message(from: "me", text: next.text, pending: true))
+                }
+                report()
+            }
+            self?.sending = nil
+            self?.report()
+        }
+    }
+
+    /// The oldest kept message of a chat not in `waiting`, with the extension it goes to.
+    private func oldest(outside waiting: Set<String>) -> (UnsentMessage, Extension)? {
+        for message in unsent where !waiting.contains(message.service + message.chat) {
+            if let service = services.first(where: { $0.id == message.service }) { return (message, service) }
+        }
+        return nil
     }
 
     private func follow(_ chat: Chat) async {
@@ -100,10 +147,12 @@ final class Chats {
             }
             guard read.version != version || problem != nil else { continue }
             version = read.version
-            messages = read.messages
+            said = read.messages
+            answers += 1
             loaded = true
             problem = nil
             report()
+            deliver()
         }
     }
 
@@ -149,11 +198,11 @@ final class Chats {
         return await get(request(url, for: chat.service))
     }
 
-    @concurrent nonisolated private static func send(_ text: String, to chat: Chat) async -> Bool {
-        var request = request(chat.service.url.appending(component: chat.id), for: chat.service)
+    @concurrent nonisolated private static func send(_ message: UnsentMessage, to service: Extension) async -> Bool {
+        var request = request(service.url.appending(component: message.chat), for: service)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONEncoder().encode(["text": text, "id": UUID().uuidString])
+        request.httpBody = try? JSONEncoder().encode(["text": message.text, "id": message.id])
         guard let (_, response) = try? await session.data(for: request) else { return false }
         return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
     }

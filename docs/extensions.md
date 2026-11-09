@@ -69,4 +69,4 @@ GET  <url>/<chat>?after=<version> → { version, messages: [{ from, text, pendin
 POST <url>/<chat> { text, id }  → 2xx once it's sent
 ```
 
-iikb asks for the open chat's messages again as soon as each answer comes, and stops when the panel closes. One that fails says so in the panel; picking the chat asks again. A message that can't be sent goes back into the box. An extension gets only what you write in its panel, never what you type in the app's field.
+iikb asks for the open chat's messages again as soon as each answer comes, and stops when the panel closes. One that fails says so in the panel; picking the chat asks again. A message you send is kept on the device and shown in its chat as pending; until the extension answers 2xx for it, iikb sends it again under the same `id` whenever the keyboard appears or a chat's messages come. An extension gets only what you write in its panel, never what you type in the app's field.

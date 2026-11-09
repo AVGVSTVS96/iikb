@@ -44,3 +44,37 @@ public enum ExtensionStore {
         save(load().filter { $0.name != added.name } + [added])
     }
 }
+
+/// What you sent in a chat that its extension hasn't answered for yet, kept in the keyboard's own container, so a send
+/// outlives the keyboard that began it, under one id, so the extension takes it once however often it's sent.
+nonisolated public struct UnsentMessage: Codable, Hashable, Sendable {
+    public let service: String
+    public let chat: String
+    public let id: String
+    public let text: String
+
+    public init(service: String, chat: String, id: String = UUID().uuidString, text: String) {
+        self.service = service
+        self.chat = chat
+        self.id = id
+        self.text = text
+    }
+}
+
+/// The unsent messages, oldest first. Each change reads the file again, since every app's keyboard keeps its own.
+public enum UnsentStore {
+    private static let file = StoredFile<[UnsentMessage]>(
+        URL.applicationSupportDirectory.appending(path: "chat-unsent.json"))
+
+    public static func load() -> [UnsentMessage] {
+        file.read().value ?? []
+    }
+
+    public static func add(_ message: UnsentMessage) {
+        file.save(load() + [message])
+    }
+
+    public static func remove(_ message: UnsentMessage) {
+        file.save(load().filter { $0 != message })
+    }
+}

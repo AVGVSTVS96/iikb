@@ -22,6 +22,7 @@ iikb's saved data, in the App Group the app and the keyboard extension share and
 - `TypingStats`: the hours the keyboard appends to the group's `Library/typing.jsonl` each time it closes or a message goes, with a Darwin notification.
 - `PersonalNetwork`, with `Network.current`.
 - `SourceStore`: the `Source`s you add in the app; `ExtensionStore`: the `Extension`s.
+- `UnsentStore`: what you sent in a chat that its extension hasn't answered for yet, in the extension's own container (`chat-unsent.json`), each under the id it's sent with, so a send outlives the keyboard that began it and is taken once.
 - `AppLink`: the app's links the keyboard opens.
 
 ## Dictation, the channel to the app for voice typing
