@@ -181,14 +181,17 @@ def nodes():
     return found
 
 
-def find(match, timeout=6.0, last=False):
-    """The bounds of the first node (or the lowest, `last`) whose text is `match`, or passes it when it's a function."""
+def find(match, timeout=6.0, last=False, top=False):
+    """The bounds of the first node (the lowest, `last`, or the highest, `top`) whose text is `match`, or passes it when
+    it's a function."""
     test = match if callable(match) else (lambda text: text == match)
     end = time.time() + timeout
     while True:
         hits = [bounds for text, _, bounds in nodes() if text and test(text)]
         if hits:
-            return max(hits, key=lambda b: b[1]) if last else hits[0]
+            if last or top:
+                return (max if last else min)(hits, key=lambda b: b[1])
+            return hits[0]
         if time.time() > end:
             raise RuntimeError(f"nothing on screen reads {match if not callable(match) else 'as asked'}")
         time.sleep(0.5)
@@ -198,8 +201,8 @@ def center(bounds):
     return (bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2
 
 
-def tap_text(match, settle=1.5, last=False):
-    tap(*center(find(match, last=last)), settle)
+def tap_text(match, settle=1.5, last=False, top=False):
+    tap(*center(find(match, last=last, top=top)), settle)
 
 
 def tap_described(description, settle=1.5):
@@ -552,7 +555,8 @@ PAGES_ALL = [
 ]
 # Android's alone, shot at their top only.
 ANDROID_PAGES = [
-    ("clipboard-links", lambda: (tab("Clipboard"), tap_text("Links"))),
+    # The pill, over the Links section's header in All.
+    ("clipboard-links", lambda: (tab("Clipboard"), tap_text("Links", top=True))),
     ("sources-edit", lambda: tap_text("Add Source")),
     ("writing-eachapp", lambda: each_app()),
 ]
