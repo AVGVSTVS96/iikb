@@ -1152,6 +1152,41 @@ section:not(.stage) > h2 {
 }
 
 /* Voice */
+.voice-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 20px;
+}
+.voice-facts > div {
+  background: var(--card);
+  border-radius: 22px;
+  padding: clamp(18px, 2.4vw, 28px);
+  box-shadow: 0 0 0 1px var(--hair);
+}
+.voice-facts dt {
+  font-size: clamp(34px, 4.4vw, 56px);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: var(--blue);
+  white-space: nowrap;
+}
+.voice-facts small {
+  font-size: 0.5em;
+  letter-spacing: -0.02em;
+}
+.voice-facts dd {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--ink-3);
+  text-wrap: balance;
+}
+@media (max-width: 640px) {
+  .voice-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .styles {
   display: grid;
   gap: 20px;
