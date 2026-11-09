@@ -41,6 +41,8 @@ final class Chats {
         return said + unsent.filter { open.holds($0) }.map { Message(from: "me", text: $0.text, pending: true) }
     }
     private var said: [Message] = []
+    /// Each chat's last answer, by its extension and id, so switching back to a chat shows it at once.
+    private var seen: [String: [Message]] = [:]
     private var unsent: [UnsentMessage] = []
     /// Counts the open chat's answers, so a send knows whether one came while it was on its way.
     private var answers = 0
@@ -84,7 +86,10 @@ final class Chats {
 
     func pick(_ chat: Chat?) {
         reading?.cancel()
-        if chat != open { (said, loaded) = ([], false) }
+        if chat != open {
+            let last = chat.flatMap { seen[$0.service.id + $0.id] }
+            (said, loaded) = (last ?? [], last != nil)
+        }
         open = chat
         report()
         guard let chat else { return }
@@ -156,6 +161,7 @@ final class Chats {
             guard read.version != version || problem != nil else { continue }
             version = read.version
             said = read.messages
+            seen[chat.service.id + chat.id] = said
             answers += 1
             loaded = true
             problem = nil

@@ -662,11 +662,11 @@ open class FullKeyboardViewController: UIInputViewController {
         hasFullAccess && !chats.services.isEmpty && view.bounds.width >= 375
     }
 
-    /// More opens the menu, and closes it or a panel out in the keys' place, giving the keys back.
+    /// More opens the menu, and closes it, a chat, or a panel out in the keys' place, giving the keys back.
     private func toggleMenu() {
         feedback(.other)
         notice = nil
-        if panelInKeysPlace {
+        if panelInKeysPlace || line != nil {
             menuOpen = false
             return closePanel()
         }
