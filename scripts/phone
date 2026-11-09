@@ -81,6 +81,10 @@ git fetch -q origin main
 commit=$(git rev-parse --short origin/main)
 number=$(git rev-list --count origin/main)
 reach
+case $installed in (*[!0-9]*)
+  echo "the $kind has build $installed, a TestFlight build rather than one of main's, so main replaces it" >&2
+  installed= ;;
+esac
 if [ -n "$installed" ] && [ "$installed" -gt "$number" ] && [ "${1:-}" != --reinstall ]; then
   echo "the $kind has build $installed, newer than main's $number ($commit), so nothing is installed" >&2
   exit 1
