@@ -59,20 +59,23 @@ fun App(
     DisposableEffect(store) { onDispose(store.listen()) }
     val access = Access(setup, onEnable, onPick, onMicrophone)
     CompositionLocalProvider(LocalPalette provides palette, LocalStore provides store, LocalAccess provides access) {
-        MaterialTheme(colorScheme = colors) {
-            var tab by rememberSaveable { mutableIntStateOf(0) }
+        MaterialTheme(colorScheme = colors, typography = Type.typography) {
             var page by rememberSaveable { mutableStateOf(startPage?.takeIf { it != MainActivity.VOICE }) }
+            var tab by rememberSaveable { mutableIntStateOf(if (page != null) Tab.SETTINGS.ordinal else 0) }
             var stats by rememberSaveable { mutableStateOf(StatsSection.OVERVIEW) }
             BackHandler(enabled = page != null) { page = null }
             Scaffold(
                 containerColor = palette.page,
                 bottomBar = {
-                    if (page == null && !WindowInsets.isImeVisible) {
+                    if (!WindowInsets.isImeVisible) {
                         NavigationBar(containerColor = palette.card) {
                             Tab.entries.forEachIndexed { index, item ->
                                 NavigationBarItem(
                                     selected = tab == index,
-                                    onClick = { tab = index },
+                                    onClick = {
+                                        tab = index
+                                        page = null
+                                    },
                                     icon = { Icon(item.icon, contentDescription = null) },
                                     label = { Text(item.title) },
                                     colors = NavigationBarItemDefaults.colors(
@@ -91,7 +94,12 @@ fun App(
                     when {
                         page != null -> SettingsPage(page!!) { page = null }
                         else -> when (Tab.entries[tab]) {
-                            Tab.HOME -> Home(open = { page = it }) { to, section ->
+                            Tab.HOME -> Home(
+                                open = {
+                                    tab = Tab.SETTINGS.ordinal
+                                    page = it
+                                },
+                            ) { to, section ->
                                 section?.let { stats = it }
                                 tab = to.ordinal
                             }

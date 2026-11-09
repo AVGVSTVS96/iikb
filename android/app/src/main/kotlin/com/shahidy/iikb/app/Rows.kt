@@ -46,6 +46,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,6 +79,16 @@ object Type {
     val subheadline = 15.sp
     val footnote = 13.sp
     val title3 = 20.sp
+
+    /** Material's styles without its letter spacing, tracked a little tight as SF Pro's text sizes are. */
+    val typography = Typography().run {
+        val tight = { style: TextStyle -> style.copy(letterSpacing = (-0.01).em) }
+        Typography(
+            tight(displayLarge), tight(displayMedium), tight(displaySmall), tight(headlineLarge), tight(headlineMedium),
+            tight(headlineSmall), tight(titleLarge), tight(titleMedium), tight(titleSmall), tight(bodyLarge),
+            tight(bodyMedium), tight(bodySmall), tight(labelLarge), tight(labelMedium), tight(labelSmall),
+        )
+    }
 }
 
 /** Rounded rectangles as iOS's continuous corners come closest to on Android. */
@@ -148,7 +159,10 @@ private fun Frame(
             actions()
         }
         pinned?.let { Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) { it() } }
-        content()
+        Box(Modifier.weight(1f)) {
+            content()
+            Box(Modifier.fillMaxWidth().height(14.dp).background(Brush.verticalGradient(listOf(palette.page, palette.page.copy(alpha = 0f)))))
+        }
     }
 }
 
@@ -213,7 +227,7 @@ fun Line(
 /** A small gray symbol at a row's right: a chevron for a page, an arrow for what leaves the app. */
 @Composable
 fun Trailing(symbol: String, tint: Color = palette().secondary) =
-    Icon(Symbols[symbol], null, tint = tint, modifier = Modifier.size(15.dp))
+    Icon(Symbols[symbol], null, tint = tint, modifier = Modifier.size(16.dp))
 
 /** A white symbol on a colored rounded square, as Raycast's More page draws its commands (iOS's `Glyph`). */
 @Composable
@@ -222,7 +236,7 @@ fun Glyph(symbol: String, color: Color, size: Dp = 30.dp) {
         Modifier.size(size).clip(RoundedCornerShape(size * 0.26f))
             .background(Brush.verticalGradient(listOf(color.lighten(), color))),
         contentAlignment = Alignment.Center,
-    ) { Icon(Symbols[symbol], null, tint = Color.White, modifier = Modifier.size(size * 0.56f)) }
+    ) { Icon(Symbols[symbol], null, tint = Color.White, modifier = Modifier.size(size * 0.68f)) }
 }
 
 /** SwiftUI's `Color.gradient`: the color, a little lighter at the top. */
@@ -279,14 +293,14 @@ fun Toggle(title: String, name: String, detail: String? = null) {
     Line(title, detail, onClick = { store.set(name, !on) }) { Switch(on) { store.set(name, it) } }
 }
 
-/** A switch as iOS's: a round knob the same size on and off, sliding over a gray or accent track. */
+/** A switch as iOS 26's: a capsule knob the same size on and off, sliding over a gray or accent track. */
 @Composable
 fun Switch(on: Boolean, onChange: (Boolean) -> Unit) {
     val palette = palette()
     val knob by animateDpAsState(if (on) 22.dp else 2.dp, label = "knob")
     val track by animateColorAsState(if (on) palette.accent else palette.track, label = "track")
-    Box(Modifier.size(51.dp, 31.dp).clip(CircleShape).background(track).clickable { onChange(!on) }) {
-        Box(Modifier.padding(start = knob, top = 2.dp).size(27.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
+    Box(Modifier.size(62.dp, 28.dp).clip(CircleShape).background(track).clickable { onChange(!on) }) {
+        Box(Modifier.padding(start = knob, top = 2.dp).size(38.dp, 24.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
     }
 }
 

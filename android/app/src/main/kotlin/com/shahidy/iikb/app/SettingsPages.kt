@@ -289,7 +289,7 @@ private fun Confirm(ask: Ask, dismiss: () -> Unit) {
 private fun Fact(symbol: String, text: String) {
     Row(Modifier.row(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.width(24.dp).padding(top = 1.dp), contentAlignment = Alignment.TopCenter) {
-            Icon(Symbols[symbol], null, tint = palette().accent, modifier = Modifier.size(20.dp))
+            Icon(Symbols[symbol], null, tint = palette().label, modifier = Modifier.size(20.dp))
         }
         Text(text, color = palette().label, fontSize = Type.body, lineHeight = 22.sp)
     }

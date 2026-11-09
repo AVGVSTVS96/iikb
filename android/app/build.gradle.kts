@@ -99,8 +99,9 @@ val keys = tasks.register<Keys>("keys") {
 }
 
 /**
- * Settings › Changelog's `changelog.json`: each change with its build and day, newest first, from commits' `Changelog:`
- * trailers and App/Settings/changelog.tsv, as scripts/phone writes iOS's `IIKBChangelog`.
+ * Settings › Changelog's `changelog.json`: each change with its build and day, newest first, from the `Changelog:`
+ * trailers of commits to android/, as scripts/phone writes iOS's `IIKBChangelog`. The Core it shares with iOS came
+ * whole in its first build, so iOS's older lines aren't Android's changes.
  */
 abstract class Changelog : DefaultTask() {
     @get:Input abstract val head: Property<String>
@@ -114,14 +115,12 @@ abstract class Changelog : DefaultTask() {
 
     @TaskAction
     fun write() {
-        val entries = git("log", "--format=%h%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)").lines()
+        val entries = git("log", "--format=%h%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)", "--", "android")
+            .lines()
             .filter { it.isNotBlank() }
             .flatMap { line ->
                 val (sha, day, trailers) = line.split("\u001f")
                 trailers.split("\u001e").filter { it.isNotBlank() }.map { Triple(sha, day, it.trim()) }
-            } + repo.get().asFile.resolve("App/Settings/changelog.tsv").readLines().filter { it.isNotBlank() }.map { line ->
-                val (sha, change) = line.split("\t", limit = 2)
-                Triple(sha, git("log", "-1", "--format=%cs", sha).trim(), change)
             }
         val rows = entries.map { (sha, day, change) ->
             mapOf("build" to git("rev-list", "--count", sha).trim().toInt(), "date" to day, "change" to change)

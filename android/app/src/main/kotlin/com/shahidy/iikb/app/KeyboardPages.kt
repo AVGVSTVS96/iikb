@@ -12,7 +12,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,10 +39,13 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -52,6 +54,7 @@ import com.shahidy.iikb.keyboard.Frame
 import com.shahidy.iikb.keyboard.KeyboardView
 import com.shahidy.iikb.keyboard.Keycaps
 import com.shahidy.iikb.keyboard.Native
+import kotlin.math.roundToInt
 
 /** iikb as it will look, over a pill that brings up the real keyboard in a field, so a change can be tried at once. */
 @Composable
@@ -92,7 +95,7 @@ fun TryPreview() {
 
 /**
  * iikb drawn as its settings make it, by the keyboard's own view, from a keyboard of its own with an empty field
- * (`Core.preview`), redrawn as a setting changes.
+ * (`Core.preview`), redrawn as a setting changes, inset in its card as iOS's preview is.
  */
 @Composable
 private fun KeyboardPreview(onTap: () -> Unit) {
@@ -103,24 +106,43 @@ private fun KeyboardPreview(onTap: () -> Unit) {
     val handle = remember { Core.preview(context) }
     DisposableEffect(handle) { onDispose { Native.destroy(handle) } }
     val shape = RoundedCornerShape(26.dp)
-    BoxWithConstraints(Modifier.fillMaxWidth().clip(shape).border(BorderStroke(1.dp, palette.edge), shape)) {
-        val width = maxWidth.value.toDouble()
-        val lines = store.lines()
-        val frame = remember(lines, width, dark) {
-            val metrics = context.resources.displayMetrics
-            Native.configure(handle, lines.encodeToByteArray())
-            Native.place(
-                handle, width, metrics.widthPixels / metrics.density.toDouble(),
-                metrics.heightPixels / metrics.density.toDouble(), 0.0, dark, false,
-            )
-            Native.suggestionJob(handle).takeIf { it != 0L }?.let { job ->
-                Native.runJob(job)
-                Native.finishJob(handle, job)
-            }
-            Frame.parse(Native.frame(handle))
+    val metrics = context.resources.displayMetrics
+    val screen = metrics.widthPixels / metrics.density.toDouble() to metrics.heightPixels / metrics.density.toDouble()
+    val lines = store.lines()
+    val frame = remember(lines, dark) {
+        Native.configure(handle, lines.encodeToByteArray())
+        Native.place(handle, screen.first, screen.first, screen.second, 0.0, dark, false)
+        Native.suggestionJob(handle).takeIf { it != 0L }?.let { job ->
+            Native.runJob(job)
+            Native.finishJob(handle, job)
         }
-        AndroidView({ KeyboardView(it, Still) }, Modifier.fillMaxWidth(), update = { it.frame = frame })
+        Frame.parse(Native.frame(handle))
+    }
+    Box(
+        Modifier.fillMaxWidth().clip(shape).background(Color(frame.theme.card)).border(BorderStroke(1.dp, palette.edge), shape)
+            .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 10.dp),
+    ) {
+        Scaled(screen.first.toFloat()) { AndroidView({ KeyboardView(it, Still) }, update = { it.frame = frame }) }
         Box(Modifier.matchParentSize().clickable(remember { MutableInteractionSource() }, null, onClick = onTap))
+    }
+}
+
+/**
+ * `content` laid out `width` dp wide, as the keyboard is across the screen, and drawn scaled down to the width it's
+ * given, as iOS's `KeyboardPreviewView` draws the keys, so the preview's keys sit as the keyboard's do.
+ */
+@Composable
+private fun Scaled(width: Float, content: @Composable () -> Unit) {
+    Layout(content) { measurables, constraints ->
+        val scale = constraints.maxWidth / (width * density)
+        val child = measurables.first().measure(Constraints.fixedWidth((width * density).roundToInt()))
+        layout(constraints.maxWidth, (child.height * scale).roundToInt()) {
+            child.placeWithLayer(0, 0) {
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(0f, 0f)
+            }
+        }
     }
 }
 

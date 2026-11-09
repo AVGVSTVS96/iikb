@@ -23,7 +23,7 @@ data class Palette(
         val light = Palette(
             page = Color(0xFFF2F2F5), card = Color.White, edge = Color(0x0F000000), divider = Color(0xFFE3E3E8),
             label = Color.Black, secondary = Color(0xFF6C6C70), accent = Color(0xFF007AFF), selected = Color.Black,
-            selectedLabel = Color.White, track = Color(0xFFE9E9EA), pressed = Color(0xFFE5E5EA),
+            selectedLabel = Color.White, track = Color(0xFFC5C5C7), pressed = Color(0xFFE5E5EA),
             red = Color(0xFFFF3B30), green = Color(0xFF34C759),
         )
     }
@@ -37,7 +37,7 @@ fun palette() = LocalPalette.current
 /** iOS's system colors, which the iOS app's glyphs sit on (`Glyph`): the same in light and dark, as their gradients are. */
 object Hues {
     val purple = Color(0xFFAF52DE)
-    val cyan = Color(0xFF32ADE6)
+    val cyan = Color(0xFF28C8F0)
     val pink = Color(0xFFFF2D55)
     val red = Color(0xFFFF3B30)
     val orange = Color(0xFFFF9500)

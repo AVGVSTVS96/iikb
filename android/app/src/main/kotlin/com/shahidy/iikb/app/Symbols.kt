@@ -22,13 +22,14 @@ object Symbols {
                 "M7.3 12.2a1.7 1.7 0 1 0 0-3.4 1.7 1.7 0 0 0 0 3.4Z M10.4 8.3a1.7 1.7 0 1 0 0-3.4 1.7 1.7 0 0 0 0 3.4Z" +
                 "M15.4 8.6a1.7 1.7 0 1 0 0-3.4 1.7 1.7 0 0 0 0 3.4Z",
         ),
-        "character.cursor.ibeam" to stroked("M2.5 18.5 7.2 5.5h.6l4.7 13 M4.2 14h7.6 M16 4.5h5 M18.5 4.5v15 M16 19.5h5"),
+        "character.cursor.ibeam" to stroked("M2 18.5 7.3 5h.8l5.3 13.5 M4.2 13.8h8 M19 3v18", 2.4f),
         "hand.tap.fill" to filled(
-            "M9.2 4.6a1.7 1.7 0 0 1 3.4 0v6.2l.4-.1a1.6 1.6 0 0 1 2 .9l.1.3a1.6 1.6 0 0 1 2.2.8 1.6 1.6 0 0 1 2.3 1.4v3" +
-                "a6.2 6.2 0 0 1-6.2 6.2h-1.6a5.4 5.4 0 0 1-4.3-2.2l-3.2-4.3a1.6 1.6 0 0 1 2.4-2.1l2.5 2Z",
+            "M9.6 7.6a1.6 1.6 0 0 1 3.2 0v4.9l.4-.1a1.5 1.5 0 0 1 1.9.9l.1.3a1.5 1.5 0 0 1 2.1.8 1.5 1.5 0 0 1 2.2 1.3v2.8" +
+                "a5.6 5.6 0 0 1-5.6 5.6h-1.5a5 5 0 0 1-4-2l-3-4a1.5 1.5 0 0 1 2.3-2l2 1.7Z" +
+                "M6.2 7.3a5 5 0 0 1 9.8-.2l-1.5.3a3.5 3.5 0 0 0-6.8.2Z",
         ),
-        "waveform" to stroked("M3 10.5v3M7 7v10M11 4v16M15 8v8M19 10.5v3", 2.2f),
-        "textformat" to stroked("M2 18.5 6.6 6h.8l4.6 12.5 M3.7 14h7.6 M21.5 11v7.5 M21.5 14.8a3.3 3.3 0 1 1-6.6 0a3.3 3.3 0 1 1 6.6 0Z", 2f),
+        "waveform" to stroked("M3 10.5v3M7 7v10M11 4v16M15 8v8M19 10.5v3", 2.6f),
+        "textformat" to stroked("M1.5 18.5 6.6 5.5h.8l5.1 13 M3.4 13.8h7.2 M15 11.6a3 3 0 0 1 5.6 1.4v5.5 M20.6 14.8h-3a2 2 0 1 0 0 4c1.7 0 3-1.2 3-2.8", 2.3f),
         "character.book.closed.fill" to filled(
             "M6.5 2.5h12a1.5 1.5 0 0 1 1.5 1.5v13H7a1.5 1.5 0 0 0 0 3h13v1.5H7a3 3 0 0 1-3-3V5a2.5 2.5 0 0 1 2.5-2.5Z" +
                 "M12 5.4 8.9 13.5h1.8l.6-1.8h2.4l.6 1.8h1.8L13 5.4Z M11.8 10.3l.7-2.1.7 2.1Z",
@@ -59,14 +60,14 @@ object Symbols {
         "mic" to stroked("M12 3a3 3 0 0 1 3 3v5.5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Z M5.5 11a6.5 6.5 0 0 0 13 0 M12 17.5V21 M9 21h6"),
         "mic.slash" to stroked("M12 3a3 3 0 0 1 3 3v5.5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Z M5.5 11a6.5 6.5 0 0 0 13 0 M12 17.5V21 M9 21h6 M4 3.5l16 17"),
         "plus" to stroked("M12 5v14M5 12h14", 2f),
-        "arrow.up.forward" to stroked("M7 17 17 7 M8.5 7H17v8.5", 2f),
+        "arrow.up.forward" to stroked("M7 17 17 7 M8.5 7H17v8.5", 2.6f),
         "chevron.right" to stroked("M9 4.5l7.5 7.5L9 19.5", 2.2f),
         "chevron.left" to stroked("M15 4.5 7.5 12l7.5 7.5", 2.2f),
         "chevron.up.chevron.down" to stroked("M8 9l4-4 4 4 M8 15l4 4 4-4", 2.2f),
         "checkmark" to stroked("M5 12.5l4.5 4.5L19 7.5", 2.6f),
         "circle" to stroked("M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0Z"),
         "checkmark.circle.fill" to filled("M12 2.5a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19Z M10.4 16.3l6.5-6.5-1.3-1.3-5.2 5.2-2.4-2.4-1.3 1.3Z"),
-        "iphone" to stroked("M8 2.5h8a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2Z M10.5 5h3"),
+        "iphone" to filled("M8 2h8a2.5 2.5 0 0 1 2.5 2.5v15A2.5 2.5 0 0 1 16 22H8a2.5 2.5 0 0 1-2.5-2.5v-15A2.5 2.5 0 0 1 8 2Z M10 3.8h4v1.2h-4Z"),
         "network" to stroked("M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0Z M16 12a4 9 0 1 1-8 0a4 9 0 1 1 8 0Z M3 12h18"),
     )
 
