@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -328,51 +329,50 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
     val names = remember { AppNames(context) }
     var confirms by remember { mutableStateOf(false) }
     Page("Transcript", back, actions = { MicSwitch() }) {
-        Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Text(
+            transcript.time().format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a")), color = palette.secondary,
+            fontSize = 15.sp, fontWeight = FontWeight.Medium,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 34.dp).wrapContentHeight().padding(horizontal = 4.dp),
+        )
+        SelectionContainer {
             Text(
-                transcript.time().format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a")), color = palette.secondary,
-                fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 4.dp),
+                transcript.shown, color = if (transcript.text.isEmpty()) palette.secondary else palette.label,
+                fontSize = 20.sp, lineHeight = 27.sp, modifier = Modifier.fillMaxWidth().card(palette).padding(20.dp),
             )
-            SelectionContainer {
-                Text(
-                    transcript.shown, color = if (transcript.text.isEmpty()) palette.secondary else palette.label,
-                    fontSize = 20.sp, lineHeight = 27.sp, modifier = Modifier.fillMaxWidth().card(palette).padding(20.dp),
-                )
-            }
-            TranscriptActions(transcript)
-            Rows {
-                Line("Length", value = Format.clock(transcript.seconds))
+        }
+        TranscriptActions(transcript)
+        Rows {
+            Line("Length", value = Format.clock(transcript.seconds))
+            Divider()
+            Line("Words", value = Format.count(transcript.words))
+            if (transcript.seconds >= 1) {
                 Divider()
-                Line("Words", value = Format.count(transcript.words))
-                if (transcript.seconds >= 1) {
-                    Divider()
-                    Line("Pace", value = "${(transcript.words / transcript.seconds * 60).roundToInt()} wpm")
-                }
+                Line("Pace", value = "${(transcript.words / transcript.seconds * 60).roundToInt()} wpm")
+            }
+            Divider()
+            Line(
+                "Typed",
+                value = when {
+                    transcript.typed -> transcript.app?.let { "In ${names.of(it)}" } ?: "Yes"
+                    transcript.recovered == true -> "No, iikb closed during it"
+                    else -> "No"
+                },
+            )
+            transcript.model?.let {
                 Divider()
-                Line(
-                    "Typed",
-                    value = when {
-                        transcript.typed -> transcript.app?.let { "In ${names.of(it)}" } ?: "Yes"
-                        transcript.recovered == true -> "No, iikb closed during it"
-                        else -> "No"
-                    },
-                )
-                transcript.model?.let {
-                    Divider()
-                    Line("Written by", value = it)
+                Line("Written by", value = it)
+            }
+        }
+        transcript.replaced?.let { first ->
+            Rows("First Written") {
+                SelectionContainer {
+                    Line(first.text.ifEmpty { "Nothing heard" }, detail = first.model?.let { "Written by $it" })
                 }
             }
-            transcript.replaced?.let { first ->
-                Rows("First Written") {
-                    SelectionContainer {
-                        Line(first.text.ifEmpty { "Nothing heard" }, detail = first.model?.let { "Written by $it" })
-                    }
-                }
-            }
-            RecordingSection(transcript)
-            Rows {
-                Line("Delete Transcript", onClick = { confirms = true }, color = palette.red)
-            }
+        }
+        RecordingSection(transcript)
+        Rows {
+            Line("Delete Transcript", onClick = { confirms = true }, color = palette.red)
         }
     }
     if (confirms) {
