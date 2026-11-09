@@ -95,6 +95,55 @@ use() {
   boot "$id"
 }
 
+# A screenshot of the simulator's screen (DISPLAY_ID picks the Duo's), taken once the app has drawn and stopped moving:
+# a launch can take far longer than usual on GitHub's Macs, and a fixed wait shot those launches blank. Shoots again
+# each second until two shots match and the screen below the status bar isn't one color, up to SETTLE seconds (30);
+# fails, leaving no shot, if it's still blank by then.
+screenshot() {
+  local id=$1 out=$2 last="$2.last.png" next="$2.next.png" waited=0 drawn
+  mkdir -p "$(dirname "$out")"
+  rm -f "$last"
+  while sleep 1; do
+    waited=$((waited + 1))
+    xcrun simctl io "$id" screenshot ${DISPLAY_ID:+--display="$DISPLAY_ID"} "$next" >/dev/null 2>&1 || continue
+    drawn=
+    blank "$next" || drawn=1
+    if [ -n "$drawn" ] && [ -e "$last" ] && cmp -s "$next" "$last"; then break; fi
+    mv "$next" "$last"
+    [ "$waited" -lt "${SETTLE:-30}" ] && continue
+    [ -n "$drawn" ] && break
+    rm -f "$last"
+    echo "blank after ${waited}s: $out" >&2
+    return 1
+  done
+  [ -e "$next" ] && mv "$next" "$out" || mv "$last" "$out"
+  rm -f "$last" "$next"
+}
+
+# Whether a screenshot is one color below its status bar, as a page that hasn't drawn yet is.
+blank() {
+  local bmp="$1.bmp"
+  sips -s format bmp "$1" --out "$bmp" >/dev/null 2>&1
+  /usr/bin/python3 - "$bmp" <<'PY'
+import struct, sys
+data = open(sys.argv[1], "rb").read()
+offset, = struct.unpack_from("<I", data, 10)
+width, height = struct.unpack_from("<ii", data, 18)
+bits, = struct.unpack_from("<H", data, 28)
+size = bits // 8
+stride = (width * size + 3) // 4 * 4
+rows = [data[offset + r * stride:offset + r * stride + width * size] for r in range(abs(height))]
+if height > 0:
+    rows.reverse()
+below = rows[len(rows) * 8 // 100:]
+first = below[0][:size]
+sys.exit(0 if all(row == first * width for row in below) else 1)
+PY
+  local result=$?
+  rm -f "$bmp"
+  return "$result"
+}
+
 shoot() {
   local id=$1 keyboard=$2 appearance=$3 out=$4; shift 4
   xcrun simctl ui "$id" appearance "$appearance"
@@ -107,9 +156,7 @@ shoot() {
     [ "$attempt" = 3 ] && xcrun simctl install "$id" "$APP"
     sleep 2
   done
-  sleep "${SETTLE:-3}"
-  mkdir -p "$(dirname "$out")"
-  xcrun simctl io "$id" screenshot ${DISPLAY_ID:+--display="$DISPLAY_ID"} "$out" >/dev/null 2>&1
+  screenshot "$id" "$out"
 }
 
 DEVICES=("iPhone 17:iPhone-17" "iPhone 17 Pro Max:iPhone-17-Pro-Max" "iPhone 16e:iPhone-16e" "iPhone Air:iPhone-Air"
@@ -310,13 +357,12 @@ duoapp() {
         xcrun simctl terminate "$id" "$BUNDLE" 2>/dev/null || true
         hub "$id" orientation "$orientation"
         xcrun simctl launch "$id" "$BUNDLE" -iikbOrientation "$([ "$orientation" = portrait ] && echo portrait || echo landscape)" $look $args ${ARGS:-} >/dev/null 2>&1 || true
-        sleep "${SETTLE:-4}"
-        mkdir -p shots/raw/duo/app
-        xcrun simctl io "$id" screenshot --display="$display" "shots/raw/duo/app/$tag-$screen-$page-$appearance.png" >/dev/null 2>&1
+        DISPLAY_ID=$display screenshot "$id" "shots/raw/duo/app/$tag-$screen-$page-$appearance.png" || failed=1
       done <<<"$APP_PAGES"
     done
   done <<<"$DUO_SCREENS"
   [ -n "${KEEP:-}" ] || down "$id"
+  return "${failed:-0}"
 }
 
 # Screenshots each of the app's pages on an iPhone (PHONE, "iPhone 17" by default), upright:
@@ -336,11 +382,11 @@ phoneapp() {
       [ -n "${PAGES:-}" ] && [[ " $PAGES " != *" $page "* ]] && continue
       xcrun simctl terminate "$id" "$BUNDLE" 2>/dev/null || true
       xcrun simctl launch "$id" "$BUNDLE" -iikbOrientation portrait $look $args ${ARGS:-} >/dev/null 2>&1 || true
-      sleep "${SETTLE:-4}"
-      xcrun simctl io "$id" screenshot "shots/raw/phone/app/$tag-$page-$appearance.png" >/dev/null 2>&1
+      screenshot "$id" "shots/raw/phone/app/$tag-$page-$appearance.png" || failed=1
     done <<<"$APP_PAGES"
   done
   [ -n "${KEEP:-}" ] || down "$id"
+  return "${failed:-0}"
 }
 
 # iPads and the windows each gives the app: full screen upright and sideways, then windows dragged toward a size in
@@ -413,8 +459,7 @@ taps() {
         xcrun simctl launch "$id" "$BUNDLE" -iikbTaps YES $args >/dev/null 2>&1 && break
         sleep 2
       done
-      sleep "${SETTLE:-3}"
-      xcrun simctl io "$id" screenshot "shots/raw/$slug-$tag-taps-$variant-$appearance.png" >/dev/null 2>&1
+      screenshot "$id" "shots/raw/$slug-$tag-taps-$variant-$appearance.png" || failed=1
     done <<VARIANTS
 heat
 heat-key -iikbTapsKey ${KEY:-p} -iikbTapsScroll detail
@@ -426,6 +471,7 @@ thumbs -iikbTapsScroll bottom
 VARIANTS
   done
   [ -n "${KEEP:-}" ] || down "$id"
+  return "${failed:-0}"
 }
 
 "$@"

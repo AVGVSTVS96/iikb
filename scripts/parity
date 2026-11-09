@@ -65,8 +65,8 @@ for appearance in light dark; do
   done
 done
 
-KEEP=1 scripts/sim phoneapp parity
-KEEP=1 ARGS="-iikbScrollToEnd YES" scripts/sim phoneapp parity-end
+KEEP=1 scripts/sim phoneapp parity || failed=1
+KEEP=1 ARGS="-iikbScrollToEnd YES" scripts/sim phoneapp parity-end || failed=1
 for shot in shots/raw/phone/app/parity-*.png; do
   name=${shot##*/parity-}
   end=
