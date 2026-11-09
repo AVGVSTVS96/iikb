@@ -1,0 +1,4 @@
+- Copied links show the site's icon, name and path, and a new Links filter in the clipboard shows only links.
+- Addresses, phone numbers and colors you copy get their own icons.
+- The mic switch on Home stays put when you start typing.
+- Transcripts: Delete is easier to reach, and the chart's dates line up under each day.

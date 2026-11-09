@@ -12,12 +12,13 @@ for binary in "$app/iikb" "$app"/PlugIns/*.appex/*; do
   fi
 done
 
-# What to Test: the commits since the last beta, which .github/workflows/beta.yml tags beta-prev on every move of beta.
+# What to Test is TestFlight/WhatToTest.en-US.txt, written for testers by hand when a beta is cut: a build without one
+# stops here rather than show testers commit messages.
+note=TestFlight/WhatToTest.en-US.txt
+[ -s "$note" ] || { echo "$note is empty: write the testers' note" >&2; exit 1; }
 git fetch --quiet --unshallow origin 2>/dev/null || true
 git fetch --quiet --force origin 'refs/tags/beta-prev:refs/tags/beta-prev' 2>/dev/null || true
-range=HEAD~1..HEAD
-git merge-base --is-ancestor beta-prev HEAD 2>/dev/null && range=beta-prev..HEAD
-mkdir -p TestFlight
-git log --no-merges --format='- %s' "$range" | sed -E 's/^- [a-z]+(\([^)]*\))?!?: /- /' | head -20 \
-  >TestFlight/WhatToTest.en-US.txt
-cat TestFlight/WhatToTest.en-US.txt
+if git merge-base --is-ancestor beta-prev HEAD 2>/dev/null && git diff --quiet beta-prev HEAD -- "$note"; then
+  echo "$note is the last beta's note: write this one's" >&2; exit 1
+fi
+cat "$note"

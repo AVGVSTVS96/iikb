@@ -1,5 +1,5 @@
 # beta is the commit of main that goes to TestFlight: Xcode Cloud builds every push to it (ci_scripts/).
-# Each move of beta tags the commit it left as beta-prev, so the build's What to Test lists the commits since.
+# Each move of beta tags the commit it left as beta-prev; TestFlight/WhatToTest.en-US.txt is the testers' note.
 # When nobody has moved beta for 24 hours and main has changed, main becomes the new beta.
 name: beta
 on:
