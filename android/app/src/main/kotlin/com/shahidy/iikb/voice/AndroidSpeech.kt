@@ -1,34 +1,27 @@
-package com.shahidy.iikb.keyboard
+package com.shahidy.iikb.voice
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import kotlin.math.pow
 
 /**
- * Voice typing in place: Android lets a keyboard use the microphone, so the mic records right where you type, with
- * no trip to the app. What's heard is typed through the engine as a dictation, in Settings › Writing Style.
+ * Android's own speech recognizer, on the phone where it can be, the other choice in Settings › Voice as Apple's is
+ * on iOS. It listens itself, so it hears while you talk rather than writing a finished recording: [level] gets its
+ * loudness as the microphone's root mean square, and [written] what it heard once you stop, or null.
  */
-class Voice(private val context: Context, private val heard: (String) -> Unit) {
-    var onChange: (Boolean) -> Unit = {}
+class AndroidSpeech(
+    private val context: Context,
+    private val level: (Float) -> Unit,
+    private val written: (String?) -> Unit,
+) {
     private var recognizer: SpeechRecognizer? = null
-    var listening = false
-        private set(value) {
-            field = value
-            onChange(value)
-        }
 
-    val permitted get() =
-        context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-
-    fun toggle() = if (listening) stop() else start()
-
-    private fun start() {
+    fun start() {
         val recognizer = recognizer ?: create().also { recognizer = it }
         recognizer.setRecognitionListener(listener)
         recognizer.startListening(
@@ -37,11 +30,9 @@ class Voice(private val context: Context, private val heard: (String) -> Unit) {
                 .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
                 .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 3000L),
         )
-        listening = true
     }
 
     fun stop() {
-        if (!listening) return
         recognizer?.stopListening()
     }
 
@@ -58,19 +49,16 @@ class Voice(private val context: Context, private val heard: (String) -> Unit) {
         }
 
     private val listener = object : RecognitionListener {
-        override fun onResults(results: Bundle) {
-            listening = false
-            results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
-                ?.takeIf { it.isNotBlank() }?.let(heard)
-        }
+        override fun onResults(results: Bundle) =
+            written(results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.trim())
 
-        override fun onError(error: Int) {
-            listening = false
-        }
+        override fun onError(error: Int) = written(null)
+
+        /** Android's level runs from about -2 to 10 dB over its own floor; as iikb's, -50 dBFS to -10. */
+        override fun onRmsChanged(rmsdB: Float) = level(10f.pow((rmsdB.coerceIn(-2f, 10f) * 40 / 12 - 50) / 20))
 
         override fun onReadyForSpeech(params: Bundle?) {}
         override fun onBeginningOfSpeech() {}
-        override fun onRmsChanged(rmsdB: Float) {}
         override fun onBufferReceived(buffer: ByteArray?) {}
         override fun onEndOfSpeech() {}
         override fun onPartialResults(partialResults: Bundle?) {}

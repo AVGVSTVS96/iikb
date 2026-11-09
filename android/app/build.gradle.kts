@@ -129,4 +129,5 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
     implementation(libs.coil.network)
+    implementation(variantOf(libs.sherpa.onnx) { artifactType("aar") })
 }

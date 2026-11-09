@@ -14,7 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.shahidy.iikb.Settings
+import com.shahidy.iikb.voice.VoiceModel
 
 @Composable
 fun SettingsList(open: (String) -> Unit) {
@@ -27,6 +29,8 @@ fun SettingsList(open: (String) -> Unit) {
             Link("Sound & Haptics") { open("feel") }
         }
         Section("Voice Typing") {
+            Link("Voice", value = VoiceModel.of(LocalContext.current).pickedShown.title) { open("voice") }
+            Divider()
             Link("Writing Style") { open("style") }
         }
         Section("iikb") {
@@ -43,6 +47,7 @@ fun SettingsPage(page: String, back: () -> Unit) {
         "appearance" -> Page("Appearance", back) { Appearance() }
         "typing" -> Page("Typing", back) { Typing() }
         "feel" -> Page("Sound & Haptics", back) { Feel() }
+        "voice" -> Page("Voice", back) { Voice() }
         "style" -> Page("Writing Style", back) { Style() }
         "privacy" -> Page("Privacy & Data", back) { Privacy() }
         else -> Page("About iikb", back) { About() }
@@ -173,7 +178,7 @@ private fun Style() {
 private fun Privacy() {
     val store = LocalStore.current
     var reset by remember { mutableStateOf(false) }
-    Section(footer = "Everything iikb learns stays on this phone. Voice typing uses Android's speech recognizer, on the phone where it can.") {
+    Section(footer = "Everything iikb learns stays on this phone. Voice typing hears you on the phone with Parakeet, which iikb downloads once from Hugging Face; Android's recognizer, if you pick it, may send your voice to Google.") {
         Line(
             if (reset) "Learned words and taps reset" else "Reset Learned Words and Taps",
             onClick = {

@@ -11,10 +11,23 @@ iikb on Android: the same keyboard, KeyboardCore built for Android with the Swif
   - `keyboard/Clips`: the clipboard's history, one per process, so the keyboard and the app's Clipboard tab share it. The keyboard keeps a clip by the time Android says it was copied, never one an app marks sensitive or one copied in a password or incognito field.
   - `keyboard/Klipy`, `keyboard/Gifs`: KLIPY's GIFs, its key copied into the assets from `Resources/Keys/klipy.key` at build time (out of git); a tapped GIF goes on the clipboard through the app's `FileProvider`, never into the history.
   - `keyboard/Field`: Android's `InputConnection` as the engine reads and edits it. A return the app takes as its action (send, search, go) goes to it as that action.
-  - `keyboard/Voice`: voice typing in place, with Android's speech recognizer, typed through the engine as a dictation.
+  - `voice/`: voice typing, in the keyboard itself, since Android lets a keyboard use the microphone (see "Voice typing").
+  - `keyboard/MicBar`: the bar's mic, as docs/design.md's "The mic" draws it: the recording capsule with its time, waveform and cancel, the spinner while the model writes, and the waiting dictations' cards.
+  - `Transcripts`: every dictation, one store the keyboard and the app share (see "Voice typing").
   - `Settings`: the settings, under the names iOS's `SettingsStore` keeps them.
   - `app/`: the app's pages.
 - The English data (`KeyboardEnglish/Resources`) goes into the APK's assets uncompressed, and the engine reads it mapped, in place.
+
+## Voice typing
+
+As on iOS (App/Voice/AGENTS.md), recording and writing never wait on each other: `Microphone` records 16 kHz mono with Android's speech-recognition source and knows nothing of the models, and once you stop, `Dictation` hands the finished `Recording` to the model, one at a time in the order said, while the next records. What the model heard is styled in Settings › Writing Style for the app it was said for (`Native.written`, the iOS app's `DictationWriting.typed`), then typed through the engine as `KeyboardEvent.dictated`, but only into the field it was said in (`fieldCount`); said elsewhere, it's only kept.
+
+- The model is picked in Settings › Voice (`voiceModel`): Parakeet v3, the default, or Android's own recognizer in Apple's place. Android's never stands in for Parakeet.
+- Parakeet v3 is NVIDIA's parakeet-tdt-0.6b-v3, int8, run on the CPU by sherpa-onnx (its Android library from GitHub's releases, `settings.gradle.kts`; one `libsherpa-onnx-jni.so` with ONNX Runtime linked in). It downloads on first use, about 670 MB from Hugging Face at a pinned revision, each file checked against its SHA-256 and resumed where it stopped (`ModelFiles`), into the files Android doesn't back up. A dictation made while it downloads or loads is saved and written once it's ready; the bar shows its card and what it waits for.
+- It loads as a dictation starts and is let go once nothing is left to write, since it holds the encoder's 650 MB.
+- Silero's voice-activity model downloads with it: a recording in which it hears no one is written as nothing, where Parakeet would write "Yeah." (sherpa-onnx gives no word confidence, which iOS also checks).
+- Android's recognizer listens itself rather than writing a finished recording, so its dictations keep no sound.
+- `Transcripts` keeps every dictation as a JSON line in `files/transcripts.jsonl` (`Transcript`: id, date in seconds since 1970, the text typed, seconds, whether it was typed, the model, the app's package, what the model heard when the style changed it, and whether it was recovered), and Parakeet's sound beside it as `no_backup/recordings/<id>.wav`, up to 512 MB. A recording without a transcript, left by a keyboard that ended first, is written the next time it starts, and never typed.
 
 ## Build
 

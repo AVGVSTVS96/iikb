@@ -217,7 +217,17 @@ public func tones(env: Env, _: jclass, handle: jlong, emoji: jbyteArray?) -> jby
     with(env, handle) { keyboard in env.array(keyboard.tones(of: env.string(emoji) ?? "").joined(separator: "\n")) }
 }
 
-/// What dictation heard, typed as Settings › Writing Style writes it (`KeyboardEvent.dictated`).
+/// What iikb types for what a voice model heard, in the Writing Style picked for `app`, as iOS's app writes it
+/// (`DictationWriting.typed`) before handing it to the keyboard.
+@_cdecl("Java_com_shahidy_iikb_keyboard_Native_written")
+public func written(env: Env, _: jclass, handle: jlong, heard: jbyteArray?, app: jbyteArray?) -> jbyteArray? {
+    with(env, handle) { keyboard in
+        env.array(keyboard.engine.settings.dictation(in: env.string(app)).written(env.string(heard) ?? ""))
+    }
+}
+
+/// A dictation typed at the caret: `text` as `written` styled it, `plain` as the model wrote it, which a field of
+/// addresses or digits reads instead (`KeyboardEvent.dictated`).
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_dictated")
 public func dictated(env: Env, _: jclass, handle: jlong, text: jbyteArray?, plain: jbyteArray?, id: jbyteArray?) {
     with(env, handle) { keyboard in

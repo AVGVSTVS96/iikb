@@ -41,6 +41,7 @@ object Native {
     @JvmStatic external fun panel(handle: Long, name: ByteArray?)
     @JvmStatic external fun emojiResults(handle: Long): ByteArray
     @JvmStatic external fun tones(handle: Long, emoji: ByteArray): ByteArray
+    @JvmStatic external fun written(handle: Long, heard: ByteArray, app: ByteArray?): ByteArray
     @JvmStatic external fun dictated(handle: Long, text: ByteArray, plain: ByteArray?, id: ByteArray?)
     @JvmStatic external fun deleteRepeat(handle: Long, words: Boolean)
     @JvmStatic external fun documentChanged(handle: Long): Boolean

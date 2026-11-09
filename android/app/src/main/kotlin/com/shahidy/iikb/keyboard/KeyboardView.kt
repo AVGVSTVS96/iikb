@@ -39,6 +39,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         fun acceptEmoji(emoji: String)
         fun more()
         fun mic()
+        fun cancelDictation()
         fun repeatDelete(words: Boolean)
         fun feedback(kind: Feedback.Kind)
         fun pickEmoji(emoji: String, base: String?)
@@ -99,7 +100,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     var notice: String? = null
 
     var characterPreview = "attached"
-    var micListening = false
+    val mic = MicBar(this)
 
     private val density = resources.displayMetrics.density
     private val painter = KeyPainter()
@@ -194,16 +195,19 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             fill.color = theme.label
             Glyphs.draw(canvas, "more", box.midX.toFloat(), box.midY.toFloat(), bar.glyph.toFloat() * 0.92f, fill)
         }
-        bar.mic?.let { box ->
-            circle(canvas, box, if (micListening) theme.record else theme.mic)
-            fill.color = if (micListening) android.graphics.Color.WHITE else theme.micGlyph
-            val glyph = if (micListening) "stop.fill" else "waveform"
-            val share = if (micListening) 0.6f else 0.6f
-            Glyphs.draw(canvas, glyph, box.midX.toFloat(), box.midY.toFloat(), (box.width * share).toFloat(), fill)
+        val edits = edits
+        val notice = notice
+        when {
+            edits != null -> drawEdits(canvas, frame, edits)
+            notice != null && !mic.covers -> drawNotice(canvas, frame, notice)
+            frame.showsSuggestions && frame.panel == null && !mic.covers -> drawSuggestions(canvas, frame)
         }
-        edits?.let { return drawEdits(canvas, frame, it) }
-        notice?.let { return drawNotice(canvas, frame, it) }
-        if (!frame.showsSuggestions || frame.panel != null) return
+        mic.draw(canvas, frame)
+    }
+
+    private fun drawSuggestions(canvas: Canvas, frame: Frame) {
+        val bar = frame.toolbar
+        val theme = frame.theme
         val showsEmoji = frame.emoji.isNotEmpty()
         val slots = if (showsEmoji && !bar.emojiBeside) bar.slots.dropLast(1) else bar.slots
         text.typeface = painter.labels
@@ -337,10 +341,11 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val bar = frame.toolbar
         bar.more?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "more" }
         bar.mic?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "mic" }
+        if (mic.hitsCancel(frame, x, y)) return "cancel"
         edits?.let { edits ->
             return editPills(frame).firstOrNull { (name, box) -> enabled(edits, name) && x >= box.left && x <= box.right }?.first
         }
-        if (!frame.showsSuggestions || frame.panel != null) return null
+        if (!frame.showsSuggestions || frame.panel != null || mic.covers) return null
         val showsEmoji = frame.emoji.isNotEmpty()
         if (showsEmoji && bar.emoji.contains(x.toDouble(), bar.emoji.y)) {
             val places = emojiPlaces(frame)
@@ -356,6 +361,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         when {
             target == "more" -> actions.more()
             target == "mic" -> actions.mic()
+            target == "cancel" -> actions.cancelDictation()
             target in EDITS -> actions.edit(target)
             target.startsWith("slot") -> actions.select(target.removePrefix("slot").toInt())
             target.startsWith("emoji") ->

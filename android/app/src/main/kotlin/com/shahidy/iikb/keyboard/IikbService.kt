@@ -1,9 +1,11 @@
 package com.shahidy.iikb.keyboard
 
+import android.Manifest
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
@@ -18,9 +20,9 @@ import android.view.inputmethod.EditorInfo
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.shahidy.iikb.Settings
-import com.shahidy.iikb.Transcripts
 import com.shahidy.iikb.TypingStats
 import com.shahidy.iikb.app.MainActivity
+import com.shahidy.iikb.voice.Dictation
 import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -32,7 +34,7 @@ import java.util.concurrent.Executors
  * iikb as Android's input method: the engine in Swift (`Native`), the app's field (`Field`), and the keys
  * (`KeyboardView`), wired as `FullKeyboardViewController` wires them on iOS.
  */
-class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions {
+class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions, Dictation.Typist {
     private lateinit var settings: Settings
     private lateinit var field: Field
     private var handle = 0L
@@ -48,7 +50,10 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
     /** A panel opened from the menu has the keys up under it, typing into its search. */
     private var keysUp = false
     private var feedback: Feedback? = null
-    private var voice: Voice? = null
+    private lateinit var dictation: Dictation
+    /** The field being typed in, counted up each time the keyboard starts in a new one, so a dictation lands only in its own. */
+    private var fieldCount = 0
+    private var app: String? = null
     private var bottom = 0.0
     private val main = Handler(Looper.getMainLooper())
     private val ranking = Executors.newSingleThreadExecutor()
@@ -79,6 +84,9 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         clipboard = getSystemService(ClipboardManager::class.java)
         clipboard.addPrimaryClipChangedListener(copied)
         gifs = Klipy.of(this)?.let { Gifs(this, it) }
+        dictation = Dictation(this, this)
+        dictation.onChange = ::showDictation
+        dictation.onLevel = { view?.mic?.hear(it, dictation.recorded) }
         configure()
     }
 
@@ -109,7 +117,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         gifs?.close()
         save()
         TypingStats.append(Native.takeTyping(typing))
-        voice?.close()
+        dictation.close()
         Native.destroy(handle)
         ranking.shutdown()
         super.onDestroy()
@@ -142,12 +150,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         view.handle = handle
         this.view = view
         feedback = Feedback(this, view)
-        voice = Voice(this, ::dictated)
-        voice?.onChange = {
-            if (it) listened = SystemClock.elapsedRealtime()
-            view.micListening = it
-            view.invalidate()
-        }
+        showDictation()
         view.addOnLayoutChangeListener { _, left, _, right, _, oldLeft, _, oldRight, _ ->
             if (right - left != oldRight - oldLeft) place()
         }
@@ -172,7 +175,10 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        if (!restarting) leave()
+        if (!restarting) {
+            leave()
+            fieldCount++
+        }
         app = info.packageName
         Native.changeApp(handle, app?.encodeToByteArray())
         traits(info)
@@ -184,7 +190,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
-        voice?.stop()
+        dictation.stop()
         menuOpen = false
         keysUp = false
         Native.panel(handle, null)
@@ -287,16 +293,6 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         )
         incognito = info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0 || password
         if (incognito) save()
-    }
-
-    /** The app typed in, and when the mic last started listening, for a dictation's transcript. */
-    private var app: String? = null
-    private var listened = 0L
-
-    /** A finished dictation is kept in Transcripts, then typed. */
-    private fun dictated(heard: String) {
-        Transcripts.add(heard, (SystemClock.elapsedRealtime() - listened) / 1000.0, app, "Android speech")
-        event { Native.dictated(handle, heard.encodeToByteArray(), null, null) }
     }
 
     /** The hours typed since the keyboard last closed, as counts, for Stats (`TypingStats`). */
@@ -573,9 +569,38 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
 
     override fun mic() {
         feedback(Feedback.Kind.OTHER)
-        val voice = voice ?: return
-        if (!voice.permitted) return openApp(MainActivity.VOICE)
-        voice.toggle()
+        if (dictation.phase == Dictation.Phase.LISTENING) return dictation.stop()
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
+            !dictation.start(fieldCount, app)
+        ) {
+            openApp(MainActivity.VOICE)
+        }
+    }
+
+    override fun cancelDictation() {
+        feedback(Feedback.Kind.OTHER)
+        dictation.cancel()
+    }
+
+    private fun showDictation() {
+        view?.mic?.show(dictation.phase, dictation.recorded, dictation.saved, dictation.waitingFor)
+    }
+
+    // Dictation.Typist
+
+    override fun style(heard: String, app: String?) =
+        Native.written(handle, heard.encodeToByteArray(), app?.encodeToByteArray()).decodeToString()
+
+    override fun type(text: String, heard: String, field: Int): Boolean {
+        if (field != fieldCount || !isInputViewShown) {
+            if (isInputViewShown && field != Dictation.NO_FIELD) {
+                view?.notice = "Not typed here: it’s in Transcripts"
+                view?.invalidate()
+            }
+            return false
+        }
+        event { Native.dictated(handle, text.encodeToByteArray(), heard.encodeToByteArray(), null) }
+        return true
     }
 
     override fun repeatDelete(words: Boolean) = event { Native.deleteRepeat(handle, words) }
