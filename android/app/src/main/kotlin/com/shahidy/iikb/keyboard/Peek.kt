@@ -8,11 +8,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -104,7 +106,7 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
         }
         val width = maxWidth.value
         val height = (maxHeight - bottom).value
-        val menu = if (held.actions.isEmpty()) 0f else MENU_PAD * 2 + MENU_ROW * held.actions.size
+        val menu = if (held.actions.isEmpty()) 0f else MENU_ROW
         Box(
             Modifier.fillMaxWidth().height(height.dp).graphicsLayer { alpha = appear.value }
                 .background(Color.Black.copy(alpha = if (look.dark) 0.47f else 0.2f))
@@ -124,7 +126,7 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
         ) { measurables, constraints ->
             val px = { dp: Float -> (dp * density).roundToInt() }
             val sides = width - SIDE * 2
-            val natural = measurables[0].maxIntrinsicHeight(px(sides)) / density
+            val natural = min(measurables[0].maxIntrinsicHeight(px(sides)) / density, height / 2)
             // Where the card and its whole menu don't fit, the top margin tightens, then the gap, and then the card
             // gives way, its text scrolling, so the menu's every action stays in view.
             val short = if (menu == 0f) 0f else TOP + min(natural, MAX_TEXT) + GAP + menu - (height - MENU_FLOOR)
@@ -132,7 +134,7 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
             val gap = GAP - (short - (TOP - TIGHT_TOP)).coerceIn(0f, GAP - TIGHT_GAP)
             val floor = if (menu > 0) height - MENU_FLOOR else height - BOTTOM
             val room = Rect(SIDE, top, width - SIDE, floor)
-            val cardRoom = maxOf(CARD_FLOOR, room.height - if (menu > 0) gap + menu else 0f)
+            val cardRoom = maxOf(CARD_FLOOR, room.height - if (menu > 0) gap + menu else 0f).let { if (menu > 0) min(it, height / 2) else it }
             val card = when (val shows = held.shows) {
                 is Held.Shows.Image -> {
                     val tall = if (menu == 0f) height - IMAGE_MARGIN * 2 else cardRoom
@@ -199,10 +201,11 @@ private fun Card(held: Held, close: () -> Unit) {
                     Text(
                         shows.text.trim().replace("/", "/\u200B"), color = look.previewSecondary,
                         style = TextStyle(fontSize = 15.sp, lineHeight = 18.sp, lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)),
+                        pushOut = false,
                     )
                 }
             } else {
-                Text(shows.text, color = look.label, fontSize = 17.sp, lineHeight = 22.sp)
+                Text(shows.text, color = look.label, fontSize = 17.sp, lineHeight = 22.sp, pushOut = false)
             }
         }
         is Held.Shows.Image -> AsyncImage(
@@ -213,34 +216,36 @@ private fun Card(held: Held, close: () -> Unit) {
     }
 }
 
-/** The held item's actions, iOS's menu: a glyph and a title a row, Delete in red, on glass over the dimmed keys. */
+/**
+ * The held item's actions, iOS's menu at its medium element size: one row of them, each its glyph over its title,
+ * Delete in red, on glass over the dimmed keys.
+ */
 @Composable
 private fun Menu(actions: List<Held.Action>, close: () -> Unit) {
     val look = LocalColors.current
     val shape = RoundedCornerShape(MENU_CORNER.dp)
-    Column(
+    Row(
         Modifier.shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
-            .background(look.glass, shape).border(0.5.dp, look.glassEdge, shape)
-            .clip(shape).verticalScroll(rememberScrollState()).padding(vertical = MENU_PAD.dp),
+            .background(look.glass, shape).border(0.5.dp, look.glassEdge, shape).clip(shape)
+            .padding(MENU_PAD.dp),
     ) {
         for (action in actions) {
             val interaction = remember { MutableInteractionSource() }
             val pressed by interaction.collectIsPressedAsState()
             val tint = if (action.destructive) look.destructive else look.label
-            Row(
-                Modifier.fillMaxWidth().height(MENU_ROW.dp)
+            Column(
+                Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(MENU_CELL_CORNER.dp))
                     .background(if (pressed) look.label.copy(alpha = 0.08f) else Color.Transparent)
                     .clickable(interaction, indication = null) {
                         close()
                         action.run()
                     },
-                verticalAlignment = Alignment.CenterVertically,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
             ) {
-                Box(Modifier.padding(start = 26.dp).width(26.dp), contentAlignment = Alignment.Center) {
-                    Glyph(action.glyph, tint, Glyphs.square(17f).dp)
-                }
-                Spacer(Modifier.width(11.dp))
-                Text(action.title, color = tint, fontSize = 17.sp)
+                Glyph(action.glyph, tint, Glyphs.square(MENU_GLYPH).dp)
+                Spacer(Modifier.height(MENU_TITLE_GAP.dp))
+                Text(action.title, color = tint, fontSize = MENU_TITLE.sp, maxLines = 1)
             }
         }
     }
@@ -260,11 +265,11 @@ private val Colors.destructive get() = if (dark) Color(0xFFFF453A) else Color(0x
 
 /** Measured on iOS's shots of a held clip, transcript and GIF (iPhone 17), in points. */
 private const val SIDE = 16f
-private const val TOP = 32f
+private const val TOP = 16f
 private const val BOTTOM = 16f
 /** The menu runs nearer the bottom than a card alone. */
 private const val MENU_FLOOR = 2f
-private const val GAP = 18f
+private const val GAP = 16.5f
 private const val CORNER = 22f
 private const val TEXT_WIDTH = 340f
 private const val MAX_TEXT = 480f
@@ -276,6 +281,10 @@ private const val TIGHT_TOP = 12f
 private const val TIGHT_GAP = 10f
 private const val CARD_FLOOR = 60f
 private const val MENU_WIDTH = 250f
-private const val MENU_ROW = 42f
-private const val MENU_PAD = 10f
-private const val MENU_CORNER = 26f
+private const val MENU_ROW = 74f
+private const val MENU_PAD = 4f
+private const val MENU_CELL_CORNER = 20f
+private const val MENU_GLYPH = 21f
+private const val MENU_TITLE = 12f
+private const val MENU_TITLE_GAP = 5f
+private const val MENU_CORNER = 37f
