@@ -89,7 +89,7 @@ private fun GifRows(gifs: Gifs, rows: Int, height: Dp, query: String) {
     }
     LaunchedEffect(nearEnd, shown.gifs.size) { if (nearEnd) gifs.more() }
     LazyHorizontalStaggeredGrid(
-        StaggeredGridCells.Fixed(rows), Modifier.fillMaxWidth().height(height * rows + GIF_GAP.dp * (rows - 1)).fadeEnds(grid), grid,
+        StaggeredGridCells.Fixed(rows), Modifier.fillMaxWidth().height(height * rows + GIF_GAP.dp * (rows - 1)), grid,
         horizontalItemSpacing = GIF_GAP.dp, verticalArrangement = Arrangement.spacedBy(GIF_GAP.dp),
     ) {
         items(shown.gifs, key = { it.id }) { gif ->

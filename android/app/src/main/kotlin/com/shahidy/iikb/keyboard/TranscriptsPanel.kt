@@ -56,7 +56,7 @@ fun TranscriptShelf() {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val card = (maxWidth - ITEM_GAP * 2) / 3
         val row = rememberLazyListState()
-        LazyRow(Modifier.fillMaxSize().fadeEnds(row), state = row, horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
+        LazyRow(Modifier.fillMaxSize(), state = row, horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
             items(rows) { row ->
                 Pressable(Modifier.width(card).fillMaxHeight(), 10.dp, { actions.paste(row.text) }, { hold(row.text, it) }) {
                     Card(row)

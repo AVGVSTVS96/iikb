@@ -10,7 +10,10 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 
-/** A row that scrolls sideways fades out at an end where it's cut, as iOS's `ButtonScrollView.fadesEnds` does. */
+/**
+ * A row of buttons that scrolls sideways fades out at an end where it's cut, as iOS's `ButtonScrollView.fadesEnds` does
+ * for the Theme and Stop Animation strips alone; the panels' cards and GIFs end in a hard cut.
+ */
 fun Modifier.fadeEnds(state: ScrollableState) = graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
     .drawWithContent {
         drawContent()

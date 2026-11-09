@@ -108,7 +108,7 @@ fun ClipShelf(height: Dp) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val card = floor((maxWidth.value - GAP * 2) / 3).dp
         val row = rememberLazyListState()
-        LazyRow(Modifier.fillMaxSize().fadeEnds(row), state = row, horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
+        LazyRow(Modifier.fillMaxSize(), state = row, horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
             items(columns) { column ->
                 Column(
                     Modifier.width(IntrinsicSize.Max).fillMaxHeight(),

@@ -308,7 +308,7 @@ fun ChatShelf() {
         val card = (maxWidth - ITEM_GAP * 2) / 3
         val height = maxHeight
         val row = rememberLazyListState()
-        LazyRow(Modifier.fillMaxSize().fadeEnds(row), state = row, horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
+        LazyRow(Modifier.fillMaxSize(), state = row, horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
             items(chats.list, key = { it.service.name + "/" + it.id }) { chat ->
                 Pressable(Modifier.size(card, height), 10.dp, onClick = { actions.openChat(chat.id) }) {
                     Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.Center) {
