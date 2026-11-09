@@ -29,7 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.shahidy.iikb.Transcripts
 
-/** What you dictated holding `query`, newest first, as the clipboard's rows show them: words and how long ago. */
+/** What you dictated holding `query`, newest first (a dictation that heard no one is left out, as on iOS), as the clipboard's rows show them: words and how long ago. */
 @Composable
 private fun rememberTranscripts(query: String): List<Clips.Row> {
     var revision by remember { mutableIntStateOf(0) }
@@ -37,7 +37,7 @@ private fun rememberTranscripts(query: String): List<Clips.Row> {
     return remember(query, revision) {
         val now = System.currentTimeMillis() / 1000.0
         val search = query.lowercase()
-        Transcripts.list().filter { search.isEmpty() || it.text.lowercase().contains(search) }.map {
+        Transcripts.list().filter { it.text.isNotEmpty() && (search.isEmpty() || it.text.lowercase().contains(search)) }.map {
             Clips.Row(
                 it.text, "text", Native.length(it.text.encodeToByteArray(), true).decodeToString(),
                 Native.age(it.date, now).decodeToString(), false,
