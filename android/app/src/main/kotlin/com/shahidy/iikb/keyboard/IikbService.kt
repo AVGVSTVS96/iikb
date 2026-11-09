@@ -160,6 +160,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         val view = KeyboardView(this, this)
         view.handle = handle
         this.view = view
+        view.mic.stopAnimation = settings.string("stopAnimation")
         feedback = Feedback(this, view)
         showDictation()
         view.addOnLayoutChangeListener { _, left, _, right, _, oldLeft, _, oldRight, _ ->
@@ -241,6 +242,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         feedback?.strength = settings.string("hapticFeedback")
         feedback?.sound = settings.bool("sound")
         view?.characterPreview = settings.string("characterPreviewStyle")
+        view?.mic?.stopAnimation = settings.string("stopAnimation")
         render()
     }
 

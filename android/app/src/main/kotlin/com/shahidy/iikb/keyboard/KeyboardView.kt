@@ -158,7 +158,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val trackpad = touches.values.any { it.mode == Mode.TRACKPAD }
         for ((index, cap) in frame.caps.withIndex()) {
             val flicked = touches.values.any { it.index == index && it.flicked }
-            painter.draw(canvas, cap, frame.look, frame.theme, index in pressed, !trackpad, flicked)
+            if (cap.action == "dictate" && frame.toolbar.mic == null) mic.drawKey(canvas, cap, frame, index in pressed)
+            else painter.draw(canvas, cap, frame.look, frame.theme, index in pressed, !trackpad, flicked)
         }
         touches.values.firstOrNull { it.mode == Mode.SWIPE }?.let { drawTrail(canvas, it, frame) }
         preview(frame)?.let { drawCallout(canvas, frame, it) }
@@ -206,13 +207,16 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         }
         val edits = edits
         val notice = notice
+        val under = mic.suggestions
+        if (under < 1) canvas.saveLayerAlpha(0f, 0f, width / density, bar.height.toFloat(), (255 * under).toInt())
         when {
             edits != null -> drawEdits(canvas, frame, edits)
             chats != null && !mic.covers -> drawChats(canvas, frame)
             notice != null && !mic.covers -> drawNotice(canvas, frame, notice)
             frame.showsSuggestions && frame.panel == null && !mic.covers -> drawSuggestions(canvas, frame)
         }
-        mic.draw(canvas, frame)
+        if (under < 1) canvas.restore()
+        mic.draw(canvas, frame, pressedBar)
     }
 
     private fun drawSuggestions(canvas: Canvas, frame: Frame) {
@@ -413,7 +417,10 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         when {
             target == "more" -> actions.more()
             target == "mic" -> actions.mic()
-            target == "cancel" -> actions.cancelDictation()
+            target == "cancel" -> {
+                mic.dissolve(frame, density)
+                actions.cancelDictation()
+            }
             target in EDITS -> actions.edit(target)
             target.startsWith("chat") -> actions.chat(target.removePrefix("chat").toInt())
             target.startsWith("slot") -> actions.select(target.removePrefix("slot").toInt())
