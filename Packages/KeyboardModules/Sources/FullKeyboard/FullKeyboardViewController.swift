@@ -629,6 +629,7 @@ open class FullKeyboardViewController: UIInputViewController {
         suggestionBar.update(tools: tools, theme: theme)
         let fresh = line != nil ? seen.update(chats) : []
         chatPanel.fresh = fresh
+        chatPanel.tabsRow = (suggestionBar.chatRow.minX - block.minX, suggestionBar.chatRow.maxX - block.minX)
         suggestionBar.update(
             chats: line != nil && !keysUp ? chats.list.map(\.name) : nil,
             open: chats.list.firstIndex { $0 == chats.open }, fresh: fresh, theme: theme)

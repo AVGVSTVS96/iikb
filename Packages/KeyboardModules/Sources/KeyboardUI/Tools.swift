@@ -6,6 +6,16 @@ import UIKit
 final class BarButton: UIButton {
     var theme = KeyboardTheme.lightCurrent { didSet { refresh() } }
     var isOn = false { didSet { if isOn != oldValue { refresh() } } }
+    /// Set on a circle of iOS's glass as tall as `ChatTabs`, beside them while a chat is read, in place of the on circle.
+    var glassy = false {
+        didSet {
+            guard glassy != oldValue else { return }
+            glass.isHidden = !glassy
+            refresh()
+            setNeedsLayout()
+        }
+    }
+    private let glass = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
     private let draw: @MainActor (CGFloat) -> UIImage?
     private let icon = UIImageView()
     private var glyph: CGFloat = 0
@@ -19,6 +29,11 @@ final class BarButton: UIButton {
         icon.isUserInteractionEnabled = false
         icon.contentMode = .center
         layer.cornerCurve = .continuous
+        glass.isUserInteractionEnabled = false
+        glass.isHidden = true
+        glass.cornerConfiguration = .capsule()
+        glass.clipsToBounds = true
+        addSubview(glass)
         addSubview(icon)
         refresh()
     }
@@ -40,7 +55,8 @@ final class BarButton: UIButton {
 
     private func refresh() {
         icon.tintColor = theme.label.ui
-        backgroundColor = isHighlighted || isOn ? theme.candidatePill.ui : .clear
+        backgroundColor = !glassy && (isHighlighted || isOn) ? theme.candidatePill.ui : .clear
+        icon.alpha = glassy && isHighlighted ? 0.55 : 1
     }
 
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
@@ -50,6 +66,8 @@ final class BarButton: UIButton {
     override func layoutSubviews() {
         super.layoutSubviews()
         icon.frame = bounds
+        let side = ChatTabs.height
+        glass.frame = CGRect(x: bounds.midX - side / 2, y: bounds.midY - side / 2, width: side, height: side)
         layer.cornerRadius = min(bounds.width, bounds.height) / 2
     }
 }

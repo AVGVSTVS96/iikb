@@ -25,6 +25,8 @@ final class ChatPanel: UIView, PanelContent {
     var onPick: (Int) -> Void = { _ in }
     /// The chats with something newer than what you saw, by index.
     var fresh: Set<Int> = []
+    /// The span the bar's tabs take, in the panel's terms, which the tabs over the messages take too.
+    var tabsRow: (minX: CGFloat, maxX: CGFloat)? { didSet { setNeedsLayout() } }
     var field: PanelField { .own(composer) }
     private let composer = MessageField()
     private var line: LineDocument?
@@ -116,9 +118,10 @@ final class ChatPanel: UIView, PanelContent {
         super.layoutSubviews()
         tabs.isHidden = !typing || chats.list.isEmpty
         let row = CGFloat(bar)
+        let span = tabsRow ?? (0, bounds.width)
         tabs.frame = CGRect(
-            x: 0, y: ((row - ChatTabs.height) / 2).rounded(), width: tabs.width(within: bounds.width),
-            height: ChatTabs.height)
+            x: span.minX, y: ((row - ChatTabs.height) / 2).rounded(),
+            width: tabs.width(within: min(span.maxX, bounds.width) - span.minX), height: ChatTabs.height)
         thread.frame = bounds.inset(by: UIEdgeInsets(top: tabs.isHidden ? 0 : row - 6, left: 0, bottom: 0, right: 0))
         message.frame = bounds
     }
