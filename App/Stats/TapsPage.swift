@@ -225,9 +225,13 @@ struct TapsPage: View {
     }
 
     private func rebuild() {
-        board = signature.flatMap(LayoutContext.init(signature:)).map { context in
-            var context = context
-            context.keySpacing = SettingsModel.shared.settings.keySpacing
+        board = signature.flatMap(LayoutContext.init(signature:)).map { kept in
+            var context = LayoutContext(
+                device: kept.device, layer: kept.layer, showsGlobe: ThisDevice.isPad || isDuo,
+                screen: kept.screen(on: Size(width: screen.width, height: screen.height)),
+                settings: SettingsModel.shared.settings)
+            (context.isLandscape, context.isOpen) = (kept.isLandscape, kept.isOpen)
+            (context.oneHanded, context.isSplit) = (kept.oneHanded, kept.isSplit)
             return TapBoard(touches, on: context, screen: screen)
         }
         if let key = selected, board?.aims.contains(where: { $0.key == key }) != true { selected = nil }

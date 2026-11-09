@@ -217,7 +217,9 @@ private final class SearchField: UIView {
         if focus, let at, input.selectedTextRange?.start != at {
             input.selectedTextRange = input.textRange(from: at, to: at)
         }
-        glyph.image = notice == nil ? image : UIImage(systemName: "checkmark.circle.fill")
+        let shown = notice == nil ? image : UIImage(systemName: "checkmark.circle.fill")
+        if (shown == nil) != (glyph.image == nil) { setNeedsLayout() }
+        glyph.image = shown
         glyph.tintColor = theme.candidate.ui
         backgroundColor = theme.searchField.ui
         clear.isHidden = query.isEmpty || notice != nil
