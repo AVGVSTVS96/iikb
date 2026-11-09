@@ -3,8 +3,8 @@
 # page that sets each beside its iOS twin: this checkout's APK built and installed on the Mac's emulator
 # (scripts/android --emulator), scripts/android-shots.py driving it there with iOS's made-up data (shots/demo/make.py),
 # and the shots put in OUT in place of its last run's, so no shot there is older than this build. SECTIONS narrows it
-# (android-shots.py names them) and then keeps the rest. OUT defaults to the parity page's android/ folder, whose page
-# is rebuilt after.
+# (android-shots.py names them), PAGES the app's pages within it, and then it keeps the rest. OUT defaults to the
+# parity page's android/ folder, whose page is rebuilt after.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 out=${OUT:-$HOME/Developer/pages/pages/iikb-android/parity/android}
@@ -18,7 +18,7 @@ python3 -I "$root/shots/demo/make.py" "$scratch/demo"
 work=$(ssh mac 'mktemp -d /tmp/iikb-shots.XXXXXX' </dev/null)
 trap 'ssh mac "rm -rf $work" </dev/null' EXIT
 scp -qr "$root/scripts/android-shots.py" "$scratch/demo" "mac:$work/"
-printf 'python3 %s/android-shots.py %s %s\n' "$work" "$work" "${SECTIONS:-}" >"$scratch/drive.sh"
+printf 'PAGES=%q python3 %s/android-shots.py %s %s\n' "${PAGES:-}" "$work" "$work" "${SECTIONS:-}" >"$scratch/drive.sh"
 "$root/scripts/android" --emulator "$scratch/drive.sh" </dev/null
 mkdir -p "$scratch/out"
 scp -q "mac:$work/out/*.png" "$scratch/out/"
