@@ -46,7 +46,7 @@ val LocalGifs = staticCompositionLocalOf<Gifs?> { null }
 private var loader: ImageLoader? = null
 
 @Composable
-private fun loader(): ImageLoader {
+fun imageLoader(): ImageLoader {
     val context = LocalContext.current.applicationContext
     return loader ?: ImageLoader.Builder(context).components { add(AnimatedImageDecoder.Factory()) }.build()
         .also { loader = it }
@@ -60,7 +60,7 @@ private fun loader(): ImageLoader {
 private fun GifRows(gifs: Gifs, rows: Int, height: Dp, query: String) {
     val look = LocalColors.current
     val actions = LocalActions.current
-    val loader = loader()
+    val loader = imageLoader()
     val shown = gifs.shown
     when {
         shown.state == "failed" -> return Empty("Couldn't reach KLIPY.")
@@ -76,7 +76,7 @@ private fun GifRows(gifs: Gifs, rows: Int, height: Dp, query: String) {
     }
     LaunchedEffect(nearEnd, shown.gifs.size) { if (nearEnd) gifs.more() }
     LazyHorizontalStaggeredGrid(
-        StaggeredGridCells.Fixed(rows), Modifier.fillMaxWidth().height(height * rows + 6.dp * (rows - 1)), grid,
+        StaggeredGridCells.Fixed(rows), Modifier.fillMaxWidth().height(height * rows + 6.dp * (rows - 1)).fadeEnds(grid), grid,
         horizontalItemSpacing = 6.dp, verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         items(shown.gifs, key = { it.id }) { gif ->

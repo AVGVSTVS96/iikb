@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -81,7 +82,8 @@ private fun LookRow(
     art: @Composable (String) -> Unit,
 ) {
     val look = LocalColors.current
-    LazyRow(Modifier.fillMaxWidth().height(height), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    val row = rememberLazyListState()
+    LazyRow(Modifier.fillMaxWidth().height(height).fadeEnds(row), state = row, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(choices) { (name, title) ->
             val chosen = name == picked
             val interaction = remember { MutableInteractionSource() }

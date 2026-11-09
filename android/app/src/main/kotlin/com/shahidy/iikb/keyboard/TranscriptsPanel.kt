@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -54,7 +55,8 @@ fun TranscriptShelf() {
     if (rows.isEmpty()) return Empty("What you dictate shows up here.")
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val card = (maxWidth - ITEM_GAP * 2) / 3
-        LazyRow(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
+        val row = rememberLazyListState()
+        LazyRow(Modifier.fillMaxSize().fadeEnds(row), state = row, horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
             items(rows) { row ->
                 Pressable(Modifier.width(card).fillMaxHeight(), 10.dp, { actions.paste(row.text) }, { shown = row }) {
                     Card(row)

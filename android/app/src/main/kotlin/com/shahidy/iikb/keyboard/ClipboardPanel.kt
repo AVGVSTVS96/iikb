@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -35,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -80,7 +82,8 @@ fun ClipShelf(height: Dp) {
     val columns = links.chunked(perColumn).take(2)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val card = (maxWidth - ITEM_GAP * 2) / 3
-        LazyRow(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
+        val row = rememberLazyListState()
+        LazyRow(Modifier.fillMaxSize().fadeEnds(row), state = row, horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
             items(columns) { column ->
                 val badge = minOf(36.dp, (height - ITEM_GAP * (column.size - 1)) / column.size)
                 Column(
@@ -149,10 +152,10 @@ private fun Badge(row: Clips.Row, height: Dp, onHold: () -> Unit, onClick: () ->
     Pressable(Modifier.height(height), height / 2, onClick, onHold) {
         Row(Modifier.padding(start = 5.dp, end = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(minOf(20.dp, height - 8.dp)).background(Color.White, RoundedCornerShape(5.dp))
+                Modifier.size(minOf(20.dp, height - 8.dp)).clip(RoundedCornerShape(5.dp)).background(Color.White)
                     .border(0.5.dp, Color(0x22000000), RoundedCornerShape(5.dp)),
                 contentAlignment = Alignment.Center,
-            ) { Glyph("globe", Color(0xFF8E8E93), 14.dp) }
+            ) { SiteIcon(row.site) }
             Spacer(Modifier.width(6.dp))
             Text(row.name ?: row.site ?: "", color = look.label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             Text(" · ${row.age}", color = look.secondary, fontSize = 13.sp, maxLines = 1, style = DIGITS)
