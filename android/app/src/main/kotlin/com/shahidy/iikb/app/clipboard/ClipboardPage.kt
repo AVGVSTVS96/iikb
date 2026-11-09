@@ -62,6 +62,7 @@ import com.shahidy.iikb.app.palette
 import com.shahidy.iikb.app.transcripts.share
 import com.shahidy.iikb.app.transcripts.title
 import com.shahidy.iikb.keyboard.Clips
+import com.shahidy.iikb.keyboard.SiteIcon
 import com.shahidy.iikb.keyboard.IikbService
 import java.io.File
 import java.time.Instant
@@ -235,7 +236,7 @@ private fun Title(row: Clips.Row) {
     }
 }
 
-/** A copied link in one line, as the keyboard's badge has it: a globe on a white tile, the site's name and how long ago. */
+/** A copied link in one line, as the keyboard's badge has it: the site's icon on a white tile, its name and how long ago. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Badge(row: Clips.Row, copied: Boolean, clips: Clips, copy: (Clips.Row) -> Unit) {
@@ -248,12 +249,10 @@ private fun Badge(row: Clips.Row, copied: Boolean, clips: Clips, copy: (Clips.Ro
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Box(
-                Modifier.size(20.dp).background(Color.White, RoundedCornerShape(5.dp))
+                Modifier.size(20.dp).clip(RoundedCornerShape(5.dp)).background(Color.White)
                     .border(0.5.dp, Color(0x22000000), RoundedCornerShape(5.dp)),
                 contentAlignment = Alignment.Center,
-            ) {
-                Icon(glyph("M12 3a9 9 0 1 1 0 18a9 9 0 1 1 0-18Z M3 12h18 M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9Z", 1.6f), null, tint = Color(0xFF8E8E93), modifier = Modifier.size(14.dp))
-            }
+            ) { SiteIcon(row.site) }
             Text(row.name ?: row.site ?: "", color = palette.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             if (copied) {
                 Icon(glyph("M6 12.5l4 4L18 8", 2.4f), "Copied", tint = palette.secondary, modifier = Modifier.size(14.dp))
