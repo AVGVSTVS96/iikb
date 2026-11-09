@@ -220,12 +220,12 @@ fun Stat(label: String, value: String, unit: String? = null, detail: String? = n
     val palette = palette()
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(label, color = palette.secondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(value, style = display(22f), color = palette.label, maxLines = 1)
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(value, style = display(22f), color = palette.label, maxLines = 1, modifier = Modifier.alignByBaseline())
             if (unit != null) {
                 Text(
                     unit, color = palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1,
-                    modifier = Modifier.padding(bottom = 2.dp),
+                    modifier = Modifier.alignByBaseline(),
                 )
             }
         }
@@ -303,11 +303,18 @@ fun EqualColumns(spacing: Dp = 12.dp, content: @Composable () -> Unit) {
 /** A card's big number and what goes beside it, on one line while it all fits, else what goes beside it under it. */
 @Composable
 fun LeadNumber(value: String, size: Float, beside: (@Composable () -> Unit)? = null) {
-    val number = @Composable { Text(value, style = display(size), color = palette().label, maxLines = 1, softWrap = false) }
-    if (beside == null) return number()
+    val number = @Composable { modifier: Modifier ->
+        Text(value, style = display(size), color = palette().label, maxLines = 1, softWrap = false, modifier = modifier)
+    }
+    if (beside == null) return number(Modifier)
     FirstThatFits(
-        { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { number(); beside() } },
-        { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { number(); beside() } },
+        {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                number(Modifier.alignByBaseline())
+                Box(Modifier.alignByBaseline()) { beside() }
+            }
+        },
+        { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { number(Modifier); beside() } },
     )
 }
 
@@ -450,7 +457,7 @@ object Format {
     fun hour(hour: Int): String = LocalTime.of(hour, 0).format(DateTimeFormatter.ofPattern("h a"))
 
     /** <1% for a share under one percent, else a whole percent. */
-    fun percent(share: Double) = if (share > 0 && share < 0.01) "<1%" else "${(share * 100).roundToInt()}%"
+    fun percent(share: Double) = "${(share * 100).roundToInt()}%"
 
     /** How much `now` is above or below `before`, once there's a before. */
     fun change(now: Double, before: Double): Pair<String, Boolean>? {
@@ -494,7 +501,10 @@ fun Rows(header: String? = null, content: @Composable ColumnScope.() -> Unit) {
     val palette = palette()
     Column(Modifier.fillMaxWidth()) {
         if (header != null) {
-            Text(header, color = palette.secondary, fontSize = 13.sp, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
+            Text(
+                header, color = palette.secondary, fontSize = 15.sp, fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
+            )
         }
         Column(Modifier.fillMaxWidth().card(palette), content = content)
     }

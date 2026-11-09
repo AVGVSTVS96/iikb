@@ -26,7 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,10 +54,10 @@ import com.shahidy.iikb.app.design.Format
 import com.shahidy.iikb.app.design.GlyphTile
 import com.shahidy.iikb.app.design.Glyphs
 import com.shahidy.iikb.app.design.Hairline
-import com.shahidy.iikb.app.design.Tints
 import com.shahidy.iikb.app.design.LeadNumber
 import com.shahidy.iikb.app.design.Rows
 import com.shahidy.iikb.app.design.SearchField
+import com.shahidy.iikb.app.design.Tints
 import com.shahidy.iikb.app.design.TrendChip
 import com.shahidy.iikb.app.design.card
 import com.shahidy.iikb.app.glyph
@@ -71,6 +74,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 /** The phone's transcripts, read again each time one is added or deleted. */
 @Composable
@@ -289,9 +293,12 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
                     fontSize = 20.sp, lineHeight = 27.sp, modifier = Modifier.fillMaxWidth().card(palette).padding(20.dp),
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Action("Copy", "M9 9h10v11H9Z M5 15V4h10", Modifier.weight(1f)) { copy(context, transcript.text) }
-                Action("Share", "M12 3v12 M8 7l4-4 4 4 M5 12v8h14v-8", Modifier.weight(1f)) { share(context, transcript.text) }
+            if (transcript.text.isNotEmpty()) {
+                Rows {
+                    CopyRow(transcript.text)
+                    Divider()
+                    ActionRow("Share Text", "M12 3v12 M8 7l4-4 4 4 M5 12v8h14v-8", palette.accent) { share(context, transcript.text) }
+                }
             }
             Rows {
                 Line("Length", value = length(transcript.seconds))
@@ -330,15 +337,32 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
     }
 }
 
-/** A card-colored button with a glyph over its title. */
+/** Copy as a row that says Copied for a moment once it's done, as iOS's `CopyRow`. */
 @Composable
-private fun Action(title: String, path: String, modifier: Modifier, onClick: () -> Unit) {
+private fun CopyRow(text: String) {
     val palette = palette()
-    Column(
-        modifier.card(palette).clickable(onClick = onClick).padding(vertical = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Icon(glyph(path, 1.9f), null, tint = palette.accent, modifier = Modifier.size(22.dp))
-        Text(title, color = palette.accent, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+    val context = LocalContext.current
+    var copies by remember { mutableIntStateOf(0) }
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copies) {
+        if (copies == 0) return@LaunchedEffect
+        copied = true
+        delay(1500)
+        copied = false
+    }
+    if (copied) {
+        ActionRow("Copied", "M6.5 12.5l4 4L18 8", palette.green) {}
+    } else {
+        ActionRow("Copy", "M9 9h10v11H9Z M5 15V4h10", palette.accent) {
+            copy(context, text)
+            copies++
+        }
     }
 }
+
+/** A row that acts, its title and glyph in its color. */
+@Composable
+private fun ActionRow(title: String, path: String, color: Color, onClick: () -> Unit) =
+    Line(title, onClick = onClick, color = color) {
+        Icon(glyph(path, 1.9f), null, tint = color, modifier = Modifier.size(20.dp))
+    }

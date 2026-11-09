@@ -6,13 +6,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.app.Palette
@@ -47,12 +49,12 @@ import com.shahidy.iikb.app.design.ChoicePills
 import com.shahidy.iikb.app.design.Format
 import com.shahidy.iikb.app.design.Glyphs
 import com.shahidy.iikb.app.design.Hairline
-import com.shahidy.iikb.app.design.Tints
 import com.shahidy.iikb.app.design.LegendDot
 import com.shahidy.iikb.app.design.Split
 import com.shahidy.iikb.app.design.Stat
 import com.shahidy.iikb.app.design.StatCard
 import com.shahidy.iikb.app.design.StatGrid
+import com.shahidy.iikb.app.design.Tints
 import com.shahidy.iikb.app.design.card
 import com.shahidy.iikb.app.design.display
 import com.shahidy.iikb.app.glyph
@@ -97,11 +99,11 @@ private fun Today(activity: Activity) {
         Glyphs.CALENDAR, Tints.orange(palette), "Today", today.format(DateTimeFormatter.ofPattern("EEEE, MMM d")),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(Format.count(words), style = display(52f), color = palette.label, maxLines = 1)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(Format.count(words), style = display(52f), color = palette.label, maxLines = 1, modifier = Modifier.alignByBaseline())
                 Text(
                     if (words == 1) "word" else "words", color = palette.secondary, fontSize = 20.sp,
-                    fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 9.dp),
+                    fontWeight = FontWeight.Medium, modifier = Modifier.alignByBaseline(),
                 )
             }
             Split(listOf(Kind.TYPED.color(palette) to typed.words.toDouble(), Kind.SAID.color(palette) to said.words.toDouble()))
@@ -172,7 +174,7 @@ fun History(activity: Activity, kinds: List<Kind>) {
             }
         },
     ) {
-        Box(Modifier.height(60.dp)) {
+        Box(Modifier.heightIn(min = 58.dp)) {
             val day = picked
             if (day != null) {
                 val date = dates[day]
@@ -223,8 +225,8 @@ fun History(activity: Activity, kinds: List<Kind>) {
         }
         val ticks = when (span) {
             7 -> dates.mapIndexed { index, date -> Tick(index, date.dayOfWeek.getDisplayName(DayStyle.NARROW, Locale.getDefault()), true) }
-            30 -> dates.indices.filter { it % 7 == 0 }.map { Tick(it, Format.day(dates[it])) }
-            else -> dates.indices.filter { it % 30 == 0 }.map { Tick(it, Format.day(dates[it])) }
+            30 -> dates.indices.filter { (dates.lastIndex - it) % 7 == 0 }.map { Tick(it, Format.day(dates[it])) }
+            else -> dates.indices.filter { (dates.lastIndex - it) % 30 == 0 }.map { Tick(it, Format.day(dates[it])) }
         }
         ColumnChart(
             values, kinds.map { Tints.gradient(it.color(palette)) }, top, 170.dp, ticks,
@@ -323,14 +325,14 @@ private fun RecordTile(record: Record) {
                 Text(record.title, color = palette.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(record.value, style = display(30f), color = palette.label, maxLines = 1)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(record.value, style = display(30f), color = palette.label, maxLines = 1, modifier = Modifier.alignByBaseline())
                     Text(
                         record.unit, color = palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 5.dp),
+                        modifier = Modifier.alignByBaseline(),
                     )
                 }
-                Text(record.detail, color = palette.secondary, fontSize = 13.sp, lineHeight = 17.sp, maxLines = 2)
+                Text(record.detail, color = palette.secondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -399,11 +401,11 @@ private fun Talking(activity: Activity) {
     }.toList().sortedByDescending { it.second.first + it.second.second }.take(5)
     StatCard(Glyphs.WAVEFORM, Tints.pink(palette), "Dictation", "All time") {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(Format.count(said.words), style = display(40f), color = palette.label, maxLines = 1)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(Format.count(said.words), style = display(40f), color = palette.label, maxLines = 1, modifier = Modifier.alignByBaseline())
                 Text(
                     "words dictated", color = palette.secondary, fontSize = 15.sp, fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 7.dp),
+                    modifier = Modifier.alignByBaseline(),
                 )
             }
             Split(listOf(Kind.SAID.color(palette) to said.words.toDouble(), Kind.TYPED.color(palette) to typed.words.toDouble()))
