@@ -1,6 +1,8 @@
 package com.shahidy.iikb.app
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,7 +25,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,8 +42,6 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
@@ -60,6 +59,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -74,13 +74,13 @@ import com.shahidy.iikb.Settings
 /** The look of Raycast's app (docs/design.md, "The app"): black pages, cards with a hairline edge, blue switches. */
 data class Palette(
     val page: Color, val card: Color, val edge: Color, val label: Color, val secondary: Color, val accent: Color,
-    val selected: Color, val selectedLabel: Color,
+    val selected: Color, val selectedLabel: Color, val track: Color,
 )
 
 val LocalPalette = staticCompositionLocalOf {
     Palette(
         Color.Black, Color(0xFF1C1C1E), Color(0x1FFFFFFF), Color.White, Color(0xFF8E8E93), Color(0xFF0A84FF),
-        Color.White, Color.Black,
+        Color.White, Color.Black, Color(0xFF39393D),
     )
 }
 
@@ -100,7 +100,7 @@ fun App(
     } else {
         Palette(
             Color(0xFFF2F2F5), Color.White, Color(0x14000000), Color.Black, Color(0xFF6C6C70), Color(0xFF007AFF),
-            Color.Black, Color.White,
+            Color.Black, Color.White, Color(0xFFE9E9EA),
         )
     }
     val colors = if (dark) {
@@ -189,6 +189,7 @@ fun Page(title: String, onBack: (() -> Unit)? = null, content: @Composable () ->
                     containerColor = palette.page, scrolledContainerColor = palette.page,
                     titleContentColor = palette.label, navigationIconContentColor = palette.label,
                 ),
+                expandedHeight = 104.dp,
                 scrollBehavior = behavior,
             )
         },
@@ -240,6 +241,18 @@ fun Line(
     }
 }
 
+/** A row that opens a page, with its value and a chevron. */
+@Composable
+fun Link(title: String, value: String? = null, onClick: () -> Unit) {
+    val palette = palette()
+    Line(title, value = value, onClick = onClick) {
+        Icon(
+            glyph("M9 4.5l7.5 7.5L9 19.5"), null, tint = palette.secondary,
+            modifier = Modifier.padding(start = 8.dp).size(16.dp),
+        )
+    }
+}
+
 @Composable
 fun Divider() = HorizontalDivider(Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = palette().edge)
 
@@ -262,9 +275,22 @@ fun Toggle(title: String, name: String, detail: String? = null) {
     val on = store.bool(name)
     val palette = palette()
     Line(title, detail, onClick = { store.set(name, !on) }) {
-        Switch(
-            checked = on, onCheckedChange = { store.set(name, it) },
-            colors = SwitchDefaults.colors(checkedTrackColor = palette.accent, checkedThumbColor = Color.White),
+        Switch(on, palette) { store.set(name, it) }
+    }
+}
+
+/** A switch as the iOS app's: a round knob the same size on and off, sliding over a gray or accent track. */
+@Composable
+private fun Switch(on: Boolean, palette: Palette, onChange: (Boolean) -> Unit) {
+    val knob by animateDpAsState(if (on) 22.dp else 2.dp, label = "knob")
+    val track by animateColorAsState(if (on) palette.accent else palette.track, label = "track")
+    Box(
+        Modifier.padding(start = 12.dp).size(51.dp, 31.dp).clip(CircleShape).background(track)
+            .clickable { onChange(!on) },
+    ) {
+        Box(
+            Modifier.padding(start = knob, top = 2.dp).size(27.dp)
+                .shadow(2.dp, CircleShape).background(Color.White, CircleShape),
         )
     }
 }
@@ -291,7 +317,10 @@ fun Stops(title: String, name: String, stops: List<String>, low: String, high: S
         Slider(
             value = index.toFloat(), onValueChange = { store.set(name, stops[it.toInt().coerceIn(stops.indices)]) },
             valueRange = 0f..(stops.size - 1).toFloat(), steps = stops.size - 2,
-            colors = SliderDefaults.colors(activeTrackColor = palette.accent, thumbColor = Color.White),
+            colors = SliderDefaults.colors(
+                activeTrackColor = palette.accent, inactiveTrackColor = palette.edge, thumbColor = palette.accent,
+                activeTickColor = Color.White, inactiveTickColor = palette.secondary,
+            ),
         )
         Row {
             Text(low, color = palette.secondary, fontSize = 13.sp)
@@ -328,13 +357,13 @@ fun Home(setup: Setup, onEnable: () -> Unit, onPick: () -> Unit, onMicrophone: (
             }
         }
         Section("Keyboard") {
-            Line("Appearance", value = LocalStore.current.themeTitle(), onClick = { open("appearance") })
+            Link("Appearance", value = LocalStore.current.themeTitle()) { open("appearance") }
             Divider()
-            Line("Typing", onClick = { open("typing") })
+            Link("Typing") { open("typing") }
             Divider()
-            Line("Sound & Haptics", onClick = { open("feel") })
+            Link("Sound & Haptics") { open("feel") }
             Divider()
-            Line("Writing Style", onClick = { open("style") })
+            Link("Writing Style") { open("style") }
         }
     }
 }
@@ -346,7 +375,7 @@ private fun Step(title: String, detail: String, done: Boolean, onClick: () -> Un
         if (done) {
             Icon(glyph("M6 12.5l4 4L18 8"), null, tint = Color(0xFF30D158))
         } else {
-            Icon(glyph("M9 4.5l7.5 7.5L9 19.5"), null, tint = palette.secondary, modifier = Modifier.width(18.dp))
+            Icon(glyph("M9 4.5l7.5 7.5L9 19.5"), null, tint = palette.secondary, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -355,19 +384,19 @@ private fun Step(title: String, detail: String, done: Boolean, onClick: () -> Un
 fun SettingsList(open: (String) -> Unit) {
     Page("Settings") {
         Section("Keyboard") {
-            Line("Appearance", value = LocalStore.current.themeTitle(), onClick = { open("appearance") })
+            Link("Appearance", value = LocalStore.current.themeTitle()) { open("appearance") }
             Divider()
-            Line("Typing", onClick = { open("typing") })
+            Link("Typing") { open("typing") }
             Divider()
-            Line("Sound & Haptics", onClick = { open("feel") })
+            Link("Sound & Haptics") { open("feel") }
         }
         Section("Voice Typing") {
-            Line("Writing Style", onClick = { open("style") })
+            Link("Writing Style") { open("style") }
         }
         Section("iikb") {
-            Line("Privacy & Data", onClick = { open("privacy") })
+            Link("Privacy & Data") { open("privacy") }
             Divider()
-            Line("About iikb", onClick = { open("about") })
+            Link("About iikb") { open("about") }
         }
     }
 }
@@ -391,11 +420,11 @@ private fun Appearance() {
         Choices(
             "theme", THEMES,
             mapOf(
-                "standard" to "Flat keys in iOS's colors",
-                "clear" to "Glyphs only, no keys",
-                "physical" to "Dark or light keys with a lit rim",
-                "mechanical" to "Raised keycaps with a soft glow",
-                "classic" to "iOS 5's shaded keys",
+                "standard" to "iikb’s own keys, flat.",
+                "clear" to "Only the letters, no keys around them.",
+                "physical" to "Solid keys, dark or light.",
+                "mechanical" to "Raised keycaps you can almost press.",
+                "classic" to "The glossy keyboard of 2011.",
             ),
         )
     }
@@ -416,9 +445,6 @@ private fun Appearance() {
         Toggle("Number Row", "numberRow")
         Divider()
         Toggle("Emoji Key", "emojiKey")
-    }
-    Section("Globe Key") {
-        Choices("globe", listOf("switches" to "Switches Keyboards", "spacer" to "Spacer", "hidden" to "Hidden"))
     }
     Section("One-Handed Keyboard") {
         Choices("oneHanded", listOf("off" to "Off", "left" to "Left", "right" to "Right"))

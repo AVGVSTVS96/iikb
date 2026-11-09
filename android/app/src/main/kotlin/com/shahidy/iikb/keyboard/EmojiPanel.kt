@@ -6,9 +6,11 @@ import android.graphics.RectF
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.widget.OverScroller
+import androidx.core.graphics.ColorUtils
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.math.roundToInt
 
 /**
  * The emoji panel in the bar's place (docs/design.md, "Emoji"): ten columns across the keys block, what you pick most
@@ -44,7 +46,8 @@ class EmojiPanel(private val view: KeyboardView, private val scroller: OverScrol
         val fieldTop = area.bottom + 6
         val back = RectF(minX, fieldTop, minX + 36, fieldTop + bar.field.toFloat())
         val field = RectF(back.right + 4, fieldTop, maxX, fieldTop + bar.field.toFloat())
-        return Geometry(area, cell, if (bar.compact) area.height() else cell, bar.compact, field, back)
+        val rows = (area.height() / cell).roundToInt().coerceAtLeast(1)
+        return Geometry(area, cell, if (bar.compact) area.height() else area.height() / rows, bar.compact, field, back)
     }
 
     private fun extent(g: Geometry): Float = if (g.compact) {
@@ -66,7 +69,7 @@ class EmojiPanel(private val view: KeyboardView, private val scroller: OverScrol
         val g = geometry(bar)
         canvas.save()
         canvas.clipRect(0f, g.area.top, frame.width.toFloat(), g.area.bottom)
-        text.textSize = if (g.compact) 26f else 30f
+        text.textSize = g.cell * (if (g.compact) 26f else 30f) / DUO_CELL
         text.typeface = typeface
         text.color = theme.label
         val metrics = text.fontMetrics
@@ -104,8 +107,12 @@ class EmojiPanel(private val view: KeyboardView, private val scroller: OverScrol
         val theme = frame.theme
         fill.color = theme.label
         Glyphs.draw(canvas, "chevron.left", g.back.centerX(), g.back.centerY(), 22f, fill)
-        fill.color = theme.searchField
         val radius = g.field.height() / 2
+        if (ColorUtils.calculateLuminance(theme.card) > 0.5) {
+            fill.color = theme.shadow
+            canvas.drawRoundRect(g.field.left, g.field.top + 1, g.field.right, g.field.bottom + 1, radius, radius, fill)
+        }
+        fill.color = theme.searchField
         canvas.drawRoundRect(g.field, radius, radius, fill)
         fill.color = theme.candidate
         Glyphs.draw(canvas, "magnifyingglass", g.field.left + 14 + 9, g.field.centerY(), 18f, fill)
@@ -118,7 +125,7 @@ class EmojiPanel(private val view: KeyboardView, private val scroller: OverScrol
             text.color = theme.candidate
             canvas.drawText("Search emoji", start, baseline, text)
             fill.color = theme.prominent
-            canvas.drawRect(start - 1, g.field.centerY() - 11, start + 1, g.field.centerY() + 11, fill)
+            canvas.drawRect(start - 3, g.field.centerY() - 11, start - 1, g.field.centerY() + 11, fill)
         } else {
             text.color = theme.label
             canvas.drawText(query, start, baseline, text)
@@ -218,6 +225,8 @@ class EmojiPanel(private val view: KeyboardView, private val scroller: OverScrol
 
     private companion object {
         const val COLUMNS = 10
+        /** The cell the spec's emoji sizes are set in, on the Duo's cover screen. */
+        const val DUO_CELL = 45.3f
         const val SLOP = 8f
         /** The scroller works in whole numbers; offsets are kept in hundredths of a dp. */
         const val SCALE = 100f
