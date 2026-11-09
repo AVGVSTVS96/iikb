@@ -2,11 +2,14 @@
 
 iikb on Android: the same keyboard, KeyboardCore built for Android with the Swift SDK for Android, under a Kotlin input method that draws and touches as iOS's KeyboardUI does. A sideloaded APK, signed with one release key so each build installs over the last.
 
-- `Package.swift`, `Sources/KeyboardAndroid`: the bridge, a dynamic library `libiikb.so` on KeyboardCore alone (no Foundation but FoundationEssentials, for JSON). `Keyboard` forwards to `TypingEngine` as `FullKeyboardViewController` does; `Bridge.swift` holds the JNI functions Kotlin's `Native` declares; `HostDocument` is the app's field as a `TextDocument`, calling back into Kotlin's `Field` and turning the engine's counts in characters into Android's UTF-16. `Frame` is what Kotlin draws, as JSON.
+- `Package.swift`, `Sources/KeyboardAndroid`: the bridge, a dynamic library `libiikb.so` on KeyboardCore alone (no Foundation but FoundationEssentials, for JSON). `Keyboard` forwards to `TypingEngine` as `FullKeyboardViewController` does; `Bridge.swift` holds the JNI functions Kotlin's `Native` declares; `HostDocument` is the app's field as a `TextDocument`, calling back into Kotlin's `Field` and turning the engine's counts in characters into Android's UTF-16. `Frame` is what Kotlin draws, as JSON. `Clips` holds the clipboard's `ClipboardHistory`, `Gifs` the GIF panel's `GifSearch` and `GifRecents`, and `Swatch` a theme's A and B keycaps.
 - `Sources/CJNI`: `jni.h` from the NDK as a module.
 - `app/`: the Android app (Kotlin, Compose for the app's pages, a plain `View` for the keys).
   - `keyboard/IikbService`: the input method. One event is one batch edit on the field, then a new `Frame`. Suggestions rank on a background thread (`suggestionJob`), as on iOS.
   - `keyboard/KeyboardView`: the bar and keys from the `Frame`, and touches read as `KeyboardView+Touches.swift` reads them; `KeyPainter` paints a key as `KeyView` does; `Glyphs` draws SF Symbols' names with paths of its own (SF Symbols and SF fonts are Apple's alone).
+  - `keyboard/Overlay`: the menu and the panels opened from it (`Menu`, `ClipboardPanel`, `TranscriptsPanel`, `GifPanel`, `LookRows`), drawn with Compose over `KeyboardView`, in the keys' place or, with the keys up, in the bar's. `EmojiPanel` stays on the keys' canvas.
+  - `keyboard/Clips`: the clipboard's history, one per process, so the keyboard and the app's Clipboard tab share it. The keyboard keeps a clip by the time Android says it was copied, never one an app marks sensitive or one copied in a password or incognito field.
+  - `keyboard/Klipy`, `keyboard/Gifs`: KLIPY's GIFs, its key copied into the assets from `Resources/Keys/klipy.key` at build time (out of git); a tapped GIF goes on the clipboard through the app's `FileProvider`, never into the history.
   - `keyboard/Field`: Android's `InputConnection` as the engine reads and edits it. A return the app takes as its action (send, search, go) goes to it as that action.
   - `keyboard/Voice`: voice typing in place, with Android's speech recognizer, typed through the engine as a dictation.
   - `Settings`: the settings, under the names iOS's `SettingsStore` keeps them.
