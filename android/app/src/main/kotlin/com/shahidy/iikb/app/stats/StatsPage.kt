@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,12 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -41,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -49,7 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.ThisDevice
@@ -61,6 +56,9 @@ import com.shahidy.iikb.app.LocalResumes
 import com.shahidy.iikb.app.MicSwitch
 import com.shahidy.iikb.app.Page
 import com.shahidy.iikb.app.Section
+import com.shahidy.iikb.app.Sheet
+import com.shahidy.iikb.app.row
+import com.shahidy.iikb.app.design.isDark
 import com.shahidy.iikb.app.Symbols
 import com.shahidy.iikb.app.Type
 import com.shahidy.iikb.app.design.SectionPills
@@ -201,71 +199,55 @@ private fun Devices(
 }
 
 /** How to share a Mac's stats, and a field for the link it shows, for when the camera can't open its QR code. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddComputer(close: () -> Unit, added: (Computer) -> Unit) {
     val context = LocalContext.current
     val palette = palette()
     var link by rememberSaveable { mutableStateOf("") }
     val computer = Computer.of(Uri.parse(link.trim()))
-    ModalBottomSheet(
-        close, Modifier.navigationBarsPadding().padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-        sheetState = rememberModalBottomSheetState(), containerColor = palette.page, shape = RoundedCornerShape(38.dp),
+    Sheet(
+        "Add Computer", "Add", computer != null, close,
+        confirm = {
+            if (computer != null) {
+                Computers.of(context).add(computer)
+                added(computer)
+            }
+        },
     ) {
-        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-            Row(Modifier.fillMaxWidth().padding(bottom = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                SheetButton("Cancel", true, close)
+        Section(
+            "On your Mac",
+            "Run this in Terminal with Keystroke counting there. It shows a QR code: scan it with your phone’s camera. " +
+                "With Tailscale on both, iikb reaches the Mac anywhere; without it, on the same Wi‑Fi.",
+        ) {
+            Row(Modifier.row(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Add Computer", color = palette.label, fontSize = Type.body, fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center, modifier = Modifier.weight(1f),
+                    COMMAND.breakingAfterSlashes(), color = palette.label, fontSize = Type.footnote, fontFamily = Type.mono,
+                    letterSpacing = 0.sp, modifier = Modifier.weight(1f),
                 )
-                SheetButton("Add", computer != null) {
-                    computer ?: return@SheetButton
-                    Computers.of(context).add(computer)
-                    added(computer)
-                }
+                CopyButton(COMMAND)
             }
-            Column(verticalArrangement = Arrangement.spacedBy(28.dp)) {
-                Section(
-                    "On your Mac",
-                    "Run this in Terminal with Keystroke counting there. It shows a QR code: scan it with your phone’s camera. " +
-                        "With Tailscale on both, iikb reaches the Mac anywhere; without it, on the same Wi‑Fi.",
-                ) {
-                    Row(Modifier.padding(start = 20.dp, end = 12.dp, top = 14.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(COMMAND, color = palette.label, fontSize = 13.sp, fontFamily = Type.mono, modifier = Modifier.weight(1f))
-                        CopyButton(COMMAND)
-                    }
-                }
-                Section(
-                    footer = if (link.isEmpty() || computer != null) {
-                        "Or paste the link it shows."
-                    } else {
-                        "That isn’t a computer’s link: it starts with iikb://computer."
-                    },
-                ) {
-                    FormField(link, "iikb://computer?…", KeyboardOptions(KeyboardCapitalization.None, false, KeyboardType.Uri)) { link = it }
-                }
-            }
+        }
+        Section(
+            footer = if (link.isEmpty() || computer != null) {
+                "Or paste the link it shows."
+            } else {
+                "That isn’t a computer’s link: it starts with iikb://computer."
+            },
+        ) {
+            FormField(link, "iikb://computer?…", KeyboardOptions(KeyboardCapitalization.None, false, KeyboardType.Uri)) { link = it }
         }
     }
 }
 
 private const val COMMAND = "curl -fsSL https://raw.githubusercontent.com/AVGVSTVS96/iikb/main/mac/share | sh"
 
-/** A sheet's Cancel or Add, a glass capsule, dimmed while it can't. */
-@Composable
-private fun SheetButton(title: String, enabled: Boolean, onClick: () -> Unit) {
-    val palette = palette()
-    Box(
-        Modifier.height(44.dp).glass(CircleShape).clip(CircleShape).clickable(enabled, onClick = onClick)
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(title, color = palette.label.copy(alpha = if (enabled) 1f else 0.3f), fontSize = Type.body, fontWeight = FontWeight.Medium)
-    }
-}
+/** An address free to wrap after each slash, where iOS wraps one, as Android otherwise keeps it whole or breaks before them. */
+private fun String.breakingAfterSlashes() = replace(Regex("/(?!/)"), "/\u200B")
 
-/** Copy as iOS's `CopyButton`: its glyph gives way to a green check for a moment once it's copied. */
+/**
+ * Copy as iOS's `CopyButton`: once it's copied the glyph shrinks away as a green check springs in on a green disc and
+ * "Copied" slides out beside it, then it all settles back.
+ */
 @Composable
 private fun CopyButton(text: String) {
     val palette = palette()
@@ -275,20 +257,34 @@ private fun CopyButton(text: String) {
     LaunchedEffect(copies) {
         if (copies == 0) return@LaunchedEffect
         copied = true
-        delay(1550)
+        delay(1600)
         copied = false
     }
     val done by animateFloatAsState(if (copied) 1f else 0f, label = "copied")
-    Box(
-        Modifier.size(34.dp).clip(CircleShape).clickable {
-            copy(context, text)
-            copies++
-        },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(Modifier.size(34.dp).scale(0.4f + 0.6f * done).clip(CircleShape).background(palette.green.copy(alpha = done)))
-        Icon(Symbols["doc.on.doc"], "Copy", tint = palette.secondary.copy(alpha = 1 - done), modifier = Modifier.size(23.dp))
-        Icon(Symbols["checkmark"], null, tint = Color.White.copy(alpha = done), modifier = Modifier.size(17.dp).scale(0.3f + 0.7f * done))
+    val green = if (palette.isDark) palette.green else Color(0xFF248A3D)
+    Box(contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(34.dp).clip(CircleShape).clickable {
+                copy(context, text)
+                copies++
+            },
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(Modifier.size(34.dp).scale(0.4f + 0.6f * done).clip(CircleShape).background(palette.green.copy(alpha = done)))
+            Icon(
+                Symbols["doc.on.doc"], "Copy", tint = palette.label.copy(alpha = 1 - done),
+                modifier = Modifier.size(23.dp).scale(1 - 0.5f * done),
+            )
+            Icon(Symbols["checkmark"], null, tint = Color.White.copy(alpha = done), modifier = Modifier.size(17.dp).scale(0.3f + 0.7f * done))
+        }
+        Text(
+            "Copied", color = green.copy(alpha = done), fontSize = Type.subheadline, fontWeight = FontWeight.SemiBold, maxLines = 1,
+            modifier = Modifier.layout { measurable, _ ->
+                val label = measurable.measure(Constraints())
+                val x = -label.width - (17 + 8).dp.roundToPx() + (10.dp.toPx() * (1 - done)).toInt()
+                layout(0, 0) { label.place(x, -label.height / 2) }
+            },
+        )
     }
 }
 
