@@ -58,6 +58,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.layout.layout
+import kotlin.math.ceil
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -191,9 +193,18 @@ private fun Bubble(message: Chats.Message, above: Boolean, below: Boolean, wides
             }
             .padding(horizontal = 12.dp, vertical = 7.dp),
     ) {
+        val text = remember { arrayOfNulls<TextLayoutResult>(1) }
         Text(
             markdown(message.text), color = if (message.mine) look.accentLabel else look.label,
             style = TextStyle(fontSize = 17.sp, lineHeight = 22.sp),
+            onTextLayout = { text[0] = it },
+            modifier = Modifier.layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
+                val lines = text[0]
+                val width = if (lines == null) placeable.width else
+                    (0 until lines.lineCount).maxOf { ceil(lines.getLineRight(it) - lines.getLineLeft(it)).toInt() }
+                layout(width.coerceIn(constraints.minWidth, placeable.width), placeable.height) { placeable.place(0, 0) }
+            },
         )
     }
 }
