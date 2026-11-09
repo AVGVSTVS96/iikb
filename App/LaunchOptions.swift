@@ -102,12 +102,15 @@ enum LaunchOptions {
     }
 
     /// `-iikbTheme mechanical -iikbThemeAppearance dark -iikbCharacterPreview detached -iikbNumberRow YES -iikbSkinTone medium
-    /// -iikbKeySpacing tighter -iikbKeyRoundness rounder` set the keyboard's look for screenshots.
+    /// -iikbKeySpacing tighter -iikbKeyRoundness rounder -iikbStopAnimation drain` set the keyboard's look for screenshots.
     static func applyLook() {
         var settings = SettingsStore.load()
         if let theme = defaults.string(forKey: "iikbTheme").flatMap(ThemeName.init) { settings.theme = theme }
         if let appearance = defaults.string(forKey: "iikbThemeAppearance").flatMap(ThemeAppearance.init) {
             settings.themeAppearance = appearance
+        }
+        if let stop = defaults.string(forKey: "iikbStopAnimation").flatMap(StopAnimation.init) {
+            settings.stopAnimation = stop
         }
         if let preview = defaults.string(forKey: "iikbCharacterPreview").flatMap(CharacterPreview.init) {
             settings.characterPreview = preview

@@ -156,6 +156,45 @@ final class VoiceTests: XCTestCase {
         app.launch()
     }
 
+    /// Each stop animation, from the bar's mic and from the Record Key, for `scripts/stoptest` to film against
+    /// `scripts/voiceapp.py <id> <group> stops`: two seconds recorded, stopped, written down and typed. IIKB_FILM names
+    /// the file each stop's time goes to, so the film can be cut at it.
+    func testEachStopAnimation() throws {
+        guard let log = ProcessInfo.processInfo.environment["IIKB_FILM"] else {
+            throw XCTSkip("Run through scripts/stoptest")
+        }
+        continueAfterFailure = false
+        let environment = ProcessInfo.processInfo.environment
+        let animations = (environment["IIKB_STOPS"].flatMap { $0.isEmpty ? nil : $0 } ?? "squeeze drain card").split(
+            separator: " "
+        ).map(String.init)
+        let places = (environment["IIKB_PLACES"].flatMap { $0.isEmpty ? nil : $0 } ?? "bar key").split(separator: " ")
+            .map(String.init)
+        var stops = ""
+        let app = XCUIApplication()
+        for place in places {
+            for animation in animations {
+                app.launchArguments = [
+                    "-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off", "-iikbMicKey",
+                    place == "key" ? "YES" : "NO", "-iikbStopAnimation", animation,
+                ]
+                app.launch()
+                XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+                let mic = app.buttons["iikb.mic"].firstMatch
+                XCTAssertTrue(wait { mic.exists && mic.label == "Dictate" })
+                Thread.sleep(forTimeInterval: 1)
+                mic.tap()
+                XCTAssertTrue(wait(for: mic, label: "Stop Dictating", value: nil))
+                Thread.sleep(forTimeInterval: 2.5)
+                stops += "\(place) \(animation) \(Date().timeIntervalSince1970)\n"
+                mic.tap()
+                XCTAssertTrue(wait { mic.label == "Dictate" })
+                Thread.sleep(forTimeInterval: 3)
+            }
+        }
+        try stops.write(toFile: log, atomically: true, encoding: .utf8)
+    }
+
     private func wait(for element: XCUIElement, label: String, value: String?) -> Bool {
         wait {
             element.exists && element.label == label

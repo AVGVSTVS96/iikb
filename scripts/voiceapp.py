@@ -4,7 +4,8 @@ stopped it. The first waits for the model to get ready, and meanwhile the keyboa
 the second records. Then it leaves one for a keyboard that has closed, which isn't typed. The last dictation ends the way a
 quit app does, mid-writing: the status stays, the lock goes. scripts/voiceapp.py <simulator id> <App Group container>
 [listening|saved|waiting|cancel], which holds one state until it's killed, for screenshots of the bar: talking; talking with two
-saved; three saved waiting for the model; or, with cancel, listens from each start until the keyboard cancels. With edited (<transcript id> <file>)..., it answers each dictation in turn with a file's
+saved; three saved waiting for the model; with cancel, listens from each start until the keyboard cancels; or, with
+stops, listens from each start until the keyboard stops it, then writes it down for a second and types it. With edited (<transcript id> <file>)..., it answers each dictation in turn with a file's
 text, left for the keyboard with that transcript's id, so the keyboard follows what it becomes."""
 import fcntl, json, math, os, struct, subprocess, sys, threading, time, uuid
 
@@ -84,6 +85,18 @@ if sys.argv[3:] == ["cancel"]:
         cancelled = notify("-1", f"{prefix}.cancel")
         publish(listening=True)
         listen(cancelled)
+if sys.argv[3:] == ["stops"]:
+    while True:
+        started = notify("-1", f"{prefix}.start")
+        publish()
+        started.wait()
+        finished = notify("-1", f"{prefix}.finish")
+        publish(listening=True)
+        listen(finished)
+        publish(writing=[2.5])
+        time.sleep(1.2)
+        publish()
+        leave("hello", keyboard("finish"))
 if sys.argv[3:4] == ["edited"]:
     for id, said in zip(sys.argv[4::2], sys.argv[5::2]):
         started = notify("-1", f"{prefix}.start")

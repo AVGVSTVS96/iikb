@@ -1,0 +1,48 @@
+#!/bin/bash
+# Runs on the Mac. Films each stop animation (Settings › Appearance), from the bar's mic and from the Record Key, with
+# scripts/voiceapp.py standing in for the app: shots/raw/stop/<place>-<animation>-<appearance>.mp4, each from a second
+# before its stop. STOPS="drain card" and PLACES=key narrow it, APPEARANCES=dark too; OPEN=1 unfolds the iPhone Duo.
+# scripts/stoptest ["iPhone Duo"] [iPhone-Duo]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+NAME=${1:-iPhone Duo}
+TYPE=${2:-iPhone-Duo}
+export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
+ID=$(scripts/sim ensure "$NAME" "$TYPE")
+out=shots/raw/stop
+mkdir -p "$out"
+xcodegen generate -q
+xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
+  -derivedDataPath build/uitest -quiet
+scripts/sim boot "$ID"
+scripts/sim use "$ID" iikb
+[ -n "${OPEN:-}" ] && scripts/sim unfold "$ID"
+scripts/sim allow "$ID"
+group=$(xcrun simctl get_app_container "$ID" com.shahidy.iikb group.com.shahidy.iikb)
+for appearance in ${APPEARANCES:-light dark}; do
+  xcrun simctl ui "$ID" appearance "$appearance"
+  /usr/bin/python3 scripts/voiceapp.py "$ID" "$group" stops &
+  app=$!
+  film=build/uitest/stop-$appearance.mp4
+  rm -f "$film"
+  began=$(python3 -c 'import time; print(time.time())')
+  xcrun simctl io "$ID" recordVideo --display="${DISPLAY_ID:-$([ -n "${OPEN:-}" ] && echo 3 || echo 1)}" --codec=h264 --force "$film" > build/uitest/record.log 2>&1 &
+  recorder=$!
+  sleep 2
+  TEST_RUNNER_IIKB_FILM="$PWD/build/uitest/stops-$appearance.txt" TEST_RUNNER_IIKB_STOPS="${STOPS:-}" \
+    TEST_RUNNER_IIKB_PLACES="${PLACES:-}" \
+    xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb \
+    -destination "id=$ID" -derivedDataPath build/uitest -only-testing:AppUITests/VoiceTests/testEachStopAnimation \
+    > build/uitest/stop.log 2>&1 || failed=1
+  grep -E "error:|XCTAssert|Test Case .*(passed|failed)|Executed" build/uitest/stop.log || true
+  kill -INT "$recorder"
+  wait "$recorder" 2>/dev/null || true
+  kill "$app" 2>/dev/null || true
+  wait "$app" 2>/dev/null || true
+  while read -r place animation at; do
+    ffmpeg -nostdin -v error -y -ss "$(python3 -c "print(max($at - $began - 1.5, 0))")" -t 4.5 -i "$film" \
+      -an "$out/$place-$animation-$appearance.mp4"
+  done < "build/uitest/stops-$appearance.txt"
+done
+[ -n "${KEEP:-}" ] || xcrun simctl shutdown "$ID"
+exit "${failed:-0}"

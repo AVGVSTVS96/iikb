@@ -73,6 +73,60 @@ final class PanelTests: XCTestCase {
     /// Landscape, or the setting, shows the panels as one row.
     private var compact: Bool { compactSetting || orientation == "landscape" }
 
+    /// The menu's Theme and Stop Animation shelves pick the keyboard's look in place, a tap each, and the app's
+    /// Appearance page shows what they picked. With IIKB_SHOTS set, screenshots the menu before and after, and the page.
+    func testTheMenuPicksTheThemeAndStopAnimation() throws {
+        let shots = ProcessInfo.processInfo.environment["IIKB_SHOTS"]
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off", "-iikbTheme", "standard",
+            "-iikbStopAnimation", "squeeze",
+        ]
+        app.launch()
+        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 30), "iikb is not the active keyboard")
+        app.buttons["iikb.more"].tap()
+        let mechanical = app.buttons["iikb.look.theme.mechanical"]
+        let drain = app.buttons["iikb.look.stop.drain"]
+        XCTAssertTrue(app.buttons["iikb.shelf.theme"].waitForExistence(timeout: 3), "the menu has the themes")
+        try shot(shots, "menu-top")
+        let stop = app.buttons["iikb.shelf.stop"]
+        let theme = app.buttons["iikb.shelf.theme"].frame
+        let window = app.windows.firstMatch
+        let origin = window.coordinate(withNormalizedOffset: .zero)
+        origin.withOffset(CGVector(dx: window.frame.width * 0.8, dy: theme.midY))
+            .press(
+                forDuration: 0.1,
+                thenDragTo: origin.withOffset(CGVector(dx: window.frame.width * 0.8, dy: theme.midY - 400)))
+        try shot(shots, "menu-scrolled")
+        XCTAssertTrue(
+            wait { stop.frame.maxY < app.windows.firstMatch.frame.maxY },
+            "a scroll up brings the themes and stop animations: \(stop.frame)")
+        XCTAssertTrue(app.buttons["iikb.look.theme.standard"].isSelected, "with the one in use picked")
+        XCTAssertTrue(app.buttons["iikb.look.stop.squeeze"].isSelected)
+        try shot(shots, "menu-look")
+
+        mechanical.tap()
+        XCTAssertTrue(wait { mechanical.isSelected }, "a tap picks a theme")
+        drain.tap()
+        XCTAssertTrue(wait { drain.isSelected }, "and a stop animation")
+        try shot(shots, "menu-look-picked")
+        app.buttons["iikb.more"].tap()
+        try shot(shots, "menu-look-keys")
+
+        app.terminate()
+        app.launchArguments = ["-iikbSettings", "appearance"]
+        app.launch()
+        Thread.sleep(forTimeInterval: 2)
+        try shot(shots, "menu-look-app")
+        app.terminate()
+        app.launchArguments = [
+            "-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbTheme", "standard", "-iikbStopAnimation",
+            "squeeze",
+        ]
+        app.launch()
+    }
+
     private func launchAndType(_ text: String) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
