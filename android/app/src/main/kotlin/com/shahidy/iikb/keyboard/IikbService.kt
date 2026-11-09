@@ -741,7 +741,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     override fun style(heard: String, app: String?) =
         Native.written(handle, heard.encodeToByteArray(), app?.encodeToByteArray()).decodeToString()
 
-    override fun type(text: String, heard: String, field: Int): Boolean {
+    override fun type(text: String, plain: String, field: Int): Boolean {
         if (field != fieldCount || !isInputViewShown) {
             if (isInputViewShown && field != Dictation.NO_FIELD) {
                 view?.notice = "Not typed here: it’s in Transcripts"
@@ -749,13 +749,19 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             }
             return false
         }
-        event { Native.dictated(handle, text.encodeToByteArray(), heard.encodeToByteArray(), null) }
+        event { Native.dictated(handle, text.encodeToByteArray(), plain.encodeToByteArray(), null) }
         return true
     }
 
     override fun dismissHint() {
         sources.dismissHint()
         render()
+    }
+
+    override fun tell(notice: String) {
+        if (!isInputViewShown) return
+        view?.notice = notice
+        view?.invalidate()
     }
 
     override fun repeatDelete(words: Boolean) = event { Native.deleteRepeat(handle, words) }

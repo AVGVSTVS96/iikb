@@ -90,8 +90,8 @@ fun transcripts(): List<Transcript> {
 private fun Transcript.time(): LocalDateTime =
     Instant.ofEpochMilli((date * 1000).toLong()).atZone(ZoneId.systemDefault()).toLocalDateTime()
 
-/** The text, or that nothing was heard. */
-private val Transcript.shown get() = text.ifEmpty { "Nothing heard" }
+/** The text, or, when the model wrote nothing, what it heard that your editing left out, else that it heard nothing. */
+private val Transcript.shown get() = text.ifEmpty { heard?.let { "Left out: $it" } ?: "Nothing heard" }
 
 /**
  * Every dictation, newest first by day, under a search field and how much and how fast you talk, which opens Stats ›

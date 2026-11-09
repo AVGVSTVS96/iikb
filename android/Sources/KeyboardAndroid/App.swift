@@ -50,14 +50,16 @@ public func keysHere(env: Env, _: jclass, width: jdouble, height: jdouble) -> jb
 }
 
 /// What a dictation heard with your Dictionary (`vocabulary.json`) put on it, as iOS's `VoiceVocabulary` puts it on
-/// every dictation before it's typed.
+/// every dictation before it's typed, with the English lexicon, so a made-up word that sounds like a term becomes it.
 @_cdecl("Java_com_shahidy_iikb_Vocabulary_corrected")
-public func corrected(env: Env, _: jclass, text: jbyteArray?, vocabulary: jbyteArray?) -> jbyteArray? {
+public func corrected(env: Env, _: jclass, text: jbyteArray?, vocabulary: jbyteArray?, lexicon: jobject?) -> jbyteArray?
+{
     let text = env.string(text) ?? ""
     guard let vocabulary = try? JSONDecoder().decode(Vocabulary.self, from: Data(env.bytes(vocabulary))) else {
         return env.array(text)
     }
-    return env.array(vocabulary.corrected(text))
+    let lexicon = env.direct(lexicon).flatMap { Lexicon(bytes: Bytes($0, owner: Mapped())) }
+    return env.array(vocabulary.corrected(text, lexicon: lexicon))
 }
 
 /// The taps the keyboard has learned where your thumbs land, from its saved memory (`typing-memory.json`).

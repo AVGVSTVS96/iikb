@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import com.shahidy.iikb.Transcript
 import com.shahidy.iikb.Transcripts
+import com.shahidy.iikb.Vocabulary
 import java.util.UUID
 import java.util.concurrent.Executors
 
@@ -20,8 +21,14 @@ class Dictation(context: Context, private val typist: Typist) {
         /** What iikb types for what the model heard, in the Writing Style picked for [app]. */
         fun style(heard: String, app: String?): String
 
-        /** Types it if the field it was said in, [field], is still the keyboard's; false if not. */
-        fun type(text: String, heard: String, field: Int): Boolean
+        /**
+         * Types [text] if the field it was said in, [field], is still the keyboard's; false if not. [plain] is what the
+         * model wrote with only your Dictionary on it, which a field of addresses or digits reads instead.
+         */
+        fun type(text: String, plain: String, field: Int): Boolean
+
+        /** Says something about a dictation in the keyboard's bar, if it's up. */
+        fun tell(notice: String)
     }
 
     enum class Phase { OFF, LISTENING, WRITING }
@@ -131,6 +138,7 @@ class Dictation(context: Context, private val typist: Typist) {
         } else {
             val recording = microphone.stop()
             take.recording = recording
+            if (!canceled && recording.deaf) typist.tell("The microphone gave no sound: tap the mic again")
             val file = Transcripts.recording(take.id)
             writer.execute { recording.write(file) }
             queue.add(take)
@@ -151,7 +159,12 @@ class Dictation(context: Context, private val typist: Typist) {
         if (take === listening) listening = null
         speaking = null
         val seconds = (System.currentTimeMillis() - take.date) / 1000.0
-        if (!heard.isNullOrEmpty() && !closed) deliver(take, heard, seconds, VoiceModel.Model.ANDROID.title)
+        if (closed) return onChange()
+        if (!heard.isNullOrEmpty()) {
+            deliver(take, heard, seconds, VoiceModel.Model.ANDROID.title)
+        } else if (!take.canceled) {
+            typist.tell("${VoiceModel.Model.ANDROID.title} heard nothing")
+        }
         onChange()
     }
 
@@ -178,9 +191,18 @@ class Dictation(context: Context, private val typist: Typist) {
         }
     }
 
+    /**
+     * Keeps a dictation in Transcripts, typed as your Writing Style and then your Dictionary have it (iOS's
+     * `DictationWriting.typed`) unless you canceled it. One the model heard nothing in is kept too, with its sound,
+     * and the bar says where it is, as on iOS.
+     */
     private fun deliver(take: Take, heard: String, seconds: Double, model: String) {
-        val text = if (heard.isEmpty()) "" else typist.style(heard, take.app)
-        val typed = !take.canceled && text.isNotEmpty() && typist.type(text, heard, take.field)
+        val text = if (heard.isEmpty()) "" else Vocabulary.corrected(typist.style(heard, take.app))
+        val meant = !take.canceled && take.field != NO_FIELD
+        if (meant && text.isEmpty() && take.recording?.deaf != true) {
+            typist.tell("$model heard nothing: it’s in Transcripts")
+        }
+        val typed = meant && (text.isEmpty() || typist.type(text, Vocabulary.corrected(heard), take.field))
         Transcripts.add(
             Transcript(
                 id = take.id, date = take.date / 1000.0, text = text, seconds = seconds, typed = typed,
