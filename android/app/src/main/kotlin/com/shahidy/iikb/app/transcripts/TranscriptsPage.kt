@@ -321,7 +321,7 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
     Page("Transcript", back, actions = { MicSwitch() }) {
         Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Text(
-                transcript.time().format(DateTimeFormatter.ofPattern("EEEE, MMM d, h:mm a")), color = palette.secondary,
+                transcript.time().format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a")), color = palette.secondary,
                 fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 4.dp),
             )
             SelectionContainer {

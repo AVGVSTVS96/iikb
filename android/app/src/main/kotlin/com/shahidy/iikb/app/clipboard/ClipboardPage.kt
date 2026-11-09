@@ -193,7 +193,7 @@ private fun shareImage(context: Context, clips: Clips, image: String) {
 }
 
 private val clock = DateTimeFormatter.ofPattern("h:mm a")
-private val dated = DateTimeFormatter.ofPattern("MMM d, h:mm a")
+private val dated = DateTimeFormatter.ofPattern("MMM d 'at' h:mm a")
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
