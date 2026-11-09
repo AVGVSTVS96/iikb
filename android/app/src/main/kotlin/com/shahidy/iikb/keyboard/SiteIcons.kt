@@ -64,7 +64,6 @@ object SiteIcons {
             return try {
                 connection.connectTimeout = 8000
                 connection.readTimeout = 8000
-                connection.setRequestProperty("User-Agent", "iikb")
                 val code = connection.responseCode
                 answered = true
                 if (code == 200) connection.inputStream.use { it.readBytes() } else null

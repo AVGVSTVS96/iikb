@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -46,7 +45,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.Settings
@@ -264,19 +266,22 @@ private fun Badge(row: Clips.Row, copied: Boolean, clips: Clips, copy: (Clips.Ro
     Box {
         Row(
             Modifier.height(34.dp).clip(CircleShape).background(palette.card).border(BorderStroke(1.dp, palette.edge), CircleShape)
-                .combinedClickable(onLongClick = { menu = true }) { copy(row) }.padding(start = 8.dp, end = 12.dp),
+                .combinedClickable(onLongClick = { menu = true }) { copy(row) }.padding(start = 9.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Box(
-                Modifier.size(20.dp).clip(RoundedCornerShape(5.dp)).background(Color.White)
-                    .border(0.5.dp, Color(0x22000000), RoundedCornerShape(5.dp)),
-                contentAlignment = Alignment.Center,
-            ) { SiteIcon(row.site) }
-            Text(row.name ?: row.site ?: "", color = palette.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Box(Modifier.size(18.dp)) { SiteIcon(row.site) }
+            val name = row.name ?: row.site ?: ""
             if (copied) {
+                Text(name, color = palette.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 Icon(glyph("M6 12.5l4 4L18 8", 2.4f), "Copied", tint = palette.secondary, modifier = Modifier.size(14.dp))
             } else {
-                Text("· ${row.age}", color = palette.secondary, fontSize = 15.sp, maxLines = 1)
+                Text(
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(color = palette.label, fontWeight = FontWeight.SemiBold)) { append(name) }
+                        withStyle(SpanStyle(color = palette.secondary)) { append(" · ${row.age}") }
+                    },
+                    style = TextStyle(fontSize = 15.sp, fontFeatureSettings = "tnum"), maxLines = 1,
+                )
             }
             if (row.pinned) Icon(Symbols["pin.fill"], "Pinned", tint = palette.secondary, modifier = Modifier.size(15.dp))
         }
