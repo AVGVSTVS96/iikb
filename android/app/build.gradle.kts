@@ -98,6 +98,47 @@ val keys = tasks.register<Keys>("keys") {
     output = layout.buildDirectory.dir("generated/keys")
 }
 
+/**
+ * Settings › Changelog's `changelog.json`: each change with its build and day, newest first, from commits' `Changelog:`
+ * trailers and App/Settings/changelog.tsv, as scripts/phone writes iOS's `IIKBChangelog`.
+ */
+abstract class Changelog : DefaultTask() {
+    @get:Input abstract val head: Property<String>
+    @get:Internal abstract val repo: DirectoryProperty
+    @get:OutputDirectory abstract val output: DirectoryProperty
+
+    private fun git(vararg args: String): String {
+        val process = ProcessBuilder("git", "-C", repo.get().asFile.path, *args).redirectErrorStream(true).start()
+        return process.inputStream.bufferedReader().readText().also { process.waitFor() }
+    }
+
+    @TaskAction
+    fun write() {
+        val entries = git("log", "--format=%h%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)").lines()
+            .filter { it.isNotBlank() }
+            .flatMap { line ->
+                val (sha, day, trailers) = line.split("\u001f")
+                trailers.split("\u001e").filter { it.isNotBlank() }.map { Triple(sha, day, it.trim()) }
+            } + repo.get().asFile.resolve("App/Settings/changelog.tsv").readLines().filter { it.isNotBlank() }.map { line ->
+                val (sha, change) = line.split("\t", limit = 2)
+                Triple(sha, git("log", "-1", "--format=%cs", sha).trim(), change)
+            }
+        val rows = entries.map { (sha, day, change) ->
+            mapOf("build" to git("rev-list", "--count", sha).trim().toInt(), "date" to day, "change" to change)
+        }.sortedByDescending { it["build"] as Int }.take(60)
+        val out = output.get().asFile.apply { deleteRecursively(); mkdirs() }
+        out.resolve("changelog.json").writeText(groovy.json.JsonOutput.toJson(rows))
+    }
+}
+
+val commit = providers.exec { commandLine("git", "-C", repo.path, "rev-parse", "HEAD") }.standardOutput.asText.map { it.trim() }
+val checkout = layout.dir(provider { repo })
+val changelog = tasks.register<Changelog>("changelog") {
+    head = commit
+    this.repo = checkout
+    output = layout.buildDirectory.dir("generated/changelog")
+}
+
 val swift = tasks.register<SwiftLibrary>("swiftLibrary") {
     pkg = rootProject.layout.projectDirectory
     sources.from(
@@ -112,6 +153,7 @@ androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(swift, SwiftLibrary::output)
         variant.sources.assets?.addGeneratedSourceDirectory(keys, Keys::output)
+        variant.sources.assets?.addGeneratedSourceDirectory(changelog, Changelog::output)
         variant.sources.assets?.addStaticSourceDirectory(
             repo.resolve("Packages/KeyboardModules/Sources/KeyboardEnglish/Resources").path,
         )
