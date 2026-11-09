@@ -50,6 +50,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         fun edit(name: String)
         /** A chat's pill in the bar, by its place in the list. */
         fun chat(index: Int)
+        /** The one-handed keyboard's chevron: both hands back. */
+        fun expand()
         fun emojiResults(): List<String>
         fun tones(emoji: String): List<String>
     }
@@ -166,6 +168,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             if (cap.action == "dictate" && frame.toolbar.mic == null) mic.drawKey(canvas, cap, frame, index in pressed)
             else painter.draw(canvas, cap, frame.look, frame.theme, index in pressed, !trackpad, flicked)
         }
+        frame.expander?.let { drawExpander(canvas, frame, it) }
         touches.values.firstOrNull { it.mode == Mode.SWIPE }?.let { drawTrail(canvas, it, frame) }
         preview(frame)?.let { drawCallout(canvas, frame, it) }
         accents?.let { drawAccents(canvas, frame, it) }
@@ -398,6 +401,33 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         return label
     }
 
+    /** The chevron, a stroke pointing toward the keys' empty side, as iOS's `ExpanderView` draws it. */
+    private fun drawExpander(canvas: Canvas, frame: Frame, expander: Expander) {
+        trail.color = frame.theme.expander
+        trail.strokeWidth = 16f / 3
+        val inset = trail.strokeWidth / 2
+        val top = (expander.y + inset).toFloat()
+        val bottom = (expander.y + expander.height - inset).toFloat()
+        val left = (expander.x + inset).toFloat()
+        val right = (expander.x + expander.width - inset).toFloat()
+        val (tip, tail) = if (expander.pointsRight) right to left else left to right
+        val path = android.graphics.Path().apply {
+            moveTo(tail, top)
+            lineTo(tip, (top + bottom) / 2)
+            lineTo(tail, bottom)
+        }
+        canvas.drawPath(path, trail)
+    }
+
+    /** The column the chevron takes taps in, down the keyboard: from its middle to the keyboard's edge on its side. */
+    private fun expanderColumn(frame: Frame): Pair<Float, Float>? {
+        val expander = frame.expander ?: return null
+        val column = maxOf(44.0, expander.width)
+        val mid = expander.x + expander.width / 2
+        return if (expander.pointsRight) (mid - column / 2).toFloat() to frame.width.toFloat()
+        else 0f to (mid + column / 2).toFloat()
+    }
+
     private fun barTarget(frame: Frame, x: Float, y: Float): String? {
         val bar = frame.toolbar
         bar.more?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "more" }
@@ -525,6 +555,11 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
 
     private fun begin(frame: Frame, id: Int, x: Float, y: Float) {
         val keyY = y - keysTop
+        if (!keysHidden && keyY >= 0 && expanderColumn(frame)?.let { x >= it.first && x <= it.second } == true) {
+            actions.feedback(Feedback.Kind.OTHER)
+            actions.expand()
+            return
+        }
         if (keyY < -TOP_ROW_REACH || keysHidden) {
             val target = barTarget(frame, x, y) ?: return
             barPointer = id
@@ -798,12 +833,12 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val cellHeight = (frame.look.keyHeight + 4).toFloat()
         val left = accents.box.left + accents.padding + accents.selected * accents.cell
         val top = accents.box.centerY() - cellHeight / 2
-        fill.color = frame.theme.prominent
+        fill.color = frame.theme.selection
         canvas.drawRoundRect(RectF(left, top, left + accents.cell, top + cellHeight), r * 1.25f, r * 1.25f, fill)
         text.typeface = painter.letters
         text.textSize = frame.look.letterSize.toFloat()
         for ((index, option) in accents.options.withIndex()) {
-            val color = if (index == accents.selected) frame.theme.prominentLabel else frame.theme.bubbleLabel
+            val color = if (index == accents.selected) frame.theme.selectionLabel else frame.theme.bubbleLabel
             val cx = accents.box.left + accents.padding + accents.cell * (index + 0.5f)
             if (accents.symbols) {
                 fill.color = color

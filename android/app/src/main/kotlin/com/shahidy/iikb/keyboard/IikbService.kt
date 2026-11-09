@@ -647,6 +647,18 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             "globe" -> switchToNextInputMethod(false)
         }
         event { Native.menu(handle, item) }
+        keepOneHanded()
+    }
+
+    override fun expand() {
+        event { Native.expand(handle) }
+        keepOneHanded()
+    }
+
+    /** A one-handed side picked on the keyboard is saved as the setting, as iOS saves it, so it outlives the next change. */
+    private fun keepOneHanded() {
+        val side = Native.oneHanded(handle)?.decodeToString() ?: return
+        if (side != settings.string("oneHanded")) settings.set("oneHanded", side)
     }
 
     override fun select(slot: Int) {

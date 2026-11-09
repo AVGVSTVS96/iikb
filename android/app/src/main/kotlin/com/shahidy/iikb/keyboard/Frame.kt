@@ -22,6 +22,8 @@ data class Frame(
     val panel: String? = null,
     val query: String,
     val uppercase: Boolean,
+    /** The chevron in a one-handed keyboard's margin that brings both hands back, in the keys' dp. */
+    val expander: Expander? = null,
 ) {
     companion object {
         private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
@@ -58,6 +60,8 @@ data class Cap(
 }
 
 @Serializable data class Chip(val text: String, val kind: String)
+
+@Serializable data class Expander(val x: Double, val y: Double, val width: Double, val height: Double, val pointsRight: Boolean)
 
 @Serializable data class Box(val x: Double, val y: Double, val width: Double, val height: Double) {
     fun contains(px: Double, py: Double) = px >= x && px < x + width && py >= y && py < y + height

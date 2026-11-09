@@ -163,6 +163,7 @@ private object Still : KeyboardView.Actions {
     override fun more() {}
     override fun mic() {}
     override fun chat(index: Int) {}
+    override fun expand() {}
     override fun cancelDictation() {}
     override fun dismissHint() {}
     override fun repeatDelete(words: Boolean) {}

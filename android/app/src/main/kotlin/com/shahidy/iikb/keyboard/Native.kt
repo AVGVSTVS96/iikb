@@ -35,6 +35,8 @@ object Native {
     @JvmStatic external fun crossed(handle: Long, step: Int): ByteArray?
     @JvmStatic external fun menu(handle: Long, item: Int)
     @JvmStatic external fun select(handle: Long, index: Int)
+    @JvmStatic external fun expand(handle: Long)
+    @JvmStatic external fun oneHanded(handle: Long): ByteArray?
     @JvmStatic external fun acceptEmoji(handle: Long, emoji: ByteArray)
     @JvmStatic external fun pickEmoji(handle: Long, emoji: ByteArray, base: ByteArray?)
     @JvmStatic external fun paste(handle: Long, text: ByteArray)

@@ -136,7 +136,12 @@ final class Keyboard {
             menuCurrent: items.firstIndex(of: context.menuPick),
             panel: engine.panel.map { "\($0)" },
             query: engine.query,
-            uppercase: uppercase
+            uppercase: uppercase,
+            expander: grid.expander.map {
+                Expander(
+                    x: $0.frame.x, y: $0.frame.y, width: $0.frame.width, height: $0.frame.height,
+                    pointsRight: $0.pointsRight)
+            }
         )
     }
 

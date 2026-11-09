@@ -166,6 +166,18 @@ public func menu(env: Env, _: jclass, handle: jlong, item: jint) {
     }
 }
 
+/// The one-handed keyboard's chevron: both hands back.
+@_cdecl("Java_com_shahidy_iikb_keyboard_Native_expand")
+public func expand(env: Env, _: jclass, handle: jlong) {
+    with(env, handle) { $0.handle(.oneHanded(.off)) }
+}
+
+/// The one-handed side the engine is on now, as the setting saves it, so a pick from the menu outlives the next change.
+@_cdecl("Java_com_shahidy_iikb_keyboard_Native_oneHanded")
+public func oneHanded(env: Env, _: jclass, handle: jlong) -> jbyteArray? {
+    with(env, handle) { env.array($0.engine.settings.oneHanded.rawValue) }
+}
+
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_select")
 public func select(env: Env, _: jclass, handle: jlong, index: jint) {
     with(env, handle) { keyboard in

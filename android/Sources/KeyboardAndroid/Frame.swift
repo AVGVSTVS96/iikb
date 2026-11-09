@@ -21,6 +21,13 @@ struct Frame: Encodable {
     var panel: String?
     var query: String
     var uppercase: Bool
+    /// The chevron in a one-handed keyboard's margin that brings both hands back, in the keys' points.
+    var expander: Expander?
+}
+
+struct Expander: Encodable {
+    var x, y, width, height: Double
+    var pointsRight: Bool
 }
 
 struct Cap: Encodable {
