@@ -139,6 +139,7 @@ private object Still : KeyboardView.Actions {
     override fun acceptEmoji(emoji: String) {}
     override fun more() {}
     override fun mic() {}
+    override fun chat(index: Int) {}
     override fun cancelDictation() {}
     override fun repeatDelete(words: Boolean) {}
     override fun feedback(kind: Feedback.Kind) {}

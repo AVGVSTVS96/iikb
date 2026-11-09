@@ -72,6 +72,9 @@ object Glyphs {
         "text.bubble" to stroke(
             "M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-4.5 3.5V17H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z M7.5 8.5h9M7.5 12h6",
         ),
+        "bubble.left.and.bubble.right" to stroke(
+            "M4 8h9a2 2 0 0 1 2 2v5.5a2 2 0 0 1-2 2H8l-3.5 3v-3H4a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z M9 8V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v5.5a2 2 0 0 1-2 2h-.5v3l-3.5-3H15",
+        ),
         "clock" to stroke("M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0Z M12 7v5l3 2"),
         "drop.fill" to fill("M12 2.8c3.6 4.6 6.3 8.4 6.3 11.6a6.3 6.3 0 0 1-12.6 0c0-3.2 2.7-7 6.3-11.6Z"),
         "rectangle.arrowtriangle.2.inward" to stroke(

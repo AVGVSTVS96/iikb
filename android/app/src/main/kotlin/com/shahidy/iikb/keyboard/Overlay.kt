@@ -36,7 +36,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
  * keys up), drawn with Compose over [KeyboardView], which keeps drawing the bar and keys around it. Sizes are dp, and
  * text is dp too, as the keys' is, whatever the phone's font size.
  */
-class Overlay(context: Context, private val actions: Actions, private val gifs: Gifs?) {
+class Overlay(context: Context, private val actions: Actions, private val gifs: Gifs?, private val chats: Chats) {
     interface Actions {
         fun paste(text: String)
         fun open(panel: String)
@@ -49,12 +49,24 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         fun copyGif(gif: Gif, search: String)
         /** A GIF held: it lifts out of the keyboard to drop into the app's field as the GIF itself. */
         fun dragGif(gif: Gif, search: String)
+        /** A chat picked on the menu's shelf: it opens, with its line in place of the app's field. */
+        fun openChat(id: String)
+        /** The chat's messages tapped with the keys up: they go down, so there's room to read. */
+        fun browse()
+        /** The send button, with the keys down: what's in the chat's line goes. */
+        fun send()
     }
+
+    /** An open chat's message line, which the keys type into, and its caret. */
+    @kotlinx.serialization.Serializable
+    data class Line(val text: String, val caret: Int)
 
     /** What's shown: the menu, or a panel by its KeyboardCore name, with its search and whether the keys are up. */
     data class State(
         val colors: Colors, val minX: Float, val maxX: Float, val panel: String?, val query: String, val keysUp: Boolean,
-        val field: Float, val width: Float,
+        val field: Float, val width: Float, val line: Line? = null,
+        /** The menu has a Chats shelf: an extension is added, and the keyboard is a phone's width or more. */
+        val chats: Boolean = false,
     ) {
         /** The space from the keys block's right edge to the keyboard's, which a panel keeps clear as on the left. */
         val endInset get() = width - maxX
@@ -70,7 +82,9 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
                 LocalColors provides state.colors,
                 LocalActions provides actions,
                 LocalGifs provides gifs,
+                LocalChats provides chats,
             ) {
+                if (state.line != null) return@CompositionLocalProvider ChatPanel(state, state.line)
                 when (state.panel) {
                     null -> Menu(state)
                     "clipboard" -> ClipboardPanel(state)
@@ -111,12 +125,12 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
 /** The theme's colors, as the overlay paints with them. */
 data class Colors(
     val card: Color, val label: Color, val secondary: Color, val key: Color, val keyLabel: Color, val field: Color,
-    val accent: Color, val pill: Color, val shadow: Color, val record: Color, val dark: Boolean,
+    val accent: Color, val accentLabel: Color, val pill: Color, val shadow: Color, val record: Color, val dark: Boolean,
 ) {
     companion object {
         fun of(theme: Theme) = Colors(
             Color(theme.card), Color(theme.label), Color(theme.candidate), Color(theme.letter.top),
-            Color(theme.letter.label), Color(theme.searchField), Color(theme.prominent), Color(theme.candidatePill),
+            Color(theme.letter.label), Color(theme.searchField), Color(theme.prominent), Color(theme.prominentLabel), Color(theme.candidatePill),
             Color(theme.shadow), Color(theme.record), androidx.core.graphics.ColorUtils.calculateLuminance(theme.card) < 0.5,
         )
     }

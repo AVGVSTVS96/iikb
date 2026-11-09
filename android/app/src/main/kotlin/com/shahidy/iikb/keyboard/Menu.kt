@@ -44,7 +44,7 @@ fun Menu(state: Overlay.State) {
     val look = LocalColors.current
     val actions = LocalActions.current
     val gifs = LocalGifs.current
-    val shelves = Shelf.entries.filter { it != Shelf.GIFS || gifs != null }
+    val shelves = Shelf.entries.filter { (it != Shelf.GIFS || gifs != null) && (it != Shelf.CHATS || state.chats) }
     BoxWithConstraints(Modifier.fillMaxSize().background(look.card)) {
         val count = shelves.size
         val room = maxHeight.value - HEAD - GAP * (count + 1) - (HEAD + HEAD_GAP) * count
@@ -54,13 +54,16 @@ fun Menu(state: Overlay.State) {
                 .padding(start = state.minX.dp, end = (maxWidth.value - state.maxX).dp, top = GAP.dp),
         ) {
             for (shelf in shelves) {
-                ShelfHead(shelf.title, shelf.glyph, shelf.color) { actions.open(shelf.panel) }
+                ShelfHead(shelf.title, shelf.glyph, shelf.color) {
+                    if (shelf == Shelf.CHATS) actions.openChat("") else actions.open(shelf.panel)
+                }
                 Spacer(Modifier.height(HEAD_GAP.dp))
                 Box(Modifier.fillMaxWidth().height(row)) {
                     when (shelf) {
                         Shelf.CLIPBOARD -> ClipShelf(row)
                         Shelf.TRANSCRIPTS -> TranscriptShelf()
                         Shelf.GIFS -> GifShelf(row)
+                        Shelf.CHATS -> ChatShelf()
                     }
                 }
                 Spacer(Modifier.height(GAP.dp))
@@ -88,6 +91,7 @@ enum class Shelf(val title: String, val panel: String, val glyph: String, val co
     CLIPBOARD("Clipboard", "clipboard", "doc.on.clipboard", Color(0xFFFF9500)),
     TRANSCRIPTS("Transcripts", "transcripts", "text.bubble", Color(0xFFFF2D55)),
     GIFS("GIFs", "gif", "photo", Color(0xFFAF52DE)),
+    CHATS("Chats", "chats", "bubble.left.and.bubble.right", Color(0xFF5856D6)),
 }
 
 /** A shelf's name: its glyph on a colored tile, then the name and a chevron; a tap opens its panel. */

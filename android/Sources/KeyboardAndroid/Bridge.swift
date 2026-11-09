@@ -170,7 +170,7 @@ public func select(env: Env, _: jclass, handle: jlong, index: jint) {
     with(env, handle) { keyboard in
         let suggestions = keyboard.engine.suggestions
         guard suggestions.indices.contains(Int(index)) else { return }
-        keyboard.engine.accept(suggestions[Int(index)], in: keyboard.document)
+        keyboard.engine.accept(suggestions[Int(index)], in: keyboard.typing)
     }
 }
 
@@ -178,7 +178,7 @@ public func select(env: Env, _: jclass, handle: jlong, index: jint) {
 public func acceptEmoji(env: Env, _: jclass, handle: jlong, emoji: jbyteArray?) {
     with(env, handle) { keyboard in
         guard let emoji = env.string(emoji) else { return }
-        keyboard.engine.accept(emoji: emoji, in: keyboard.document)
+        keyboard.engine.accept(emoji: emoji, in: keyboard.typing)
     }
 }
 
@@ -240,9 +240,9 @@ public func dictated(env: Env, _: jclass, handle: jlong, text: jbyteArray?, plai
 public func deleteRepeat(env: Env, _: jclass, handle: jlong, words: jboolean) {
     with(env, handle) { keyboard in
         if words != 0 {
-            keyboard.engine.deleteWord(in: keyboard.document)
+            keyboard.engine.deleteWord(in: keyboard.typing)
         } else {
-            keyboard.engine.perform(.delete, in: keyboard.document)
+            keyboard.engine.perform(.delete, in: keyboard.typing)
         }
     }
 }
@@ -250,7 +250,7 @@ public func deleteRepeat(env: Env, _: jclass, handle: jlong, words: jboolean) {
 /// The app changed the field, or the caret moved. True when it was a change the keyboard didn't make.
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_documentChanged")
 public func documentChanged(env: Env, _: jclass, handle: jlong) -> jboolean {
-    with(env, handle) { $0.engine.documentChanged($0.document) == .changed ? 1 : 0 }
+    with(env, handle) { $0.engine.documentChanged($0.typing) == .changed ? 1 : 0 }
 }
 
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_leaveField")

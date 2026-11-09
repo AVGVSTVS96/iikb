@@ -74,6 +74,13 @@ object Native {
     @JvmStatic external fun length(text: ByteArray, words: Boolean): ByteArray
     @JvmStatic external fun swatch(name: ByteArray, appearance: ByteArray, dark: Boolean): ByteArray
 
+    // A chat's message line (Line.swift)
+    @JvmStatic external fun lineOpen(handle: Long, text: ByteArray?)
+    @JvmStatic external fun lineClose(handle: Long)
+    @JvmStatic external fun lineState(handle: Long): ByteArray?
+    @JvmStatic external fun lineTake(handle: Long): ByteArray?
+    @JvmStatic external fun lineRestore(handle: Long, text: ByteArray?)
+
     // Stats (Stats.swift)
     @JvmStatic external fun typingLog(): Long
     @JvmStatic external fun noteTyping(log: Long, handle: Long, time: Double, day: ByteArray, hour: Int, app: ByteArray?)

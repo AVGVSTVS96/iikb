@@ -6,6 +6,10 @@ import KeyboardCore
 final class Keyboard {
     var engine = TypingEngine()
     let document: HostDocument
+    /// A chat's message line while one is open, which the keys type into in place of the app's field.
+    var line: LineDocument?
+    /// What the keys type into: the open chat's line, or the app's field.
+    var typing: any TextDocument { line ?? document }
     private var grid = KeyGrid()
     private var context: LayoutContext?
     private var geometry: KeyboardGeometry?
@@ -154,7 +158,7 @@ final class Keyboard {
 
     @discardableResult
     func handle(_ event: KeyboardEvent) -> Bool {
-        engine.handle(event, in: document)
+        engine.handle(event, in: typing)
     }
 
     /// The emoji panel's results for its search: what you pick most, then every emoji, or what the search finds.

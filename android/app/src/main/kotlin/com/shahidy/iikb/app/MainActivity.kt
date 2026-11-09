@@ -1,6 +1,8 @@
 package com.shahidy.iikb.app
 
 import android.Manifest
+import android.app.AlertDialog
+import android.net.Uri
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -17,6 +19,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.shahidy.iikb.Extension
+import com.shahidy.iikb.Extensions
 import com.shahidy.iikb.Settings
 import com.shahidy.iikb.app.clipboard.keepCopied
 import com.shahidy.iikb.keyboard.IikbService
@@ -45,11 +49,25 @@ class MainActivity : ComponentActivity() {
             }
         }
         if (page == VOICE && !setup.microphone) microphone.launch(Manifest.permission.RECORD_AUDIO)
+        offer(intent)
+    }
+
+    /** An extension's link (docs/extensions.md) asks before its chats open from the keyboard's menu. */
+    private fun offer(intent: Intent) {
+        val added = intent.data?.let(Extension::of) ?: return
+        setIntent(Intent(this, MainActivity::class.java))
+        AlertDialog.Builder(this)
+            .setTitle("Add “${added.name}”?")
+            .setMessage("Its chats open from the keyboard’s menu, and what you write in them goes to ${Uri.parse(added.url).host}.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Add") { _, _ -> Extensions.add(this, added) }
+            .show()
     }
 
     /** The keyboard opens a page of the app it's already running, like Appearance from the menu's Theme row. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        offer(intent)
         if (intent.getStringExtra(PAGE) != null) {
             setIntent(intent)
             recreate()

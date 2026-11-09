@@ -23,6 +23,7 @@ import com.shahidy.iikb.Settings
 import com.shahidy.iikb.TypingStats
 import com.shahidy.iikb.app.MainActivity
 import com.shahidy.iikb.voice.Dictation
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -49,6 +50,13 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     private var menuOpen = false
     /** A panel opened from the menu has the keys up under it, typing into its search. */
     private var keysUp = false
+    private lateinit var chats: Chats
+    /** A chat is open, its message line in the app's field's place, which the keys type into (`Native.lineOpen`). */
+    private var chatOpen = false
+    /** What you'd begun in each chat you switched away from, by chat id. */
+    private val drafts = mutableMapOf<String, String>()
+    /** The menu's Chats shelf is following the chats' list. */
+    private var listing = false
     private var feedback: Feedback? = null
     private lateinit var dictation: Dictation
     /** The field being typed in, counted up each time the keyboard starts in a new one, so a dictation lands only in its own. */
@@ -84,6 +92,8 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         clipboard = getSystemService(ClipboardManager::class.java)
         clipboard.addPrimaryClipChangedListener(copied)
         gifs = Klipy.of(this)?.let { Gifs(this, it) }
+        chats = Chats(this)
+        chats.changed = ::render
         dictation = Dictation(this, this)
         dictation.onChange = ::showDictation
         dictation.onLevel = { view?.mic?.hear(it, dictation.recorded) }
@@ -115,6 +125,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         clipboard.removePrimaryClipChangedListener(copied)
         overlay?.destroy()
         gifs?.close()
+        chats.close()
         save()
         TypingStats.append(Native.takeTyping(typing))
         dictation.close()
@@ -160,7 +171,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             place()
             insets
         }
-        val overlay = Overlay(this, this, gifs)
+        val overlay = Overlay(this, this, gifs, chats)
         this.overlay = overlay
         overlay.view.visibility = View.GONE
         val root = FrameLayout(this)
@@ -180,6 +191,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             fieldCount++
         }
         app = info.packageName
+        chats.reload()
         Native.changeApp(handle, app?.encodeToByteArray())
         traits(info)
         place()
@@ -191,6 +203,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
 
     override fun onFinishInputView(finishingInput: Boolean) {
         dictation.stop()
+        leaveChat()
         menuOpen = false
         keysUp = false
         Native.panel(handle, null)
@@ -312,37 +325,41 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     private fun render() {
         val view = view ?: return
         val frame = Frame.parse(Native.frame(handle))
-        if (frame.panel == null) keysUp = false
-        val fromMenu = frame.panel in setOf("clipboard", "transcripts", "gif")
-        val menuShown = menuOpen && frame.panel == null
+        val chat = chatOpen
+        if (frame.panel == null && !chat) keysUp = false
+        val fromMenu = chat || frame.panel in setOf("clipboard", "transcripts", "gif")
+        val menuShown = menuOpen && frame.panel == null && !chat
         val inPlace = fromMenu && !keysUp
         val metrics = resources.displayMetrics
         val normal = (frame.toolbar.height + frame.height).toFloat()
-        view.grown = if (menuShown) maxOf(normal, metrics.heightPixels / metrics.density - ROOM_FOR_APP) else 0f
+        view.grown = if (menuShown || chat) maxOf(normal, metrics.heightPixels / metrics.density - ROOM_FOR_APP) else 0f
         view.keysHidden = menuShown || inPlace
         view.barCovered = fromMenu && keysUp
         view.moreOn = menuShown || inPlace
         view.edits = if (menuShown) edits() else null
+        view.chats = if (chat && !keysUp) chats.list.map { it.name } else null
+        view.openChat = chats.list.indexOf(chats.open).takeIf { it >= 0 }
         view.frame = frame
         follow(frame, menuShown)
-        place(frame, menuShown, fromMenu, inPlace)
+        listChats(menuShown && hasChats(frame))
+        place(frame, menuShown, fromMenu, inPlace, hasChats(frame))
         rank()
     }
 
     /** The overlay in the keys' place for the menu or a panel opened from it, or in the bar's with the keys up. */
-    private fun place(frame: Frame, menuShown: Boolean, fromMenu: Boolean, inPlace: Boolean) {
+    private fun place(frame: Frame, menuShown: Boolean, fromMenu: Boolean, inPlace: Boolean, hasChats: Boolean) {
         val overlay = overlay ?: return
         val shown = menuShown || fromMenu
         overlay.view.visibility = if (shown) View.VISIBLE else View.GONE
         if (!shown) return
         val density = resources.displayMetrics.density
         val bar = frame.toolbar
-        val (top, height) = if (menuShown) {
-            bar.height to (view!!.grown - bar.height - bottom)
-        } else if (inPlace) {
-            bar.height to frame.height - bottom
-        } else {
-            0.0 to bar.panelHeight
+        val grown = view!!.grown.toDouble()
+        val (top, height) = when {
+            menuShown || chatOpen && inPlace -> bar.height to grown - bar.height - bottom
+            chatOpen -> 0.0 to grown - frame.height
+            inPlace -> bar.height to frame.height - bottom
+            else -> 0.0 to bar.panelHeight
         }
         val params = overlay.view.layoutParams as FrameLayout.LayoutParams
         val wanted = (height.toFloat() * density).toInt()
@@ -355,7 +372,77 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         overlay.state = Overlay.State(
             Colors.of(frame.theme), bar.blockMinX.toFloat(), bar.blockMaxX.toFloat(),
             if (menuShown) null else frame.panel, frame.query, keysUp, bar.field.toFloat(), frame.width.toFloat(),
+            Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }, hasChats,
         )
+    }
+
+    /** Chats' shelf, with an extension added, where the keyboard is an iPhone's width or more. */
+    private fun hasChats(frame: Frame) = chats.services.isNotEmpty() && frame.width >= 375
+
+    /** The menu's shelf follows the chats while it's out; they stop once neither it nor a chat is. */
+    private fun listChats(wanted: Boolean) {
+        if (wanted == listing) return
+        listing = wanted
+        if (wanted) chats.start(opening = false) else if (!chatOpen) chats.stop()
+    }
+
+    /**
+     * A chat opens with its message line in place of the app's field, which the keys type into as into a field whose
+     * return key sends; `id` the chat, or the first.
+     */
+    private fun startChat(id: String?) {
+        if (chatOpen) return
+        menuOpen = false
+        keysUp = false
+        Native.panel(handle, null)
+        Native.leaveField(handle)
+        Native.traits(handle, "text other send sentences".encodeToByteArray(), true, requiresText = true, autocorrection = true)
+        Native.lineOpen(handle, null)
+        chatOpen = true
+        chats.reload()
+        chats.start(id)
+        render()
+    }
+
+    /** Another chat from its pill: the line you'd begun goes with the chat you left, and this chat's comes back. */
+    private fun switchChat(chat: Chats.Chat) {
+        if (!chatOpen || chat == chats.open) return
+        val line = Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }
+        chats.open?.let { open -> if (line?.text.isNullOrEmpty()) drafts.remove(open.id) else drafts[open.id] = line!!.text }
+        Native.lineRestore(handle, (drafts.remove(chat.id) ?: "").encodeToByteArray())
+        chats.pick(chat)
+        render()
+    }
+
+    /** Back to the app's field, as the keyboard found it. */
+    private fun closeChat() {
+        if (!chatOpen) return
+        leaveChat()
+        field.forget()
+        Native.documentChanged(handle)
+        render()
+    }
+
+    private fun leaveChat() {
+        if (!chatOpen) return
+        chats.stop()
+        Native.leaveField(handle)
+        Native.lineClose(handle)
+        chatOpen = false
+        keysUp = false
+        currentInputEditorInfo?.let(::traits)
+    }
+
+    /** What return took from the line goes to the open chat; if it can't, it comes back to the line, unless you've begun another. */
+    private fun sendTaken() {
+        val text = Native.lineTake(handle)?.decodeToString()?.trim()?.takeIf { it.isNotEmpty() } ?: return
+        chats.send(text) {
+            val line = Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }
+            if (chatOpen && line?.text.isNullOrEmpty()) {
+                Native.lineRestore(handle, text.encodeToByteArray())
+                render()
+            }
+        }
     }
 
     /** The GIF feed follows the panel's search, and shows trending on the menu's shelf. */
@@ -431,6 +518,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         body()
         noteTyping()
         connection?.endBatchEdit()
+        if (chatOpen) sendTaken()
         render()
     }
 
@@ -507,6 +595,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     /** More opens the menu, and closes it or a panel opened from it, giving the keys back. */
     override fun more() {
         feedback(Feedback.Kind.OTHER)
+        if (chatOpen) return closeChat()
         val panel = view?.frame?.panel
         if (panel != null && panel != "emoji") {
             menuOpen = false
@@ -608,6 +697,29 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     override fun pickEmoji(emoji: String, base: String?) {
         feedback(Feedback.Kind.INPUT)
         event { Native.pickEmoji(handle, emoji.encodeToByteArray(), base?.encodeToByteArray()) }
+    }
+
+    override fun chat(index: Int) {
+        val chat = chats.list.getOrNull(index) ?: return
+        feedback(Feedback.Kind.OTHER)
+        switchChat(chat)
+    }
+
+    override fun openChat(id: String) {
+        feedback(Feedback.Kind.OTHER)
+        startChat(id.ifEmpty { null })
+    }
+
+    override fun browse() {
+        keysUp = false
+        render()
+    }
+
+    /** The send button sends as return does. */
+    override fun send() {
+        val index = view?.frame?.caps?.indexOfFirst { it.action == "return" }?.takeIf { it >= 0 } ?: return
+        feedback(Feedback.Kind.SEPARATOR)
+        event { Native.trigger(handle, index) }
     }
 
     override fun closePanel() {

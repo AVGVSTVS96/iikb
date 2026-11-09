@@ -47,6 +47,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         fun clearSearch()
         /** One of the menu's Cut, Copy and Paste. */
         fun edit(name: String)
+        /** A chat's pill in the bar, by its place in the list. */
+        fun chat(index: Int)
         fun emojiResults(): List<String>
         fun tones(emoji: String): List<String>
     }
@@ -96,6 +98,10 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     /** A panel drawn over the bar's place (`Overlay`), with the keys up under it. */
     var barCovered = false
 
+    /** While a chat is read with the keys down, the chats as pills in the suggestions' place, `openChat` the one shown. */
+    var chats: List<String>? = null
+    var openChat: Int? = null
+
     /** A line in the bar's place until your next touch, like a GIF's "Copied" once the menu gives the keys back. */
     var notice: String? = null
 
@@ -128,6 +134,9 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         (if (it.panel != null && !keysHidden) it.toolbar.panelHeight else it.toolbar.height).toFloat()
     } ?: 0f
 
+    /** Where the keys start: under the bar, or at the bottom of a keyboard grown taller, as for a chat with the keys up. */
+    private val keysTop get() = frame?.let { maxOf(barHeight, grown - it.height.toFloat()) } ?: 0f
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val frame = frame
         val height = if (frame == null) 0 else (maxOf(barHeight + frame.height.toFloat(), grown) * density).toInt()
@@ -144,7 +153,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             !barCovered -> drawBar(canvas, frame)
         }
         if (keysHidden) return canvas.restore()
-        canvas.translate(0f, barHeight)
+        canvas.translate(0f, keysTop)
         val pressed = pressedKeys(frame)
         val trackpad = touches.values.any { it.mode == Mode.TRACKPAD }
         for ((index, cap) in frame.caps.withIndex()) {
@@ -171,7 +180,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             emoji.startHold(index)
             toneOf = tones.first()
             val cap = Cap(
-                place.left.toDouble(), (place.top - barHeight).toDouble(), place.width().toDouble(), place.height().toDouble(),
+                place.left.toDouble(), (place.top - keysTop).toDouble(), place.width().toDouble(), place.height().toDouble(),
                 "letter", picked, null, true, null, "center", false, false, "letter", "character", true, picked, null,
                 picked, tones, false,
             )
@@ -199,6 +208,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val notice = notice
         when {
             edits != null -> drawEdits(canvas, frame, edits)
+            chats != null && !mic.covers -> drawChats(canvas, frame)
             notice != null && !mic.covers -> drawNotice(canvas, frame, notice)
             frame.showsSuggestions && frame.panel == null && !mic.covers -> drawSuggestions(canvas, frame)
         }
@@ -289,6 +299,45 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         }
     }
 
+    /** Each chat's name on a capsule as wide as it, up to 200, from the More button on; the open one on the key fill. */
+    private fun chatPills(frame: Frame): List<Pair<String, RectF>> {
+        val bar = frame.toolbar
+        var x = (bar.more?.let { it.x + it.width } ?: bar.blockMinX).toFloat() + 6
+        val top = (bar.top + bar.bar / 2).toFloat() - 15
+        chatText(false)
+        return chats.orEmpty().map { name ->
+            val width = minOf(text.measureText(name) + 26, 200f)
+            (name to RectF(x, top, x + width, top + 30)).also { x += width + 4 }
+        }
+    }
+
+    private fun chatText(on: Boolean) {
+        text.typeface = android.graphics.Typeface.create(painter.labels, if (on) 600 else 500, false)
+        text.textSize = 15f
+    }
+
+    private fun drawChats(canvas: Canvas, frame: Frame) {
+        val theme = frame.theme
+        val end = (frame.toolbar.mic?.x ?: frame.toolbar.blockMaxX).toFloat() - 6
+        canvas.save()
+        canvas.clipRect(0f, 0f, end, frame.toolbar.height.toFloat())
+        for ((index, pill) in chatPills(frame).withIndex()) {
+            val (name, box) = pill
+            val on = index == openChat
+            if (on || pressedBar == "chat$index") {
+                fill.color = if (on) theme.letter.top else theme.candidatePill
+                if (on) fill.setShadowLayer(0.01f, 0f, 1f, theme.shadow)
+                canvas.drawRoundRect(box, 15f, 15f, fill)
+                fill.clearShadowLayer()
+            }
+            chatText(on)
+            text.color = if (on) theme.label else theme.candidate
+            val label = ellipsize(name, box.width() - 26)
+            canvas.drawText(label, box.left + 13, box.centerY() + text.textSize * 0.35f, text)
+        }
+        canvas.restore()
+    }
+
     private fun enabled(edits: Edits, name: String) = when (name) {
         "cut" -> edits.cut
         "copy" -> edits.copy
@@ -345,6 +394,9 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         edits?.let { edits ->
             return editPills(frame).firstOrNull { (name, box) -> enabled(edits, name) && x >= box.left && x <= box.right }?.first
         }
+        if (chats != null && !mic.covers) {
+            return chatPills(frame).indexOfFirst { (_, box) -> x >= box.left && x <= box.right }.takeIf { it >= 0 }?.let { "chat$it" }
+        }
         if (!frame.showsSuggestions || frame.panel != null || mic.covers) return null
         val showsEmoji = frame.emoji.isNotEmpty()
         if (showsEmoji && bar.emoji.contains(x.toDouble(), bar.emoji.y)) {
@@ -363,6 +415,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             target == "mic" -> actions.mic()
             target == "cancel" -> actions.cancelDictation()
             target in EDITS -> actions.edit(target)
+            target.startsWith("chat") -> actions.chat(target.removePrefix("chat").toInt())
             target.startsWith("slot") -> actions.select(target.removePrefix("slot").toInt())
             target.startsWith("emoji") ->
                 emojiPlaces(frame).getOrNull(target.removePrefix("emoji").toInt())?.let { actions.acceptEmoji(it.first) }
@@ -380,7 +433,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                 val pointer = event.actionIndex
                 val x = event.getX(pointer) / density
                 val y = event.getY(pointer) / density
-                if (frame.panel == "emoji" && y - barHeight < -TOP_ROW_REACH && panelPointer == null) {
+                if (frame.panel == "emoji" && y - keysTop < -TOP_ROW_REACH && panelPointer == null) {
                     panelPointer = event.getPointerId(pointer)
                     emoji.touch(event, x, y, frame, actions)
                 } else {
@@ -399,10 +452,10 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                     val touch = touches[id] ?: continue
                     if (touch.mode == Mode.SWIPE || touch.swipeReach.isFinite()) {
                         for (h in 0 until event.historySize) {
-                            follow(touch, event.getHistoricalX(pointer, h) / density, event.getHistoricalY(pointer, h) / density - barHeight, event.getHistoricalEventTime(h))
+                            follow(touch, event.getHistoricalX(pointer, h) / density, event.getHistoricalY(pointer, h) / density - keysTop, event.getHistoricalEventTime(h))
                         }
                     }
-                    move(frame, touch, event.getX(pointer) / density, event.getY(pointer) / density - barHeight, event.eventTime)
+                    move(frame, touch, event.getX(pointer) / density, event.getY(pointer) / density - keysTop, event.eventTime)
                 }
             }
 
@@ -429,7 +482,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                 }
                 touches.remove(id)?.let { touch ->
                     touch.x = event.getX(pointer) / density
-                    touch.y = event.getY(pointer) / density - barHeight
+                    touch.y = event.getY(pointer) / density - keysTop
                     finish(frame, touch, commit = true)
                 }
             }
@@ -451,7 +504,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     private var barPointer: Int? = null
 
     private fun begin(frame: Frame, id: Int, x: Float, y: Float) {
-        val keyY = y - barHeight
+        val keyY = y - keysTop
         if (keyY < -TOP_ROW_REACH || keysHidden) {
             val target = barTarget(frame, x, y) ?: return
             barPointer = id
@@ -653,7 +706,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     private fun drawCallout(canvas: Canvas, frame: Frame, cap: Cap) {
         val r = frame.look.cornerRadius.toFloat()
         val key = RectF(cap.x.toFloat(), cap.y.toFloat(), cap.right.toFloat(), cap.bottom.toFloat())
-        val top = -barHeight + 1
+        val top = -keysTop + 1
         val bubble: RectF
         callout.reset()
         if (characterPreview == "detached") {
@@ -707,7 +760,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val width = cell * options.size + padding * 2
         val x = (cap.x + cap.width / 2 - padding - cell * (selected + 0.5)).toFloat()
             .coerceIn(7f, (frame.width - width - 7).toFloat().coerceAtLeast(7f))
-        val y = (cap.y - height - 3).toFloat().coerceAtLeast(-barHeight + 1)
+        val y = (cap.y - height - 3).toFloat().coerceAtLeast(-keysTop + 1)
         accents = Accents(options, symbols, RectF(x, y, x + width, y + height), cell, padding, selected)
     }
 
