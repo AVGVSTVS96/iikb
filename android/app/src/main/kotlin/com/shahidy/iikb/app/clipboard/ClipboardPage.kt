@@ -62,6 +62,7 @@ import com.shahidy.iikb.app.glyph
 import com.shahidy.iikb.app.palette
 import com.shahidy.iikb.app.transcripts.share
 import com.shahidy.iikb.app.transcripts.title
+import com.shahidy.iikb.keyboard.ClipImage
 import com.shahidy.iikb.keyboard.Clips
 import com.shahidy.iikb.keyboard.SiteIcon
 import com.shahidy.iikb.keyboard.IikbService
@@ -99,8 +100,8 @@ fun ClipboardPage() {
     val rest = if (linksOnly) emptyList() else found.filter { it.kind != "link" }
     val groups = rest.groupBy { if (it.pinned) "Pinned" else title(it.time().toLocalDate()) }.toList()
     val copy = { row: Clips.Row ->
-        put(context, row.text)
-        copied = row.text
+        put(context, clips, row)
+        copied = row.id
     }
     ListPage(
         "Clipboard",
@@ -134,7 +135,7 @@ fun ClipboardPage() {
                         modifier = Modifier.padding(horizontal = 20.dp),
                     )
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        links.forEach { Badge(it, copied == it.text, clips, copy) }
+                        links.forEach { Badge(it, copied == it.id, clips, copy) }
                     }
                 }
             }
@@ -145,7 +146,7 @@ fun ClipboardPage() {
                     Rows(title) {
                         rows.forEachIndexed { index, row ->
                             if (index > 0) Divider()
-                            ClipRow(row, copied == row.text, clips, copy)
+                            ClipRow(row, copied == row.id, clips, copy)
                         }
                     }
                 }
@@ -156,12 +157,14 @@ fun ClipboardPage() {
 
 private fun Clips.Row.time() = Instant.ofEpochMilli((found * 1000).toLong()).atZone(ZoneId.systemDefault()).toLocalDateTime()
 
+private val Clips.Row.id get() = image ?: text
+
 /**
  * Puts a clip back on the clipboard, marked as seen so the keyboard doesn't keep it again as something new.
  */
-private fun put(context: Context, text: String) {
+private fun put(context: Context, clips: Clips, row: Clips.Row) {
     val clipboard = context.getSystemService(ClipboardManager::class.java)
-    clipboard.setPrimaryClip(ClipData.newPlainText("iikb", text))
+    clipboard.setPrimaryClip(row.image?.let(clips::clip) ?: ClipData.newPlainText("iikb", row.text))
     clipboard.primaryClipDescription?.timestamp?.let { Settings(context).preferences.edit().putLong(IikbService.SEEN_CLIP, it).apply() }
 }
 
@@ -178,8 +181,15 @@ fun keepCopied(context: Context) {
     if (time <= preferences.getLong(IikbService.SEEN_CLIP, 0)) return
     preferences.edit().putLong(IikbService.SEEN_CLIP, time).apply()
     if (clip.description.extras?.getBoolean(ClipDescription.EXTRA_IS_SENSITIVE) == true) return
-    val text = clip.getItemAt(0)?.text?.toString()?.takeIf { it.isNotBlank() } ?: return
-    Clips.of(context).keep(text, time / 1000.0)
+    Clips.of(context).keep(clip, time / 1000.0)
+}
+
+/** An image clip through the share sheet, readable by the app it goes to. */
+private fun shareImage(context: Context, clips: Clips, image: String) {
+    val send = Intent(Intent.ACTION_SEND).setType(Clips.type(image)).putExtra(Intent.EXTRA_STREAM, clips.uri(image))
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    send.clipData = clips.clip(image)
+    context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
 private val clock = DateTimeFormatter.ofPattern("h:mm a")
@@ -197,7 +207,7 @@ private fun ClipRow(row: Clips.Row, copied: Boolean, clips: Clips, copy: (Clips.
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Title(row)
+                if (row.image != null) ClipImage(row.image, Modifier.size(64.dp), 8.dp) else Title(row)
                 if (copied) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(glyph("M6 12.5l4 4L18 8", 2.4f), null, tint = palette.secondary, modifier = Modifier.size(14.dp))
@@ -287,8 +297,8 @@ private fun Actions(row: Clips.Row, open: Boolean, close: () -> Unit, clips: Cli
                 }
             }
         }
-        item("Share", palette.label) { share(context, row.text) }
-        item(if (row.pinned) "Unpin" else "Pin", palette.label) { clips.pin(row.text, !row.pinned) }
-        item("Delete", palette.red) { clips.remove(row.text) }
+        item("Share", palette.label) { row.image?.let { shareImage(context, clips, it) } ?: share(context, row.text) }
+        item(if (row.pinned) "Unpin" else "Pin", palette.label) { clips.pin(row, !row.pinned) }
+        item("Delete", palette.red) { clips.remove(row) }
     }
 }

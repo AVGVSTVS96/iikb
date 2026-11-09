@@ -90,7 +90,7 @@ class Gifs(private val context: Context, private val klipy: Klipy) {
             val file = klipy.download(gif, File(context.cacheDir, "gifs"))
             main.post {
                 if (file == null) return@post then(null)
-                val uri = FileProvider.getUriForFile(context, "com.shahidy.iikb.files", file)
+                val uri = FileProvider.getUriForFile(context, Clips.AUTHORITY, file)
                 Native.gifsUse(handle, Klipy.base(gif.id).encodeToByteArray(), app?.encodeToByteArray())?.let {
                     val next = File(recentsFile.parentFile, recentsFile.name + ".next")
                     next.writeBytes(it)

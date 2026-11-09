@@ -13,6 +13,7 @@ final class Clips {
 
     /// One clip as a row, a card or a link's badge draws it.
     struct Row: Encodable {
+        /// Empty for an image.
         var text: String
         var kind: String
         /// `312 chars`, `48 words`; none for a link, an address, a number or a color, which show by kind.
@@ -26,13 +27,14 @@ final class Clips {
         /// The site as a badge names it: `github`, `x`.
         var name: String?
         var color: Int32?
+        /// An image's file, by the name `Clips.kt` saved it under.
+        var image: String?
     }
 
     func rows(matching search: String, in unit: ClipboardLength, now: Double) -> [Row] {
-        history.matching(search).compactMap { item in
-            guard let text = item.content.preview else { return nil }
+        history.matching(search).map { item in
             var row = Row(
-                text: text, kind: "text", length: ClipboardHistory.length(of: item.content, in: unit),
+                text: item.content.preview ?? "", kind: "text", length: ClipboardHistory.length(of: item.content, in: unit),
                 age: ClipboardHistory.age(of: item.found, now: now), pinned: item.pinned, found: item.found)
             switch item.content.kind {
             case .link(let link):
@@ -42,7 +44,8 @@ final class Clips {
             case .color(let red, let green, let blue):
                 row.kind = "color"
                 row.color = Int32(bitPattern: 0xFF00_0000 | UInt32(red) << 16 | UInt32(green) << 8 | UInt32(blue))
-            case .text, .image: break
+            case .image: (row.kind, row.image) = ("image", item.content.fileName)
+            case .text: break
             }
             return row
         }
@@ -63,10 +66,16 @@ public func clipsSave(env: Env, _: jclass, handle: jlong) -> jbyteArray? {
     env.array(Json.encode(clips(handle).history))
 }
 
+/// A clip by its text, or, given `image`, by its image's file.
+private func content(_ env: Env, text: jbyteArray?, image: jbyteArray?) -> ClipboardHistory.Item.Content? {
+    if let image = env.string(image) { return .image(image) }
+    return env.string(text).map { .text($0) }
+}
+
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_clipsKeep")
-public func clipsKeep(env: Env, _: jclass, handle: jlong, text: jbyteArray?, time: jdouble) {
-    guard let text = env.string(text), !text.isEmpty else { return }
-    clips(handle).history.keep(.text(text), at: time)
+public func clipsKeep(env: Env, _: jclass, handle: jlong, text: jbyteArray?, image: jbyteArray?, time: jdouble) {
+    guard let content = content(env, text: text, image: image), content.preview?.isEmpty != true else { return }
+    clips(handle).history.keep(content, at: time)
 }
 
 /// The clips holding `search`, pinned first, then newest, as JSON rows.
@@ -80,20 +89,24 @@ public func clipsRows(env: Env, _: jclass, handle: jlong, search: jbyteArray?, w
 }
 
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_clipsPin")
-public func clipsPin(env: Env, _: jclass, handle: jlong, text: jbyteArray?, pinned: jboolean) {
-    guard let text = env.string(text) else { return }
-    clips(handle).history.setPinned(pinned != 0, .text(text))
+public func clipsPin(env: Env, _: jclass, handle: jlong, text: jbyteArray?, image: jbyteArray?, pinned: jboolean) {
+    guard let content = content(env, text: text, image: image) else { return }
+    clips(handle).history.setPinned(pinned != 0, content)
 }
 
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_clipsRemove")
-public func clipsRemove(env: Env, _: jclass, handle: jlong, text: jbyteArray?) {
-    guard let text = env.string(text) else { return }
-    clips(handle).history.remove(.text(text))
+public func clipsRemove(env: Env, _: jclass, handle: jlong, text: jbyteArray?, image: jbyteArray?) {
+    guard let content = content(env, text: text, image: image) else { return }
+    clips(handle).history.remove(content)
 }
 
+/// Deletes every clip but the pinned, and names the image files that went, as JSON.
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_clipsClear")
-public func clipsClear(env: Env, _: jclass, handle: jlong) {
-    _ = clips(handle).history.removeUnpinned()
+public func clipsClear(env: Env, _: jclass, handle: jlong) -> jbyteArray? {
+    let gone = clips(handle).history.removeUnpinned().compactMap { content -> String? in
+        if case .image(let name) = content { name } else { nil }
+    }
+    return env.array(Json.encode(gone))
 }
 
 /// How long ago, as a row shows it: "now", "5m", "2d" (`ClipboardHistory.age`).

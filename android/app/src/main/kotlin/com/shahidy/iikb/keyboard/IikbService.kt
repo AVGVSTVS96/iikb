@@ -20,6 +20,9 @@ import android.widget.FrameLayout
 import android.view.inputmethod.EditorInfo
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.inputmethod.EditorInfoCompat
+import androidx.core.view.inputmethod.InputConnectionCompat
+import androidx.core.view.inputmethod.InputContentInfoCompat
 import com.shahidy.iikb.Settings
 import com.shahidy.iikb.TypingStats
 import com.shahidy.iikb.app.MIC_ON
@@ -132,8 +135,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         if (time <= seen) return
         settings.preferences.edit().putLong(SEEN_CLIP, time).apply()
         if (incognito || description.extras?.getBoolean(ClipDescription.EXTRA_IS_SENSITIVE) == true) return
-        val text = clip.getItemAt(0)?.text?.toString()?.takeIf { it.isNotBlank() } ?: return
-        clips.keep(text, time / 1000.0)
+        clips.keep(clip, time / 1000.0)
     }
 
     override fun onDestroy() {
@@ -708,6 +710,29 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         feedback(Feedback.Kind.INPUT)
         menuOpen = false
         event { Native.paste(handle, text.encodeToByteArray()) }
+    }
+
+    /**
+     * An image clip picked goes into the field as the image itself, as a GIF keyboard's does, where the app says its
+     * field takes that kind of image; elsewhere it goes on the clipboard, marked seen so it isn't kept again, to paste.
+     */
+    override fun pasteImage(image: String) {
+        feedback(Feedback.Kind.INPUT)
+        menuOpen = false
+        val type = Clips.type(image)
+        val editor = currentInputEditorInfo
+        val connection = currentInputConnection
+        val takes = editor != null && EditorInfoCompat.getContentMimeTypes(editor).any { ClipDescription.compareMimeTypes(type, it) }
+        val sent = takes && connection != null && InputConnectionCompat.commitContent(
+            connection, editor!!, InputContentInfoCompat(clips.uri(image), ClipDescription("Image", arrayOf(type)), null),
+            InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null,
+        )
+        if (!sent) {
+            clipboard.setPrimaryClip(clips.clip(image))
+            clipboard.primaryClipDescription?.timestamp?.let { settings.preferences.edit().putLong(SEEN_CLIP, it).apply() }
+            view?.notice = "Copied: this field takes no images"
+        }
+        render()
     }
 
     override fun open(panel: String) {

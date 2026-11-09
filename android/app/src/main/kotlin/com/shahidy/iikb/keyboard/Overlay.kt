@@ -39,6 +39,8 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 class Overlay(context: Context, private val actions: Actions, private val gifs: Gifs?, private val chats: Chats) {
     interface Actions {
         fun paste(text: String)
+        /** An image clip picked, by its file (`Clips.Row.image`). */
+        fun pasteImage(image: String)
         fun open(panel: String)
         fun back()
         fun raiseKeys()

@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -41,6 +42,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -49,6 +51,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.decode.BitmapFactoryDecoder
+import coil3.request.ImageRequest
 import com.shahidy.iikb.Settings
 import kotlin.math.floor
 
@@ -67,9 +72,12 @@ fun rememberClips(query: String): List<Clips.Row> {
     return remember(query, revision) { clips.rows(query, words) }
 }
 
+/** A clip picked: its text typed, or its image put in the field. */
+private fun Overlay.Actions.pick(row: Clips.Row) = row.image?.let(::pasteImage) ?: paste(row.text)
+
 /**
  * The clipboard's shelf in the menu (docs/design.md, "Clipboard", compact): links as badges, a column of them for the
- * newest, then up to three cards in view, scrolling sideways. A tap types the clip.
+ * newest, then up to three cards in view, scrolling sideways. A tap types the clip, or puts its image in the field.
  */
 @Composable
 fun ClipShelf(height: Dp) {
@@ -90,11 +98,11 @@ fun ClipShelf(height: Dp) {
                     Modifier.fillMaxHeight(),
                     verticalArrangement = if (column.size == 1) Arrangement.Center else Arrangement.SpaceBetween,
                 ) {
-                    column.forEach { Badge(it, badge, onHold = { shown = it }) { actions.paste(it.text) } }
+                    column.forEach { Badge(it, badge, onHold = { shown = it }) { actions.pick(it) } }
                 }
             }
             items(rows.filter { it.kind != "link" }) { row ->
-                Pressable(Modifier.width(card).fillMaxHeight(), 10.dp, { actions.paste(row.text) }, { shown = row }) {
+                Pressable(Modifier.width(card).fillMaxHeight(), 10.dp, { actions.pick(row) }, { shown = row }) {
                     Card(row)
                 }
             }
@@ -103,24 +111,41 @@ fun ClipShelf(height: Dp) {
     shown?.let { ClipPreview(it) { shown = null } }
 }
 
-/** A clip as a card: its text, its length and age under it, and its pin in the corner. */
+/** A clip as a card: its text or a square of its image, its length and age under it, and its pin in the corner. */
 @Composable
 fun Card(row: Clips.Row) {
     val look = LocalColors.current
     Box(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp)) {
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.weight(1f).padding(end = if (row.pinned) 16.dp else 0.dp)) {
-                KindMark(row, 14.dp)
-                Text(
-                    if (row.kind == "email") row.text.replace("@", "@​") else row.text,
-                    color = look.label, fontSize = 14.sp, lineHeight = 18.sp, overflow = TextOverflow.Ellipsis,
-                    style = textStyle(row),
-                )
+            Row(Modifier.weight(1f).padding(end = if (row.pinned && row.image == null) 16.dp else 0.dp)) {
+                if (row.image != null) {
+                    ClipImage(row.image, Modifier.fillMaxHeight().aspectRatio(1f).padding(bottom = 4.dp), 6.dp)
+                } else {
+                    KindMark(row, 14.dp)
+                    Text(
+                        if (row.kind == "email") row.text.replace("@", "@​") else row.text,
+                        color = look.label, fontSize = 14.sp, lineHeight = 18.sp, overflow = TextOverflow.Ellipsis,
+                        style = textStyle(row),
+                    )
+                }
             }
             Text(detail(row), color = look.secondary, fontSize = 11.sp, maxLines = 1, style = DIGITS)
         }
         if (row.pinned) Glyph("pin.fill", look.secondary, 12.dp, Modifier.align(Alignment.TopEnd))
     }
+}
+
+/** A copied image cut to its square, decoded at the size it shows, its first frame only, as iOS's thumbnails are. */
+@Composable
+fun ClipImage(image: String, modifier: Modifier, corner: Dp) {
+    val context = LocalContext.current
+    val request = remember(image) {
+        ImageRequest.Builder(context).data(Clips.of(context).file(image)).decoderFactory(BitmapFactoryDecoder.Factory()).build()
+    }
+    AsyncImage(
+        request, "Image", imageLoader(), modifier.clip(RoundedCornerShape(corner)),
+        contentScale = ContentScale.Crop,
+    )
 }
 
 /** A color shows in monospaced capitals, as its swatch's name. */
@@ -200,15 +225,15 @@ fun ClipboardPanel(state: Overlay.State) {
                     if (links.isNotEmpty() && !linksOnly) {
                         item {
                             LazyRow(Modifier.height(32.dp), horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
-                                items(links) { Badge(it, 30.dp, { shown = it }) { actions.paste(it.text) } }
+                                items(links) { Badge(it, 30.dp, { shown = it }) { actions.pick(it) } }
                             }
                         }
                     }
                     items(if (linksOnly) links else rows.filter { it.kind != "link" }) { row ->
                         if (linksOnly) {
-                            Badge(row, 30.dp, { shown = row }) { actions.paste(row.text) }
+                            Badge(row, 30.dp, { shown = row }) { actions.pick(row) }
                         } else {
-                            ClipRow(row, { actions.paste(row.text) }) { shown = row }
+                            ClipRow(row, { actions.pick(row) }) { shown = row }
                         }
                     }
                 }
@@ -236,12 +261,16 @@ fun ClipRow(row: Clips.Row, onClick: () -> Unit, onHold: () -> Unit) {
             Box(Modifier.width(16.dp), contentAlignment = Alignment.Center) {
                 if (row.pinned) Glyph("pin.fill", look.secondary, 13.dp)
             }
-            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                KindMark(row, 16.dp)
-                Text(
-                    row.text.replace('\n', ' '), color = look.label, fontSize = 16.sp, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis, style = textStyle(row),
-                )
+            Row(Modifier.weight(1f).padding(start = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (row.image != null) {
+                    ClipImage(row.image, Modifier.size(32.dp), 6.dp)
+                } else {
+                    KindMark(row, 16.dp)
+                    Text(
+                        row.text.replace('\n', ' '), color = look.label, fontSize = 16.sp, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, style = textStyle(row),
+                    )
+                }
             }
             Text(detail(row), color = look.secondary, fontSize = 13.sp, maxLines = 1, style = DIGITS,
                 modifier = Modifier.padding(start = 8.dp))
@@ -305,7 +334,7 @@ fun SearchRow(
     }
 }
 
-/** All of a clip, held: its whole text, scrolling where it's long, with Paste, Pin or Unpin, and Delete. */
+/** All of a clip, held: its whole text, scrolling where it's long, or its image, with Paste, Pin or Unpin, and Delete. */
 @Composable
 private fun ClipPreview(row: Clips.Row, close: () -> Unit) {
     val actions = LocalActions.current
@@ -313,15 +342,15 @@ private fun ClipPreview(row: Clips.Row, close: () -> Unit) {
     Preview(row, close) { button ->
         Action(button, "doc.on.clipboard", "Paste") {
             close()
-            actions.paste(row.text)
+            actions.pick(row)
         }
         Action(button, "pin.fill", if (row.pinned) "Unpin" else "Pin") {
             close()
-            clips.pin(row.text, !row.pinned)
+            clips.pin(row, !row.pinned)
         }
         Action(button, "trash", "Delete", Color(0xFFFF3B30)) {
             close()
-            clips.remove(row.text)
+            clips.remove(row)
         }
     }
 }
@@ -335,14 +364,20 @@ fun Preview(row: Clips.Row, close: () -> Unit, buttons: @Composable RowScope.(Mo
             .clickable(remember { MutableInteractionSource() }, indication = null, onClick = close).padding(10.dp),
     ) {
         Box(
-            Modifier.weight(1f, fill = false).fillMaxWidth().background(look.key, RoundedCornerShape(12.dp))
+            Modifier.weight(1f, fill = row.image != null).fillMaxWidth().background(look.key, RoundedCornerShape(12.dp))
                 .clickable(remember { MutableInteractionSource() }, indication = null, onClick = close)
                 .padding(14.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Text(
-                row.text, color = look.label, fontSize = 16.sp, style = textStyle(row),
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-            )
+            if (row.image != null) {
+                val context = LocalContext.current
+                AsyncImage(Clips.of(context).file(row.image), "Image", imageLoader(), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+            } else {
+                Text(
+                    row.text, color = look.label, fontSize = 16.sp, style = textStyle(row),
+                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                )
+            }
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {

@@ -69,11 +69,11 @@ object Native {
 
     @JvmStatic external fun clipsCreate(json: ByteArray?): Long
     @JvmStatic external fun clipsSave(handle: Long): ByteArray?
-    @JvmStatic external fun clipsKeep(handle: Long, text: ByteArray, time: Double)
+    @JvmStatic external fun clipsKeep(handle: Long, text: ByteArray?, image: ByteArray?, time: Double)
     @JvmStatic external fun clipsRows(handle: Long, search: ByteArray, words: Boolean, now: Double): ByteArray
-    @JvmStatic external fun clipsPin(handle: Long, text: ByteArray, pinned: Boolean)
-    @JvmStatic external fun clipsRemove(handle: Long, text: ByteArray)
-    @JvmStatic external fun clipsClear(handle: Long)
+    @JvmStatic external fun clipsPin(handle: Long, text: ByteArray, image: ByteArray?, pinned: Boolean)
+    @JvmStatic external fun clipsRemove(handle: Long, text: ByteArray, image: ByteArray?)
+    @JvmStatic external fun clipsClear(handle: Long): ByteArray
     @JvmStatic external fun gifsCreate(recents: ByteArray?): Long
     @JvmStatic external fun gifsWant(handle: Long, feed: ByteArray, app: ByteArray?): ByteArray?
     @JvmStatic external fun gifsMore(handle: Long): ByteArray?
