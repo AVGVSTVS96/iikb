@@ -169,7 +169,10 @@ const facts = {
   },
   voice: {
     downloadMB: number(
-      said("App/Voice/VoiceModel.swift", /Downloads once, about (?<mb>\d+) MB/u).mb,
+      said(
+        "Packages/Voice/Sources/VoiceModels/VoiceModel.swift",
+        /Downloads once, about (?<mb>\d+) MB/u,
+      ).mb,
     ),
     speechSeconds: number(speech.speech),
     writeSeconds: number(speech.write),

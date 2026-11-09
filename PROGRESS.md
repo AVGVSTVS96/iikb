@@ -64,7 +64,7 @@
 | Show Math Results | Not possible: computed and drawn by the host's text system |
 | Enable Dictation, Auto-Punctuation, Dictation Shortcut | The system's mic key below a third-party keyboard can't be replaced (turning off Enable Dictation hides it). iikb has its own voice typing: the 123 menu starts it, and while the app keeps the mic on, a mic beside the suggestions starts and stops it in place (Oct 13) |
 | Emoji keyboard | Done (Oct 13): hold 123 and let go |
-| Slide to Type, Delete Slide-to-Type by Word | Later: swipe typing isn't built |
+| Slide to Type, Delete Slide-to-Type by Word | Slide to Type done (Nov 4): FUTO Swipe's model in Swift. 400 real swipes replayed into iikb and Apple's keyboard on the folded Duo simulator: first guess 88.2% vs 88.0%, within three 97.0% vs 96.8%. Delete by word later |
 | One-Handed Keyboard | Done (Oct 12): iikb's own, since iOS's globe menu offers it only to Apple's keyboard. In the app and Settings › Apps › iikb, and by holding 123 |
 | Keyboards, Hardware Keyboard | System-only |
 

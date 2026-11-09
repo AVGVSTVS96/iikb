@@ -21,6 +21,10 @@ Deleting iikb deletes all of it.
   install that KLIPY uses to rank results. Nothing else you type is sent.
 - **App names.** To show apps by name in Stats, Transcripts and Writing Style, the iikb app asks Apple's App Store
   (iTunes Search API) for the names of the apps you've typed or dictated in, by their bundle IDs, once each.
+- **Link icons.** For a link you copy, iikb fetches the site's icon from that site, or from where its home page says the icon
+  is. Only the site's name is sent, never the link.
+- **Extensions you add.** An extension gets the messages you write in its chat, and nothing you type elsewhere. None is
+  added unless you add it.
 - **Sources you add.** A source is a web service you choose to plug in. iikb sends it the text of the field you're typing
   in, as [docs/sources.md](sources.md) describes. None is added unless you add it.
 - **Computers you add.** If you add your own Mac to Stats, iikb reads the typing counts it shares, over your own network.
@@ -28,7 +32,7 @@ Deleting iikb deletes all of it.
 ## Full Access
 
 iOS asks you to allow Full Access for a keyboard that uses the network or shares data with its app. iikb needs it for
-haptics, voice typing, GIFs, the clipboard history, Your Taps and sources. Without it, iikb still types and corrects,
+haptics, voice typing, GIFs, the clipboard history, Stats and sources. Without it, iikb still types and corrects,
 with nothing leaving the keyboard.
 
 ## Contact

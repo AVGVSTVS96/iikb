@@ -17,9 +17,9 @@ Apple and Raycast are the bar to beat. Lead with iikb's ambition and the concret
 
 ## Website
 
-Few words: a heading per section and the live keyboard, themes, Duo, chart and changelog say the rest. Bassim on the first version: "why the fuck are there so many words on pages". Copy is his voice on X; the ambition is the bar, never a measured ranking.
+Few words: a heading per section, and the live keyboard, themes, Duo, chart and changelog say the rest. Copy is confident and plain; the ambition is the bar, never a measured ranking.
 
-- Hero: “The best iOS keyboard. In the world.” with “That's the bar.” and what iikb does, the TestFlight button, and the challenge “Apple, Raycast: we're coming for the space bar.” Beside it, the keyboard drawn live from `KeyboardCore`'s theme colors, typing lines from his launch post until the visitor types, with the five themes to pick; the pick themes the whole page.
+- Hero: “The best iOS keyboard. In the world.” with “That's the bar.” and what iikb does, the TestFlight button, and the challenge “Apple, Raycast: we're coming for the space bar.” Beside it, the keyboard drawn live from `KeyboardCore`'s theme colors, typing lines from the launch post until the visitor types, with the five themes to pick; the pick themes the whole page.
 - What's in the box: the launch post's `>` list, only what the current code does.
 - Themes, Duo (simulator captures of each pose, labeled as captures), Typing (the benchmark, scope beside the number), Voice (the four writing styles, one dictation in each), Extend (the sources API as it is in docs/sources.md), Changelog (commits from git and each build's `Changelog:` trailer, by `web/changes.ts`), Install.
 - Availability: MIT, iOS 26+, TestFlight or build from source; no App Store download implied. English and swipe typing today; further languages not yet available.

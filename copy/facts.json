@@ -10,7 +10,7 @@
     "words": 5428,
     "blockWords": 500,
     "baseline": 85.2,
-    "iikb": 97.7,
+    "iikb": 97.6,
     "baselineCurve": [
       83.2,
       85.4,
@@ -33,7 +33,7 @@
       97.4,
       98.2,
       97.6,
-      99.2
+      99
     ]
   },
   "missesToMoveAKey": 3,
@@ -53,8 +53,8 @@
   "emojiWords": 6785,
   "lexiconWords": 137578,
   "tests": {
-    "core": 294,
-    "ui": 72,
+    "core": 413,
+    "ui": 107,
     "coreSeconds": 25
   },
   "voice": {

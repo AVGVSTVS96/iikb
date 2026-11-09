@@ -2,7 +2,7 @@
 
 Everything iikb keeps lives on the iPhone, so a lost phone, a deleted app, an install that starts a new container, or a
 bug that saves over a file would take it with it. A build with a backup server sends each file there as it changes,
-and the server never deletes one.
+and the server never deletes one. The TestFlight build never backs up: Xcode Cloud won't build it with a backup key.
 
 ## What goes
 
