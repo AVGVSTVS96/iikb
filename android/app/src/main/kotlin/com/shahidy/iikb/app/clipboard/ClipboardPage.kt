@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.Settings
 import com.shahidy.iikb.app.Divider
 import com.shahidy.iikb.app.ListPage
+import com.shahidy.iikb.app.MicSwitch
 import com.shahidy.iikb.app.LocalResumes
 import com.shahidy.iikb.app.design.Empty
 import com.shahidy.iikb.app.design.Glyphs
@@ -104,6 +105,7 @@ fun ClipboardPage() {
     ListPage(
         "Clipboard",
         pinned = if (all.isEmpty()) null else ({ SectionPills(listOf(false, true), linksOnly, { if (it) "Links" else "All" }) { linksOnly = it } }),
+        actions = { MicSwitch() },
     ) {
         if (all.isEmpty()) {
             item {

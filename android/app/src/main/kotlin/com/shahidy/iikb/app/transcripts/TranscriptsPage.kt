@@ -46,6 +46,7 @@ import com.shahidy.iikb.Transcripts
 import com.shahidy.iikb.app.Divider
 import com.shahidy.iikb.app.Line
 import com.shahidy.iikb.app.ListPage
+import com.shahidy.iikb.app.MicSwitch
 import com.shahidy.iikb.app.Page
 import com.shahidy.iikb.app.design.Empty
 import com.shahidy.iikb.app.design.Figure
@@ -109,7 +110,7 @@ fun TranscriptsPage(openStats: () -> Unit) {
     val names = remember { AppNames(context) }
     val shown = query.trim().let { q -> if (q.isEmpty()) all else all.filter { it.text.contains(q, ignoreCase = true) } }
     val days = shown.groupBy { it.time().toLocalDate() }.toList()
-    ListPage("Transcripts") {
+    ListPage("Transcripts", actions = { MicSwitch() }) {
         if (all.isEmpty()) {
             item {
                 Empty(
@@ -281,7 +282,7 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
     val context = LocalContext.current
     val names = remember { AppNames(context) }
     var confirms by remember { mutableStateOf(false) }
-    Page("Transcript", back) {
+    Page("Transcript", back, actions = { MicSwitch() }) {
         Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Text(
                 transcript.time().format(DateTimeFormatter.ofPattern("EEEE, MMM d, h:mm a")), color = palette.secondary,

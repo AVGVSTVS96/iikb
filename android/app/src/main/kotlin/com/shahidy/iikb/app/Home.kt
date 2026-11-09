@@ -87,12 +87,13 @@ fun Home(open: (String) -> Unit, show: (Tab, StatsSection?) -> Unit) {
 }
 
 /**
- * Whether voice typing may use the microphone, at the bar's trailing edge. On, the keyboard's mic records right where
+ * Whether voice typing may use the microphone, at the bar's trailing edge of Home, Transcripts, Clipboard and Stats, as
+ * iOS's `MicSwitchItem` is. On, the keyboard's mic records right where
  * you type; off, it can't hear you until you turn it on here, and what you're saying when you turn it off is written
  * down. Android's mic is on only while you talk, so there's nothing to keep on between dictations, as iOS's switch does.
  */
 @Composable
-private fun MicSwitch() {
+fun MicSwitch() {
     val store = LocalStore.current
     val access = LocalAccess.current
     val palette = palette()

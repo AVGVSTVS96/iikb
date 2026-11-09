@@ -19,6 +19,7 @@ import com.shahidy.iikb.Transcript
 import com.shahidy.iikb.Transcripts
 import com.shahidy.iikb.TypingStats
 import com.shahidy.iikb.app.LocalResumes
+import com.shahidy.iikb.app.MicSwitch
 import com.shahidy.iikb.app.Page
 import com.shahidy.iikb.app.design.SectionPills
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +39,7 @@ fun StatsPage(section: StatsSection, pick: (StatsSection) -> Unit) {
 private fun Section(
     section: StatsSection, activity: Activity, transcripts: List<Transcript>, pick: (StatsSection) -> Unit,
 ) {
-    Page("Stats", pinned = { SectionPills(StatsSection.entries, section, { it.title }, pick) }) {
+    Page("Stats", pinned = { SectionPills(StatsSection.entries, section, { it.title }, pick) }, actions = { MicSwitch() }) {
         Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             when (section) {
                 StatsSection.OVERVIEW -> Overview(activity)
