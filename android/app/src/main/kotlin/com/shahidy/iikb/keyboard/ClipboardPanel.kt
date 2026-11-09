@@ -103,19 +103,23 @@ fun ClipShelf(height: Dp) {
     shown?.let { ClipPreview(it) { shown = null } }
 }
 
+/** A clip as a card: its text, its length and age under it, and its pin in the corner. */
 @Composable
 fun Card(row: Clips.Row) {
     val look = LocalColors.current
-    Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp)) {
-        Row(Modifier.weight(1f)) {
-            KindMark(row, 14.dp)
-            Text(
-                if (row.kind == "email") row.text.replace("@", "@​") else row.text,
-                color = look.label, fontSize = 14.sp, lineHeight = 18.sp, overflow = TextOverflow.Ellipsis,
-                style = textStyle(row),
-            )
+    Box(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp)) {
+        Column(Modifier.fillMaxSize()) {
+            Row(Modifier.weight(1f).padding(end = if (row.pinned) 16.dp else 0.dp)) {
+                KindMark(row, 14.dp)
+                Text(
+                    if (row.kind == "email") row.text.replace("@", "@​") else row.text,
+                    color = look.label, fontSize = 14.sp, lineHeight = 18.sp, overflow = TextOverflow.Ellipsis,
+                    style = textStyle(row),
+                )
+            }
+            Text(detail(row), color = look.secondary, fontSize = 11.sp, maxLines = 1, style = DIGITS)
         }
-        Text(detail(row), color = look.secondary, fontSize = 11.sp, maxLines = 1, style = DIGITS)
+        if (row.pinned) Glyph("pin.fill", look.secondary, 12.dp, Modifier.align(Alignment.TopEnd))
     }
 }
 
