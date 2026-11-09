@@ -465,9 +465,9 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         if (index in frame.menuKeys && frame.menu.isNotEmpty()) touch.menu = true
         if (cap.action == "layer") touch.mode = Mode.SLIDE
         touches[id] = touch
+        scheduleHold(touch)
         actions.down(index, taps)
         if (cap.action == "delete") startDeleteRepeat()
-        scheduleHold(touch)
     }
 
     /** Set by the service: the engine's handle, so hit testing asks the key map made for the text as it is. */
