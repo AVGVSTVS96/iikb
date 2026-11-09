@@ -123,7 +123,9 @@ struct TapsBoard: Encodable {
         let grid = KeyGrid(geometry.layout, width: geometry.width, metrics: geometry.metrics.grid, signature: picked)
         let items = Array(grid.rows.joined())
         width = geometry.width
-        height = geometry.height
+        let frames = items.map(\.frame)
+        let top = frames.map(\.y).min() ?? 0
+        height = (frames.map { $0.y + $0.height }.max() ?? geometry.height) + top
         keys = items.map { key, frame in
             Box(
                 name: Self.name(of: key), x: frame.x, y: frame.y, width: frame.width, height: frame.height,

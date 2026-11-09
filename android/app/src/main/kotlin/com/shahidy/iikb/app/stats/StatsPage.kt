@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +30,14 @@ enum class StatsSection(val title: String) { OVERVIEW("Overview"), TYPING("Typin
 @Composable
 fun StatsPage(section: StatsSection, pick: (StatsSection) -> Unit) {
     val (activity, transcripts) = phoneActivity()
+    key(section) { Section(section, activity, transcripts, pick) }
+}
+
+/** Each section scrolls on its own, from its top. */
+@Composable
+private fun Section(
+    section: StatsSection, activity: Activity, transcripts: List<Transcript>, pick: (StatsSection) -> Unit,
+) {
     Page("Stats", pinned = { SectionPills(StatsSection.entries, section, { it.title }, pick) }) {
         Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             when (section) {

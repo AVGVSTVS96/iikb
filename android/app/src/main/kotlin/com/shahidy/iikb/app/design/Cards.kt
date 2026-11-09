@@ -460,3 +460,42 @@ object Format {
         return "${if (share > 0) "↑" else "↓"} ${(abs(share) * 100).roundToInt()}% vs previous" to (share > 0)
     }
 }
+
+/** Raycast's search field: a magnifier and the query in a capsule card, with a clear button while there's a query. */
+@Composable
+fun SearchField(text: String, placeholder: String, onChange: (String) -> Unit) {
+    val palette = palette()
+    Row(
+        Modifier.fillMaxWidth().height(44.dp).clip(CircleShape).background(palette.card)
+            .border(BorderStroke(1.dp, palette.edge), CircleShape).padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(glyph(Glyphs.SEARCH, 2f), null, tint = palette.secondary, modifier = Modifier.size(18.dp))
+        androidx.compose.foundation.text.BasicTextField(
+            text, onChange, Modifier.weight(1f), singleLine = true,
+            textStyle = TextStyle(color = palette.label, fontSize = 17.sp),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(palette.accent),
+            decorationBox = { inner ->
+                if (text.isEmpty()) Text(placeholder, color = palette.secondary, fontSize = 17.sp, maxLines = 1)
+                inner()
+            },
+        )
+        if (text.isNotEmpty()) {
+            Box(Modifier.size(28.dp).clip(CircleShape).clickable { onChange("") }, contentAlignment = Alignment.Center) {
+                Icon(glyph(Glyphs.CLEAR, 2f), "Clear", tint = palette.secondary, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+/** A box of rows under a gray header, as a day's transcripts or clips sit. */
+@Composable
+fun Rows(header: String? = null, content: @Composable ColumnScope.() -> Unit) {
+    val palette = palette()
+    Column(Modifier.fillMaxWidth()) {
+        if (header != null) {
+            Text(header, color = palette.secondary, fontSize = 13.sp, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
+        }
+        Column(Modifier.fillMaxWidth().card(palette), content = content)
+    }
+}

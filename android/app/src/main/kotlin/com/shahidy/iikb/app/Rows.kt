@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,6 +60,20 @@ fun Page(
             content()
             Spacer(Modifier.height(32.dp))
         }
+    }
+}
+
+/** A page of rows made as they scroll into view, for a list that can grow long. */
+@Composable
+fun ListPage(
+    title: String, onBack: (() -> Unit)? = null, pinned: (@Composable () -> Unit)? = null,
+    content: LazyListScope.() -> Unit,
+) {
+    Frame(title, onBack, pinned) { padding ->
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding).imePadding(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
+        ) { content() }
     }
 }
 
@@ -116,7 +132,7 @@ fun Section(header: String? = null, footer: String? = null, content: @Composable
 @Composable
 fun Line(
     title: String, detail: String? = null, value: String? = null, onClick: (() -> Unit)? = null,
-    trailing: @Composable (() -> Unit)? = null,
+    color: Color? = null, trailing: @Composable (() -> Unit)? = null,
 ) {
     val palette = palette()
     Row(
@@ -125,7 +141,7 @@ fun Line(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = palette.label, fontSize = 17.sp)
+            Text(title, color = color ?: palette.label, fontSize = 17.sp)
             if (detail != null) Text(detail, color = palette.secondary, fontSize = 13.sp)
         }
         if (value != null) Text(value, color = palette.secondary, fontSize = 17.sp)

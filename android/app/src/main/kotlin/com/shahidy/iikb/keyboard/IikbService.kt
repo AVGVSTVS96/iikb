@@ -592,7 +592,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         )
     }
 
-    private companion object {
+    companion object {
         /** The menu fills a keyboard grown to all of the screen but this, in dp, for the app (docs/design.md). */
         const val ROOM_FOR_APP = 140f
         const val SEEN_CLIP = "clipboard.seen"

@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.shahidy.iikb.Settings
+import com.shahidy.iikb.app.clipboard.keepCopied
 import com.shahidy.iikb.keyboard.IikbService
 
 /** iikb's app: setting the keyboard up, a field to try it, and every setting. */
@@ -63,7 +64,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) refresh()
+        if (hasFocus) {
+            refresh()
+            keepCopied(this)
+        }
     }
 
     /** Read each time iikb comes forward, so the steps check off as you come back from Android's settings. */

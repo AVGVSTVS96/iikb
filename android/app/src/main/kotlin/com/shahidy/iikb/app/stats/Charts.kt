@@ -33,8 +33,8 @@ import com.shahidy.iikb.app.palette
 /** A label under a chart's column: centered on it, or starting at its leading edge. */
 class Tick(val index: Int, val text: String, val centered: Boolean = false)
 
-/** A dashed line across a chart at `value`, with a note at its trailing end. */
-class Rule(val value: Double, val note: String? = null)
+/** A dashed line across a chart at `value`, with a note over its trailing end, or its leading one. */
+class Rule(val value: Double, val note: String? = null, val leading: Boolean = false)
 
 /**
  * Columns, each a stack of `values` (one per series, bottom first, painted by `fills`), or with `lines` the same values as a
@@ -57,6 +57,7 @@ fun ColumnChart(
     rule: Rule? = null,
     picked: Int? = null,
     onPick: ((Int?) -> Unit)? = null,
+    annotate: (Int) -> Pair<String, Color>? = { null },
 ) {
     val palette = palette()
     val measurer = rememberTextMeasurer()
@@ -124,6 +125,12 @@ fun ColumnChart(
                 }
             }
         }
+        values.indices.forEach { index ->
+            val (note, color) = annotate(index) ?: return@forEach
+            val top = y(values[index].sumOf { it ?: 0.0 })
+            val layout = measurer.measure(note, label.copy(color = color, fontSize = 10.sp, fontWeight = FontWeight.SemiBold))
+            drawText(layout, topLeft = Offset(step * (index + 0.5f) - layout.size.width / 2, top - layout.size.height - 2.dp.toPx()))
+        }
         if (picked != null) {
             val x = step * (picked + 0.5f)
             drawLine(palette.secondary.copy(alpha = 0.4f), Offset(x, 0f), Offset(x, bottom), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())))
@@ -133,7 +140,7 @@ fun ColumnChart(
             drawLine(palette.secondary.copy(alpha = 0.7f), Offset(0f, at), Offset(plot, at), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())))
             rule.note?.let {
                 val note = measurer.measure(it, label.copy(fontSize = 10.sp, fontWeight = FontWeight.Medium))
-                drawText(note, topLeft = Offset(plot - note.size.width, at - note.size.height - 2.dp.toPx()))
+                drawText(note, topLeft = Offset(if (rule.leading) 0f else plot - note.size.width, at - note.size.height - 2.dp.toPx()))
             }
         }
         for (tick in ticks) {

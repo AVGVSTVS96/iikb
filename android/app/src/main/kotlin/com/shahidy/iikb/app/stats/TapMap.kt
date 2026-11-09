@@ -50,8 +50,11 @@ import kotlin.math.sin
 
 enum class TapMode(val title: String) { HEAT("Heat"), AIM("Aim"), ACCURACY("Accuracy") }
 
-/** A keycap's fill on the Taps backdrop, the keys that don't learn fainter. */
-fun keyFill(palette: Palette) = if (palette.isDark) Color(0xFF3D3D40) else Color.White
+/** A keycap's fill on the Taps backdrop: a letter's, or the darker one of a key that doesn't learn, as the keys are drawn. */
+fun keyFill(palette: Palette, learns: Boolean = true) = when {
+    palette.isDark -> if (learns) Color(0xFF3D3D40) else Color(0xFF2C2C2E)
+    else -> if (learns) Color.White else Color(0xFFC6C9D0)
+}
 
 /**
  * The keyboard at its size, or smaller where the card is narrower, with what the touch model learned drawn over it, as
@@ -86,7 +89,7 @@ fun TapMap(board: TapBoard, mode: TapMode, heat: ImageBitmap?, selected: Int?, o
                 val picked = board.aims.firstOrNull { it.key == selected }
                 board.keys.forEach { key ->
                     drawRoundRect(
-                        keyFill(palette).copy(alpha = if (key.learns) 1f else 0.55f), Offset(key.x.toFloat(), key.y.toFloat()),
+                        keyFill(palette, key.learns), Offset(key.x.toFloat(), key.y.toFloat()),
                         Size(key.width.toFloat(), key.height.toFloat()), CornerRadius(8.5f),
                     )
                 }
@@ -123,7 +126,7 @@ private fun DrawScope.heat(
     }
     val halo = if (palette.isDark) Color.Black.copy(alpha = 0.7f) else keyFill(palette)
     board.keys.forEach { key ->
-        if (!key.learns) return@forEach
+        if (!key.learns) return@forEach plain(measurer, key, palette, text)
         val space = key.name == "space"
         val style = TextStyle(
             color = palette.label.copy(alpha = if (palette.isDark) 0.9f else 0.62f),
@@ -259,7 +262,7 @@ fun CloseUp(board: TapBoard, aim: TapBoard.Aim) {
             val topLeft = map(key.x, key.y)
             val rect = Size(key.width.toFloat() * scale, key.height.toFloat() * scale)
             if (topLeft.x > size.width || topLeft.y > size.height || topLeft.x + rect.width < 0 || topLeft.y + rect.height < 0) return@forEachIndexed
-            drawRoundRect(keyFill(palette).copy(alpha = if (key.learns) 1f else 0.55f), topLeft, rect, CornerRadius(corner))
+            drawRoundRect(keyFill(palette, key.learns), topLeft, rect, CornerRadius(corner))
             val isTarget = index == aim.key
             val name = measurer.measure(
                 key.name,
@@ -311,7 +314,7 @@ fun Pull(board: TapBoard) {
         drawRoundRect(Tints.backdrop(palette), cornerRadius = CornerRadius(16 * density))
         board.keys.forEach { key ->
             drawRoundRect(
-                keyFill(palette).copy(alpha = if (key.learns) 1f else 0.45f), Offset(key.x.toFloat() * scale, key.y.toFloat() * scale),
+                keyFill(palette, key.learns), Offset(key.x.toFloat() * scale, key.y.toFloat() * scale),
                 Size(key.width.toFloat() * scale, key.height.toFloat() * scale), CornerRadius(6 * scale),
             )
         }

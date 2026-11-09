@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -246,7 +249,7 @@ private fun Records(activity: Activity) {
     }.maxByOrNull { it.second }
     val burst = activity.days.map { it.key to it.value.typed.peak }.maxByOrNull { it.second }
     val records = listOf(
-        Record(Glyphs.FLAME, Tints.orange(palette), "Streak", "$current", if (current == 1) "day" else "days", "Longest $longest days"),
+        Record(Glyphs.FLAME, Tints.orange(palette), "Streak", "$current", if (current == 1) "day" else "days", "Longest $longest ${if (longest == 1) "day" else "days"}"),
         Record(
             Glyphs.TROPHY, Tints.yellow(palette), "Most words",
             Format.short(most?.let { it.value.typed.words + it.value.said.words } ?: 0), "words",
@@ -266,8 +269,8 @@ private fun Records(activity: Activity) {
         val across = if (maxWidth >= 150.dp * 4 + 36.dp) 4 else 2
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             records.chunked(across).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    row.forEach { Box(Modifier.weight(1f)) { RecordTile(it) } }
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    row.forEach { Box(Modifier.weight(1f).fillMaxHeight()) { RecordTile(it) } }
                 }
             }
         }
@@ -302,11 +305,13 @@ private class Record(
 @Composable
 private fun RecordTile(record: Record) {
     val palette = palette()
-    Box(Modifier.fillMaxWidth().card(palette)) {
-        Box(
-            Modifier.offset((-60).dp, (-70).dp).size(160.dp)
-                .background(Brush.radialGradient(listOf(record.color.copy(alpha = 0.2f), Color.Transparent))),
-        )
+    val glow = record.color.copy(alpha = 0.2f)
+    Box(
+        Modifier.fillMaxSize().card(palette).drawBehind {
+            val center = Offset(20.dp.toPx(), 10.dp.toPx())
+            drawCircle(Brush.radialGradient(listOf(glow, Color.Transparent), center, 80.dp.toPx()), 80.dp.toPx(), center)
+        },
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
@@ -325,7 +330,7 @@ private fun RecordTile(record: Record) {
                         modifier = Modifier.padding(bottom = 5.dp),
                     )
                 }
-                Text(record.detail, color = palette.secondary, fontSize = 13.sp, maxLines = 1)
+                Text(record.detail, color = palette.secondary, fontSize = 13.sp, lineHeight = 17.sp, maxLines = 2)
             }
         }
     }

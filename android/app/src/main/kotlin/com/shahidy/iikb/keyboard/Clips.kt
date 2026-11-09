@@ -17,7 +17,7 @@ class Clips private constructor(private val file: File) {
     @Serializable
     data class Row(
         val text: String, val kind: String, val length: String? = null, val age: String, val pinned: Boolean,
-        val site: String? = null, val name: String? = null, val color: Int? = null,
+        val found: Double = 0.0, val site: String? = null, val name: String? = null, val color: Int? = null,
     )
 
     /** The clips holding `search`, pinned first, then newest; `words` counts their length in words. */

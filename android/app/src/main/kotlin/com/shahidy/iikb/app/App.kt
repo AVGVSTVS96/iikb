@@ -34,9 +34,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 import com.shahidy.iikb.Settings
+import com.shahidy.iikb.app.clipboard.ClipboardPage
 import com.shahidy.iikb.app.design.Glyphs
 import com.shahidy.iikb.app.stats.StatsPage
 import com.shahidy.iikb.app.stats.StatsSection
+import com.shahidy.iikb.app.transcripts.TranscriptsPage
 
 /** The tabs go under the keyboard while it's up, as iOS's do, so the page keeps the room above the keys. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -87,6 +89,11 @@ fun App(
                         page != null -> SettingsPage(page!!) { page = null }
                         else -> when (Tab.entries[tab]) {
                             Tab.HOME -> Home(setup, onEnable, onPick, onMicrophone) { page = it }
+                            Tab.TRANSCRIPTS -> TranscriptsPage {
+                                stats = StatsSection.DICTATION
+                                tab = Tab.STATS.ordinal
+                            }
+                            Tab.CLIPBOARD -> ClipboardPage()
                             Tab.STATS -> StatsPage(stats) { stats = it }
                             Tab.SETTINGS -> SettingsList { page = it }
                         }
@@ -99,6 +106,8 @@ fun App(
 
 enum class Tab(val title: String, val icon: ImageVector) {
     HOME("iikb", glyph("M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z M7 10h1m3 0h2m3 0h1M8 14h8")),
+    TRANSCRIPTS("Transcripts", glyph(Glyphs.TEXT_BUBBLE)),
+    CLIPBOARD("Clipboard", glyph(Glyphs.CLIPBOARD)),
     STATS("Stats", glyph(Glyphs.CHART)),
     SETTINGS(
         "Settings",

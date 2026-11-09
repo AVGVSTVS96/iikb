@@ -20,6 +20,8 @@ final class Clips {
         /// `now`, `5m`, `2d`.
         var age: String
         var pinned: Bool
+        /// When it was copied, in seconds since 1970.
+        var found: Double
         var site: String?
         /// The site as a badge names it: `github`, `x`.
         var name: String?
@@ -31,7 +33,7 @@ final class Clips {
             guard let text = item.content.preview else { return nil }
             var row = Row(
                 text: text, kind: "text", length: ClipboardHistory.length(of: item.content, in: unit),
-                age: ClipboardHistory.age(of: item.found, now: now), pinned: item.pinned)
+                age: ClipboardHistory.age(of: item.found, now: now), pinned: item.pinned, found: item.found)
             switch item.content.kind {
             case .link(let link):
                 (row.kind, row.site, row.name) = ("link", link.site, link.name)
