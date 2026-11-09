@@ -15,37 +15,50 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.shahidy.iikb.voice.VoiceModel
 
-/** Settings › Voice: the voice model, each with what it costs, and for the picked one its download, as iOS's page. */
+/**
+ * Settings › Voice, as iOS's page: the voice model, each with what it costs, and for the picked Parakeet its download.
+ * iOS's Keep Mic On isn't here: it keeps iikb's app recording in the background
+ * because an iPhone keyboard can't start a recording, and Android's keyboard records by itself, from the first tap.
+ */
 @Composable
 fun Voice() {
+    ModelSettings()
+}
+
+@Composable
+private fun ModelSettings() {
     val context = LocalContext.current
     val model = remember { VoiceModel.of(context) }
     val picked = model.pickedShown
     val state = model.state
-    LaunchedEffect(picked) { if (picked == VoiceModel.Model.V3) model.prepare() }
-    Section("Voice Model", "The sound never leaves your phone with Parakeet.") {
+    LaunchedEffect(picked) { if (picked != VoiceModel.Model.ANDROID) model.prepare() }
+    Section(
+        "Voice Model",
+        "What you say is written down on this phone with a Parakeet and never leaves it. What you dictate while one gets " +
+            "ready is written once it’s ready, in the order you said it.",
+    ) {
         VoiceModel.Model.entries.forEachIndexed { index, choice ->
             if (index > 0) Divider()
-            val detail = if (choice == VoiceModel.Model.V3 && picked == choice) status(state, model) else choice.detail
-            Line(choice.title, detail, onClick = { model.picked = choice }) { Radio(picked == choice) }
-            if (choice == VoiceModel.Model.V3 && picked == choice && state is VoiceModel.State.Downloading) {
-                Progress(state.fraction)
+            val parakeet = choice != VoiceModel.Model.ANDROID && picked == choice
+            Line(choice.title, if (parakeet) status(state, choice, model) else choice.detail, onClick = { model.picked = choice }) {
+                Radio(picked == choice)
             }
+            if (parakeet && state is VoiceModel.State.Downloading) Progress(state.fraction)
         }
-        if (picked == VoiceModel.Model.V3 && state is VoiceModel.State.Failed) {
+        if (picked != VoiceModel.Model.ANDROID && state is VoiceModel.State.Failed) {
             Divider()
             Link("Try Again") { model.prepare() }
         }
     }
 }
 
-private fun status(state: VoiceModel.State, model: VoiceModel) = when (state) {
-    VoiceModel.State.Missing -> VoiceModel.Model.V3.detail
+private fun status(state: VoiceModel.State, choice: VoiceModel.Model, model: VoiceModel) = when (state) {
+    VoiceModel.State.Missing -> choice.detail
     is VoiceModel.State.Downloading ->
-        "Downloading, ${(state.fraction * model.files.total / 1_000_000).toInt()} of ${model.files.total / 1_000_000} MB"
+        "Downloading, ${(state.fraction * model.parakeetFiles.total / 1_000_000).toInt()} of ${model.parakeetFiles.total / 1_000_000} MB"
     VoiceModel.State.Loading -> "Getting ready"
-    VoiceModel.State.Ready -> "Fast and accurate, on your phone."
-    is VoiceModel.State.Failed -> "Couldn't download: ${state.reason}"
+    VoiceModel.State.Ready -> choice.detail.substringBefore(" Downloads once")
+    is VoiceModel.State.Failed -> "Couldn’t download: ${state.reason}"
 }
 
 @Composable

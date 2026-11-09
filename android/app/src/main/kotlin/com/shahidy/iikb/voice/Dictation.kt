@@ -114,7 +114,7 @@ class Dictation(context: Context, private val typist: Typist) {
             this.speech.start()
         } else {
             if (!microphone.start()) return false
-            if (model.files.present) writer.execute { runCatching { model.parakeet() } } else model.prepare()
+            if (model.parakeetFiles.present) writer.execute { runCatching { model.parakeet() } } else model.prepare()
         }
         recorded = 0.0
         started = System.currentTimeMillis()
@@ -172,18 +172,18 @@ class Dictation(context: Context, private val typist: Typist) {
     private fun pump() {
         if (writing || closed) return
         val take = queue.firstOrNull() ?: return
-        if (!model.files.present) {
+        if (!model.parakeetFiles.present) {
             model.prepare { pump() }
             return onChange()
         }
         writing = true
         writer.execute {
-            val heard = runCatching { model.parakeet().write(take.recording!!) }
+            val heard = runCatching { model.parakeet().let { it.write(take.recording!!) to it.model.title } }
             main.post {
                 if (closed) return@post
                 writing = false
                 queue.removeFirst()
-                heard.onSuccess { deliver(take, it, take.recording!!.seconds, VoiceModel.Model.V3.title) }
+                heard.onSuccess { (text, title) -> deliver(take, text, take.recording!!.seconds, title) }
                 if (queue.isEmpty() && listening == null) writer.execute(model::letGo)
                 onChange()
                 pump()
