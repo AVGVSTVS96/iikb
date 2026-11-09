@@ -10,11 +10,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.shahidy.iikb.Transcripts
+import com.shahidy.iikb.app.stats.AppNames
 
 /**
  * The words and punctuation iikb types for what you say: a card of the same words as picked, then each style, each
@@ -35,6 +42,7 @@ fun WritingStyle() {
         "Style",
         "A style sets all the punctuation. Formal keeps every mark; Casual drops the last period and the comma after “so” or “hey”; very casual also drops capitals and the comma before “and” or “but”; Excited! ends short sentences with “!”. Every style asks a question with “?”. Capitals follow Auto-Capitalization in Keyboard › Typing.",
     ) { Examples("writingStyle", STYLES) { quoted(SAID, "writingStyle", it) } }
+    StyleInEachApp()
     Section("Editing", "Clean also takes back what you cancel with “scratch that”. Transcripts keep what the model wrote.") {
         Examples("dictationEditing", EDITING) { quoted(RAMBLED, "dictationEditing", it) }
     }
@@ -45,6 +53,33 @@ fun WritingStyle() {
         Examples("textMode", TEXT_MODES) { quoted(TEXTED, "textMode", it) }
     }
 }
+
+/** Each app you've dictated into, most dictated first, then any other with a style of its own, each on its menu of styles. */
+@Composable
+private fun StyleInEachApp() {
+    val context = LocalContext.current
+    val store = LocalStore.current
+    val names = remember { AppNames(context) }
+    var transcripts by remember { mutableStateOf(Transcripts.list()) }
+    DisposableEffect(Unit) { onDispose(Transcripts.listen { transcripts = Transcripts.list() }) }
+    val styles = store.appStyles()
+    val counts = transcripts.mapNotNull { it.app }.filter { it != context.packageName }.groupingBy { it }.eachCount()
+        .toMutableMap()
+    styles.keys.forEach { counts.putIfAbsent(it, 0) }
+    val apps = counts.entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { names.of(it.key) })
+        .map { it.key }
+    if (apps.isEmpty()) return
+    Section("Style in Each App", "An app on Default writes in the style above. Each app you dictate into shows here.") {
+        apps.forEachIndexed { index, app ->
+            if (index > 0) Divider()
+            MenuRow(names.of(app), styles[app] ?: DEFAULT, listOf(DEFAULT to "Default") + STYLES) {
+                store.setAppStyle(app, it.takeIf { it != DEFAULT })
+            }
+        }
+    }
+}
+
+private const val DEFAULT = ""
 
 @Composable
 private fun Examples(name: String, choices: List<Pair<String, String>>, example: (String) -> String) {

@@ -72,6 +72,18 @@ class Store(val settings: Settings) {
         }
     }
 
+    /** Style in Each App: the style picked for each app's package, kept as `package:style,…`. */
+    fun appStyles(): Map<String, String> = string("appWritingStyles").split(',').mapNotNull { pair ->
+        pair.split(':', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] }
+    }.toMap()
+
+    /** `style` for `app`, or nil for Default, the style above. */
+    fun setAppStyle(app: String, style: String?) {
+        val styles = appStyles().toMutableMap()
+        if (style == null) styles.remove(app) else styles[app] = style
+        settings.set("appWritingStyles", styles.entries.joinToString(",") { "${it.key}:${it.value}" })
+    }
+
     fun title(name: String, choices: List<Pair<String, String>>) =
         choices.firstOrNull { it.first == string(name) }?.second ?: choices.first().second
 

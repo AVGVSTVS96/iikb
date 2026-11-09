@@ -319,9 +319,13 @@ fun Choices(name: String, options: List<Pair<String, String>>, details: Map<Stri
 @Composable
 fun MenuRow(title: String, name: String, choices: List<Pair<String, String>>) {
     val store = LocalStore.current
+    MenuRow(title, store.string(name), choices) { store.set(name, it) }
+}
+
+@Composable
+fun MenuRow(title: String, picked: String, choices: List<Pair<String, String>>, pick: (String) -> Unit) {
     val palette = palette()
     var open by remember { mutableStateOf(false) }
-    val picked = store.string(name)
     Box {
         Line(title, value = choices.firstOrNull { it.first == picked }?.second, onClick = { open = true }) {
             Trailing("chevron.up.chevron.down")
@@ -339,7 +343,7 @@ fun MenuRow(title: String, name: String, choices: List<Pair<String, String>>) {
                         }
                     },
                     onClick = {
-                        store.set(name, value)
+                        pick(value)
                         open = false
                     },
                 )

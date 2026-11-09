@@ -55,6 +55,7 @@ class Settings(context: Context) {
             "dictationEditing" to "asSaid",
             "spokenLists" to "numbered",
             "textMode" to "spelledOut",
+            "appWritingStyles" to "",
         )
     }
 }

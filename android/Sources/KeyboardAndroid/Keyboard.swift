@@ -237,11 +237,21 @@ extension KeyboardSettings {
             case "dictationEditing": dictationEditing = DictationEditing(rawValue: value) ?? dictationEditing
             case "spokenLists": dictationLists = DictationLists(rawValue: value) ?? dictationLists
             case "textMode": dictationTextMode = DictationTextMode(rawValue: value) ?? dictationTextMode
+            case "appWritingStyles": appDictationStyles = Self.appStyles(value)
             default: continue
             }
         }
     }
 
+    /// Style in Each App as `package:style` pairs split by commas, which a package name can't hold.
+    private static func appStyles(_ value: String) -> [String: DictationStyle] {
+        var styles: [String: DictationStyle] = [:]
+        for pair in value.split(separator: ",") {
+            let parts = pair.split(separator: ":", maxSplits: 1).map(String.init)
+            if parts.count == 2, let style = DictationStyle(rawValue: parts[1]) { styles[parts[0]] = style }
+        }
+        return styles
+    }
 }
 
 /// What's learned, kept as JSON in the app's files by Kotlin.
