@@ -62,6 +62,8 @@ struct Bar: Encodable {
     var compact: Bool
     /// The keys block's edges, which a panel's results and search row span.
     var blockMinX, blockMaxX: Double
+    /// Between the tools and the mic, where the suggestions and a notice go.
+    var minX, maxX: Double
     var more: Box?
     var mic: Box?
     var tools: [Box]

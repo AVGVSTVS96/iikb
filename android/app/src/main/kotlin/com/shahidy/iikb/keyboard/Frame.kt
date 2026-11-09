@@ -81,6 +81,9 @@ data class Bar(
     val compact: Boolean,
     val blockMinX: Double,
     val blockMaxX: Double,
+    /** Between the tools and the mic, where the suggestions and a notice go. */
+    val minX: Double,
+    val maxX: Double,
     val more: Box? = null,
     val mic: Box? = null,
     val tools: List<Box>,

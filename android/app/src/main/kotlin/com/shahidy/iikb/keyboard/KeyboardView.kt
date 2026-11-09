@@ -276,15 +276,19 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
 
     private fun showsHint(frame: Frame) = frame.showsSuggestions && frame.panel == null && !mic.covers && edits == null && chats == null
 
+    /** A notice or a source's hint, centered between the tools and the mic, shrinking to 70% before it's cut at its end. */
     private fun drawNotice(canvas: Canvas, frame: Frame, notice: String) {
         val bar = frame.toolbar
         text.typeface = painter.labels
-        text.textSize = 15f
         text.color = frame.theme.candidate
-        val left = (bar.more?.let { it.x + it.width } ?: bar.blockMinX).toFloat()
-        val right = (bar.mic?.x ?: bar.blockMaxX).toFloat()
-        val label = ellipsize(notice, right - left - 16)
-        canvas.drawText(label, (left + right) / 2 - text.measureText(label) / 2, (bar.top + bar.bar / 2).toFloat() + 5f, text)
+        val left = bar.minX.toFloat() + 4
+        val right = bar.maxX.toFloat() - 4
+        val room = right - left
+        text.textSize = 15f
+        text.textSize = (15f * room / text.measureText(notice)).coerceIn(15f * 0.7f, 15f)
+        var label = notice
+        while (label.length > 1 && text.measureText(label) > room) label = label.dropLast(2) + "…"
+        canvas.drawText(label, (left + right) / 2 - text.measureText(label) / 2, (bar.top + bar.bar / 2).toFloat() + text.textSize / 3, text)
     }
 
     /** Cut, Copy and Paste as three pills in the theme's key color, from the More button to the mic. */

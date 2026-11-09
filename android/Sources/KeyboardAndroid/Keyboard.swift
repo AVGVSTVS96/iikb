@@ -121,7 +121,7 @@ final class Keyboard {
                 top: toolbar.top, bar: toolbar.bar, button: toolbar.button, glyph: toolbar.glyph,
                 results: toolbar.results, field: toolbar.field, panelHeight: toolbar.panelHeight,
                 compact: toolbar.isCompact, blockMinX: metrics.margin.leading + metrics.sideInset,
-                blockMaxX: width - metrics.margin.trailing - metrics.sideInset,
+                blockMaxX: width - metrics.margin.trailing - metrics.sideInset, minX: bar.minX, maxX: bar.maxX,
                 more: bar.more.map(Box.init), mic: bar.mic.map(Box.init), tools: bar.tools.map(Box.init),
                 slots: bar.slots.map(Box.init), emoji: Box(bar.emoji), emojiBeside: bar.emojiBeside,
                 cancel: Box(bar.cancel), recording: Box(bar.recording)),
