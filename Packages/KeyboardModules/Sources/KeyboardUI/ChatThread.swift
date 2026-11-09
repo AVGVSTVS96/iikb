@@ -195,7 +195,7 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
     }
 }
 
-/// One message as Messages draws it: yours on the accent color, the other side's on a key's, SF Pro 17 on 22 point
+/// One message as Messages draws it, flat: yours on the accent color, the other side's on a key's, SF Pro 17 on 22 point
 /// lines, hugging its text, with markdown's bold, italics, code and links. The text is a `UITextView`, so holding it
 /// selects with iOS's handles and edit menu, links and web addresses are links, and a link held offers Open and Copy.
 public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
@@ -221,8 +221,6 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
     override public init(frame: CGRect) {
         super.init(frame: frame)
         layer.insertSublayer(shape, at: 0)
-        layer.shadowOffset = CGSize(width: 0, height: 1)
-        layer.shadowRadius = 0
         text.delegate = self
         text.isEditable = false
         text.isSelectable = true
@@ -261,8 +259,6 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
         shown = (content, theme)
         self.mine = mine
         shape.fillColor = (mine ? theme.prominent.ui : theme.key.ui).cgColor
-        layer.shadowColor = theme.shadow.ui.cgColor
-        layer.shadowOpacity = mine ? 0 : 1
         alpha = pending ? 0.6 : 1
         let color = mine ? theme.prominentLabel.ui : theme.label.ui
         text.tintColor = mine ? theme.prominentLabel.ui : theme.prominent.ui
@@ -318,7 +314,6 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
         CATransaction.setDisableActions(true)
         shape.frame = bounds
         shape.path = path.cgPath
-        layer.shadowPath = path.cgPath
         CATransaction.commit()
     }
 
