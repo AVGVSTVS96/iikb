@@ -6,7 +6,10 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -16,7 +19,13 @@ import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.LastBaseline
+import androidx.compose.ui.layout.IntrinsicMeasurable
+import androidx.compose.ui.layout.IntrinsicMeasureScope
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasurePolicy
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
@@ -45,7 +54,8 @@ import androidx.compose.material3.Text as MaterialText
 /**
  * Text as UIKit sets San Francisco: tracked for its size as SF Pro is, and with no word left alone on a paragraph's
  * last line, which UIKit's standard line-break strategy (`.pushOut`) avoids by moving the line before's last word down.
- * Text with inline content, or that can be selected (`Selectable`), is Material's, and only takes the tracking.
+ * Text with inline content, or that can be selected (`Selectable`), is Material's, and only takes the tracking, as
+ * does text set `pushOut = false`, as a UITextView's is.
  */
 @Composable
 fun Text(
@@ -54,10 +64,10 @@ fun Text(
     letterSpacing: TextUnit = TextUnit.Unspecified, textDecoration: TextDecoration? = null, textAlign: TextAlign? = null,
     lineHeight: TextUnit = TextUnit.Unspecified, overflow: TextOverflow = TextOverflow.Clip, softWrap: Boolean = true,
     maxLines: Int = Int.MAX_VALUE, minLines: Int = 1, onTextLayout: ((TextLayoutResult) -> Unit)? = null,
-    style: TextStyle = LocalTextStyle.current,
+    style: TextStyle = LocalTextStyle.current, pushOut: Boolean = true,
 ) = Text(
     AnnotatedString(text), modifier, color, fontSize, fontStyle, fontWeight, fontFamily, letterSpacing, textDecoration,
-    textAlign, lineHeight, overflow, softWrap, maxLines, minLines, emptyMap(), onTextLayout, style,
+    textAlign, lineHeight, overflow, softWrap, maxLines, minLines, emptyMap(), onTextLayout, style, pushOut,
 )
 
 @Composable
@@ -69,12 +79,13 @@ fun Text(
     overflow: TextOverflow = TextOverflow.Clip, softWrap: Boolean = true, maxLines: Int = Int.MAX_VALUE,
     minLines: Int = 1, inlineContent: Map<String, InlineTextContent> = emptyMap(),
     onTextLayout: ((TextLayoutResult) -> Unit)? = null, style: TextStyle = LocalTextStyle.current,
+    pushOut: Boolean = true,
 ) {
     val size = fontSize.takeOrElse { style.fontSize }.takeOrElse { 14.sp }
     val tracking = letterSpacing.takeOrElse {
         style.letterSpacing.takeIf { it.isSpecified && it != Tracking.base } ?: Tracking.at(size.value)
     }
-    if (inlineContent.isNotEmpty() || maxLines == 1 || !softWrap || LocalSelectable.current) {
+    if (!pushOut || inlineContent.isNotEmpty() || maxLines == 1 || !softWrap || LocalSelectable.current) {
         return MaterialText(
             text, modifier, color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight,
             fontFamily = fontFamily, letterSpacing = tracking, textDecoration = textDecoration, textAlign = textAlign,
@@ -88,21 +99,39 @@ fun Text(
         fontFamily = fontFamily, textDecoration = textDecoration, fontStyle = fontStyle, letterSpacing = tracking,
     )
     val measurer = rememberTextMeasurer()
-    val drawn = remember { arrayOfNulls<TextLayoutResult>(1) }
+    var drawn by remember { mutableStateOf<TextLayoutResult?>(null) }
     val clip = overflow != TextOverflow.Visible
+    val lay = { constraints: Constraints -> pushOut(measurer, text, resolved, overflow, maxLines, constraints) }
+    val least = { constraints: Constraints ->
+        if (minLines > 1) measurer.measure("\n".repeat(minLines - 1), resolved, constraints = constraints).size.height else 0
+    }
     Layout(
         modifier.semantics { this.text = text }.let { if (clip) it.clipToBounds() else it }
-            .drawBehind { drawn[0]?.let { drawText(it) } },
-    ) { _, constraints ->
-        val layout = pushOut(measurer, text, resolved, overflow, maxLines, constraints)
-        drawn[0] = layout
-        onTextLayout?.invoke(layout)
-        val least = if (minLines > 1) {
-            measurer.measure("\n".repeat(minLines - 1), resolved, constraints = constraints).size.height
-        } else 0
-        val baselines = mapOf<AlignmentLine, Int>(FirstBaseline to layout.firstBaseline.roundToInt(), LastBaseline to layout.lastBaseline.roundToInt())
-        layout(layout.size.width, constraints.constrainHeight(maxOf(layout.size.height, least)), baselines) {}
-    }
+            .drawBehind { drawn?.let { drawText(it) } },
+        measurePolicy = object : MeasurePolicy {
+            override fun MeasureScope.measure(measurables: List<Measurable>, constraints: Constraints): MeasureResult {
+                val layout = lay(constraints)
+                drawn = layout
+                onTextLayout?.invoke(layout)
+                val baselines = mapOf<AlignmentLine, Int>(
+                    FirstBaseline to layout.firstBaseline.roundToInt(), LastBaseline to layout.lastBaseline.roundToInt(),
+                )
+                return layout(layout.size.width, constraints.constrainHeight(maxOf(layout.size.height, least(constraints))), baselines) {}
+            }
+
+            override fun IntrinsicMeasureScope.minIntrinsicWidth(measurables: List<IntrinsicMeasurable>, height: Int) =
+                measurer.measure(text, resolved, constraints = Constraints(maxWidth = 0)).size.width
+
+            override fun IntrinsicMeasureScope.maxIntrinsicWidth(measurables: List<IntrinsicMeasurable>, height: Int) =
+                lay(Constraints()).size.width
+
+            override fun IntrinsicMeasureScope.minIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) =
+                maxOf(lay(Constraints(maxWidth = width)).size.height, least(Constraints(maxWidth = width)))
+
+            override fun IntrinsicMeasureScope.maxIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) =
+                minIntrinsicHeight(measurables, width)
+        },
+    )
 }
 
 private val LocalSelectable = staticCompositionLocalOf { false }
