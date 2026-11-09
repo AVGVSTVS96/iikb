@@ -68,6 +68,8 @@ class Held(
     val actions: List<Action> = emptyList(),
     /** A tap on the card, a GIF's copy, as iOS's preview action; without one the tap puts it away. */
     val tapped: (() -> Unit)? = null,
+    /** The actions a row each, as UIKit lists a menu's, not side by side at its medium element size. */
+    val listed: Boolean = false,
 ) {
     sealed interface Shows {
         /** Text in full; a link's `row` heads it with its site, as the clip's badge names it. */
@@ -106,7 +108,11 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
         }
         val width = maxWidth.value
         val height = (maxHeight - bottom).value
-        val menu = if (held.actions.isEmpty()) 0f else MENU_ROW
+        val menu = when {
+            held.actions.isEmpty() -> 0f
+            held.listed -> LIST_PAD * 2 + LIST_ROW * held.actions.size
+            else -> MENU_ROW
+        }
         Box(
             Modifier.fillMaxWidth().height(height.dp).graphicsLayer { alpha = appear.value }
                 .background(Color.Black.copy(alpha = if (look.dark) 0.47f else 0.2f))
@@ -115,7 +121,7 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
         Layout(
             content = {
                 Card(held, close)
-                if (menu > 0) Menu(held.actions, close)
+                if (menu > 0) if (held.listed) ListMenu(held.actions, close) else Menu(held.actions, close)
             },
             modifier = Modifier.fillMaxSize().graphicsLayer {
                 alpha = appear.value
@@ -251,6 +257,38 @@ private fun Menu(actions: List<Held.Action>, close: () -> Unit) {
     }
 }
 
+/** The held item's actions as UIKit lists a menu's: a glyph and a title a row. */
+@Composable
+private fun ListMenu(actions: List<Held.Action>, close: () -> Unit) {
+    val look = LocalColors.current
+    val shape = RoundedCornerShape(LIST_CORNER.dp)
+    Column(
+        Modifier.shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
+            .background(look.glass, shape).border(0.5.dp, look.glassEdge, shape).clip(shape).padding(vertical = LIST_PAD.dp),
+    ) {
+        for (action in actions) {
+            val interaction = remember { MutableInteractionSource() }
+            val pressed by interaction.collectIsPressedAsState()
+            val tint = if (action.destructive) look.destructive else look.label
+            Row(
+                Modifier.fillMaxWidth().height(LIST_ROW.dp)
+                    .background(if (pressed) look.label.copy(alpha = 0.08f) else Color.Transparent)
+                    .clickable(interaction, indication = null) {
+                        close()
+                        action.run()
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.padding(start = 26.dp).width(26.dp), contentAlignment = Alignment.Center) {
+                    Glyph(action.glyph, tint, Glyphs.square(17f).dp)
+                }
+                Spacer(Modifier.width(11.dp))
+                Text(action.title, color = tint, fontSize = 17.sp)
+            }
+        }
+    }
+}
+
 /** iOS's `secondaryLabel`, a held link's address. */
 private val Colors.previewSecondary get() = if (dark) Color(0x99EBEBF5) else Color(0x993C3C43)
 /** iOS's preview card: secondarySystemBackground. */
@@ -288,3 +326,6 @@ private const val MENU_GLYPH = 21f
 private const val MENU_TITLE = 12f
 private const val MENU_TITLE_GAP = 5f
 private const val MENU_CORNER = 37f
+private const val LIST_ROW = 42f
+private const val LIST_PAD = 10f
+private const val LIST_CORNER = 26f

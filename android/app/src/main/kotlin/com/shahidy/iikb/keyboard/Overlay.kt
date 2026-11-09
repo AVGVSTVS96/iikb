@@ -62,6 +62,10 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         fun send()
         /** The message box's mic: a dictation into the chat's line starts or stops. */
         fun mic()
+        /** A link in a message tapped, or Open Link picked: the phone opens it in its app for links. */
+        fun openLink(url: String)
+        /** Copy Link picked on a held link: it goes on the clipboard as text. */
+        fun copyLink(url: String)
     }
 
     /** An open chat's message line, which the keys type into, and its caret. */

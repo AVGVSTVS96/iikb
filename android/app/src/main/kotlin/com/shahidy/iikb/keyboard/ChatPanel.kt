@@ -1,5 +1,20 @@
 package com.shahidy.iikb.keyboard
 
+import android.util.Patterns
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -167,7 +182,9 @@ private fun Modifier.fadeBothEnds() = graphicsLayer(compositingStrategy = Compos
 
 /**
  * One message as Messages draws it: yours on the accent color, theirs on a key's with its shadow, 17 on 22 lines,
- * hugging its text; the corners toward a message from the same side tighten. Markdown's bold, italics and code drawn.
+ * hugging its text; the corners toward a message from the same side tighten. Markdown's bold, italics and code drawn,
+ * and its links and web addresses underlined in the text's color. Its text is iOS's non-editable UITextView: held, it
+ * selects with the system's handles and Copy; a link tapped opens, and held offers Open Link and Copy Link.
  */
 @Composable
 private fun Bubble(message: Chats.Message, above: Boolean, below: Boolean, widest: androidx.compose.ui.unit.Dp) {
@@ -193,19 +210,62 @@ private fun Bubble(message: Chats.Message, above: Boolean, below: Boolean, wides
             }
             .padding(horizontal = 12.dp, vertical = 7.dp),
     ) {
+        val actions = LocalActions.current
+        val hold = LocalHold.current
         val text = remember { arrayOfNulls<TextLayoutResult>(1) }
-        Text(
-            markdown(message.text), color = if (message.mine) look.accentLabel else look.label,
-            style = TextStyle(fontSize = 17.sp, lineHeight = 22.sp),
-            onTextLayout = { text[0] = it },
-            modifier = Modifier.layout { measurable, constraints ->
-                val placeable = measurable.measure(constraints)
-                val lines = text[0]
-                val width = if (lines == null) placeable.width else
-                    (0 until lines.lineCount).maxOf { ceil(lines.getLineRight(it) - lines.getLineLeft(it)).toInt() }
-                layout(width.coerceIn(constraints.minWidth, placeable.width), placeable.height) { placeable.place(0, 0) }
-            },
-        )
+        val written = remember(message.text) { markdown(message.text, actions::openLink) }
+        var bounds by remember { mutableStateOf(Rect.Zero) }
+        SelectionContainer {
+            BasicText(
+                written,
+                style = TextStyle(fontSize = 17.sp, lineHeight = 22.sp, color = if (message.mine) look.accentLabel else look.label),
+                onTextLayout = { text[0] = it },
+                modifier = Modifier.onGloballyPositioned { bounds = it.boundsInWindow() }
+                    .heldLink({ position -> text[0]?.let { written.link(it, position) } }) { url ->
+                        hold(
+                            Held(
+                                bounds, Held.Shows.Text(url), listed = true,
+                                actions = listOf(
+                                    Held.Action("safari", "Open Link") { actions.openLink(url) },
+                                    Held.Action("doc.on.doc", "Copy Link") { actions.copyLink(url) },
+                                ),
+                            ),
+                        )
+                    }
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        val lines = text[0]
+                        val width = if (lines == null) placeable.width else
+                            (0 until lines.lineCount).maxOf { ceil(lines.getLineRight(it) - lines.getLineLeft(it)).toInt() }
+                        layout(width.coerceIn(constraints.minWidth, placeable.width), placeable.height) { placeable.place(0, 0) }
+                    },
+            )
+        }
+    }
+}
+
+/** The link under `position` in text laid out as `layout`, if any. */
+private fun AnnotatedString.link(layout: TextLayoutResult, position: Offset): String? {
+    val line = layout.getLineForVerticalPosition(position.y)
+    if (position.x < layout.getLineLeft(line) || position.x > layout.getLineRight(line)) return null
+    val at = layout.getOffsetForPosition(position)
+    return getLinkAnnotations(at, at + 1).firstNotNullOfOrNull { (it.item as? LinkAnnotation.Url)?.url }
+}
+
+/** A long press on a link, taken before selection sees it, as UIKit gives a held link its own menu. */
+private fun Modifier.heldLink(linkAt: (Offset) -> String?, held: (String) -> Unit) = pointerInput(Unit) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val url = linkAt(down.position) ?: return@awaitEachGesture
+        val lifted = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            waitForUpOrCancellation(PointerEventPass.Initial)
+        }
+        if (lifted != null) return@awaitEachGesture
+        held(url)
+        do {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            event.changes.forEach { it.consume() }
+        } while (event.changes.any { it.pressed })
     }
 }
 
@@ -217,21 +277,38 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.translate(
     it.translate(0f, -top)
 }
 
-/** Markdown's inline marks, as iOS's `AttributedString(markdown:)` reads them: `**bold**`, `*italic*`, `` `code` ``. */
-fun markdown(text: String): AnnotatedString = buildAnnotatedString {
+/**
+ * Markdown's inline marks, as iOS's `AttributedString(markdown:)` reads them: `**bold**`, `*italic*`, `` `code` `` and
+ * `[links](…)`, with bare web addresses made links too, as a UITextView's link detector makes them. A link `opens`.
+ */
+fun markdown(text: String, opens: ((String) -> Unit)? = null): AnnotatedString = buildAnnotatedString {
+    val link = { url: String, shown: String ->
+        val styles = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline))
+        withLink(LinkAnnotation.Url(url, styles) { opens?.invoke(url) }) { append(shown) }
+    }
+    val plain = { part: String ->
+        var from = 0
+        for (address in Patterns.WEB_URL.toRegex().findAll(part)) {
+            append(part.substring(from, address.range.first))
+            link(address.value, address.value)
+            from = address.range.last + 1
+        }
+        append(part.substring(from))
+    }
     var at = 0
-    val marks = Regex("""\*\*(.+?)\*\*|__(.+?)__|\*(.+?)\*|_(.+?)_|`(.+?)`""")
+    val marks = Regex("""\[(.+?)\]\((\S+?)\)|\*\*(.+?)\*\*|__(.+?)__|\*(.+?)\*|_(.+?)_|`(.+?)`""")
     for (found in marks.findAll(text)) {
-        append(text.substring(at, found.range.first))
-        val (bold, under, italic, slanted, code) = found.destructured
+        plain(text.substring(at, found.range.first))
+        val (label, url, bold, under, italic, slanted, code) = found.destructured
         when {
+            url.isNotEmpty() -> link(url, label)
             bold.isNotEmpty() || under.isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append(bold + under) }
             italic.isNotEmpty() || slanted.isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(italic + slanted) }
             else -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontSize = 15.sp)) { append(code) }
         }
         at = found.range.last + 1
     }
-    append(text.substring(at))
+    plain(text.substring(at))
 }
 
 /**

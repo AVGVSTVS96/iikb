@@ -881,6 +881,15 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         feedback?.play(kind)
     }
 
+    override fun openLink(url: String) {
+        val uri = android.net.Uri.parse(if (url.contains("://")) url else "https://$url")
+        runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
+
+    override fun copyLink(url: String) {
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Link", url))
+    }
+
     private fun openApp(page: String? = null) {
         startActivity(
             Intent(this, MainActivity::class.java)
