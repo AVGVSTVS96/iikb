@@ -53,7 +53,7 @@ android {
 
     androidResources { noCompress += listOf("lexicon", "network", "swipe") }
 
-    packaging { jniLibs { useLegacyPackaging = false } }
+    packaging { jniLibs { useLegacyPackaging = true } }
 }
 
 // KeyboardCore and its Android bridge, built for arm64 with the Swift SDK for Android, beside the NDK's C++ runtime.
