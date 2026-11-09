@@ -124,11 +124,12 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     private var accents: Accents? = null
     private val text = Paint(Paint.ANTI_ALIAS_FLAG)
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val trail = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val chevron = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
+    private val trail = Trail(this)
     private var deleteRepeat: Runnable? = null
 
     private class Accents(
@@ -169,7 +170,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             else painter.draw(canvas, cap, frame.look, frame.theme, index in pressed, !trackpad, flicked)
         }
         frame.expander?.let { drawExpander(canvas, frame, it) }
-        touches.values.firstOrNull { it.mode == Mode.SWIPE }?.let { drawTrail(canvas, it, frame) }
+        trail.draw(canvas, frame.theme.prominent)
         preview(frame)?.let { drawCallout(canvas, frame, it) }
         accents?.let { drawAccents(canvas, frame, it) }
         canvas.restore()
@@ -410,9 +411,9 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
 
     /** The chevron, a stroke pointing toward the keys' empty side, as iOS's `ExpanderView` draws it. */
     private fun drawExpander(canvas: Canvas, frame: Frame, expander: Expander) {
-        trail.color = frame.theme.expander
-        trail.strokeWidth = 16f / 3
-        val inset = trail.strokeWidth / 2
+        chevron.color = frame.theme.expander
+        chevron.strokeWidth = 16f / 3
+        val inset = chevron.strokeWidth / 2
         val top = (expander.y + inset).toFloat()
         val bottom = (expander.y + expander.height - inset).toFloat()
         val left = (expander.x + inset).toFloat()
@@ -423,7 +424,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             lineTo(tip, (top + bottom) / 2)
             lineTo(tail, bottom)
         }
-        canvas.drawPath(path, trail)
+        canvas.drawPath(path, chevron)
     }
 
     /** The column the chevron takes taps in, down the keyboard: from its middle to the keyboard's edge on its side. */
@@ -596,6 +597,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
 
     private fun follow(touch: Touch, x: Float, y: Float, time: Long) {
         touch.path.add(SwipePoint(x, y, (time - touch.began) / 1000f))
+        if (touch.mode == Mode.SWIPE) trail.add(x, y)
     }
 
     private fun move(frame: Frame, touch: Touch, x: Float, y: Float, time: Long) {
@@ -619,6 +621,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                     follow(touch, x, y, time)
                     if (hypot(x - touch.start.first, y - touch.start.second) >= touch.swipeReach) {
                         touch.mode = Mode.SWIPE
+                        trail.begin(touch.path)
                         cancelHold(touch)
                         return
                     }
@@ -857,18 +860,6 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                 val metrics = text.fontMetrics
                 canvas.drawText(option, cx - width / 2, accents.box.centerY() - (metrics.ascent + metrics.descent) / 2, text)
             }
-        }
-    }
-
-    private fun drawTrail(canvas: Canvas, touch: Touch, frame: Frame) {
-        val points = touch.path
-        if (points.size < 2) return
-        val count = points.size
-        for (index in 1 until count) {
-            val fade = index / count.toFloat()
-            trail.color = ColorUtils.setAlphaComponent(frame.theme.prominent, (255 * fade).toInt())
-            trail.strokeWidth = 2f + 4f * fade
-            canvas.drawLine(points[index - 1].x, points[index - 1].y, points[index].x, points[index].y, trail)
         }
     }
 
