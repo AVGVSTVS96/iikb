@@ -17,7 +17,7 @@ xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "
   -derivedDataPath build/device -allowProvisioningUpdates DEVELOPMENT_TEAM="$TEAM" -quiet
 xcodebuild test-without-building -project iikb.xcodeproj -scheme iikb -destination "id=$phone" \
   -derivedDataPath build/device -resultBundlePath "$result" -collect-test-diagnostics never \
-  -only-testing:AppUITests/ChatBoxDeviceTests || failed=1
+  -only-testing:AppUITests/ChatBoxDeviceTests${ONLY:+/$ONLY} || failed=1
 xcrun xcresulttool export attachments --path "$result" --output-path "$out" >/dev/null
 ls "$out"
 exit ${failed:-0}

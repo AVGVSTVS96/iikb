@@ -37,11 +37,14 @@ final class ChatBoxDeviceTests: XCTestCase {
         shot("4-selected")
 
         field.tap()
+        Thread.sleep(forTimeInterval: 1)
+        shot("4b-tapped")
         let delete = key("delete", in: app)
-        for _ in 0..<(words.count + 4) { delete.tap() }
+        for _ in 0..<8 { delete.tap() }
+        shot("4c-deleting")
+        for _ in 0..<(words.count - 4) { delete.tap() }
         Thread.sleep(forTimeInterval: 0.5)
         shot("5-cleared")
-        element("iikb.chat.messages", in: app).tap()
         element("iikb.more", in: app).tap()
     }
 
@@ -61,7 +64,10 @@ final class ChatBoxDeviceTests: XCTestCase {
         XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 5), "tapping search brings the keys up")
         for character in "http" { key(String(character), in: app).tap() }
         Thread.sleep(forTimeInterval: 1.5)
-        shot("6-search")
+        for blink in 0..<4 {
+            shot("6-search-\(blink)")
+            Thread.sleep(forTimeInterval: 0.3)
+        }
         for _ in 0..<4 { key("delete", in: app).tap() }
         element("iikb.panel.back", in: app).tap()
         element("iikb.panel.back", in: app).tap()
