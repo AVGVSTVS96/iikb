@@ -484,7 +484,7 @@ private fun RecordingSection(transcript: Transcript) {
                     ready -> "Transcribing Again…"
                     else -> "Transcribing Again once ${picked.title} is ready…"
                 },
-                "M19 12a7 7 0 1 1-2.05-4.95 M19 4v4h-4", if (busy) palette.secondary else palette.accent,
+                "arrow.clockwise", if (busy) palette.secondary else palette.accent,
             ) { if (!busy) write() }
             stalled?.let {
                 Divider()
@@ -497,7 +497,7 @@ private fun RecordingSection(transcript: Transcript) {
                 } else {
                     SelectionContainer { Line(written.text, detail = "Written by ${written.model}") }
                     Divider()
-                    ActionRow("Use This Transcript", "M6.5 12.5l4 4L18 8", palette.accent) {
+                    ActionRow("Use This Transcript", null, palette.accent) {
                         Transcripts.replace(transcript.id, written.text, written.heard, written.model)
                         again = null
                     }
@@ -562,7 +562,7 @@ private fun CopyRow(text: String) {
 
 /** A row that acts, its title and glyph in its color, the glyph at iOS's semibold subheadline. */
 @Composable
-private fun ActionRow(title: String, symbol: String, color: Color, onClick: () -> Unit) =
+private fun ActionRow(title: String, symbol: String?, color: Color, onClick: () -> Unit) =
     Line(title, onClick = onClick, color = color) {
-        Icon(Symbols[symbol], null, tint = color, modifier = Modifier.size(20.5.dp))
+        if (symbol != null) Icon(Symbols[symbol], null, tint = color, modifier = Modifier.size(20.5.dp))
     }
