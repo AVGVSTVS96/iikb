@@ -68,10 +68,11 @@ fun Home(open: (String) -> Unit, show: (Tab, StatsSection?) -> Unit) {
         "iikb",
         actions = {
             if (typing) {
-                Text(
-                    "Done", color = palette.accent, fontSize = Type.body, fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.cardPress { focus.clearFocus() }.padding(horizontal = 12.dp, vertical = 10.dp),
-                )
+                Box(
+                    Modifier.padding(end = 10.dp).size(44.dp).cardPress { focus.clearFocus() }.clip(CircleShape)
+                        .background(palette.accent),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Symbols["checkmark"], "Done", tint = Color.White, modifier = Modifier.size(24.dp)) }
             }
             MicSwitch()
         },
@@ -121,7 +122,7 @@ fun MicSwitch() {
 /** The microphone's switch, kept for voice typing to read (`Settings`); on unless you turn it off. */
 const val MIC_ON = "micOn"
 
-/** The field to try iikb in; its keys put away by Done, a tap beside it or scrolling. */
+/** The field to try iikb in; its keys put away by the checkmark, a tap beside it or scrolling. */
 @Composable
 private fun TryField(typing: (Boolean) -> Unit) {
     val palette = palette()
