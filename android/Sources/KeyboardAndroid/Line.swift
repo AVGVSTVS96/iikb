@@ -8,10 +8,6 @@ struct LineState: Encodable {
     var caret: Int
 }
 
-private func keyboard(_ handle: jlong) -> Keyboard {
-    Unmanaged<Keyboard>.fromOpaque(UnsafeRawPointer(bitPattern: Int(handle))!).takeUnretainedValue()
-}
-
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_lineOpen")
 public func lineOpen(env: Env, _: jclass, handle: jlong, text: jbyteArray?) {
     let keyboard = keyboard(handle)

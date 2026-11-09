@@ -1,15 +1,16 @@
 import CJNI
+import FoundationEssentials
 import KeyboardCore
 
 // The functions Kotlin's `Native` object declares, by JNI's names. A keyboard crosses as the address of its
 // `Keyboard`, and each call that may edit the field first points the field at the calling thread's environment.
 
-private func keyboard(_ handle: jlong) -> Keyboard {
+func keyboard(_ handle: jlong) -> Keyboard {
     Unmanaged<Keyboard>.fromOpaque(UnsafeRawPointer(bitPattern: Int(handle))!).takeUnretainedValue()
 }
 
 @discardableResult
-private func with<T>(_ env: Env, _ handle: jlong, _ body: (Keyboard) -> T) -> T {
+func with<T>(_ env: Env, _ handle: jlong, _ body: (Keyboard) -> T) -> T {
     let keyboard = keyboard(handle)
     keyboard.document.env = env
     return body(keyboard)
@@ -346,6 +347,22 @@ extension Autocapitalization {
 public func resetMemory(env: Env, _: jclass, handle: jlong) {
     with(env, handle) { keyboard in
         keyboard.engine.corrector?.changeMemory { $0 = TypingMemory() }
+        keyboard.engine.suggestionsChanged()
+    }
+}
+
+/// Android's personal dictionary as iOS's `UILexicon` gives a keyboard its Text Replacements and names: a JSON list of
+/// `[word, shortcut]`, a word with a shortcut typed for it and one without kept as yours, spelled as you added it.
+@_cdecl("Java_com_shahidy_iikb_keyboard_Native_learnLexicon")
+public func learnLexicon(env: Env, _: jclass, handle: jlong, entries: jbyteArray?) {
+    let entries = (try? JSONDecoder().decode([[String]].self, from: Data(env.bytes(entries)))) ?? []
+    with(env, handle) { keyboard in
+        let replacements = entries.compactMap { entry -> (shortcut: String, phrase: String)? in
+            guard entry.count == 2, !entry[1].isEmpty, entry[1] != entry[0] else { return nil }
+            return (entry[1], entry[0])
+        }
+        keyboard.engine.corrector?.setReplacements(replacements)
+        keyboard.engine.corrector?.setNames(entries.filter { $0.count == 1 || $0[1].isEmpty }.map { $0[0] })
         keyboard.engine.suggestionsChanged()
     }
 }

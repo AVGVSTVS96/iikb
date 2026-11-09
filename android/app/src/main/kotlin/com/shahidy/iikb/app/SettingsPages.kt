@@ -37,7 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.shahidy.iikb.Extensions
+import com.shahidy.iikb.Services
 import com.shahidy.iikb.Transcripts
 import com.shahidy.iikb.TypingStats
 import com.shahidy.iikb.Vocabulary
@@ -55,12 +55,15 @@ enum class SettingsPage(val title: String, val symbol: String, val hue: Color) {
     WRITING("Writing Style", "textformat", Hues.orange),
     DICTIONARY("Dictionary", "character.book.closed.fill", Hues.brown),
     EXTENSIONS("Extensions", "bubble.left.and.bubble.right.fill", Hues.green),
+    SOURCES("Sources", "antenna.radiowaves.left.and.right", Hues.teal),
     ACCESS("Keyboard Access", "switch.2", Hues.indigo),
     PRIVACY("Privacy & Data", "hand.raised.fill", Hues.blue),
     CHANGELOG("Changelog", "clock.arrow.circlepath", Hues.orange),
     ABOUT("About iikb", "info", Hues.gray);
 
     val id get() = name.lowercase()
+
+    private val services get() = if (this == SOURCES) Services.SOURCES else Services.EXTENSIONS
 
     /** What the page is set to, beside it in the list and on Home's card for it. */
     @Composable
@@ -73,7 +76,7 @@ enum class SettingsPage(val title: String, val symbol: String, val hue: Color) {
             VOICE -> VoiceModel.of(LocalContext.current).pickedShown.title
             WRITING -> store.title("writingStyle", STYLES)
             DICTIONARY -> Vocabulary.terms().size.let { if (it == 1) "1 word" else "$it words" }
-            EXTENSIONS -> LocalContext.current.let { context -> store.watch { Extensions.list(context).size } }
+            EXTENSIONS, SOURCES -> LocalContext.current.let { context -> store.watch { services.list(context).size } }
                 .let { if (it == 0) "None" else "$it" }
             ACCESS -> if (LocalAccess.current.setup.done) "All Set" else "Needs Setup"
             PRIVACY, CHANGELOG -> null
@@ -85,7 +88,7 @@ enum class SettingsPage(val title: String, val symbol: String, val hue: Color) {
         val sections = listOf(
             "Keyboard" to listOf(APPEARANCE, TYPING, FEEDBACK),
             "Voice Typing" to listOf(VOICE, WRITING, DICTIONARY),
-            "iikb" to listOf(EXTENSIONS, ACCESS, PRIVACY, CHANGELOG, ABOUT),
+            "iikb" to listOf(EXTENSIONS, SOURCES, ACCESS, PRIVACY, CHANGELOG, ABOUT),
         )
 
         fun of(id: String) = entries.firstOrNull { it.id == id }
@@ -141,7 +144,8 @@ fun SettingsPage(id: String, back: () -> Unit) {
             SettingsPage.VOICE -> Voice()
             SettingsPage.WRITING -> WritingStyle()
             SettingsPage.DICTIONARY -> Dictionary()
-            SettingsPage.EXTENSIONS -> ExtensionsPage()
+            SettingsPage.EXTENSIONS -> ServicesPage(Services.EXTENSIONS)
+            SettingsPage.SOURCES -> ServicesPage(Services.SOURCES)
             SettingsPage.ACCESS -> KeyboardAccess()
             SettingsPage.PRIVACY -> Privacy()
             SettingsPage.CHANGELOG -> Changelog()
@@ -220,7 +224,17 @@ private fun Privacy() {
         Divider()
         Fact(
             "network",
-            "iikb goes online to search GIFs and to download Parakeet once from Hugging Face. Android’s recognizer, if you pick it in Voice, may send your voice to Google.",
+            "iikb goes online to search GIFs, to download Parakeet once from Hugging Face, and to send the field’s text and app’s package name to sources you add. Android’s recognizer, if you pick it in Voice, may send your voice to Google.",
+        )
+    }
+    Section(
+        "Backup",
+        "Recordings and the voice model stay out, since they’re large. Android backs up the rest while Backup is on in its settings.",
+    ) {
+        RowText(
+            "With This Phone’s Backup",
+            "What iikb keeps goes to your Google account with the rest of the phone, encrypted with your screen lock.",
+            Modifier.row(),
         )
     }
     Section(

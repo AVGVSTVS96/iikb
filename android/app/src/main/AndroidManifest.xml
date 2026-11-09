@@ -10,6 +10,9 @@
             <action android:name="android.speech.RecognitionService" />
         </intent>
         <intent>
+            <action android:name="android.settings.USER_DICTIONARY_SETTINGS" />
+        </intent>
+        <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
@@ -38,6 +41,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="iikb" android:host="extension" />
+                <data android:host="source" />
             </intent-filter>
         </activity>
 

@@ -1,5 +1,6 @@
 package com.shahidy.iikb.app
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -163,6 +164,7 @@ private object Still : KeyboardView.Actions {
     override fun mic() {}
     override fun chat(index: Int) {}
     override fun cancelDictation() {}
+    override fun dismissHint() {}
     override fun repeatDelete(words: Boolean) {}
     override fun feedback(kind: Feedback.Kind) {}
     override fun pickEmoji(emoji: String, base: String?) {}
@@ -370,6 +372,25 @@ fun Typing() {
         Toggle("Enable Caps Lock", "capsLock", "Double-tap shift.")
         Divider()
         Toggle("“.” Shortcut", "periodShortcut", "Double-tap space for a period and a space.")
+    }
+    TextReplacements()
+}
+
+/**
+ * Android keeps text replacements as shortcuts in its personal dictionary, which iikb reads as each field opens, as
+ * iOS's keyboard reads General › Keyboard › Text Replacement. Shown where the phone has the page to add them.
+ */
+@Composable
+private fun TextReplacements() {
+    val context = LocalContext.current
+    val open = remember { Intent(android.provider.Settings.ACTION_USER_DICTIONARY_SETTINGS) }
+    if (open.resolveActivity(context.packageManager) == null) return
+    Section("Text Replacements") {
+        Line(
+            "Open Personal Dictionary",
+            "iikb types each word you give a shortcut there, and keeps the others as your own words.",
+            onClick = { context.startActivity(open) },
+        ) { Trailing("arrow.up.forward") }
     }
 }
 

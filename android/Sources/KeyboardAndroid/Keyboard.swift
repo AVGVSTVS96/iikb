@@ -10,6 +10,8 @@ final class Keyboard {
     var line: LineDocument?
     /// What the keys type into: the open chat's line, or the app's field.
     var typing: any TextDocument { line ?? document }
+    /// What the sources you added are sent, and their hints.
+    var sources = SourceFeeds()
     private var grid = KeyGrid()
     private var context: LayoutContext?
     private var geometry: KeyboardGeometry?

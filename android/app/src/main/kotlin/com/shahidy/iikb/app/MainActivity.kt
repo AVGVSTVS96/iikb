@@ -19,8 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.shahidy.iikb.Extension
-import com.shahidy.iikb.Extensions
+import com.shahidy.iikb.Services
 import com.shahidy.iikb.Settings
 import com.shahidy.iikb.app.clipboard.keepCopied
 import com.shahidy.iikb.keyboard.IikbService
@@ -52,15 +51,24 @@ class MainActivity : ComponentActivity() {
         offer(intent)
     }
 
-    /** An extension's link (docs/extensions.md) asks before its chats open from the keyboard's menu. */
+    /**
+     * A service's link asks before it's added: an extension's (docs/extensions.md) before its chats open from the
+     * keyboard's menu, a source's (docs/sources.md) before it's told what you type.
+     */
     private fun offer(intent: Intent) {
-        val added = intent.data?.let(Extension::of) ?: return
+        val (kind, added) = intent.data?.let(Services::of) ?: return
         setIntent(Intent(this, MainActivity::class.java))
+        val host = Uri.parse(added.url).host
         AlertDialog.Builder(this)
             .setTitle("Add “${added.name}”?")
-            .setMessage("Its chats open from the keyboard’s menu, and what you write in them goes to ${Uri.parse(added.url).host}.")
+            .setMessage(
+                when (kind) {
+                    Services.EXTENSIONS -> "Its chats open from the keyboard’s menu, and what you write in them goes to $host."
+                    Services.SOURCES -> "iikb will send $host the text of the fields you type in, with the app’s package name."
+                },
+            )
             .setNegativeButton("Cancel", null)
-            .setPositiveButton("Add") { _, _ -> Extensions.add(this, added) }
+            .setPositiveButton("Add") { _, _ -> kind.add(this, added) }
             .show()
     }
 

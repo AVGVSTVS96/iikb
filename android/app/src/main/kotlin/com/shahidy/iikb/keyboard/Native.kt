@@ -56,6 +56,14 @@ object Native {
     @JvmStatic external fun restoreEmojiHistory(handle: Long, bytes: ByteArray)
     @JvmStatic external fun changeApp(handle: Long, app: ByteArray?)
     @JvmStatic external fun resetMemory(handle: Long)
+    @JvmStatic external fun learnLexicon(handle: Long, entries: ByteArray)
+    @JvmStatic external fun sourcesReset(handle: Long, count: Int)
+    @JvmStatic external fun sourcesObserve(handle: Long, field: ByteArray, app: ByteArray?, byKeyboard: Boolean, at: Double)
+    @JvmStatic external fun sourcesNext(handle: Long, index: Int): ByteArray?
+    @JvmStatic external fun sourcesAnswered(handle: Long, index: Int, hint: ByteArray?)
+    @JvmStatic external fun sourcesFailed(handle: Long, index: Int)
+    @JvmStatic external fun sourcesHint(handle: Long, field: ByteArray, app: ByteArray?): ByteArray?
+    @JvmStatic external fun sourcesDismiss(handle: Long)
 
     @JvmStatic external fun clipsCreate(json: ByteArray?): Long
     @JvmStatic external fun clipsSave(handle: Long): ByteArray?

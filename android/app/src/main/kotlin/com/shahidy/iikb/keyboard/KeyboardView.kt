@@ -40,6 +40,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         fun more()
         fun mic()
         fun cancelDictation()
+        fun dismissHint()
         fun repeatDelete(words: Boolean)
         fun feedback(kind: Feedback.Kind)
         fun pickEmoji(emoji: String, base: String?)
@@ -104,6 +105,10 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
 
     /** A line in the bar's place until your next touch, like a GIF's "Copied" once the menu gives the keys back. */
     var notice: String? = null
+    /** A source's hint (docs/sources.md), in the suggestions' place; a tap hides it. */
+    var hint: String? = null
+    /** The touch going on began over a notice, which it cleared, so it isn't a tap on the hint under it. */
+    private var clearedNotice = false
 
     var characterPreview = "attached"
     val mic = MicBar(this)
@@ -213,6 +218,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             edits != null -> drawEdits(canvas, frame, edits)
             chats != null && !mic.covers -> drawChats(canvas, frame)
             notice != null && !mic.covers -> drawNotice(canvas, frame, notice)
+            hint != null && showsHint(frame) -> drawNotice(canvas, frame, hint!!)
             frame.showsSuggestions && frame.panel == null && !mic.covers -> drawSuggestions(canvas, frame)
         }
         if (under < 1) canvas.restore()
@@ -257,6 +263,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         }
         if (showsEmoji) drawEmoji(canvas, frame)
     }
+
+    private fun showsHint(frame: Frame) = frame.showsSuggestions && frame.panel == null && !mic.covers && edits == null && chats == null
 
     private fun drawNotice(canvas: Canvas, frame: Frame, notice: String) {
         val bar = frame.toolbar
@@ -401,6 +409,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         if (chats != null && !mic.covers) {
             return chatPills(frame).indexOfFirst { (_, box) -> x >= box.left && x <= box.right }.takeIf { it >= 0 }?.let { "chat$it" }
         }
+        if (hint != null && !clearedNotice && showsHint(frame) && y < bar.height) return "hint"
         if (!frame.showsSuggestions || frame.panel != null || mic.covers) return null
         val showsEmoji = frame.emoji.isNotEmpty()
         if (showsEmoji && bar.emoji.contains(x.toDouble(), bar.emoji.y)) {
@@ -421,6 +430,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                 mic.dissolve(frame, density)
                 actions.cancelDictation()
             }
+            target == "hint" -> actions.dismissHint()
             target in EDITS -> actions.edit(target)
             target.startsWith("chat") -> actions.chat(target.removePrefix("chat").toInt())
             target.startsWith("slot") -> actions.select(target.removePrefix("slot").toInt())
@@ -434,7 +444,10 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val frame = frame ?: return false
-        if (event.actionMasked == MotionEvent.ACTION_DOWN) notice = null
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            clearedNotice = notice != null
+            notice = null
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val pointer = event.actionIndex

@@ -11,6 +11,7 @@ import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.provider.UserDictionary
 import android.text.InputType
 import android.graphics.BitmapFactory
 import android.view.View
@@ -29,6 +30,7 @@ import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.time.LocalDateTime
+import java.util.UUID
 import java.util.concurrent.Executors
 
 /**
@@ -61,6 +63,11 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     private lateinit var dictation: Dictation
     /** The field being typed in, counted up each time the keyboard starts in a new one, so a dictation lands only in its own. */
     private var fieldCount = 0
+    /** The field as sources know it, new each time the keyboard starts in one, as iOS's `documentIdentifier` is. */
+    private var fieldId = UUID.randomUUID().toString()
+    private lateinit var sources: Sources
+    /** The personal dictionary as the engine last learned it. */
+    private var lexicon: String? = null
     private var app: String? = null
     private var bottom = 0.0
     private val main = Handler(Looper.getMainLooper())
@@ -97,6 +104,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         dictation = Dictation(this, this)
         dictation.onChange = ::showDictation
         dictation.onLevel = { view?.mic?.hear(it, dictation.recorded) }
+        sources = Sources(this, handle, ::render)
         configure()
     }
 
@@ -126,6 +134,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         overlay?.destroy()
         gifs?.close()
         chats.close()
+        sources.close()
         save()
         TypingStats.append(Native.takeTyping(typing))
         dictation.close()
@@ -190,6 +199,8 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         if (!restarting) {
             leave()
             fieldCount++
+            fieldId = UUID.randomUUID().toString()
+            learnLexicon()
         }
         app = info.packageName
         chats.reload()
@@ -225,7 +236,10 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         field.forget()
-        if (Native.documentChanged(handle) && !incognito) save()
+        if (Native.documentChanged(handle)) {
+            tellSources(byKeyboard = false)
+            if (!incognito) save()
+        }
         render()
     }
 
@@ -239,6 +253,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     private fun configure() {
         if (handle == 0L) return
         Native.configure(handle, settings.lines().encodeToByteArray())
+        sources.reload()
         feedback?.strength = settings.string("hapticFeedback")
         feedback?.sound = settings.bool("sound")
         view?.characterPreview = settings.string("characterPreviewStyle")
@@ -324,8 +339,51 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     /** A field that asks for no learning (an incognito tab) or holds a password: what's typed there isn't kept. */
     private var incognito = false
 
+    /**
+     * What a source sees: the field's text as the keyboard knows it, outside password fields and the ones that ask for
+     * no learning (an incognito tab), and never a chat's line or the stand-in Android starts a keyboard on when no field
+     * is focused (`TYPE_NULL`).
+     */
+    private fun tellSources(byKeyboard: Boolean) {
+        val info = currentInputEditorInfo ?: return
+        if (incognito || chatOpen || info.inputType == InputType.TYPE_NULL || currentInputConnection == null) return
+        sources.observe(fieldId, app, byKeyboard)
+    }
+
+    private val hint get() = if (incognito || chatOpen) null else sources.hint(fieldId, app)
+
+    /**
+     * Android's personal dictionary, which a keyboard reads as iOS's reads Text Replacements: each word with a shortcut
+     * is typed for it, and each without is kept as yours. Read off the main thread as each field opens.
+     */
+    private fun learnLexicon() {
+        ranking.execute {
+            val entries = runCatching {
+                contentResolver.query(
+                    UserDictionary.Words.CONTENT_URI, arrayOf(UserDictionary.Words.WORD, UserDictionary.Words.SHORTCUT),
+                    null, null, null,
+                )?.use { rows ->
+                    buildList {
+                        while (rows.moveToNext()) {
+                            val word = rows.getString(0)?.takeIf { it.isNotBlank() } ?: continue
+                            add(listOfNotNull(word, rows.getString(1)?.takeIf { it.isNotBlank() }))
+                        }
+                    }
+                }
+            }.getOrNull() ?: return@execute
+            val json = Json.encodeToString(entries)
+            main.post {
+                if (json == lexicon) return@post
+                lexicon = json
+                Native.learnLexicon(handle, json.encodeToByteArray())
+                render()
+            }
+        }
+    }
+
     private fun render() {
         val view = view ?: return
+        tellSources(byKeyboard = true)
         val frame = Frame.parse(Native.frame(handle))
         val chat = chatOpen
         if (frame.panel == null && !chat) keysUp = false
@@ -341,6 +399,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         view.edits = if (menuShown) edits() else null
         view.chats = if (chat && !keysUp) chats.list.map { it.name } else null
         view.openChat = chats.list.indexOf(chats.open).takeIf { it >= 0 }
+        view.hint = hint
         view.frame = frame
         follow(frame, menuShown)
         listChats(menuShown && hasChats(frame))
@@ -692,6 +751,11 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         }
         event { Native.dictated(handle, text.encodeToByteArray(), heard.encodeToByteArray(), null) }
         return true
+    }
+
+    override fun dismissHint() {
+        sources.dismissHint()
+        render()
     }
 
     override fun repeatDelete(words: Boolean) = event { Native.deleteRepeat(handle, words) }

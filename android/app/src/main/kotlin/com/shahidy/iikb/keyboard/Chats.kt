@@ -6,8 +6,8 @@ import android.os.Looper
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.shahidy.iikb.Extension
-import com.shahidy.iikb.Extensions
+import com.shahidy.iikb.Service
+import com.shahidy.iikb.Services
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -25,7 +25,7 @@ import java.util.concurrent.Future
  * request until they change and a reply shows the moment it's written. It stops when the panel closes. Compose state.
  */
 class Chats(private val context: Context) {
-    data class Chat(val service: Extension, val id: String, val name: String, val line: String?, val pinned: Boolean)
+    data class Chat(val service: Service, val id: String, val name: String, val line: String?, val pinned: Boolean)
 
     @Serializable
     data class Message(val from: String, val text: String, val pending: Boolean? = null) {
@@ -44,7 +44,7 @@ class Chats(private val context: Context) {
         private set
     var problem by mutableStateOf<String?>(null)
         private set
-    var services = Extensions.list(context)
+    var services = Services.EXTENSIONS.list(context)
         private set
     /** Something shown changed: the list, the open chat's messages, or what went wrong. */
     var changed: () -> Unit = {}
@@ -57,7 +57,7 @@ class Chats(private val context: Context) {
     private var generation = 0
 
     fun reload() {
-        services = Extensions.list(context)
+        services = Services.EXTENSIONS.list(context)
     }
 
     /** Every extension's chats, kept on show until the new list comes; then, `opening`, `kept` open again, or the first. */
@@ -145,7 +145,7 @@ class Chats(private val context: Context) {
     @Serializable
     private data class Read(val version: String, val messages: List<Message>)
 
-    private fun list(service: Extension): List<Chat>? = get<Listed>(service, service.url)?.chats?.map {
+    private fun list(service: Service): List<Chat>? = get<Listed>(service, service.url)?.chats?.map {
         Chat(service, it.id, it.name, it.line, it.pinned == true)
     }
 
@@ -164,7 +164,7 @@ class Chats(private val context: Context) {
         connection.responseCode in 200..299
     }.getOrDefault(false)
 
-    private inline fun <reified Answer> get(service: Extension, url: String): Answer? = runCatching {
+    private inline fun <reified Answer> get(service: Service, url: String): Answer? = runCatching {
         val connection = open(service, url)
         if (connection.responseCode !in 200..299) return null
         json.decodeFromString<Answer>(connection.inputStream.use { it.readBytes().decodeToString() })
@@ -173,7 +173,7 @@ class Chats(private val context: Context) {
     private fun address(chat: Chat) = chat.service.url.trimEnd('/') + "/" + URLEncoder.encode(chat.id, "UTF-8").replace("+", "%20")
 
     /** A read waits up to about 25 seconds for a change, so the timeout leaves it room. */
-    private fun open(service: Extension, url: String) = (URL(url).openConnection() as HttpURLConnection).apply {
+    private fun open(service: Service, url: String) = (URL(url).openConnection() as HttpURLConnection).apply {
         connectTimeout = 10_000
         readTimeout = 40_000
         service.token?.let { setRequestProperty("Authorization", "Bearer $it") }

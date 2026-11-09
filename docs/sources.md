@@ -43,6 +43,8 @@ iikb://source?name=Example&url=https%3A%2F%2Fexample.com%2Fiikb&token=secret
 - `returnKey`: what the return key says, like `default`, `send`, `search`, `go` or `done`.
 - `at`: when the field was this way.
 
+On Android, `app` is the app's package name, as Android gives it to the keyboard with each field, and `field` is new each time the keyboard starts in a field. Password fields and fields that ask for no learning (an incognito tab) are never sent.
+
 iikb sends one update at a time to each source and waits for the answer before the next. If you type while one is on its way, only the newest text follows it, but every change the app makes is sent, so the text as it was right before an app change (a message being sent) always arrives first.
 
 An update that gets no answer in 10 seconds, or an error, counts as unreachable: the hint goes, and iikb tries again at your next change, starting with what it couldn't send. While the keyboard stays open it keeps every change the app made and the newest text you typed, so a source that was down still learns, in order and with their `at`, what you sent.
