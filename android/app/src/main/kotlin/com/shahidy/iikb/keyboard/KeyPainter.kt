@@ -138,7 +138,7 @@ class KeyPainter {
             }
 
             "symbol" -> {
-                val size = look.symbolSize.toFloat() * 1.15f
+                val size = Glyphs.square(look.symbolSize.toFloat())
                 if (cap.align == "center") {
                     Glyphs.draw(canvas, cap.label, midX, midY, size, glyph)
                 } else {
