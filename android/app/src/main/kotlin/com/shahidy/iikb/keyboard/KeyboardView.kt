@@ -825,7 +825,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val highlight = (cap.height + if (symbols) 2 else 4).toFloat()
         val width = cell * options.size + padding * 2
         val x = (cap.x + cap.width / 2 - padding - cell * (selected + 0.5)).toFloat()
-            .coerceIn(7f, (frame.width - width - 7).toFloat().coerceAtLeast(7f))
+            .coerceAtLeast(7f).coerceAtMost((frame.width - width - 7).toFloat())
         val y = (cap.y - height - 3).toFloat().coerceAtLeast(-keysTop + 1)
         accents = Accents(options, symbols, RectF(x, y, x + width, y + height), cell, padding, highlight, selected)
     }
