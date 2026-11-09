@@ -21,8 +21,11 @@ object Glyphs {
     /** The side of the square a glyph is drawn on to match an SF Symbol of `points` point size. */
     fun square(points: Float) = points * 1.15f
 
-    /** Lines are stroked; a solid is filled with its outline stroked around it, so its corners round as SF's do; a shape is filled as it is. */
-    private enum class Ink { LINES, SOLID, SHAPE }
+    /**
+     * Lines are stroked with round ends; cut lines with square ends, where SF cuts a line off at a gap; a solid is filled
+     * with its outline stroked around it, so its corners round as SF's do; a shape is filled as it is.
+     */
+    private enum class Ink { LINES, CUT, SOLID, SHAPE }
 
     private class Part(val path: Path, val ink: Ink, val thickness: Float)
 
@@ -37,14 +40,9 @@ object Glyphs {
     }
 
     /** `thickness` is a share of the weight's line, for a symbol whose inner lines SF draws thinner than its outline. */
-    /** Grown `by` about the square's center, for a glyph drawn smaller than SF's ink measures (pin.fill 16.2 × 24, envelope 24.5 × 17.7). */
-    private fun Glyph.scaled(by: Float): Glyph {
-        val matrix = Matrix().apply { setScale(by, by, 12f, 12f) }
-        parts.forEach { it.path.transform(matrix) }
-        return this
-    }
-
     private fun lines(data: String, thickness: Float = 1f) = glyph(data, Ink.LINES, thickness)
+
+    private fun cut(data: String) = glyph(data, Ink.CUT)
 
     private fun solid(data: String) = glyph(data, Ink.SOLID)
 
@@ -52,7 +50,9 @@ object Glyphs {
 
     private const val ARROW = "M11.9 3.2 1.9 13.2q-.5.85.7.85h4.8v5.2a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5v-5.2h4.8q1.2 0 .7-.85Z"
     private const val CAPS = "M11.95 2.1 2.6 10.5q-.5.95.7.95h4.3v4h8.7v-4h4.3q1.2 0 .7-.95Z M8.05 18.9h7.8a.6.6 0 0 1 .6.6v1.85a.6.6 0 0 1-.6.6h-7.8a.6.6 0 0 1-.6-.6V19.5a.6.6 0 0 1 .6-.6Z"
-    private const val PIN = "M8 3h8l-1.2 6.5L18 13v1.5H6V13l3.2-3.5Z M12 14.5V21"
+    /** `pin`'s cap and waist over its dome, and its needle, tapering to a point. */
+    private const val PIN = "M9.73 10.4V4.3L5.95 .85h12.1L14.27 4.3v6.1 M4.62 15.5C4.62 12 8 10.3 12 10.3s7.38 1.7 7.38 5.2Z"
+    private const val NEEDLE = "M11.25 15.9h1.5l-.4 7.5q-.35.7-.7 0Z"
     private const val KEYBOARD = "M1.9 4.7h20.2a1.9 1.9 0 0 1 1.9 1.9v10.85a1.9 1.9 0 0 1-1.9 1.9H1.9A1.9 1.9 0 0 1 0 17.45V6.6a1.9 1.9 0 0 1 1.9-1.9Z"
 
     private val glyphs: Map<String, Glyph> = mapOf(
@@ -157,15 +157,23 @@ object Glyphs {
         "square.on.square" to lines(
             "M10 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z M16 5V4.8A1.8 1.8 0 0 0 14.2 3H5a2 2 0 0 0-2 2v9.2A1.8 1.8 0 0 0 4.8 16H5",
         ),
-        "pin.fill" to shape("M8 3h8l-1.2 6.5L18 13v1.5h-5.2V21h-1.6v-6.5H6V13l3.2-3.5Z").scaled(1.333f),
-        "pin" to lines(PIN).scaled(1.236f),
-        "pin.slash" to lines("$PIN M3.5 3.5l17 17").scaled(1.15f),
-        "envelope" to lines("M4.5 5.5h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z M3 7l9 6.5L21 7").scaled(1.2f),
+        "pin.fill" to shape(
+            "M6.3.25h11.4q.99 0 .99.95v.3q0 1-1.79 1.8-1.7.7-1.75 1.9L15.05 9c.55 1.2 4.87 1.9 4.87 5.6v.2q0 1.2-1.22 1.2h-6l-.28 7.3q-.42.7-.84 0L11.3 16h-6q-1.22 0-1.22-1.2v-.2c0-3.7 4.32-4.4 4.87-5.6l-.1-3.8q-.05-1.2-1.75-1.9-1.79-.8-1.79-1.8v-.3q0-.95.99-.95Z",
+        ),
+        "pin" to lines(PIN, 0.85f) + shape(NEEDLE),
+        "pin.slash" to lines("$PIN M3.5 3.5l17 17", 0.85f) + shape(NEEDLE),
+        // Drawn as iOS's clip titles draw it, SF's envelope stretched to a square (ClipTitle.swift), so its lines are thinner.
+        "envelope" to lines(
+            "M2.5.85h19a1.65 1.65 0 0 1 1.65 1.65v19a1.65 1.65 0 0 1-1.65 1.65h-19A1.65 1.65 0 0 1 .85 21.5v-19A1.65 1.65 0 0 1 2.5.85Z " +
+                "M2 2.2l7.7 10.9q2.3 3.2 4.6 0L22 2.2 M2 21.8l4.8-8.9 M22 21.8l-4.8-8.9",
+            0.9f,
+        ),
         "phone" to lines(
             "M7.2 3.5h-2a1.8 1.8 0 0 0-1.8 2A15.5 15.5 0 0 0 18.5 20.6a1.8 1.8 0 0 0 2-1.8v-2l-4-1.6-2 2a12 12 0 0 1-6.2-6.2l2-2Z",
         ),
-        "link" to lines(
-            "M10.5 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1 M13.5 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+        "link" to cut(
+            "M17.78 13.54l2.52-2.52A5.18 5.18 0 0 0 12.98 3.7L9.67 7.01a5.18 5.18 0 0 0 2.58 8.73 " +
+                "M6.22 10.46 3.7 12.98a5.18 5.18 0 0 0 7.32 7.32l3.31-3.31a5.18 5.18 0 0 0-2.58-8.73",
         ),
     )
 
@@ -183,13 +191,13 @@ object Glyphs {
         matrix.postTranslate(x - size / 2, y - size / 2)
         val style = paint.style
         val width = paint.strokeWidth
-        paint.strokeCap = Paint.Cap.ROUND
         paint.strokeJoin = Paint.Join.ROUND
         for (part in glyph.parts) {
             paint.strokeWidth = weight * part.thickness * scale
+            paint.strokeCap = if (part.ink == Ink.CUT) Paint.Cap.BUTT else Paint.Cap.ROUND
             part.path.transform(matrix, scaled)
             when (part.ink) {
-                Ink.LINES -> paint.style = Paint.Style.STROKE
+                Ink.LINES, Ink.CUT -> paint.style = Paint.Style.STROKE
                 Ink.SHAPE -> paint.style = Paint.Style.FILL
                 Ink.SOLID -> {
                     paint.style = Paint.Style.STROKE
