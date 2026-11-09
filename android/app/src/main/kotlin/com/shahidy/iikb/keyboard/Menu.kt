@@ -48,7 +48,7 @@ fun Menu(state: Overlay.State) {
     BoxWithConstraints(Modifier.fillMaxSize().background(look.card)) {
         val count = shelves.size
         val room = maxHeight.value - HEAD - GAP * (count + 1) - (HEAD + HEAD_GAP) * count
-        val row = floor((room / count).coerceIn(0f, 96f)).dp
+        val row = floor((room / count).coerceIn(COMPACT_ROW, 96f)).dp
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(start = state.minX.dp, end = (maxWidth.value - state.maxX).dp, top = GAP.dp),
@@ -80,6 +80,8 @@ fun Menu(state: Overlay.State) {
 private const val GAP = 10f
 private const val HEAD = 28f
 private const val HEAD_GAP = 6f
+/** Where the screen is short (landscape), each shelf keeps a compact panel's one row, and the menu scrolls. */
+private const val COMPACT_ROW = 46f
 
 /** The menu's shelves, each with the color Home's card for it has. */
 enum class Shelf(val title: String, val panel: String, val glyph: String, val color: Color) {

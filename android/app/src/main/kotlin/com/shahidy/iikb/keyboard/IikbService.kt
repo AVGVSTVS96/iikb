@@ -143,6 +143,9 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
             view.micListening = it
             view.invalidate()
         }
+        view.addOnLayoutChangeListener { _, left, _, right, _, oldLeft, _, oldRight, _ ->
+            if (right - left != oldRight - oldLeft) place()
+        }
         ViewCompat.setOnApplyWindowInsetsListener(view) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.tappableElement())
             bottom = bars.bottom / resources.displayMetrics.density.toDouble()
