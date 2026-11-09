@@ -74,6 +74,100 @@ final class ChatBoxDeviceTests: XCTestCase {
         element("iikb.more", in: app).tap()
     }
 
+    /// A message's text is real text: held, a word selects with iOS's edit menu, Copy copies it, and it pastes into
+    /// the box; a link held offers Open Link and Copy Link.
+    func testAMessageSelectsAndCopiesOnThePhone() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-iikbFocus", "YES"]
+        app.launch()
+        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        element("iikb.more", in: app).tap()
+        let card = element("iikb.chats.shelf.0", in: app)
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
+        card.tap()
+        let thread = element("iikb.chat.messages", in: app)
+        XCTAssertTrue(thread.waitForExistence(timeout: 10), "the chat opens with its messages")
+        Thread.sleep(forTimeInterval: 3)
+        shot("7-messages")
+        let messages = thread.textViews
+        XCTAssertGreaterThan(messages.count, 0, "the messages are text views")
+        let newest = messages.element(boundBy: messages.count - 1)
+        newest.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).press(forDuration: 1.2)
+        Thread.sleep(forTimeInterval: 1)
+        shot("8-held-message")
+        let copy = app.menuItems["Copy"]
+        XCTAssertTrue(copy.waitForExistence(timeout: 3), "holding a message's text offers iOS's Copy")
+        copy.tap()
+        let field = element("iikb.chat.field", in: app)
+        field.tap()
+        Thread.sleep(forTimeInterval: 1)
+        field.press(forDuration: 1.2)
+        let paste = app.menuItems["Paste"]
+        if paste.waitForExistence(timeout: 3) {
+            paste.tap()
+            Thread.sleep(forTimeInterval: 1)
+            shot("9-pasted")
+            field.press(forDuration: 1.2)
+            if app.menuItems["Select All"].waitForExistence(timeout: 3) {
+                app.menuItems["Select All"].tap()
+                if app.menuItems["Cut"].waitForExistence(timeout: 3) { app.menuItems["Cut"].tap() }
+            }
+        }
+        shot("10-box-cleared")
+        let links = thread.links
+        if links.count > 0 {
+            links.element(boundBy: links.count - 1).press(forDuration: 1.2)
+            Thread.sleep(forTimeInterval: 1)
+            shot("11-held-link")
+            XCTAssertTrue(
+                app.buttons["Copy Link"].exists || app.menuItems["Copy Link"].exists, "a held link offers Copy Link")
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)).tap()
+        }
+        element("iikb.more", in: app).tap()
+    }
+
+    /// A chat's photo is a photo: a tap opens it large, a tap closes it, and holding it shows it larger over Copy
+    /// (`CHAT`, the chat with photos, ChatsCraft by default).
+    func testAPhotoOpensAndCopiesOnThePhone() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-iikbFocus", "YES"]
+        app.launch()
+        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        element("iikb.more", in: app).tap()
+        let card = element("iikb.chats.shelf.0", in: app)
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
+        card.tap()
+        let name = ProcessInfo.processInfo.environment["CHAT"] ?? "ChatsCraft"
+        let tab = app.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
+        XCTAssertTrue(tab.waitForExistence(timeout: 10), "\(name) is one of the chats")
+        let first = element("iikb.chat.0", in: app)
+        for _ in 0..<8 where !tab.isHittable { first.swipeLeft() }
+        tab.tap()
+        let thread = element("iikb.chat.messages", in: app)
+        let photos = thread.images
+        XCTAssertTrue(photos.firstMatch.waitForExistence(timeout: 15), "\(name)'s photos are images")
+        Thread.sleep(forTimeInterval: 4)
+        shot("12-photos")
+        let photo = photos.element(boundBy: photos.count - 1)
+        photo.tap()
+        let large = element("iikb.chat.photo", in: app)
+        XCTAssertTrue(large.waitForExistence(timeout: 5), "a tap opens the photo large")
+        Thread.sleep(forTimeInterval: 2)
+        shot("13-photo-open")
+        large.tap()
+        Thread.sleep(forTimeInterval: 1)
+        photo.press(forDuration: 1.2)
+        Thread.sleep(forTimeInterval: 1.5)
+        shot("14-photo-held")
+        let copy = app.buttons["Copy"].exists ? app.buttons["Copy"] : app.menuItems["Copy"]
+        XCTAssertTrue(copy.waitForExistence(timeout: 3), "holding a photo offers Copy")
+        copy.tap()
+        Thread.sleep(forTimeInterval: 1)
+        element("iikb.more", in: app).tap()
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
