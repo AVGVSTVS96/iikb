@@ -11,6 +11,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -105,6 +106,7 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
                 LocalGifs provides gifs,
                 LocalChats provides chats,
                 LocalHold provides { held = it },
+                LocalHeld provides holding,
             ) {
                 if (state.line != null) return@CompositionLocalProvider ChatPanel(state, state.line)
                 when (state.panel) {
@@ -175,6 +177,8 @@ val LocalColors = staticCompositionLocalOf<Colors> { error("no look") }
 val LocalActions = staticCompositionLocalOf<Overlay.Actions> { error("no actions") }
 /** Shows what's held over the whole keyboard (`Peek`), or, given nothing, puts it away. */
 val LocalHold = staticCompositionLocalOf<(Held?) -> Unit> { error("no hold") }
+/** What's held now, which hides where it was (`heldAway`). */
+val LocalHeld = compositionLocalOf<Held?> { null }
 
 /** One of the keyboard's glyphs (`Glyphs`), a square `size` on a side, at a weight of `Glyphs`'. */
 @Composable

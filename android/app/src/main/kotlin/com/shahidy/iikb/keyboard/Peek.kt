@@ -58,7 +58,7 @@ import kotlin.math.roundToInt
  * over the whole keyboard, dimmed behind it, with its actions in a menu under it.
  */
 class Held(
-    /** What was held, in the window's pixels: the card starts at its top, centered on it where there's room. */
+    /** What was held, in the window's pixels: the card is centered on it where there's room, and it hides meanwhile. */
     val source: Rect,
     val shows: Shows,
     val actions: List<Action> = emptyList(),
@@ -105,7 +105,7 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
         val menu = if (held.actions.isEmpty()) 0f else MENU_PAD * 2 + MENU_ROW * held.actions.size
         Box(
             Modifier.fillMaxWidth().height(height.dp).graphicsLayer { alpha = appear.value }
-                .background(Color.Black.copy(alpha = if (look.dark) 0.5f else 0.24f))
+                .background(Color.Black.copy(alpha = if (look.dark) 0.47f else 0.2f))
                 .clickable(remember { MutableInteractionSource() }, indication = null, onClick = close),
         )
         Layout(
@@ -143,7 +143,8 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
             val wanted = cardHeight + if (menu > 0) gap + menu else 0f
             // A preview alone (a GIF) is centered in the keyboard, as UIKit centers one it shrinks to fit.
             val alone = menu == 0f && held.shows is Held.Shows.Image
-            val cardTop = if (alone) (height - cardHeight) / 2 else source.top.coerceAtMost(room.bottom - wanted).coerceAtLeast(room.top)
+            val cardTop = if (alone) (height - cardHeight) / 2
+            else (source.center.y - cardHeight / 2).coerceAtMost(room.bottom - wanted).coerceAtLeast(room.top)
             val left = if (alone) (width - cardWidth) / 2 else (source.center.x - cardWidth / 2).coerceIn(room.left, room.right - cardWidth)
             val menuTop = cardTop + cardHeight + gap
             val placed = measurables.getOrNull(1)?.measure(
@@ -160,6 +161,13 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
             }
         }
     }
+}
+
+/** Hides what's held while its card shows, as UIKit lifts a context menu's view out of its place. */
+@Composable
+fun Modifier.heldAway(bounds: Rect): Modifier {
+    val held = LocalHeld.current
+    return graphicsLayer { alpha = if (held?.source == bounds) 0f else 1f }
 }
 
 /** All of what's held: text on the card iOS's previews use, scrolling where it's long, or the image, a GIF playing. */

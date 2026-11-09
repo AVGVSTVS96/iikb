@@ -153,7 +153,7 @@ fun Pressable(
     val pressed by interaction.collectIsPressedAsState()
     var bounds by remember { mutableStateOf(Rect.Zero) }
     Box(
-        modifier.onGloballyPositioned { bounds = it.boundsInWindow() }
+        modifier.onGloballyPositioned { bounds = it.boundsInWindow() }.heldAway(bounds)
             .background(if (pressed) pressedFill else fill, RoundedCornerShape(radius))
             .combinedClickable(interaction, indication = null, onClick = onClick, onLongClick = onHold?.let { { it(bounds) } }),
         contentAlignment = Alignment.CenterStart,
