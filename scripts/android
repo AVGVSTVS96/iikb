@@ -22,7 +22,7 @@ ssh mac 'bash -s' < "$root/scripts/android-emulator"
 run=$(ssh mac 'mktemp -d /tmp/iikb-run.XXXXXX')
 scp -q "$apk" "mac:$run/iikb.apk"
 if [ -n "${2:-}" ]; then scp -q "$2" "mac:$run/drive.sh"; fi
-ssh mac "lockf /tmp/iikb-emulator.lock bash -c '
+ssh mac "lockf -k /tmp/iikb-emulator.lock bash -c '
     adb=~/Library/Android/sdk/platform-tools/adb
     \$adb install -r $run/iikb.apk >/dev/null || exit 1
     for _ in 1 2 3; do \$adb shell ime enable com.shahidy.iikb/.keyboard.IikbService >/dev/null && break; sleep 1; done
