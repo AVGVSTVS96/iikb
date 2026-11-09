@@ -361,14 +361,11 @@ private fun About() {
     }
     Section(
         footer = "iikb types like Apple’s keyboard and learns where your thumbs land. It’s open source, under the MIT license.",
-    ) { Line("Source Code", onClick = { open("https://github.com/AVGVSTVS96/iikb") }) { Trailing("arrow.up.forward") } }
+    ) { ActionRow("Source Code") { open("https://github.com/AVGVSTVS96/iikb") } }
     Section {
-        Line(
-            "Swipe typing powered by FUTO Swipe",
-            onClick = {
-                open("https://github.com/AVGVSTVS96/iikb/blob/main/Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/SWIPE-LICENSE")
-            },
-        ) { Trailing("arrow.up.forward") }
+        ActionRow("Swipe typing powered by FUTO Swipe") {
+            open("https://github.com/AVGVSTVS96/iikb/blob/main/Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/SWIPE-LICENSE")
+        }
     }
 }
 

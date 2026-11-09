@@ -1,5 +1,10 @@
 package com.shahidy.iikb.app
 
+import androidx.core.view.WindowCompat
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.platform.LocalView
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -87,6 +92,13 @@ private fun ServiceForm(kind: Services, service: Service?, saved: List<Service>,
     val canSave = url != null && trimmed.isNotEmpty() && problem == null
     Dialog(close, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         BackHandler(onBack = close)
+        val view = LocalView.current
+        val dark = isSystemInDarkTheme()
+        SideEffect {
+            (view.parent as? DialogWindowProvider)?.window?.let {
+                WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = !dark
+            }
+        }
         Box(Modifier.fillMaxSize()) {
             Page(
                 if (service == null) "Add ${kind.noun}" else "Edit ${kind.noun}", onBack = close,

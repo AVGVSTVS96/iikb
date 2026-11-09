@@ -2,6 +2,7 @@ package com.shahidy.iikb.keyboard
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -88,9 +89,9 @@ private const val COMPACT_ROW = 46f
 
 /** The menu's shelves, each with the color Home's card for it has. */
 enum class Shelf(val title: String, val panel: String, val glyph: String, val color: Color) {
-    CLIPBOARD("Clipboard", "clipboard", "doc.on.clipboard", Color(0xFFFF9500)),
+    CLIPBOARD("Clipboard", "clipboard", "list.clipboard", Color(0xFFFF9500)),
     TRANSCRIPTS("Transcripts", "transcripts", "text.bubble", Color(0xFFFF2D55)),
-    GIFS("GIFs", "gif", "photo", Color(0xFFAF52DE)),
+    GIFS("GIFs", "gif", "gif", Color(0xFFAF52DE)),
     CHATS("Chats", "chats", "bubble.left.and.bubble.right", Color(0xFF5856D6)),
 }
 
@@ -106,13 +107,22 @@ fun ShelfHead(title: String, glyph: String, color: Color, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(24.dp).background(color, RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
-            Glyph(glyph, Color.White, 14.dp)
+            if (glyph == "gif") GifBadge(Color.White) else Glyph(glyph, Color.White, 14.dp)
         }
         Spacer(Modifier.width(8.dp))
         Text(title, color = look.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.width(6.dp))
         Glyph("chevron.right", look.secondary, 11.dp)
     }
+}
+
+/** GIF has no symbol: the word in a rounded frame, as iOS's `Tools.gifGlyph` draws it. */
+@Composable
+fun GifBadge(color: Color) {
+    Box(
+        Modifier.size(16.dp, 12.5.dp).border(1.4.dp, color, RoundedCornerShape(3.dp)),
+        contentAlignment = Alignment.Center,
+    ) { Text("GIF", color = color, fontSize = 6.5.sp, fontWeight = FontWeight.Black, lineHeight = 6.5.sp) }
 }
 
 /** A capsule or card in the key fill, darker while pressed; a hold, where there is one, shows all of it. */
