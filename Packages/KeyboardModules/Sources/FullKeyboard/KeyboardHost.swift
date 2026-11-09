@@ -83,7 +83,7 @@ enum KeyboardHost {
 
     /// Apple has an extension's bundle ID start with its app's and a dot, so a host that extends one of `apps` is that
     /// app's share sheet or another of its extensions.
-    static func isExtension(_ host: String, ofAny apps: [String]) -> Bool {
+    nonisolated static func isExtension(_ host: String, ofAny apps: [String]) -> Bool {
         apps.contains { host.hasPrefix($0 + ".") }
     }
 }
