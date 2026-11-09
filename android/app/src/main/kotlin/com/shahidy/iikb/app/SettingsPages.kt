@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.shahidy.iikb.Extensions
 import com.shahidy.iikb.Transcripts
 import com.shahidy.iikb.TypingStats
 import com.shahidy.iikb.Vocabulary
@@ -53,6 +54,7 @@ enum class SettingsPage(val title: String, val symbol: String, val hue: Color) {
     VOICE("Voice", "waveform", Hues.red),
     WRITING("Writing Style", "textformat", Hues.orange),
     DICTIONARY("Dictionary", "character.book.closed.fill", Hues.brown),
+    EXTENSIONS("Extensions", "bubble.left.and.bubble.right.fill", Hues.green),
     ACCESS("Keyboard Access", "switch.2", Hues.indigo),
     PRIVACY("Privacy & Data", "hand.raised.fill", Hues.blue),
     CHANGELOG("Changelog", "clock.arrow.circlepath", Hues.orange),
@@ -71,6 +73,8 @@ enum class SettingsPage(val title: String, val symbol: String, val hue: Color) {
             VOICE -> VoiceModel.of(LocalContext.current).pickedShown.title
             WRITING -> store.title("writingStyle", STYLES)
             DICTIONARY -> Vocabulary.terms().size.let { if (it == 1) "1 word" else "$it words" }
+            EXTENSIONS -> LocalContext.current.let { context -> store.watch { Extensions.list(context).size } }
+                .let { if (it == 0) "None" else "$it" }
             ACCESS -> if (LocalAccess.current.setup.done) "All Set" else "Needs Setup"
             PRIVACY, CHANGELOG -> null
             ABOUT -> version(LocalContext.current)
@@ -81,7 +85,7 @@ enum class SettingsPage(val title: String, val symbol: String, val hue: Color) {
         val sections = listOf(
             "Keyboard" to listOf(APPEARANCE, TYPING, FEEDBACK),
             "Voice Typing" to listOf(VOICE, WRITING, DICTIONARY),
-            "iikb" to listOf(ACCESS, PRIVACY, CHANGELOG, ABOUT),
+            "iikb" to listOf(EXTENSIONS, ACCESS, PRIVACY, CHANGELOG, ABOUT),
         )
 
         fun of(id: String) = entries.firstOrNull { it.id == id }
@@ -137,6 +141,7 @@ fun SettingsPage(id: String, back: () -> Unit) {
             SettingsPage.VOICE -> Voice()
             SettingsPage.WRITING -> WritingStyle()
             SettingsPage.DICTIONARY -> Dictionary()
+            SettingsPage.EXTENSIONS -> ExtensionsPage()
             SettingsPage.ACCESS -> KeyboardAccess()
             SettingsPage.PRIVACY -> Privacy()
             SettingsPage.CHANGELOG -> Changelog()

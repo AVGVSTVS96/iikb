@@ -17,7 +17,7 @@ iikb on Android: the same keyboard, KeyboardCore built for Android with the Swif
   - `Transcripts`: every dictation, one store the keyboard and the app share (see "Voice typing").
   - `Settings`: the settings, under the names iOS's `SettingsStore` keeps them.
   - `Vocabulary`: your Dictionary, iOS's `vocabulary.json`, which `corrected` puts on a dictation.
-  - `app/`: the app's pages, in iOS's look (`Style`, `Rows`, `Symbols` for its SF Symbols): `Home`, the Settings list and its pages (`SettingsPages`, `KeyboardPages`, `WritingStyle`, `Dictionary`). `Core` asks the engine what they show (`Sources/KeyboardAndroid/App.swift`): the Keyboard pages' preview, a `KeyboardView` on a keyboard of its own over an empty `PreviewField`; Writing Style's examples; which layout settings apply on this screen; taps learned. Settings › Changelog reads `changelog.json`, which the build writes from `Changelog:` trailers as scripts/phone does for iOS.
+  - `app/`: the app's pages, in iOS's look (`Style`, `Rows`, `Symbols` for its SF Symbols): `Home`, the Settings list and its pages (`SettingsPages`, `KeyboardPages`, `WritingStyle`, `Dictionary`, `ExtensionsPage` on the `Extensions` store). `Core` asks the engine what they show (`Sources/KeyboardAndroid/App.swift`): the Keyboard pages' preview, a `KeyboardView` on a keyboard of its own over an empty `PreviewField`; Writing Style's examples; which layout settings apply on this screen; taps learned. Settings › Changelog reads `changelog.json`, which the build writes from `Changelog:` trailers as scripts/phone does for iOS.
 - The English data (`KeyboardEnglish/Resources`) goes into the APK's assets uncompressed, and the engine reads it mapped, in place.
 
 ## Voice typing

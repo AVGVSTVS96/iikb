@@ -37,6 +37,12 @@ class Store(val settings: Settings) {
         }
     }
 
+    /** What `read` gives from the settings' file, read again after each change to it. */
+    fun <T> watch(read: () -> T): T {
+        revision
+        return read()
+    }
+
     /** Every setting as the engine reads them, read again after each change. */
     fun lines(): String {
         revision

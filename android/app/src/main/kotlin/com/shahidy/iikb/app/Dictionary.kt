@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -21,8 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -55,6 +52,9 @@ fun Dictionary() {
 }
 
 private const val NEW = -1
+
+/** Words as the model writes them: no capitals or corrections of the keyboard's own. */
+private val PLAIN = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false)
 
 /** A word and what it's written as, opening its form; holding it offers Delete. */
 @OptIn(ExperimentalFoundationApi::class)
@@ -114,12 +114,12 @@ private fun TermEditor(term: Vocabulary.Term?, close: () -> Unit, save: (Vocabul
                 },
             ) {
                 Section("Word", "Spelled and capitalized as iikb should type it.") {
-                    Field(word, "Claude") { word = it }
+                    FormField(word, "Claude", PLAIN) { word = it }
                 }
                 Section(
                     "Written Instead",
                     "What the voice model writes when you say it, separated by commas. Leave it empty to fix only spaces, hyphens and capitals.",
-                ) { Field(heardAs, "clawed, clod") { heardAs = it } }
+                ) { FormField(heardAs, "clawed, clod", PLAIN) { heardAs = it } }
                 if (term != null) {
                     Section {
                         ActionRow("Delete Word", destructive = true) {
@@ -131,22 +131,4 @@ private fun TermEditor(term: Vocabulary.Term?, close: () -> Unit, save: (Vocabul
             }
         }
     }
-}
-
-@Composable
-private fun Field(value: String, placeholder: String, change: (String) -> Unit) {
-    val palette = palette()
-    BasicTextField(
-        value, change, singleLine = true,
-        textStyle = TextStyle(color = palette.label, fontSize = Type.body),
-        cursorBrush = SolidColor(palette.accent),
-        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false),
-        modifier = Modifier.fillMaxWidth().row(),
-        decorationBox = { inner ->
-            Box(contentAlignment = Alignment.CenterStart) {
-                if (value.isEmpty()) Text(placeholder, color = palette.secondary, fontSize = Type.body)
-                inner()
-            }
-        },
-    )
 }
