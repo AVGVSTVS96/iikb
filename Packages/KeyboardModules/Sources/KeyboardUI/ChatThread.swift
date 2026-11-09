@@ -2,18 +2,43 @@ import KeyboardCore
 import UIKit
 import UniformTypeIdentifiers
 
-/// One message in a `ChatThread`: its text, read as inline markdown, and whether it's yours.
+/// One message in a `ChatThread`: its text, read as inline markdown, the files with it, and whether it's yours.
 public struct ChatMessage: Hashable, Sendable {
     public var text: String
     public var mine: Bool
     /// Sent but not yet in the chat's own messages.
     public var pending: Bool
+    public var files: [ChatFile]
 
-    public init(text: String, mine: Bool, pending: Bool = false) {
+    public init(text: String, mine: Bool, pending: Bool = false, files: [ChatFile] = []) {
         self.text = text
         self.mine = mine
         self.pending = pending
+        self.files = files
     }
+}
+
+/// A file sent in a chat: a photo shows as one (`ImageBubble`), anything else as its name.
+public struct ChatFile: Hashable, Sendable {
+    public var name: String
+    public var url: URL
+    /// Its MIME type, when it's known.
+    public var type: String?
+
+    public init(name: String, url: URL, type: String? = nil) {
+        self.name = name
+        self.url = url
+        self.type = type
+    }
+
+    public var isImage: Bool { type?.hasPrefix("image/") == true }
+}
+
+/// A bubble a `ChatThread` lays out: one side's, sized to its content, its corners tightened toward its neighbors.
+public protocol ChatBubble: UIView {
+    var mine: Bool { get }
+    var joined: (above: Bool, below: Bool) { get set }
+    func size(within width: CGFloat) -> CGSize
 }
 
 /// A chat's messages as Messages lays them out: yours on the right, a turn's bubbles 2 apart and turns 10, the newest
@@ -24,10 +49,12 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
     public var onOpen: (URL) -> Void = { _ in }
     /// The messages were tapped, or text in them selected: you're reading.
     public var onRead: () -> Void = {}
+    /// A file's bytes, which only the owner can fetch.
+    public var fetch: (URL) async -> Data? = { _ in nil }
 
     private let scroll = UIScrollView()
     private let fade = CAGradientLayer()
-    private var bubbles: [MessageBubble] = []
+    private var bubbles: [any ChatBubble] = []
     /// A line under the messages, like what went wrong.
     private let footnote = UILabel()
 
@@ -52,19 +79,49 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
 
     required init?(coder: NSCoder) { fatalError() }
 
+    /// Each message as Messages splits one: its photos, then its other files, then its text, each a bubble.
     public func show(_ messages: [ChatMessage], footnote note: String?, theme: KeyboardTheme) {
-        while bubbles.count < messages.count {
-            let bubble = MessageBubble()
-            bubble.onOpen = { [unowned self] in onOpen($0) }
-            bubble.onSelect = { [unowned self] in onRead() }
+        var index = 0
+        func next<Bubble: ChatBubble>(_ make: () -> Bubble) -> Bubble {
+            defer { index += 1 }
+            if index < bubbles.count, let bubble = bubbles[index] as? Bubble { return bubble }
+            let bubble = make()
+            if index < bubbles.count {
+                bubbles[index].removeFromSuperview()
+                bubbles[index] = bubble
+            } else {
+                bubbles.append(bubble)
+            }
             scroll.addSubview(bubble)
-            bubbles.append(bubble)
+            return bubble
         }
-        while bubbles.count > messages.count { bubbles.removeLast().removeFromSuperview() }
-        for (bubble, message) in zip(bubbles, messages) { bubble.show(message, theme: theme) }
+        for message in messages {
+            for file in message.files where file.isImage {
+                next(image).show(file, mine: message.mine, pending: message.pending, theme: theme)
+            }
+            for file in message.files where !file.isImage {
+                next(text).show(file, mine: message.mine, pending: message.pending, theme: theme)
+            }
+            if !message.text.isEmpty || message.files.isEmpty { next(text).show(message, theme: theme) }
+        }
+        while bubbles.count > index { bubbles.removeLast().removeFromSuperview() }
         footnote.text = note
         footnote.textColor = theme.candidate.ui
         setNeedsLayout()
+    }
+
+    private func text() -> MessageBubble {
+        let bubble = MessageBubble()
+        bubble.onOpen = { [unowned self] in onOpen($0) }
+        bubble.onSelect = { [unowned self] in onRead() }
+        return bubble
+    }
+
+    private func image() -> ImageBubble {
+        let bubble = ImageBubble()
+        bubble.fetch = { [unowned self] in await fetch($0) }
+        bubble.onLoad = { [unowned self] in setNeedsLayout() }
+        return bubble
     }
 
     @objc private func tapped() {
@@ -115,7 +172,7 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
 /// One message as Messages draws it: yours on the accent color, the other side's on a key's, SF Pro 17 on 22 point
 /// lines, hugging its text, with markdown's bold, italics, code and links. The text is a `UITextView`, so holding it
 /// selects with iOS's handles and edit menu, links and web addresses are links, and a link held offers Open and Copy.
-public final class MessageBubble: UIView, UITextViewDelegate {
+public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
     /// A link in the message was tapped, or Open picked from its menu.
     public var onOpen: (URL) -> Void = { _ in }
     /// Text in the message was selected.
@@ -126,7 +183,12 @@ public final class MessageBubble: UIView, UITextViewDelegate {
 
     private let shape = CAShapeLayer()
     private let text = UITextView()
-    private var shown: (message: ChatMessage, theme: KeyboardTheme)?
+    private var shown: (content: Content, theme: KeyboardTheme)?
+
+    private enum Content: Equatable {
+        case message(ChatMessage)
+        case file(ChatFile, mine: Bool, pending: Bool)
+    }
     private static let inset = UIEdgeInsets(top: 7, left: 12, bottom: 7, right: 12)
     private static let size = 17.0
 
@@ -149,17 +211,37 @@ public final class MessageBubble: UIView, UITextViewDelegate {
     required init?(coder: NSCoder) { fatalError() }
 
     public func show(_ message: ChatMessage, theme: KeyboardTheme) {
-        if let shown, shown.message == message, shown.theme == theme { return }
-        shown = (message, theme)
-        mine = message.mine
+        show(.message(message), mine: message.mine, pending: message.pending, theme: theme) { color in
+            Self.attributed(message.text, color: color)
+        }
+    }
+
+    /// A file that isn't a photo, as its name after a document glyph.
+    public func show(_ file: ChatFile, mine: Bool, pending: Bool, theme: KeyboardTheme) {
+        show(.file(file, mine: mine, pending: pending), mine: mine, pending: pending, theme: theme) { color in
+            let glyph = UIImage(systemName: "doc", withConfiguration: UIImage.SymbolConfiguration(pointSize: 15))?
+                .withTintColor(color, renderingMode: .alwaysOriginal)
+            let text = NSMutableAttributedString(attachment: NSTextAttachment(image: glyph ?? UIImage()))
+            text.append(NSAttributedString(string: " " + file.name))
+            text.addAttribute(.font, value: UIFont.systemFont(ofSize: Self.size), range: NSRange(0..<text.length))
+            return Self.lined(text, color: color)
+        }
+    }
+
+    private func show(
+        _ content: Content, mine: Bool, pending: Bool, theme: KeyboardTheme, text made: (UIColor) -> NSAttributedString
+    ) {
+        if let shown, shown.content == content, shown.theme == theme { return }
+        shown = (content, theme)
+        self.mine = mine
         shape.fillColor = (mine ? theme.prominent.ui : theme.key.ui).cgColor
         layer.shadowColor = theme.shadow.ui.cgColor
         layer.shadowOpacity = mine ? 0 : 1
-        alpha = message.pending ? 0.6 : 1
+        alpha = pending ? 0.6 : 1
         let color = mine ? theme.prominentLabel.ui : theme.label.ui
         text.tintColor = mine ? theme.prominentLabel.ui : theme.prominent.ui
         text.linkTextAttributes = [.foregroundColor: color, .underlineStyle: NSUnderlineStyle.single.rawValue]
-        text.attributedText = Self.attributed(message.text, color: color)
+        text.attributedText = made(color)
         text.accessibilityLabel = mine ? "You" : nil
         setNeedsLayout()
     }
@@ -169,10 +251,6 @@ public final class MessageBubble: UIView, UITextViewDelegate {
             AttributedString(markdown: markdown, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
         let text = parsed ?? NSMutableAttributedString(string: markdown)
         let whole = NSRange(location: 0, length: text.length)
-        let lines = NSMutableParagraphStyle()
-        lines.minimumLineHeight = 22
-        lines.maximumLineHeight = 22
-        text.addAttributes([.foregroundColor: color, .paragraphStyle: lines], range: whole)
         text.enumerateAttribute(.inlinePresentationIntent, in: whole) { intent, range, _ in
             let intent = (intent as? NSNumber).map { InlinePresentationIntent(rawValue: $0.uintValue) } ?? []
             let font: UIFont =
@@ -183,6 +261,15 @@ public final class MessageBubble: UIView, UITextViewDelegate {
                     : intent.contains(.emphasized) ? .italicSystemFont(ofSize: size) : .systemFont(ofSize: size)
             text.addAttribute(.font, value: font, range: range)
         }
+        return lined(text, color: color)
+    }
+
+    /// SF Pro's 22 point lines in `color`.
+    private static func lined(_ text: NSMutableAttributedString, color: UIColor) -> NSAttributedString {
+        let lines = NSMutableParagraphStyle()
+        lines.minimumLineHeight = 22
+        lines.maximumLineHeight = 22
+        text.addAttributes([.foregroundColor: color, .paragraphStyle: lines], range: NSRange(0..<text.length))
         return text
     }
 
@@ -200,14 +287,7 @@ public final class MessageBubble: UIView, UITextViewDelegate {
     override public func layoutSubviews() {
         super.layoutSubviews()
         text.frame = bounds.inset(by: Self.inset)
-        let round: CGFloat = 18
-        let tight: CGFloat = 6
-        let side = (top: joined.above ? tight : round, bottom: joined.below ? tight : round)
-        let radii =
-            mine
-            ? (topLeft: round, topRight: side.top, bottomLeft: round, bottomRight: side.bottom)
-            : (topLeft: side.top, topRight: round, bottomLeft: side.bottom, bottomRight: round)
-        let path = UIBezierPath(shape: bounds, radii)
+        let path = UIBezierPath(bubble: bounds, mine: mine, joined: joined)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         shape.frame = bounds
@@ -243,6 +323,18 @@ public final class MessageBubble: UIView, UITextViewDelegate {
 }
 
 extension UIBezierPath {
+    /// A bubble's outline: corners of 18, tightened to 6 on its side toward a neighbor from the same side, as Messages'.
+    convenience init(bubble rect: CGRect, mine: Bool, joined: (above: Bool, below: Bool)) {
+        let round: CGFloat = 18
+        let tight: CGFloat = 6
+        let side = (top: joined.above ? tight : round, bottom: joined.below ? tight : round)
+        self.init(
+            shape: rect,
+            mine
+                ? (topLeft: round, topRight: side.top, bottomLeft: round, bottomRight: side.bottom)
+                : (topLeft: side.top, topRight: round, bottomLeft: side.bottom, bottomRight: round))
+    }
+
     /// A rectangle with each corner its own radius.
     fileprivate convenience init(
         shape rect: CGRect, _ r: (topLeft: CGFloat, topRight: CGFloat, bottomLeft: CGFloat, bottomRight: CGFloat)

@@ -20,8 +20,16 @@ final class Chats {
         let from: String
         let text: String
         var pending: Bool?
+        var files: [File]?
 
         var mine: Bool { from == "me" }
+
+        /// A file sent with the message, at `url` relative to the extension's address.
+        struct File: Decodable, Hashable, Sendable {
+            let name: String
+            let url: String
+            var type: String?
+        }
     }
 
     var changed: () -> Void = {}
@@ -178,6 +186,27 @@ final class Chats {
     }
 
     nonisolated private static let session = URLSession(configuration: .ephemeral)
+
+    /// Where the open chat's extension serves `file`: its address, or one under the extension's.
+    func url(of file: Message.File) -> URL? {
+        guard let service = open?.service else { return nil }
+        if let url = URL(string: file.url), url.scheme != nil { return url }
+        let base = service.url.absoluteString
+        return URL(string: (base.hasSuffix("/") ? base : base + "/") + file.url)
+    }
+
+    /// A file's bytes from the open chat's extension, with its token.
+    func data(at url: URL) async -> Data? {
+        guard let service = open?.service else { return nil }
+        return await Self.data(Self.request(url, for: service))
+    }
+
+    @concurrent nonisolated private static func data(_ request: URLRequest) async -> Data? {
+        guard let (data, response) = try? await session.data(for: request),
+            let status = (response as? HTTPURLResponse)?.statusCode, (200..<300).contains(status)
+        else { return nil }
+        return data
+    }
 
     nonisolated private static func request(_ url: URL, for service: Extension) -> URLRequest {
         var request = URLRequest(url: url)

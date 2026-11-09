@@ -44,6 +44,7 @@ final class ChatPanel: UIView, PanelContent {
         super.init(frame: .zero)
         thread.onOpen = { [unowned self] in onOpen($0) }
         thread.onRead = { [unowned self] in if typing { onBrowse() } }
+        thread.fetch = { [chats] in await chats.data(at: $0) }
         composer.onSend = { [unowned self] in onSend() }
         composer.onMic = { [unowned self] in onMic() }
         composer.onTap = { [unowned self] in if !typing { onFocus() } }
@@ -90,7 +91,13 @@ final class ChatPanel: UIView, PanelContent {
         message.show(
             missing ?? (empty ? chats.problem : nil) ?? quiet, turnOn: missing != nil, oneRow: false, theme: theme)
         thread.show(
-            chats.messages.suffix(40).map { ChatMessage(text: $0.text, mine: $0.mine, pending: $0.pending == true) },
+            chats.messages.suffix(40).map { message in
+                ChatMessage(
+                    text: message.text, mine: message.mine, pending: message.pending == true,
+                    files: (message.files ?? []).compactMap { file in
+                        chats.url(of: file).map { ChatFile(name: file.name, url: $0, type: file.type) }
+                    })
+            },
             footnote: empty ? nil : chats.problem, theme: theme)
         setNeedsLayout()
     }

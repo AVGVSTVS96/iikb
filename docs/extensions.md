@@ -38,7 +38,8 @@ export default chats({
 ```
 
 - `list()`: the chats, `{ id, name, line?, pinned? }`. Pinned ones come first.
-- `read(chat, after)`: the chat's messages, `{ from, text, pending? }`, oldest first, with a `version` that changes when they do. `from` is `me` for yours. With `after`, hold the answer until the messages are no longer at that version, or about 25 seconds, so a reply reaches the keyboard the moment it's written.
+- `read(chat, after)`: the chat's messages, `{ from, text, pending?, files? }`, oldest first, with a `version` that changes when they do. `from` is `me` for yours. With `after`, hold the answer until the messages are no longer at that version, or about 25 seconds, so a reply reaches the keyboard the moment it's written.
+- `files`, in a message: `{ name, url, type? }`, `type` its MIME type. iikb fetches `url` with the extension's token. `chats()` answers every GET as a chat, so give a full address, or route file paths before calling `answer`. A photo (`image/…`) shows as one; holding it shows it larger, with Copy. Any other file shows as its name. A message that is only a file has `text: ""`; a photo's caption is its text.
 - `send(chat, text, id)`: your words. `id` names the message, so a retry after a lost answer can send it once.
 
 ```sh
@@ -65,7 +66,8 @@ With `Authorization: Bearer <token>` when there's a token.
 
 ```
 GET  <url>                      → { name, chats: [{ id, name, line?, pinned? }] }
-GET  <url>/<chat>?after=<version> → { version, messages: [{ from, text, pending? }] }
+GET  <url>/<chat>?after=<version> → { version, messages: [{ from, text, pending?, files? }] }
+GET  <url>/<file's url>          → the file's bytes, with its Content-Type
 POST <url>/<chat> { text, id }  → 2xx once it's sent
 ```
 

@@ -7,10 +7,17 @@ export interface Chat {
   readonly pinned?: boolean;
 }
 
+export interface File {
+  readonly name: string;
+  readonly url: string;
+  readonly type?: string;
+}
+
 export interface Message {
   readonly from: string;
   readonly text: string;
   readonly pending?: boolean;
+  readonly files?: readonly File[];
 }
 
 export interface Messages {
