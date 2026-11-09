@@ -6,6 +6,12 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 export JAVA_HOME=${JAVA_HOME:-/usr/lib/jvm/java-25-openjdk} ANDROID_HOME=${ANDROID_HOME:-$HOME/Android/Sdk}
+# The API keys are out of git, so a worktree has none of its own: it takes the main checkout's, and its builds keep GIFs.
+keys=Packages/KeyboardModules/Sources/FullKeyboard/Resources/Keys
+main=$(dirname "$(git -C "$root" rev-parse --path-format=absolute --git-common-dir)")
+for key in "$main/$keys"/*.key; do
+  if [ -e "$key" ] && [ ! -e "$root/$keys/${key##*/}" ]; then cp "$key" "$root/$keys/"; fi
+done
 cd "$root/android"
 ./gradlew :app:assembleRelease --console=plain -q
 apk=$root/android/app/build/outputs/apk/release/app-release.apk
