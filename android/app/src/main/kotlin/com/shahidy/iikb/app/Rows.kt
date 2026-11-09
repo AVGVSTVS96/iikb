@@ -96,6 +96,7 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawPlainBackdrop
 import com.kyant.backdrop.effects.blur
 import com.shahidy.iikb.app.design.isDark
+import com.shahidy.iikb.app.design.Tints
 
 /** iOS's Dynamic Type sizes at Large, which the iOS app's text takes. */
 object Type {
@@ -216,7 +217,7 @@ private fun Modifier.scrollEdge(backdrop: Backdrop, shown: Float): Modifier {
     val wash = if (palette().isDark) Color(0xFF121212).copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f)
     return drawPlainBackdrop(
         backdrop, { RectangleShape },
-        effects = { blur(16.dp.toPx()) },
+        effects = { blur(4.dp.toPx()) },
         layerBlock = { alpha = shown },
         onDrawSurface = { drawRect(wash) },
     )
@@ -562,7 +563,7 @@ fun FormField(
         modifier = Modifier.fillMaxWidth().row(),
         decorationBox = { inner ->
             Box(contentAlignment = Alignment.CenterStart) {
-                if (value.isEmpty()) Text(placeholder, color = palette.secondary, fontSize = Type.body)
+                if (value.isEmpty()) Text(placeholder, color = Tints.placeholder(palette), fontSize = Type.body)
                 inner()
             }
         },
