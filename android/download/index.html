@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>iikb for Android</title>
+    <meta name="description" content="The iikb keyboard for Android phones, as an APK." />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --page: light-dark(#f2f2f5, #000);
+        --card: light-dark(#fff, #1c1c1e);
+        --ink: light-dark(#000, #fff);
+        --ink-2: light-dark(#6c6c70, #8e8e93);
+        --rule: light-dark(#e3e3e8, #2c2c2e);
+        --edge: light-dark(rgb(0 0 0 / 0.06), rgb(255 255 255 / 0.07));
+        --blue: light-dark(#007aff, #0a84ff);
+        --mono: ui-monospace, "SF Mono", "Geist Mono", Menlo, monospace;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        min-height: 100dvh;
+        background: var(--page);
+        color: var(--ink);
+        font:
+          17px/1.45 "Helvetica Neue",
+          Helvetica,
+          Arial,
+          sans-serif;
+        font-feature-settings: "tnum";
+        -webkit-font-smoothing: antialiased;
+        display: grid;
+        place-items: center;
+        padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+      }
+      main {
+        width: 100%;
+        max-width: 440px;
+        display: grid;
+        gap: 12px;
+      }
+      .card {
+        background: var(--card);
+        border-radius: 14px;
+        box-shadow: 0 0 0 1px var(--edge);
+        padding: 24px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 24px;
+      }
+      header img {
+        width: 52px;
+        height: 52px;
+        flex: none;
+      }
+      h1 {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.05;
+      }
+      header p {
+        color: var(--ink-2);
+        font-size: 15px;
+        margin-top: 2px;
+      }
+      .download {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        height: 52px;
+        border-radius: 12px;
+        background: var(--blue);
+        color: #fff;
+        font-weight: 600;
+        font-size: 17px;
+        text-decoration: none;
+        transition:
+          filter 0.15s,
+          transform 0.1s;
+      }
+      .download:hover {
+        filter: brightness(1.08);
+      }
+      .download:active {
+        transform: scale(0.98);
+      }
+      .download svg {
+        width: 20px;
+        height: 20px;
+      }
+      .download span {
+        font-family: var(--mono);
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0.8;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        margin-top: 20px;
+        border-top: 1px solid var(--rule);
+        padding-top: 16px;
+      }
+      dt {
+        color: var(--ink-2);
+        font-size: 12px;
+        font-weight: 500;
+      }
+      dd {
+        font-family: var(--mono);
+        font-size: 14px;
+        margin-top: 2px;
+        white-space: nowrap;
+      }
+      h2 {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 14px;
+      }
+      ol {
+        list-style: none;
+        padding: 0;
+        display: grid;
+        gap: 14px;
+        counter-reset: step;
+      }
+      li {
+        display: grid;
+        grid-template-columns: 24px 1fr;
+        gap: 12px;
+        font-size: 15px;
+        line-height: 1.4;
+        counter-increment: step;
+      }
+      li::before {
+        content: counter(step);
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
+        background: var(--page);
+        box-shadow: inset 0 0 0 1px var(--rule);
+        display: grid;
+        place-items: center;
+        font: 600 12px/1 var(--mono);
+      }
+      li small {
+        display: block;
+        color: var(--ink-2);
+        font-size: 13px;
+        margin-top: 2px;
+      }
+      footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 4px 4px 0;
+        color: var(--ink-2);
+        font-size: 12px;
+      }
+      footer code {
+        font-family: var(--mono);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+      }
+      footer a {
+        color: inherit;
+        flex: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card">
+        <header>
+          <img src="favicon.svg" alt="" width="52" height="52" />
+          <div>
+            <h1>iikb for Android</h1>
+            <p>The keyboard, with voice typing on the phone.</p>
+          </div>
+        </header>
+        <a class="download" href="iikb.apk" download="iikb-__VERSION__.apk">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 4v11m-5-5 5 5 5-5M5 20h14" />
+          </svg>
+          Download APK <span>__SIZE__</span>
+        </a>
+        <dl>
+          <div><dt>Version</dt><dd>__VERSION__</dd></div>
+          <div><dt>Updated</dt><dd>__DATE__</dd></div>
+          <div><dt>Needs</dt><dd>Android 9+</dd></div>
+        </dl>
+      </section>
+      <section class="card">
+        <h2>Install</h2>
+        <ol>
+          <li><p>Open the downloaded file and tap Install.<small>If Android asks, allow installs from your browser.</small></p></li>
+          <li><p>Open iikb and follow its three Set Up steps.<small>Turn iikb on, switch to it, allow the mic.</small></p></li>
+          <li><p>Dictate once on Wi-Fi.<small>The first dictation downloads the speech model, about 670 MB.</small></p></li>
+        </ol>
+      </section>
+      <footer>
+        <code title="SHA-256 __SHA__">sha256 __SHA__</code>
+        <a href="https://github.com/AVGVSTVS96/iikb">Source</a>
+      </footer>
+    </main>
+  </body>
+</html>

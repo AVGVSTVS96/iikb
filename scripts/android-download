@@ -1,0 +1,29 @@
+#!/bin/bash
+# The download page for iikb on Android (android/download/), deployed to Vercel as iikb-android with the newest APK in
+# ~/.local/share/iikb/android/builds. A systemd path unit runs main's copy of this whenever a build lands there; it
+# deploys only when the newest APK isn't the one live.
+set -euo pipefail
+repo=${IIKB_REPO:-$HOME/Developer/iikb}
+data=$HOME/.local/share/iikb/android
+site=$data/download
+apk=$(ls "$data"/builds/iikb-*.apk | sort -V | tail -1)
+version=$(basename "$apk" .apk)
+version=${version#iikb-}
+sha=$(sha256sum "$apk" | cut -d' ' -f1)
+[ "$(cat "$site/.deployed" 2>/dev/null)" != "$sha" ] || exit 0
+
+git -C "$repo" fetch -q origin main
+mkdir -p "$site"
+git -C "$repo" show origin/main:android/download/vercel.json > "$site/vercel.json"
+git -C "$repo" show origin/main:brand/logo/out/favicon.svg > "$site/favicon.svg"
+git -C "$repo" show origin/main:android/download/index.html |
+  sed -e "s/__VERSION__/$version/g" -e "s/__SHA__/$sha/g" \
+    -e "s/__SIZE__/$(numfmt --to=si --suffix=B --format=%.0f "$(stat -c %s "$apk")" | sed 's/MB/ MB/')/g" \
+    -e "s/__DATE__/$(date -d "@$(stat -c %Y "$apk")" '+%b %-d')/g" > "$site/index.html"
+ln -f "$apk" "$site/iikb.apk"
+
+cd "$site"
+[ -d .vercel ] || vercel link --yes --project iikb-android >/dev/null
+vercel deploy --prod --yes >/dev/null
+echo "$sha" > .deployed
+echo "iikb $version live at https://iikb-android.vercel.app"
