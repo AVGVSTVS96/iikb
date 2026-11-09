@@ -107,15 +107,20 @@ final class TranscriptsPanel: UIView, PanelContent, UICollectionViewDataSource, 
         _ collectionView: UICollectionView, contextMenuConfigurationForItemsAt indexPaths: [IndexPath], point: CGPoint
     ) -> UIContextMenuConfiguration? {
         guard let text = indexPaths.first.map({ entries[$0.item].text }) else { return nil }
+        let room = collectionView.window?.bounds.height ?? .infinity
         return UIContextMenuConfiguration(identifier: nil) {
-            ClipPreview(text: text)
+            ClipPreview(text: text).fitting(room)
         } actionProvider: { [unowned self] _ in
-            UIMenu(children: [
-                UIAction(title: "Paste", image: UIImage(systemName: "doc.on.clipboard")) { _ in self.onPaste(text) },
-                UIAction(title: "Copy", image: UIImage(systemName: "square.on.square")) { _ in
-                    UIPasteboard.general.string = text
-                },
-            ])
+            UIMenu(
+                preferredElementSize: .medium,
+                children: [
+                    UIAction(title: "Paste", image: UIImage(systemName: "doc.on.clipboard")) { _ in
+                        self.onPaste(text)
+                    },
+                    UIAction(title: "Copy", image: UIImage(systemName: "square.on.square")) { _ in
+                        UIPasteboard.general.string = text
+                    },
+                ])
         }
     }
 

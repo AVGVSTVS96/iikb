@@ -10,6 +10,15 @@ final class ClipPreview: UIViewController {
 
     private var heading: NSAttributedString?
 
+    private var tallest = 480.0
+
+    /// The preview held to half of `room`, the keyboard window's height, leaving the other half to the one-row menu
+    /// under it, which UIKit would otherwise squeeze and scroll.
+    func fitting(_ room: CGFloat) -> Self {
+        tallest = min(tallest, (room / 2).rounded(.down))
+        return self
+    }
+
     /// `heading`, when there is one, is how the clip's row writes it (`ClipTitle`), over all of it: a link's site over
     /// the whole link.
     init(text: String, heading: NSAttributedString? = nil) {
@@ -45,8 +54,8 @@ final class ClipPreview: UIViewController {
         view.contentMode = .scaleAspectFit
         view.backgroundColor = .black
         let size = image?.size ?? CGSize(width: 1, height: 1)
-        let width: CGFloat = 300
-        preferredContentSize = CGSize(width: width, height: (width * size.height / max(size.width, 1)).rounded())
+        let height = min((300 * size.height / max(size.width, 1)).rounded(), tallest)
+        preferredContentSize = CGSize(width: (height * size.width / max(size.height, 1)).rounded(), height: height)
         self.view = view
     }
 
@@ -72,7 +81,7 @@ final class ClipPreview: UIViewController {
         }
         let width: CGFloat = 340
         let height = view.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
-        preferredContentSize = CGSize(width: width, height: min(height, 480))
+        preferredContentSize = CGSize(width: width, height: min(height, tallest))
     }
 
     override func viewWillAppear(_ animated: Bool) {

@@ -306,22 +306,26 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         _ collectionView: UICollectionView, contextMenuConfigurationForItemsAt indexPaths: [IndexPath], point: CGPoint
     ) -> UIContextMenuConfiguration? {
         guard let item = indexPaths.first.map(item(at:)) else { return nil }
+        let room = collectionView.window?.bounds.height ?? .infinity
         return UIContextMenuConfiguration(identifier: nil) { [unowned self] in
-            preview(item.content)
+            preview(item.content).fitting(room)
         } actionProvider: { [unowned self] _ in
-            UIMenu(children: [
-                UIAction(title: "Paste", image: UIImage(systemName: "doc.on.clipboard")) { _ in self.pick(item) },
-                UIAction(
-                    title: item.pinned ? "Unpin" : "Pin", image: UIImage(systemName: item.pinned ? "pin.slash" : "pin")
-                ) { _ in
-                    self.store.setPinned(!item.pinned, item.content)
-                    self.refresh()
-                },
-                UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { _ in
-                    self.store.remove(item.content)
-                    self.refresh()
-                },
-            ])
+            UIMenu(
+                preferredElementSize: .medium,
+                children: [
+                    UIAction(title: "Paste", image: UIImage(systemName: "doc.on.clipboard")) { _ in self.pick(item) },
+                    UIAction(
+                        title: item.pinned ? "Unpin" : "Pin",
+                        image: UIImage(systemName: item.pinned ? "pin.slash" : "pin")
+                    ) { _ in
+                        self.store.setPinned(!item.pinned, item.content)
+                        self.refresh()
+                    },
+                    UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { _ in
+                        self.store.remove(item.content)
+                        self.refresh()
+                    },
+                ])
         }
     }
 
