@@ -911,7 +911,7 @@ open class FullKeyboardViewController: UIInputViewController {
         notice = nil
         micIsOn = Dictation.micIsOn
         if micIsOn { return Dictation.send(.start) }
-        guard KeyboardHost.returns(to: hostApp) else {
+        guard KeyboardHost.returns(to: hostApp, apps: engine.corrector?.memory.apps.map { Array($0.keys) } ?? []) else {
             notice = "The mic is off, and opening iikb would close this. Turn it on in iikb first."
             return render()
         }
