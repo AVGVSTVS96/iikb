@@ -343,13 +343,10 @@ fun Trailing(symbol: String, tint: Color = palette().secondary) =
 fun Glyph(symbol: String, color: Color, size: Dp = 30.dp) {
     Box(
         Modifier.size(size).clip(RoundedCornerShape(size * 0.26f))
-            .background(Brush.verticalGradient(listOf(color.lighten(), color))),
+            .background(Hues.gradient(color)),
         contentAlignment = Alignment.Center,
     ) { Icon(Symbols[symbol], null, tint = Color.White, modifier = Modifier.size(size * 0.68f)) }
 }
-
-/** SwiftUI's `Color.gradient`: the color, a little lighter at the top. */
-private fun Color.lighten() = Color(red + (1 - red) * 0.18f, green + (1 - green) * 0.18f, blue + (1 - blue) * 0.18f, alpha)
 
 /** A row that opens a page, with what it's set to and a chevron. */
 @Composable

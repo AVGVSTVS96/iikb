@@ -72,18 +72,13 @@ object Tints {
     fun placeholder(p: Palette) = if (p.isDark) Color(0x4DEBEBF5) else Color(0x4D3C3C43)
 
     /** Taps' misses (TapMapPalette.miss). */
-    fun miss(p: Palette) = if (p.isDark) Color(0xFFD95926) else Color(0xFFEB6834)
+    fun miss(p: Palette) = Hues.miss.on(p)
 
     /** The keys' backdrop in Taps (TapMapPalette.backdrop). */
     fun backdrop(p: Palette) = if (p.isDark) Color(0xFF202020) else Color(0xFFE2E3E8)
 
-    /** SwiftUI's `.gradient` on a color: a touch lighter at the top. */
-    fun gradient(color: Color) = Brush.verticalGradient(listOf(lighter(color), color))
-
-    private fun lighter(color: Color) = Color(
-        color.red + (1 - color.red) * 0.18f, color.green + (1 - color.green) * 0.18f,
-        color.blue + (1 - color.blue) * 0.18f, color.alpha,
-    )
+    /** SwiftUI's `.gradient` on a color (`Hues.gradient`). */
+    fun gradient(color: Color) = Hues.gradient(color)
 }
 
 /** Big numbers, tracked tight, as iOS's Helvetica Neue Bold figures are. */
