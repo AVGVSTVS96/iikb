@@ -51,9 +51,8 @@ enum KeyboardHost {
         /// unless it extends one of the `apps` you've typed in. None of it is API.
         static func returns(to app: String?, apps: [String]) -> Bool {
             guard let app else { return true }
-            guard app.hasPrefix("com.apple.") else { return !isExtension(app, ofAny: apps) }
             if let known = reopenable[app] { return known }
-            let answer = installed(app) ?? true
+            let answer = app.hasPrefix("com.apple.") ? installed(app) ?? true : !isExtension(app, ofAny: apps)
             reopenable[app] = answer
             log.notice("\(app, privacy: .public) \(answer ? "can" : "can't", privacy: .public) be reopened")
             return answer
