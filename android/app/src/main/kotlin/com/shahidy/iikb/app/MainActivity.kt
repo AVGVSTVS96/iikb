@@ -12,7 +12,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.shahidy.iikb.Settings
@@ -20,6 +22,7 @@ import com.shahidy.iikb.keyboard.IikbService
 
 /** iikb's app: setting the keyboard up, a field to try it, and every setting. */
 class MainActivity : ComponentActivity() {
+    private var resumes by mutableIntStateOf(0)
     private var setup by mutableStateOf(Setup(enabled = false, picked = false, microphone = false))
     private val microphone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { refresh() }
 
@@ -29,14 +32,16 @@ class MainActivity : ComponentActivity() {
         val settings = Settings(this)
         val page = intent.getStringExtra(PAGE)
         setContent {
-            App(
-                settings = settings,
-                setup = setup,
-                startPage = page,
-                onEnable = { startActivity(Intent(ACTION_INPUT_METHOD_SETTINGS)) },
-                onPick = { getSystemService(InputMethodManager::class.java).showInputMethodPicker() },
-                onMicrophone = { microphone.launch(Manifest.permission.RECORD_AUDIO) },
-            )
+            CompositionLocalProvider(LocalResumes provides resumes) {
+                App(
+                    settings = settings,
+                    setup = setup,
+                    startPage = page,
+                    onEnable = { startActivity(Intent(ACTION_INPUT_METHOD_SETTINGS)) },
+                    onPick = { getSystemService(InputMethodManager::class.java).showInputMethodPicker() },
+                    onMicrophone = { microphone.launch(Manifest.permission.RECORD_AUDIO) },
+                )
+            }
         }
         if (page == VOICE && !setup.microphone) microphone.launch(Manifest.permission.RECORD_AUDIO)
     }
@@ -52,6 +57,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        resumes++
         refresh()
     }
 

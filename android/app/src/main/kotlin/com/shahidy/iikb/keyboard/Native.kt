@@ -72,4 +72,12 @@ object Native {
     @JvmStatic external fun age(found: Double, now: Double): ByteArray
     @JvmStatic external fun length(text: ByteArray, words: Boolean): ByteArray
     @JvmStatic external fun swatch(name: ByteArray, appearance: ByteArray, dark: Boolean): ByteArray
+
+    // Stats (Stats.swift)
+    @JvmStatic external fun typingLog(): Long
+    @JvmStatic external fun noteTyping(log: Long, handle: Long, time: Double, day: ByteArray, hour: Int, app: ByteArray?)
+    @JvmStatic external fun takeTyping(log: Long): ByteArray
+    @JvmStatic external fun taps(
+        memory: ByteArray?, settings: ByteArray, signature: ByteArray?, width: Double, height: Double,
+    ): ByteArray
 }

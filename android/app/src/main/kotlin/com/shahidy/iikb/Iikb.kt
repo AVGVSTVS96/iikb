@@ -7,5 +7,6 @@ class Iikb : Application() {
     override fun onCreate() {
         super.onCreate()
         Transcripts.load(this)
+        TypingStats.load(this)
     }
 }

@@ -20,6 +20,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +34,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 import com.shahidy.iikb.Settings
+import com.shahidy.iikb.app.design.Glyphs
+import com.shahidy.iikb.app.stats.StatsPage
+import com.shahidy.iikb.app.stats.StatsSection
 
 /** The tabs go under the keyboard while it's up, as iOS's do, so the page keeps the room above the keys. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -53,6 +57,7 @@ fun App(
         MaterialTheme(colorScheme = colors) {
             var tab by rememberSaveable { mutableIntStateOf(0) }
             var page by rememberSaveable { mutableStateOf(startPage?.takeIf { it != MainActivity.VOICE }) }
+            var stats by rememberSaveable { mutableStateOf(StatsSection.OVERVIEW) }
             BackHandler(enabled = page != null) { page = null }
             Scaffold(
                 containerColor = palette.page,
@@ -80,8 +85,11 @@ fun App(
                 Box(Modifier.padding(bottom).consumeWindowInsets(bottom)) {
                     when {
                         page != null -> SettingsPage(page!!) { page = null }
-                        Tab.entries[tab] == Tab.HOME -> Home(setup, onEnable, onPick, onMicrophone) { page = it }
-                        else -> SettingsList { page = it }
+                        else -> when (Tab.entries[tab]) {
+                            Tab.HOME -> Home(setup, onEnable, onPick, onMicrophone) { page = it }
+                            Tab.STATS -> StatsPage(stats) { stats = it }
+                            Tab.SETTINGS -> SettingsList { page = it }
+                        }
                     }
                 }
             }
@@ -91,6 +99,7 @@ fun App(
 
 enum class Tab(val title: String, val icon: ImageVector) {
     HOME("iikb", glyph("M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z M7 10h1m3 0h2m3 0h1M8 14h8")),
+    STATS("Stats", glyph(Glyphs.CHART)),
     SETTINGS(
         "Settings",
         glyph(
@@ -100,11 +109,14 @@ enum class Tab(val title: String, val icon: ImageVector) {
 }
 
 /** A 24-unit glyph from path data, stroked as the keyboard's are. */
-fun glyph(data: String): ImageVector = ImageVector.Builder(
+fun glyph(data: String, width: Float = 1.7f): ImageVector = ImageVector.Builder(
     defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f,
 ).addPath(
     pathData = PathParser().parsePathString(data).toNodes(),
-    stroke = SolidColor(Color.Black), strokeLineWidth = 1.7f,
+    stroke = SolidColor(Color.Black), strokeLineWidth = width,
     strokeLineCap = androidx.compose.ui.graphics.StrokeCap.Round,
     strokeLineJoin = androidx.compose.ui.graphics.StrokeJoin.Round,
 ).build()
+
+/** How many times the app has come forward, so a page reads again what the keyboard kept while it was away. */
+val LocalResumes = compositionLocalOf { 0 }

@@ -18,11 +18,13 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.shahidy.iikb.Settings
 import com.shahidy.iikb.Transcripts
+import com.shahidy.iikb.TypingStats
 import com.shahidy.iikb.app.MainActivity
 import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
+import java.time.LocalDateTime
 import java.util.concurrent.Executors
 
 /**
@@ -70,6 +72,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         )
         memoryFile.takeIf { it.exists() }?.readBytes()?.let { Native.restoreMemory(handle, it) }
         emojiFile.takeIf { it.exists() }?.readBytes()?.let { Native.restoreEmojiHistory(handle, it) }
+        typing = Native.typingLog()
         settings.preferences.registerOnSharedPreferenceChangeListener(changed)
         clips = Clips.of(this)
         clipboard = getSystemService(ClipboardManager::class.java)
@@ -104,6 +107,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         overlay?.destroy()
         gifs?.close()
         save()
+        TypingStats.append(Native.takeTyping(typing))
         voice?.close()
         Native.destroy(handle)
         ranking.shutdown()
@@ -185,6 +189,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         Native.panel(handle, null)
         Native.endSession(handle)
         if (!incognito) save()
+        TypingStats.append(Native.takeTyping(typing))
         super.onFinishInputView(finishingInput)
     }
 
@@ -293,6 +298,17 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         event { Native.dictated(handle, heard.encodeToByteArray(), null, null) }
     }
 
+    /** The hours typed since the keyboard last closed, as counts, for Stats (`TypingStats`). */
+    private var typing = 0L
+
+    private fun noteTyping() {
+        val now = LocalDateTime.now()
+        Native.noteTyping(
+            typing, handle, SystemClock.elapsedRealtime() / 1000.0, now.toLocalDate().toString().encodeToByteArray(),
+            now.hour, app?.encodeToByteArray(),
+        )
+    }
+
     /** A field that asks for no learning (an incognito tab) or holds a password: what's typed there isn't kept. */
     private var incognito = false
 
@@ -396,6 +412,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         connection?.beginBatchEdit()
         field.forget()
         body()
+        noteTyping()
         connection?.endBatchEdit()
         render()
     }

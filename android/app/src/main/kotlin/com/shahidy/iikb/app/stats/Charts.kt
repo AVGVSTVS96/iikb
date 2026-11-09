@@ -1,0 +1,162 @@
+package com.shahidy.iikb.app.stats
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.shahidy.iikb.app.design.Format
+import com.shahidy.iikb.app.palette
+
+/** A label under a chart's column: centered on it, or starting at its leading edge. */
+class Tick(val index: Int, val text: String, val centered: Boolean = false)
+
+/** A dashed line across a chart at `value`, with a note at its trailing end. */
+class Rule(val value: Double, val note: String? = null)
+
+/**
+ * Columns, each a stack of `values` (one per series, bottom first, painted by `fills`), or with `lines` the same values as a
+ * line per series through the days that have one. The y axis reads 0, half and `top` at the trailing edge (`yLabel`), or
+ * nothing without one. A tap picks a column and a horizontal drag moves the pick; a tap on the picked one lets it go.
+ */
+@Composable
+fun ColumnChart(
+    values: List<List<Double?>>,
+    fills: List<Brush>,
+    top: Double,
+    height: Dp,
+    ticks: List<Tick>,
+    ratio: Float = 0.7f,
+    radius: Dp = 3.dp,
+    yLabel: ((Double) -> String)? = { Format.compact(it.toInt()) },
+    lines: Boolean = false,
+    lineColors: List<Color> = emptyList(),
+    dim: (Int) -> Boolean = { false },
+    rule: Rule? = null,
+    picked: Int? = null,
+    onPick: ((Int?) -> Unit)? = null,
+) {
+    val palette = palette()
+    val measurer = rememberTextMeasurer()
+    val label = TextStyle(color = palette.secondary, fontSize = 11.sp)
+    val count = values.size.coerceAtLeast(1)
+    var modifier = Modifier.fillMaxWidth().height(height)
+    if (onPick != null) {
+        val axis = if (yLabel != null) 40.dp else 0.dp
+        modifier = modifier
+            .pointerInput(count, picked) {
+                detectTapGestures { offset ->
+                    val index = column(offset.x, size.width - axis.toPx(), count)
+                    onPick(if (index == picked) null else index)
+                }
+            }
+            .pointerInput(count) {
+                detectHorizontalDragGestures { change, _ ->
+                    onPick(column(change.position.x, size.width - axis.toPx(), count))
+                }
+            }
+    }
+    Canvas(modifier) {
+        val axis = if (yLabel != null) 40.dp.toPx() else 0f
+        val bottom = size.height - 18.dp.toPx()
+        val plot = size.width - axis
+        val step = plot / count
+        val y = { value: Double -> (bottom - (value / top).coerceIn(0.0, 1.0) * (bottom - 6.dp.toPx())).toFloat() }
+        val dash = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 3.dp.toPx()))
+        if (yLabel != null) {
+            for (mark in listOf(0.0, top / 2, top)) {
+                drawLine(palette.divider, Offset(0f, y(mark)), Offset(plot, y(mark)), 1.dp.toPx(), pathEffect = dash)
+                text(measurer, yLabel(mark), label, Offset(plot + 6.dp.toPx(), y(mark)), centerY = true)
+            }
+        }
+        if (lines) {
+            values.firstOrNull()?.indices?.forEach { series ->
+                val color = lineColors.getOrElse(series) { palette.accent }
+                val points = values.mapIndexedNotNull { index, column ->
+                    column[series]?.let { Offset(step * (index + 0.5f), y(it)) }
+                }
+                val path = Path()
+                points.forEachIndexed { index, point -> if (index == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y) }
+                drawPath(path, color, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
+                val dot = if (count > 30) 1.8.dp.toPx() else 2.6.dp.toPx()
+                points.forEach { drawCircle(color, dot, it) }
+            }
+        } else {
+            val width = step * ratio
+            val corner = radius.toPx()
+            values.forEachIndexed { index, column ->
+                val alpha = if ((picked != null && picked != index) || dim(index)) 0.35f else 1f
+                var base = 0.0
+                val x = step * index + (step - width) / 2
+                val stack = column.withIndex().filter { (it.value ?: 0.0) > 0 }
+                stack.forEachIndexed { position, (series, value) ->
+                    val low = y(base)
+                    base += value!!
+                    val high = y(base)
+                    val rect = RoundRect(
+                        x, high, x + width, low,
+                        topLeftCornerRadius = if (position == stack.lastIndex) CornerRadius(corner) else CornerRadius.Zero,
+                        topRightCornerRadius = if (position == stack.lastIndex) CornerRadius(corner) else CornerRadius.Zero,
+                    )
+                    drawPath(Path().apply { addRoundRect(rect) }, fills[series % fills.size], alpha = alpha)
+                }
+            }
+        }
+        if (picked != null) {
+            val x = step * (picked + 0.5f)
+            drawLine(palette.secondary.copy(alpha = 0.4f), Offset(x, 0f), Offset(x, bottom), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())))
+        }
+        if (rule != null) {
+            val at = y(rule.value)
+            drawLine(palette.secondary.copy(alpha = 0.7f), Offset(0f, at), Offset(plot, at), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())))
+            rule.note?.let {
+                val note = measurer.measure(it, label.copy(fontSize = 10.sp, fontWeight = FontWeight.Medium))
+                drawText(note, topLeft = Offset(plot - note.size.width, at - note.size.height - 2.dp.toPx()))
+            }
+        }
+        for (tick in ticks) {
+            val x = if (tick.centered) step * (tick.index + 0.5f) else step * tick.index + (step - step * ratio) / 2
+            text(measurer, tick.text, label, Offset(x, bottom + 4.dp.toPx()), centerX = tick.centered, fit = size.width)
+        }
+    }
+}
+
+private fun column(x: Float, plot: Float, count: Int) = (x / (plot / count)).toInt().coerceIn(0, count - 1)
+
+/** Draws `text` at `at`, centered on it where asked, and kept inside `fit` wide. */
+fun DrawScope.text(
+    measurer: TextMeasurer, text: String, style: TextStyle, at: Offset, centerX: Boolean = false,
+    centerY: Boolean = false, fit: Float = Float.MAX_VALUE,
+) {
+    val layout = measurer.measure(text, style)
+    var x = if (centerX) at.x - layout.size.width / 2 else at.x
+    x = x.coerceIn(0f, (fit - layout.size.width).coerceAtLeast(0f))
+    val y = if (centerY) at.y - layout.size.height / 2 else at.y
+    drawText(layout, topLeft = Offset(x, y))
+}
+
+/** A rounded square for the year's grid. */
+fun DrawScope.square(color: Color, at: Offset, side: Float, corner: Float) =
+    drawRoundRect(color, at, Size(side, side), CornerRadius(corner))

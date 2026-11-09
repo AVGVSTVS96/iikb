@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,31 +45,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Page(title: String, onBack: (() -> Unit)? = null, content: @Composable () -> Unit) {
-    val palette = palette()
-    val behavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
-    Scaffold(
-        modifier = Modifier.nestedScroll(behavior.nestedScrollConnection),
-        containerColor = palette.page,
-        topBar = {
-            LargeTopAppBar(
-                title = { Text(title, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    if (onBack != null) {
-                        IconButton(onClick = onBack) { Icon(glyph("M15 4.5 7.5 12l7.5 7.5"), "Back") }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = palette.page, scrolledContainerColor = palette.page,
-                    titleContentColor = palette.label, navigationIconContentColor = palette.label,
-                ),
-                expandedHeight = 104.dp,
-                scrollBehavior = behavior,
-            )
-        },
-    ) { padding ->
+fun Page(
+    title: String, onBack: (() -> Unit)? = null, pinned: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    Frame(title, onBack, pinned) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
@@ -77,6 +59,41 @@ fun Page(title: String, onBack: (() -> Unit)? = null, content: @Composable () ->
             Spacer(Modifier.height(32.dp))
         }
     }
+}
+
+/** A page's large title, collapsing as it scrolls, with its Back and what's pinned under it. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun Frame(
+    title: String, onBack: (() -> Unit)?, pinned: (@Composable () -> Unit)?,
+    content: @Composable (PaddingValues) -> Unit,
+) {
+    val palette = palette()
+    val behavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    Scaffold(
+        modifier = Modifier.nestedScroll(behavior.nestedScrollConnection),
+        containerColor = palette.page,
+        topBar = {
+            Column(Modifier.background(palette.page)) {
+                LargeTopAppBar(
+                    title = { Text(title, fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        if (onBack != null) {
+                            IconButton(onClick = onBack) { Icon(glyph("M15 4.5 7.5 12l7.5 7.5"), "Back") }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = palette.page, scrolledContainerColor = palette.page,
+                        titleContentColor = palette.label, navigationIconContentColor = palette.label,
+                    ),
+                    expandedHeight = 104.dp,
+                    scrollBehavior = behavior,
+                )
+                pinned?.let { Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) { it() } }
+            }
+        },
+        content = content,
+    )
 }
 
 @Composable
