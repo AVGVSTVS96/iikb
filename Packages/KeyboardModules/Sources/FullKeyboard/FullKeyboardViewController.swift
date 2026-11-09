@@ -564,6 +564,7 @@ open class FullKeyboardViewController: UIInputViewController {
         let tools: [Panel] = engine.settings.emojiKey && device != .phone && !narrow ? [.emoji] : []
         let panel = line != nil ? chatPanel : engine.panel.flatMap { panels[$0] }
         let inPlace = panelInKeysPlace
+        panelView.focuses = hasFullAccess
         panelView.open(panel)
         panelView.isHidden = panel == nil
         panelView.inKeysPlace = inPlace

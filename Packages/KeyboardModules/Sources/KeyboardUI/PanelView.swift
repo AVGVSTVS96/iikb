@@ -51,6 +51,9 @@ public final class PanelView: UIView {
     public var onField: () -> Void = {}
     public var block = (minX: CGFloat(0), maxX: CGFloat(0)) { didSet { if block != oldValue { setNeedsLayout() } } }
     public var inKeysPlace = false { didSet { if inKeysPlace != oldValue { setNeedsLayout() } } }
+    /// Whether the search field may take focus while the keys are up, which iOS allows a keyboard only with Full Access
+    /// (`MessageField`).
+    public var focuses = false
     /// Chats has no back button: More, still on, takes you back.
     public var showsBack = true { didSet { if showsBack != oldValue { setNeedsLayout() } } }
     /// Under the field in the keys' place, so it ends where the bottom row of keys would.
@@ -90,6 +93,7 @@ public final class PanelView: UIView {
         self.content?.removeFromSuperview()
         own?.removeFromSuperview()
         own = nil
+        search.unfocus()
         self.content = content
         guard let content else { return }
         content.reset()
@@ -112,7 +116,9 @@ public final class PanelView: UIView {
         content?.show(query: query, theme: theme, metrics: metrics)
         guard case .search(let look) = content?.field else { return }
         search.accessories = look.accessories
-        search.show(query, caretAt: caret ?? query.count, look: look, typing: !inKeysPlace, theme: theme)
+        search.show(
+            query, caretAt: caret ?? query.count, look: look, typing: !inKeysPlace && focuses && !isHidden, theme: theme
+        )
     }
 
     /// How tall the results are in the keys' place, `height` tall, with a search field under them.
@@ -141,8 +147,9 @@ public final class PanelView: UIView {
     }
 }
 
-/// A panel's search field: a glyph, what the keys typed (or the placeholder) and, while the keys are up, the cursor; its
-/// accessories, and a clear button once there's text. The keys type into it; a tap on it only brings them up.
+/// A panel's search field: a glyph, a real `UITextField` with what the keys typed (or the placeholder), focused while the
+/// keys are up so its caret is iOS's own, its accessories, and a clear button once there's text. The keys type into it
+/// through the engine; a tap on it only brings them up.
 private final class SearchField: UIView {
     var onClear: () -> Void = {}
     var accessories: [UIView] = [] {
@@ -154,8 +161,7 @@ private final class SearchField: UIView {
         }
     }
     private let glyph = UIImageView()
-    private let label = UILabel()
-    private let caret = UIView()
+    private let input = SearchInput()
     private let clear = UIButton(type: .custom)
     private var query = ""
     private var caretAt = 0
@@ -170,18 +176,20 @@ private final class SearchField: UIView {
         layer.cornerCurve = .continuous
         glyph.contentMode = .center
         glyph.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 17, weight: .regular)
-        label.font = .systemFont(ofSize: 17)
-        label.lineBreakMode = .byTruncatingHead
-        caret.layer.cornerRadius = 1
+        input.font = .systemFont(ofSize: 17)
+        input.autocorrectionType = .no
+        input.spellCheckingType = .no
+        input.inputView = UIView(frame: .zero)
+        input.inputAssistantItem.leadingBarButtonGroups = []
+        input.inputAssistantItem.trailingBarButtonGroups = []
         clear.accessibilityIdentifier = "iikb.panel.clear"
         clear.accessibilityLabel = "Clear"
         clear.addAction(UIAction { [unowned self] _ in onClear() }, for: .touchUpInside)
-        [glyph, label, caret].forEach {
+        [glyph, input].forEach {
             $0.isUserInteractionEnabled = false
             addSubview($0)
         }
         addSubview(clear)
-        blink()
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -194,14 +202,23 @@ private final class SearchField: UIView {
         self.notice = notice
         accessibilityLabel = placeholder
         accessibilityValue = notice ?? query
-        let shown = notice ?? (query.isEmpty ? placeholder : query)
-        if shown != label.text { setNeedsLayout() }
-        label.text = shown
-        label.textColor = query.isEmpty && notice == nil ? theme.candidate.ui : theme.label.ui
-        caret.isHidden = notice != nil || !typing
+        input.text = notice ?? query
+        input.textColor = theme.label.ui
+        input.tintColor = theme.prominent.ui
+        input.attributedPlaceholder = NSAttributedString(
+            string: placeholder, attributes: [.foregroundColor: theme.candidate.ui])
+        let focus = typing && notice == nil
+        if focus, !input.isFirstResponder {
+            input.becomeFirstResponder()
+        } else if !focus, input.isFirstResponder {
+            input.resignFirstResponder()
+        }
+        let at = input.position(from: input.beginningOfDocument, offset: String(query.prefix(caretAt)).utf16.count)
+        if focus, let at, input.selectedTextRange?.start != at {
+            input.selectedTextRange = input.textRange(from: at, to: at)
+        }
         glyph.image = notice == nil ? image : UIImage(systemName: "checkmark.circle.fill")
         glyph.tintColor = theme.candidate.ui
-        caret.backgroundColor = theme.prominent.ui
         backgroundColor = theme.searchField.ui
         clear.isHidden = query.isEmpty || notice != nil
         guard theme != clearTheme else { return }
@@ -210,26 +227,6 @@ private final class SearchField: UIView {
             systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .bold))
         clear.setImage(
             Self.clearImage(mark: mark, circle: theme.candidate.ui, field: theme.searchField.ui), for: .normal)
-    }
-
-    /// The caret blinks the way UIKit's does, on Core Animation's clock rather than a timer.
-    private func blink() {
-        let animation = CABasicAnimation(keyPath: "opacity")
-        animation.fromValue = 1
-        animation.toValue = 0
-        animation.duration = 0.5
-        animation.autoreverses = true
-        animation.repeatCount = .infinity
-        caret.layer.add(animation, forKey: "blink")
-    }
-
-    override func didMoveToWindow() {
-        super.didMoveToWindow()
-        if window != nil { blink() }
-    }
-
-    private static func width(of text: String, in font: UIFont) -> CGFloat {
-        text.isEmpty ? 0 : ceil((text as NSString).size(withAttributes: [.font: font]).width)
     }
 
     private static func clearImage(mark: UIImage?, circle: UIColor, field: UIColor) -> UIImage {
@@ -241,9 +238,12 @@ private final class SearchField: UIView {
         }
     }
 
+    func unfocus() {
+        if input.isFirstResponder { input.resignFirstResponder() }
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
-        let scale = traitCollection.displayScale
         layer.cornerRadius = bounds.height / 2
         glyph.frame = CGRect(x: 14, y: 0, width: 20, height: bounds.height)
         var right = bounds.width - 12
@@ -256,16 +256,14 @@ private final class SearchField: UIView {
             right = accessory.frame.minX
         }
         let text = glyph.image == nil ? 14 : glyph.frame.maxX + 6
-        let start = query.isEmpty && notice == nil ? text + 4 : text
-        let width = min(label.intrinsicContentSize.width, right - start - 4)
-        label.frame = CGRect(x: start, y: 0, width: max(width, 0), height: bounds.height)
-        let typed =
-            query.isEmpty
-            ? 0 : max(label.frame.width - Self.width(of: String(query.dropFirst(caretAt)), in: label.font), 0)
-        caret.frame = CGRect(
-            x: (text + typed + 1).rounded(scale: scale), y: ((bounds.height - 22) / 2).rounded(scale: scale), width: 2,
-            height: 22)
+        input.frame = CGRect(x: text, y: 0, width: max(right - text - 4, 0), height: bounds.height)
     }
+}
+
+/// The search field's text field, which takes focus while it's not taking touches: a tap on the field brings the keys
+/// up, and the engine keeps the caret.
+private final class SearchInput: UITextField {
+    override var canBecomeFirstResponder: Bool { true }
 }
 
 /// What a panel says in place of results, like "GIF search needs Full Access.", with Turn On after it when Settings has
