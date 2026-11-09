@@ -1,6 +1,6 @@
 # iikb privacy policy
 
-iikb is a keyboard and an app for iPhone and iPad. What you type and say stays on your iPhone. iikb has no account, no
+iikb is a keyboard and an app for iPhone, iPad and Android. What you type and say stays on your phone. iikb has no account, no
 ads, no analytics and no server of its own that receives your data.
 
 ## What stays on your iPhone
@@ -34,6 +34,18 @@ Deleting iikb deletes all of it.
 iOS asks you to allow Full Access for a keyboard that uses the network or shares data with its app. iikb needs it for
 haptics, voice typing, GIFs, the clipboard history, Stats and sources. Without it, iikb still types and corrects,
 with nothing leaving the keyboard.
+
+## On Android
+
+The same holds on Android, with these differences:
+
+- No Full Access: Android has no such switch. The microphone asks for its own permission the first time you dictate.
+- Android's speech recognizer, when you pick it in Settings › Voice instead of Parakeet, is Google's, on the phone where
+  it can be. Where it can't, Google's recognizer may send the recording to Google.
+- Android's own backup copies iikb's settings and what it learned to your Google account, as it does for every app
+  that allows it. Recordings and the voice models are left out. Turn it off in Android's Settings › Backup.
+- Apps are named by Android itself, so nothing is sent for app names.
+- There are no computers to add.
 
 ## Contact
 
