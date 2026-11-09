@@ -136,7 +136,7 @@ fun Page(
     Frame(title, onBack, scrolled, pinned, actions) {
         Column(
             Modifier.fillMaxSize().imePadding().verticalScroll(scroll)
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp + LocalTabBar.current),
             verticalArrangement = Arrangement.spacedBy(28.dp),
             content = content,
         )
@@ -155,7 +155,7 @@ fun ListPage(
         LazyColumn(
             Modifier.fillMaxSize().imePadding(),
             state = list,
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp + LocalTabBar.current),
         ) { content() }
     }
 }
@@ -190,8 +190,7 @@ private fun Bar(title: String, onBack: (() -> Unit)?, scrolled: Boolean, actions
         content = {
             if (onBack != null) {
                 Box(
-                    Modifier.layoutId("back").size(44.dp).clip(CircleShape).background(palette.card)
-                        .border(BorderStroke(1.dp, palette.edge), CircleShape).clickable(onClick = onBack),
+                    Modifier.layoutId("back").size(44.dp).glass(CircleShape).clip(CircleShape).clickable(onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) { Icon(Symbols["chevron.left"], "Back", tint = palette.label, modifier = Modifier.size(20.dp)) }
             } else {
@@ -358,12 +357,12 @@ fun Toggle(title: String, name: String, detail: String? = null) {
     Line(title, detail, onClick = { store.set(name, !on) }) { Switch(on) { store.set(name, it) } }
 }
 
-/** A switch as iOS 26's: a capsule knob the same size on and off, sliding over a gray or accent track. */
+/** A switch as iOS 26's: a capsule knob the same size on and off, sliding over a gray (`off`) or accent track. */
 @Composable
-fun Switch(on: Boolean, onChange: (Boolean) -> Unit) {
+fun Switch(on: Boolean, off: Color = palette().track, onChange: (Boolean) -> Unit) {
     val palette = palette()
     val knob by animateDpAsState(if (on) 22.dp else 2.dp, label = "knob")
-    val track by animateColorAsState(if (on) palette.accent else palette.track, label = "track")
+    val track by animateColorAsState(if (on) palette.accent else off, label = "track")
     Box(Modifier.size(62.dp, 28.dp).clip(CircleShape).background(track).clickable { onChange(!on) }) {
         Box(Modifier.padding(start = knob, top = 2.dp).size(38.dp, 24.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
     }

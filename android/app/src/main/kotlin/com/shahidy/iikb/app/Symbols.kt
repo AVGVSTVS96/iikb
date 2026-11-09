@@ -15,8 +15,19 @@ import androidx.compose.ui.unit.dp
  * symbol's font size is 17.6 units, so an icon drawn at a font size's 24/17.6 matches iOS's at that size.
  */
 object Symbols {
-    /** One path of a glyph, filled or stroked, so a glyph can mix the two as an SF Symbol does (a stroked roof on a filled house). */
-    private class Part(val data: String, val filled: Boolean, val width: Float = 0f)
+    /**
+     * One path of a glyph, filled or stroked, so a glyph can mix the two as an SF Symbol does (a stroked roof on a filled
+     * house), and clipped to `clip` where it gives way to another part (a mic around its slash). A `secondary` part is
+     * the layer iOS draws faintly when it renders a symbol hierarchically (an iPhone's screen in the toolbar), and
+     * leaves out otherwise.
+     */
+    private class Part(
+        val data: String, val filled: Boolean, val width: Float = 0f, val clip: String? = null, val secondary: Boolean = false,
+    )
+
+    /** iOS's microphone: a filled capsule over its stand. */
+    private val mic = filled("M11.95.4a3.75 3.75 0 0 1 3.75 3.75v7.5a3.75 3.75 0 0 1-7.5 0v-7.5A3.75 3.75 0 0 1 11.95.4Z") +
+        stroked("M4.75 9.6v2a7.2 7.2 0 0 0 14.4 0v-2 M11.95 18.8v4.1 M7 22.9h9.9", 1.35f)
 
     private val shapes = mapOf(
         "house.fill" to stroked("M2 11.28 11.92 3.42 22 11.28", 1.55f) +
@@ -137,6 +148,7 @@ object Symbols {
                 " M 8.93 9.38 H 7.44 A 2.35 2.35 0 0 0 5.09 11.73 V 18.59 A 2.35 2.35 0 0 0 7.44 20.94 H 16.65 A 2.35 2.35 0 0 0 19 18.59 V 11.73 A 2.35 2.35 0 0 0 16.65 9.38 H 15.07", 1.49f),
         "message" to stroked("M 7.12 18.86 A 9.39 7.31 0 1 0 4.55 16.69 C 4.42 17.87 3.97 19.04 3.33 19.85 C 4.78 20.03 6.13 19.67 7.12 18.86 Z", 1.49f),
         "iphone" to stroked("M 9.85 4 H 14.15 A 2.63 2.63 0 0 1 16.78 6.63 V 17.81 A 2.63 2.63 0 0 1 14.15 20.44 H 9.85 A 2.63 2.63 0 0 1 7.22 17.81 V 6.63 A 2.63 2.63 0 0 1 9.85 4 Z", 1.39f) +
+            secondary("M9.85 4.7h4.3a1.93 1.93 0 0 1 1.93 1.93v11.18a1.93 1.93 0 0 1-1.93 1.93h-4.3a1.93 1.93 0 0 1-1.93-1.93V6.63A1.93 1.93 0 0 1 9.85 4.7Z") +
             filled("M 10.77 5.27 H 13.23 A .44 .44 0 0 1 13.67 5.71 V 5.71 A .44 .44 0 0 1 13.23 6.15 H 10.77 A .44 .44 0 0 1 10.33 5.71 V 5.71 A .44 .44 0 0 1 10.77 5.27 Z" +
                 " M 10.57 18.29 H 13.43 A .48 .48 0 0 1 13.91 18.77 V 18.77 A .48 .48 0 0 1 13.43 19.24 H 10.57 A .48 .48 0 0 1 10.09 18.77 V 18.77 A .48 .48 0 0 1 10.57 18.29 Z"),
         "network" to stroked("M20.00 11.724137931034482a7.655172413793103 7.655172413793103 0 1 1-15.31 0a7.655172413793103 7.655172413793103 0 1 1 15.31 0Z", 1.2f) +
@@ -168,8 +180,11 @@ object Symbols {
                 " L2.02 9.87 L5.07 9.39 L5.26 8.95 L3.44 6.45 L6.45 3.44 L8.95 5.26 L9.39 5.07 L9.87 2.02 L14.13 2.02 L14.61 5.07" +
                 " L15.05 5.26 L17.55 3.44 L20.56 6.45 L18.74 8.95Z M15.3 12a3.3 3.3 0 1 1-6.6 0a3.3 3.3 0 1 1 6.6 0Z",
         ),
-        "mic" to stroked("M12 3a3 3 0 0 1 3 3v5.5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Z M5.5 11a6.5 6.5 0 0 0 13 0 M12 17.5V21 M9 21h6"),
-        "mic.slash" to stroked("M12 3a3 3 0 0 1 3 3v5.5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Z M5.5 11a6.5 6.5 0 0 0 13 0 M12 17.5V21 M9 21h6 M4 3.5l16 17"),
+        "mic.fill" to mic,
+        "mic.slash.fill" to clipped("M1.44-1H25V21.97Z M-1 1.09 23.53 25H-1Z", mic) + stroked("M3.2 2.95 20.9 20.2", 1.4f),
+        "laptopcomputer" to stroked("M3.9 17.3V7.2a1.3 1.3 0 0 1 1.3-1.3h13.6a1.3 1.3 0 0 1 1.3 1.3v10.1", 1.56f) +
+            filled("M.9 17h22.2a.92.92 0 0 1 0 1.85H.9a.92.92 0 0 1 0-1.85Z") + secondary("M4.7 6.7h14.6v10.3H4.7Z"),
+        "trash" to stroked("M4 6.2h16 M9.2 6V4.6a1.1 1.1 0 0 1 1.1-1.1h3.4a1.1 1.1 0 0 1 1.1 1.1V6 M6 6.6l.9 12.7a1.9 1.9 0 0 0 1.9 1.7h6.4a1.9 1.9 0 0 0 1.9-1.7L18 6.6 M10 10v7 M14 10v7", 1.6f),
         "plus" to stroked("M12 5v14M5 12h14", 2f),
         "arrow.up.forward" to stroked("M7 17 17 7 M8.5 7H17v8.5", 2.6f),
         "chevron.right" to stroked("M9 4.5l7.5 7.5L9 19.5", 2.2f),
@@ -183,20 +198,33 @@ object Symbols {
 
     private fun filled(data: String) = listOf(Part(data, true))
 
-    private val built = mutableMapOf<String, ImageVector>()
+    private fun secondary(data: String) = listOf(Part(data, true, secondary = true))
 
-    operator fun get(name: String): ImageVector = built.getOrPut(name) {
-        val parts = shapes[name] ?: error("no symbol $name")
+    private fun clipped(clip: String, parts: List<Part>) = parts.map { Part(it.data, it.filled, it.width, clip, it.secondary) }
+
+    private val built = mutableMapOf<Pair<String, Boolean>, ImageVector>()
+
+    operator fun get(name: String): ImageVector = build(name, hierarchical = false)
+
+    /** `name` as iOS's hierarchical rendering draws it, its secondary layer faint under the rest. */
+    fun hierarchical(name: String): ImageVector = build(name, hierarchical = true)
+
+    private fun build(name: String, hierarchical: Boolean): ImageVector = built.getOrPut(name to hierarchical) {
+        val parts = (shapes[name] ?: error("no symbol $name")).filter { hierarchical || !it.secondary }
         parts.fold(ImageVector.Builder(defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)) { glyph, part ->
+            if (part.clip != null) glyph.addGroup(clipPathData = PathParser().parsePathString(part.clip).toNodes())
             glyph.addPath(
                 pathData = PathParser().parsePathString(part.data).toNodes(),
                 pathFillType = PathFillType.EvenOdd,
                 fill = if (part.filled) SolidColor(Color.Black) else null,
+                fillAlpha = if (part.secondary) 0.3f else 1f,
                 stroke = if (part.filled) null else SolidColor(Color.Black),
                 strokeLineWidth = part.width,
                 strokeLineCap = StrokeCap.Round,
                 strokeLineJoin = StrokeJoin.Round,
             )
+            if (part.clip != null) glyph.clearGroup()
+            glyph
         }.build()
     }
 }

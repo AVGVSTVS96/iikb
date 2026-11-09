@@ -167,6 +167,7 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.core)
     implementation(libs.serialization.json)
+    implementation(libs.backdrop)
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
     implementation(libs.coil.network)

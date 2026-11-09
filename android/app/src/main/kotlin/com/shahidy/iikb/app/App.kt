@@ -1,9 +1,7 @@
 package com.shahidy.iikb.app
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -17,8 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -54,6 +50,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.shahidy.iikb.Settings
 import com.shahidy.iikb.app.clipboard.ClipboardPage
 import com.shahidy.iikb.app.stats.StatsPage
@@ -83,11 +82,12 @@ fun App(
             var tab by rememberSaveable { mutableIntStateOf(if (page != null) Tab.SETTINGS.ordinal else 0) }
             var stats by rememberSaveable { mutableStateOf(StatsSection.OVERVIEW) }
             BackHandler(enabled = page != null) { page = null }
+            val backdrop = rememberLayerBackdrop()
             Scaffold(
                 containerColor = palette.page,
                 bottomBar = {
                     if (!WindowInsets.isImeVisible) {
-                        TabBar(tab) {
+                        TabBar(tab, backdrop) {
                             tab = it
                             page = null
                         }
@@ -95,7 +95,8 @@ fun App(
                 },
             ) { padding ->
                 val bottom = PaddingValues(bottom = padding.calculateBottomPadding())
-                Box(Modifier.padding(bottom).consumeWindowInsets(bottom)) {
+                CompositionLocalProvider(LocalTabBar provides bottom.calculateBottomPadding()) {
+                Box(Modifier.consumeWindowInsets(bottom).layerBackdrop(backdrop)) {
                     when {
                         page != null -> SettingsPage(page!!) { page = null }
                         else -> when (Tab.entries[tab]) {
@@ -118,6 +119,7 @@ fun App(
                         }
                     }
                 }
+                }
             }
         }
     }
@@ -133,31 +135,23 @@ enum class Tab(val title: String, val symbol: String) {
 }
 
 /**
- * The tabs as iOS's tab bar draws them on an iPhone: a capsule floating over the page's foot, each tab its filled
- * glyph over its name in the label's color, the picked one tinted on a pill of its own.
+ * The tabs as iOS's tab bar draws them on an iPhone: a capsule of glass floating over the page's foot, the page
+ * scrolling on under it, each tab its filled glyph over its name in the label's color, the picked one tinted on a
+ * darker pill of its own.
  */
 @Composable
-private fun TabBar(tab: Int, pick: (Int) -> Unit) {
+private fun TabBar(tab: Int, backdrop: Backdrop, pick: (Int) -> Unit) {
     val palette = palette()
     val dark = palette == Palette.dark
     val capsule = RoundedCornerShape(percent = 50)
-    Box(
-        Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(palette.page.copy(alpha = 0f), palette.page)))
-            .navigationBarsPadding().padding(start = 21.dp, end = 21.dp, top = 6.dp, bottom = 4.dp),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().height(62.dp)
-                .shadow(if (dark) 0.dp else 14.dp, capsule, ambientColor = Color(0x33000000), spotColor = Color(0x22000000))
-                .background(if (dark) Color(0xFF1C1C1E) else Color.White.copy(alpha = 0.96f), capsule)
-                .border(BorderStroke(0.5.dp, palette.edge), capsule)
-                .padding(4.dp),
-        ) {
+    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 21.dp, end = 21.dp, top = 6.dp, bottom = 4.dp)) {
+        Row(Modifier.fillMaxWidth().height(62.dp).glass(capsule, backdrop).padding(4.dp)) {
             Tab.entries.forEachIndexed { index, item ->
                 val picked = index == tab
                 val tint = if (picked) palette.accent else palette.label
                 Column(
                     Modifier.weight(1f).fillMaxHeight().clip(capsule)
-                        .background(if (picked) palette.label.copy(alpha = if (dark) 0.12f else 0.06f) else Color.Transparent)
+                        .background(if (picked) Color.Black.copy(alpha = if (dark) 0.42f else 0.08f) else Color.Transparent)
                         .clickable(interactionSource = null, indication = null) { pick(index) }
                         .semantics { role = Role.Tab; selected = picked },
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -183,6 +177,9 @@ fun glyph(data: String, width: Float = 1.7f): ImageVector = ImageVector.Builder(
     strokeLineCap = androidx.compose.ui.graphics.StrokeCap.Round,
     strokeLineJoin = androidx.compose.ui.graphics.StrokeJoin.Round,
 ).build()
+
+/** How tall the tab bar is over the page's foot, for the page to scroll its end out from under it. */
+val LocalTabBar = compositionLocalOf { 0.dp }
 
 /** How many times the app has come forward, so a page reads again what the keyboard kept while it was away. */
 val LocalResumes = compositionLocalOf { 0 }

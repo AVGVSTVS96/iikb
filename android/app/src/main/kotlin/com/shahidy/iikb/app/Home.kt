@@ -47,6 +47,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.shahidy.iikb.Transcripts
+import com.shahidy.iikb.app.design.isDark
 import com.shahidy.iikb.app.stats.StatsSection
 import com.shahidy.iikb.keyboard.Clips
 import java.time.Instant
@@ -88,10 +89,10 @@ fun Home(open: (String) -> Unit, show: (Tab, StatsSection?) -> Unit) {
 }
 
 /**
- * Whether voice typing may use the microphone, at the bar's trailing edge of Home, Transcripts, Clipboard and Stats, as
- * iOS's `MicSwitchItem` is. On, the keyboard's mic records right where
- * you type; off, it can't hear you until you turn it on here, and what you're saying when you turn it off is written
- * down. Android's mic is on only while you talk, so there's nothing to keep on between dictations, as iOS's switch does.
+ * Whether the keyboard's mic records where you type, at the bar's trailing edge of Home, Transcripts, Clipboard and
+ * Stats, as iOS's `MicSwitch` is: on, a tap on the keyboard's mic dictates in place; off, it opens iikb instead, and
+ * what you're saying as you turn it off is written down. On iOS it's off until the app turns its microphone on, since
+ * only the app can record there; Android's keyboard records by itself, so here it stays on until you turn it off.
  */
 @Composable
 fun MicSwitch() {
@@ -100,21 +101,18 @@ fun MicSwitch() {
     val palette = palette()
     val on = store.bool(MIC_ON) && access.setup.microphone
     Row(
-        Modifier.height(44.dp).clip(CircleShape).background(palette.card).border(BorderStroke(1.dp, palette.edge), CircleShape)
-            .padding(start = 5.5.dp, end = 11.5.dp),
+        Modifier.height(44.dp).glass(CircleShape).padding(end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.width(38.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
             Icon(
-                Symbols[if (on) "mic" else "mic.slash"], if (on) "Microphone on" else "Microphone off",
-                tint = if (on) palette.green else palette.label, modifier = Modifier.size(22.dp),
+                Symbols[if (on) "mic.fill" else "mic.slash.fill"], if (on) "Microphone on" else "Microphone off",
+                tint = if (on) palette.green else palette.secondary, modifier = Modifier.size(23.dp),
             )
         }
-        Box(Modifier.padding(start = 4.dp)) {
-            Switch(on) {
-                store.set(MIC_ON, it)
-                if (it && !access.setup.microphone) access.microphone()
-            }
+        Switch(on, off = if (palette.isDark) Color(0xFF535353) else Color(0xFFAAAAAC)) {
+            store.set(MIC_ON, it)
+            if (it && !access.setup.microphone) access.microphone()
         }
     }
 }
