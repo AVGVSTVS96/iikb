@@ -64,8 +64,11 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     private lateinit var dictation: Dictation
     /** The field being typed in, counted up each time the keyboard starts in a new one, so a dictation lands only in its own. */
     private var fieldCount = 0
-    /** The field as sources know it, new each time the keyboard starts in one, as iOS's `documentIdentifier` is. */
-    private var fieldId = UUID.randomUUID().toString()
+    /**
+     * The field as sources know it, new each time the keyboard starts in one, as iOS's `documentIdentifier` is; none
+     * until the first, since the keys draw once before Android names the field and its app.
+     */
+    private var fieldId: String? = null
     private lateinit var sources: Sources
     /** The personal dictionary as the engine last learned it. */
     private var lexicon: String? = null
@@ -348,11 +351,12 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
      */
     private fun tellSources(byKeyboard: Boolean) {
         val info = currentInputEditorInfo ?: return
+        val field = fieldId ?: return
         if (incognito || chatOpen || info.inputType == InputType.TYPE_NULL || currentInputConnection == null) return
-        sources.observe(fieldId, app, byKeyboard)
+        sources.observe(field, app, byKeyboard)
     }
 
-    private val hint get() = if (incognito || chatOpen) null else sources.hint(fieldId, app)
+    private val hint get() = fieldId?.takeUnless { incognito || chatOpen }?.let { sources.hint(it, app) }
 
     /**
      * Android's personal dictionary, which a keyboard reads as iOS's reads Text Replacements: each word with a shortcut
