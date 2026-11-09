@@ -24,7 +24,6 @@ DATA = f"/data/data/{PACKAGE}"
 STAGE = "/data/local/tmp/iikb-shots"
 FOUNDATION = 978307200
 PROMPT = "Type something with iikb"
-COPIED = "Meet at Sightglass on 7th, 4pm?"
 SECTIONS = ["layers", "typing", "held", "swipe", "menu", "emoji", "gif", "clipboard", "transcripts", "dictation",
             "app", "chats", "hint", "replacement"]
 
@@ -319,12 +318,12 @@ def typing():
 
 
 def held():
-    """The pop-ups that last only while a finger is down, each shot mid-hold. The 123 menu's hold ends in a cancel,
-    since lifting on it picks a layout, which iikb keeps."""
+    """The pop-ups that last only while a finger is down, each shot as far into the hold as iOS's. The 123 menu's hold
+    ends in a cancel, since lifting on it picks a layout, which iikb keeps."""
     seed()
     keys = keyboard("Coffee at ")
     touch("DOWN", *keys["g"])
-    shot("keyboard-callout", 0.3)
+    shot("keyboard-callout", 3)
     touch("UP", *keys["g"])
     time.sleep(0.6)
     touch("DOWN", *keys["e"])
@@ -428,7 +427,7 @@ def panel(name, search):
         item = next(b for _, description, b in nodes()
                     if description not in ("", "Back", "Switch input method") and b[1] > keys.height * 0.4)
     elif name == "clipboard":
-        item = find(COPIED)
+        item = find("wikipedia")
     else:
         item = find(lambda text: text.startswith("On my way, grabbing coffee"))
     x, y = center(item)
