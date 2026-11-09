@@ -56,6 +56,7 @@ class Settings(context: Context) {
             "spokenLists" to "numbered",
             "textMode" to "spelledOut",
             "appWritingStyles" to "",
+            "micOn" to "true",
         )
     }
 }

@@ -86,12 +86,17 @@ fun Home(open: (String) -> Unit, show: (Tab, StatsSection?) -> Unit) {
     }
 }
 
-/** Whether the microphone is on, at the bar's trailing edge: on keeps it on until you turn it off here. */
+/**
+ * Whether voice typing may use the microphone, at the bar's trailing edge. On, the keyboard's mic records right where
+ * you type; off, it can't hear you until you turn it on here, and what you're saying when you turn it off is written
+ * down. Android's mic is on only while you talk, so there's nothing to keep on between dictations, as iOS's switch does.
+ */
 @Composable
 private fun MicSwitch() {
     val store = LocalStore.current
+    val access = LocalAccess.current
     val palette = palette()
-    val on = store.bool(MIC_ON)
+    val on = store.bool(MIC_ON) && access.setup.microphone
     Row(
         Modifier.height(44.dp).clip(CircleShape).background(palette.card).border(BorderStroke(1.dp, palette.edge), CircleShape)
             .padding(start = 5.5.dp, end = 11.5.dp),
@@ -103,11 +108,16 @@ private fun MicSwitch() {
                 tint = if (on) palette.green else palette.label, modifier = Modifier.size(22.dp),
             )
         }
-        Box(Modifier.padding(start = 4.dp)) { Switch(on) { store.set(MIC_ON, it) } }
+        Box(Modifier.padding(start = 4.dp)) {
+            Switch(on) {
+                store.set(MIC_ON, it)
+                if (it && !access.setup.microphone) access.microphone()
+            }
+        }
     }
 }
 
-/** The microphone's switch, kept for voice typing to read (`Settings`). */
+/** The microphone's switch, kept for voice typing to read (`Settings`); on unless you turn it off. */
 const val MIC_ON = "micOn"
 
 /** The field to try iikb in; its keys put away by Done, a tap beside it or scrolling. */

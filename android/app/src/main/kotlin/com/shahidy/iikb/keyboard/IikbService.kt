@@ -22,6 +22,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.shahidy.iikb.Settings
 import com.shahidy.iikb.TypingStats
+import com.shahidy.iikb.app.MIC_ON
 import com.shahidy.iikb.app.MainActivity
 import com.shahidy.iikb.voice.Dictation
 import kotlinx.serialization.json.Json
@@ -80,6 +81,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             memoryFile.delete()
             Native.resetMemory(handle)
         }
+        if (name == MIC_ON && !settings.bool(MIC_ON)) dictation.stop()
         configure()
     }
 
@@ -717,9 +719,14 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         openApp("appearance")
     }
 
+    /**
+     * Stops a dictation in progress, so what was heard is typed; otherwise starts one, right here, since Android lets
+     * a keyboard use the microphone. With the mic turned off on Home, iikb opens there, as iOS's opens to turn it on.
+     */
     override fun mic() {
         feedback(Feedback.Kind.OTHER)
         if (dictation.phase == Dictation.Phase.LISTENING) return dictation.stop()
+        if (!settings.bool(MIC_ON)) return openApp()
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
             !dictation.start(fieldCount, app)
         ) {

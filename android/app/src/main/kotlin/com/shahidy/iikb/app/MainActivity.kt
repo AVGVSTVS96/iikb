@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
 import android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS
 import android.provider.Settings.Secure
 import android.view.inputmethod.InputMethodManager
@@ -28,7 +29,10 @@ import com.shahidy.iikb.keyboard.IikbService
 class MainActivity : ComponentActivity() {
     private var resumes by mutableIntStateOf(0)
     private var setup by mutableStateOf(Setup(enabled = false, picked = false, microphone = false))
-    private val microphone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { refresh() }
+    private val microphone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
+        refresh()
+        if (!allowed && !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) refused()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,6 +98,18 @@ class MainActivity : ComponentActivity() {
             refresh()
             keepCopied(this)
         }
+    }
+
+    /** Android asks no more once you've said no twice, so this says where to allow it, as iOS's switch does. */
+    private fun refused() {
+        AlertDialog.Builder(this)
+            .setTitle("Couldn’t Turn On the Microphone")
+            .setMessage("Allow iikb the microphone in Settings › Apps › iikb › Permissions.")
+            .setNegativeButton("OK", null)
+            .setPositiveButton("Settings") { _, _ ->
+                startActivity(Intent(ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+            }
+            .show()
     }
 
     /** Read each time iikb comes forward, so the steps check off as you come back from Android's settings. */
