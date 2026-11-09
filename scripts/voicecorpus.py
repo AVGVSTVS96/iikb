@@ -1,6 +1,6 @@
 """Builds the corpora scripts/voicebench scores from Bassim's own dictations on the backup server, into voicebench/
 beside the backup (never the repo: they're his voice and his words). Run it with
-`uv run --with numpy scripts/voicecorpus.py [out]`; it writes two:
+`uv run --with numpy scripts/voicecorpus.py [out]`; it writes three:
 
 real: every dictation Parakeet v3 wrote and iikb typed, with what it finally became as the reference: its transcript's
 `field.final`, what the keyboard followed it to until its field was sent or changed, or else the span of what was sent
@@ -15,6 +15,9 @@ kept them, or, from before iikb kept them, the kind and the text before it from 
 loud: the real set's quiet dictations that went in as typed, mixed with the room of its loud ones (their stretches
 without speech) at that room's own level, the speech as loud as said there and 6, 12 and 18 dB quieter (a whisper), with
 each clean dictation's final as the reference.
+
+taps: every dictation Parakeet v3 finished on the iPhone that typed nothing, as a tap with nothing said does, so a
+change that writes words there (filler such as "Yeah." or "Thank you.") shows. Its reference is the iPhone's nothing.
 """
 import datetime, difflib, hashlib, json, os, random, re, shutil, sys, wave
 from pathlib import Path
@@ -205,5 +208,27 @@ def loud(folder, clips, references, typed, context, count=120):
           f"({len(bed) / 16_000:.0f} s of it from {len(noisy)} dictations) said at {said:.0f} dBFS and 6, 12, 18 dB quieter")
 
 
+def taps():
+    folder = OUT / "taps"
+    shutil.rmtree(folder, ignore_errors=True)
+    (folder / "audio").mkdir(parents=True)
+    clips, context = [], []
+    for t in map(json.loads, open(MIRROR / "app/transcripts.jsonl")):
+        recording = MIRROR / f"app/recordings/{t['id']}.wav"
+        if not t["typed"] or t["text"].strip() or t.get("model") != "Parakeet v3" or not recording.exists():
+            continue
+        os.link(recording, folder / f"audio/{t['id']}.wav")
+        field = t.get("field") or {}
+        clips.append(dict(id=t["id"], audio_path=f"audio/{t['id']}.wav", seconds=round(t.get("seconds", 0), 1)))
+        context.append(dict(id=t["id"], heard="", field=field.get("kind", "text"), content=field.get("content"),
+                            before=field.get("before") or ""))
+    lines(folder / "clips.jsonl", clips)
+    lines(folder / "references.jsonl", [dict(id=c["id"], text="") for c in clips])
+    lines(folder / "context.jsonl", context)
+    shutil.copy(MIRROR / "app/vocabulary.json", folder / "vocabulary.json")
+    print(f"taps: {len(clips)} dictations that typed nothing")
+
+
 if __name__ == "__main__":
     loud(*real())
+    taps()

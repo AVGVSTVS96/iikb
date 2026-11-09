@@ -60,8 +60,8 @@ def digest(*parts):
 
 
 def real():
-    """The real and loud sets, built again whenever the backup or the builder has changed since."""
-    built = DATA / "real/context.jsonl"
+    """The real, loud and taps sets, built again whenever the backup or the builder has changed since."""
+    built = DATA / "taps/context.jsonl"
     sources = [BACKUP / "mirror/app/transcripts.jsonl", BACKUP / "mirror/app/vocabulary.json", BACKUP.parent / "record.jsonl",
                ROOT / "scripts/voicecorpus.py"]
     if not built.exists() or max(p.stat().st_mtime for p in sources) > built.stat().st_mtime:
@@ -248,6 +248,12 @@ MERIDIEM = re.compile(r"(?:(?<=\d)\s?|\b)([ap])(?:m|\.\s?m\.)(?=\W|$)|(?<=\d)\s?
 CHUNK = re.compile(r"\S+")
 MODELS = {"opus", "gpt", "sonnet", "haiku", "claude", "fable", "ios", "python", "gemini", "parakeet", "macos", "version", "v"}
 KINDS = ["emails", "links", "versions", "times", "money", "digits", "names"]
+LENGTHS = ["under 5 s", "5 to 15 s", "over 15 s"]
+
+
+def length(seconds):
+    """Parakeet hears a recording up to 15 s in one window and a longer one in overlapping windows."""
+    return LENGTHS[0] if seconds < 5 else LENGTHS[1] if seconds <= 15 else LENGTHS[2]
 
 
 def said(text):
@@ -350,25 +356,55 @@ def diff(reference, hypothesis, terms, final, marks):
 
 def table(name, references, ways, diffs, clips, groups):
     words = {id: len(said(text)) for id, text in references.items()}
+    numbers = {}
 
-    def line(way, ids, indent):
+    def line(way, ids, indent, *group):
         ids = [id for id in ids if id in ways[way]]
         total = sum(words[id] for id in ids)
         wrong = sum(n for id in ids for label, n, _, _ in diffs[way][id] if label not in SET_ASIDE)
         aside = sum(n for id in ids for label, n, _, _ in diffs[way][id] if label in ("cut later", "number form"))
         exact = sum(ways[way][id].strip() == references[id].strip() for id in ids)
-        print(f"{indent}{way:<8}{len(ids):>6}{total:>7}{wrong / max(total, 1) * 100:>8.2f}%{exact / max(len(ids), 1) * 100:>8.1f}%{aside:>7}")
-        return wrong / max(total, 1) * 100
+        fix = sum(any(label not in SET_ASIDE for label, _, _, _ in diffs[way][id]) for id in ids)
+        print(f"{indent}{way:<8}{len(ids):>6}{total:>7}{wrong / max(total, 1) * 100:>8.2f}%{fix / max(len(ids), 1) * 100:>8.1f}%"
+              f"{exact / max(len(ids), 1) * 100:>8.1f}%{aside:>7}")
+        numbers["to fix", way, *group] = fix / max(len(ids), 1) * 100
+        numbers[(way, *group) if group else way] = wrong / max(total, 1) * 100
 
-    print(f"\n{name}\n  {'way':<8}{'clips':>6}{'words':>7}{'wrong':>9}{'exact':>9}{'aside':>7}")
-    numbers = {way: line(way, list(references), "  ") for way in ways}
+    print(f"\n{name}\n  {'way':<8}{'clips':>6}{'words':>7}{'wrong':>9}{'to fix':>9}{'exact':>9}{'aside':>7}")
+    for way in ways:
+        line(way, list(references), "  ")
     for label in groups:
-        for value in sorted({c[label] for c in clips.values()}):
+        present = {c[label] for c in clips.values()}
+        for value in [v for v in LENGTHS if v in present] if label == "length" else sorted(present):
             ids = [id for id in references if clips[id][label] == value]
             print(f"  {label}: {value}")
             for way in ways:
-                numbers[way, label, value] = line(way, ids, "    ")
+                line(way, ids, "    ", label, value)
     return numbers
+
+
+def changed(name, got, wrong, clips):
+    """Each dictation the bench types differently from its last run (kept in voicebench/last/), counted worse (more
+    words wrong), better or neither by length where the set has one, with the worst shown: a change that breaks a few
+    short dictations shows here however little it moves the averages."""
+    path = DATA / f"last/{name}.jsonl"
+    path.parent.mkdir(exist_ok=True)
+    last = {r["id"]: r for r in rows(path)}
+    lines(path, [dict(id=id, typed=got[id], wrong=wrong[id]) for id in got])
+    if not last:
+        return
+    moved = [id for id in got if id in last and last[id]["typed"].strip() != got[id].strip()]
+    print(f"  since the last run, {len(moved)} of {len(got)} type differently")
+    spans = collections.defaultdict(list)
+    for id in moved:
+        spans[length(clips[id]["seconds"]) if "seconds" in clips[id] else "all"].append(id)
+    for span in [s for s in LENGTHS + ["all"] if s in spans]:
+        here = sorted(spans[span], key=lambda id: last[id]["wrong"] - wrong[id])
+        worse = sum(wrong[id] > last[id]["wrong"] for id in here)
+        better = sum(wrong[id] < last[id]["wrong"] for id in here)
+        print(f"    {span}: {worse} worse, {better} better, {len(here) - worse - better} neither")
+        for id in here[:6]:
+            print(f"      {wrong[id] - last[id]['wrong']:+d}  {last[id]['typed'][:70]!r} → {got[id][:70]!r}")
 
 
 def main():
@@ -391,7 +427,7 @@ def main():
     stage("real and loud sets")
     spoken()
     stage("spoken set")
-    sets = ["real", "loud", "spoken"]
+    sets = ["real", "taps", "loud", "spoken"]
     heard = parakeet(sets, "--cached" in sys.argv)
     stage("parakeet")
     tool = text_stage()
@@ -406,11 +442,14 @@ def main():
         references = {id: text for id, text in references.items() if id in clips}
         context = {c["id"]: c for c in rows(folder / "context.jsonl")}
         knobs = phone if name != "spoken" else DEFAULTS
+        for clip in clips.values():
+            if "seconds" in clip:
+                clip["length"] = length(clip["seconds"])
         read[name] = clips, references, context, knobs
         runs[name] = dict(bench=pool.submit(typed, tool, folder, {id: heard[name, id] for id in clips}, knobs))
         if name == "real":
             runs[name]["replay"] = pool.submit(typed, tool, folder, {id: context[id]["heard"] for id in clips}, knobs)
-        if name != "spoken":
+        if name in ("real", "loud"):
             runs[name]["references"] = pool.submit(typed, tool, folder, references, knobs, "dictionary")
     for name in sets:
         folder = DATA / name
@@ -424,8 +463,19 @@ def main():
         terms = {t["term"].lower() for t in json.load((folder / "vocabulary.json").open())["terms"]}
         marks = {id: name == "spoken" or clips[id].get("final") == "field" for id in clips}
         diffs = {way: {id: diff(references[id], text, terms, final, marks[id]) for id, text in got.items()} for way, got in ways.items()}
-        groups = {"real": ["room", "capture", "final"], "loud": ["speech"], "spoken": ["condition", "voice", "topic", "field", "name"]}[name]
-        numbers[name] = table(f"{name} ({', '.join(knobs)})", references, ways, diffs, clips, groups)
+        wrong = {id: sum(n for label, n, _, _ in found if label not in SET_ASIDE) for id, found in diffs["bench"].items()}
+        if name == "taps":
+            typing = [id for id in clips if ways["bench"][id].strip()]
+            numbers[name] = dict(clips=len(clips), typing=len(typing), words=sum(wrong.values()))
+            print(f"\ntaps: of {len(clips)} dictations the iPhone typed nothing for, the bench types words for {len(typing)}"
+                  f" ({sum(wrong.values())} words)")
+            for id in sorted(typing, key=lambda id: clips[id]["seconds"])[:12]:
+                print(f"    {clips[id]['seconds']:>5.1f} s  {ways['bench'][id][:70]!r}")
+        else:
+            groups = {"real": ["length", "room", "capture", "final"], "loud": ["speech"],
+                      "spoken": ["condition", "voice", "topic", "field", "name"]}[name]
+            numbers[name] = table(f"{name} ({', '.join(knobs)})", references, ways, diffs, clips, groups)
+        changed(name, ways["bench"], wrong, clips)
         if name == "real":
             same_heard = sum(mine[id].strip() == context[id]["heard"].strip() for id in clips)
             recent = [id for id in clips if clips[id]["final"] == "field"]
@@ -461,8 +511,14 @@ def main():
     for label in sorted({l for t, _ in tally_all.values() for l in t}, key=lambda l: -sum(t[l] for t, _ in tally_all.values())):
         print(f"  {label:<16}" + "".join(f"{t[label]:>14}" for t, _ in tally_all.values()))
     print(f"\nexamples in {DATA / 'categories.txt'}")
-    real_set, loud_set, spoken_set = (numbers[n] for n in sets)
-    print(f"\nwords wrong, as typed: real {real_set['bench']:.2f}% (the iPhone {real_set['phone']:.2f}%), in loud rooms"
+    real_set, taps_set, loud_set, spoken_set = (numbers[n] for n in sets)
+    short = ("bench", "length", LENGTHS[0])
+    print(f"\ndictations to fix, as typed: real {real_set['to fix', 'bench']:.1f}% (the iPhone {real_set['to fix', 'phone']:.1f}%),"
+          f" under 5 s {real_set[('to fix', *short)]:.1f}% (the iPhone {real_set['to fix', 'phone', 'length', LENGTHS[0]]:.1f}%),"
+          f" 5 to 15 s {real_set['to fix', 'bench', 'length', LENGTHS[1]]:.1f}%, over 15 s {real_set['to fix', 'bench', 'length', LENGTHS[2]]:.1f}%;"
+          f" taps typed as words {taps_set['typing']} of {taps_set['clips']}")
+    print(f"words wrong, as typed: real {real_set['bench']:.2f}% (the iPhone {real_set['phone']:.2f}%), under 5 s"
+          f" {real_set[short]:.2f}%, in loud rooms"
           f" {real_set['bench', 'room', 'loud']:.2f}%, his voice whispered (-18 dB) in one {loud_set['bench', 'speech', '-18 dB']:.2f}%;"
           f" spoken {spoken_set['bench']:.2f}%: in a quiet room {spoken_set['bench', 'condition', 'normal in a quiet room']:.2f}%,"
           f" a loud one {spoken_set['bench', 'condition', 'normal in a loud room']:.2f}%, whispered"

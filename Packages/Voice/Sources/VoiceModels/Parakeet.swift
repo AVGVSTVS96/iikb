@@ -38,17 +38,19 @@ nonisolated struct Dictation: Sendable {
     }
 
     /// The recording leveled (`Recording.leveled`), a tap with next to nothing said padded up to the shortest sound
-    /// Parakeet takes, and nothing at all when Silero hears no one talking in it and Parakeet is unsure of its first
-    /// word. Where no one talks Parakeet writes "Yeah.", "Okay." or "Thank you.", its first piece at 0.1 to 0.35, where
-    /// Silero hears talking under 0.5 (Nov 8: 8 of his taps); of 2,803 dictations, said and made, that blanks none with
-    /// a word in it he said. On the Neural Engine a minute of talking is written in well under a second.
+    /// Parakeet takes, and nothing at all when Silero hears no one talking in it and Parakeet wrote only a stock phrase
+    /// it's unsure of. Where no one talks Parakeet writes "Yeah.", "Okay.", "It is" or "Thank you.", four pieces at most
+    /// with the first at 0.2 to 0.35, where Silero hears talking under 0.5 (Nov 8: 10 of his taps). Silero also misses
+    /// quiet talking in a loud room, and the first piece of a real "Yeah. Yeah." there, six pieces, came to 0.52 on the
+    /// Mac and under 0.5 on the Duo, which typed nothing for it. On the Neural Engine a minute of talking is written in
+    /// well under a second.
     func write(_ recording: [Float]) async throws -> String {
         var samples = Recording.leveled(recording)
         let shortest = ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)
         if samples.count < shortest { samples += repeatElement(0, count: shortest - samples.count) }
         let heard = try await parakeet.hear(samples)
-        if let talking, let first = heard.tokenTimings?.first, first.confidence < 0.5,
-            try await talking.process(samples).allSatisfy({ $0.probability < 0.5 })
+        if let talking, let pieces = heard.tokenTimings, pieces.count <= 4, let first = pieces.first,
+            first.confidence < 0.5, try await talking.process(samples).allSatisfy({ $0.probability < 0.5 })
         {
             return ""
         }
