@@ -320,7 +320,7 @@ fun Radio(on: Boolean) {
             .background(palette.selected.copy(alpha = fill)),
         contentAlignment = Alignment.Center,
     ) {
-        if (on) Icon(Symbols["checkmark"], null, tint = palette.selectedLabel, modifier = Modifier.size(15.dp))
+        if (on) Icon(Symbols["checkmark"], null, tint = palette.selectedLabel, modifier = Modifier.size(17.7.dp))
     }
 }
 

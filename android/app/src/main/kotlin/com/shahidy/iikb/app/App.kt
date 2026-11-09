@@ -163,7 +163,7 @@ private fun TabBar(tab: Int, pick: (Int) -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Icon(Symbols[item.symbol], null, tint = tint, modifier = Modifier.size(25.dp))
+                    Icon(Symbols[item.symbol], null, tint = tint, modifier = Modifier.size(30.dp))
                     Text(
                         item.title, color = tint, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1,
                         modifier = Modifier.padding(top = 1.dp),

@@ -58,7 +58,8 @@ import com.shahidy.iikb.app.design.Empty
 import com.shahidy.iikb.app.design.Figure
 import com.shahidy.iikb.app.design.Figures
 import com.shahidy.iikb.app.design.Format
-import com.shahidy.iikb.app.design.GlyphTile
+import com.shahidy.iikb.app.Glyph
+import com.shahidy.iikb.app.Symbols
 import com.shahidy.iikb.app.design.Glyphs
 import com.shahidy.iikb.app.design.Hairline
 import com.shahidy.iikb.app.design.LeadNumber
@@ -266,7 +267,7 @@ private fun Summary(transcripts: List<Transcript>, openStats: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            GlyphTile(Glyphs.WAVEFORM, pink)
+            Glyph("waveform", pink, 26.dp)
             Text("Dictation", color = palette.secondary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.weight(1f))
             Text("Stats", color = palette.secondary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
@@ -390,8 +391,6 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
     }
 }
 
-private const val SHARE = "M12 3v12 M8 7l4-4 4 4 M5 12v8h14v-8"
-
 /**
  * What's done with a transcript, right under its text: its words copied or shared, and, where iikb kept its sound, that
  * sent on in a new message in the phone's texting app or through the share sheet, as iOS's `TranscriptActions`.
@@ -416,15 +415,15 @@ private fun TranscriptActions(transcript: Transcript) {
         if (transcript.text.isNotEmpty()) {
             CopyRow(transcript.text)
             Divider()
-            ActionRow("Share Text", SHARE, palette.accent) { share(context, transcript.text) }
+            ActionRow("Share Text", "square.and.arrow.up", palette.accent) { share(context, transcript.text) }
         }
         if (kept) {
             messages?.let { (_, app) ->
                 if (transcript.text.isNotEmpty()) Divider()
-                ActionRow("Send in $app", "M4 5h16v11H9l-5 4Z", palette.accent) { sending(true) }
+                ActionRow("Send in $app", "message", palette.accent) { sending(true) }
             }
             if (transcript.text.isNotEmpty() || messages != null) Divider()
-            ActionRow("Share Recording", SHARE, palette.accent) { sending(false) }
+            ActionRow("Share Recording", "square.and.arrow.up", palette.accent) { sending(false) }
         }
         failure?.let {
             Divider()
@@ -552,18 +551,18 @@ private fun CopyRow(text: String) {
         copied = false
     }
     if (copied) {
-        ActionRow("Copied", "M6.5 12.5l4 4L18 8", palette.green) {}
+        ActionRow("Copied", "checkmark", palette.green) {}
     } else {
-        ActionRow("Copy", "M9 9h10v11H9Z M5 15V4h10", palette.accent) {
+        ActionRow("Copy", "doc.on.doc", palette.accent) {
             copy(context, text)
             copies++
         }
     }
 }
 
-/** A row that acts, its title and glyph in its color. */
+/** A row that acts, its title and glyph in its color, the glyph at iOS's semibold subheadline. */
 @Composable
-private fun ActionRow(title: String, path: String, color: Color, onClick: () -> Unit) =
+private fun ActionRow(title: String, symbol: String, color: Color, onClick: () -> Unit) =
     Line(title, onClick = onClick, color = color) {
-        Icon(glyph(path, 1.9f), null, tint = color, modifier = Modifier.size(20.dp))
+        Icon(Symbols[symbol], null, tint = color, modifier = Modifier.size(20.5.dp))
     }

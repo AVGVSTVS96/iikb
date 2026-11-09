@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.shahidy.iikb.app.Glyph
 import com.shahidy.iikb.app.Palette
 import com.shahidy.iikb.app.glyph
 import com.shahidy.iikb.app.palette
@@ -94,17 +95,6 @@ fun display(size: Float) = TextStyle(
     fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = size.sp, letterSpacing = (-0.03).em,
 )
 
-/** A white glyph on a colored rounded square, as Raycast draws its commands. */
-@Composable
-fun GlyphTile(path: String, color: Color, size: Dp = 26.dp) {
-    Box(
-        Modifier.size(size).clip(RoundedCornerShape(size * 0.26f)).background(Tints.gradient(color)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(glyph(path, 2.2f), null, tint = Color.White, modifier = Modifier.size(size * 0.58f))
-    }
-}
-
 /** A card with a hairline edge, as every Stats card is. */
 fun Modifier.card(palette: Palette) = clip(RoundedCornerShape(22.dp)).background(palette.card)
     .border(BorderStroke(1.dp, palette.edge), RoundedCornerShape(22.dp))
@@ -112,7 +102,7 @@ fun Modifier.card(palette: Palette) = clip(RoundedCornerShape(22.dp)).background
 /** A Stats card: a colored glyph, a title and a gray line on what it shows at its top, then what it shows. */
 @Composable
 fun StatCard(
-    glyph: String, color: Color, title: String, subtitle: String? = null,
+    symbol: String, color: Color, title: String, subtitle: String? = null,
     accessory: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit,
 ) {
     val palette = palette()
@@ -121,7 +111,7 @@ fun StatCard(
     ) {
         val heading = @Composable {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlyphTile(glyph, color)
+                Glyph(symbol, color, 26.dp)
                 Column {
                     Text(title, color = palette.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     if (subtitle != null) Text(subtitle, color = palette.secondary, fontSize = 13.sp)

@@ -47,7 +47,6 @@ import com.shahidy.iikb.app.Palette
 import com.shahidy.iikb.app.design.Caption
 import com.shahidy.iikb.app.design.ChoicePills
 import com.shahidy.iikb.app.design.Format
-import com.shahidy.iikb.app.design.Glyphs
 import com.shahidy.iikb.app.design.Hairline
 import com.shahidy.iikb.app.design.LegendDot
 import com.shahidy.iikb.app.design.Split
@@ -57,7 +56,7 @@ import com.shahidy.iikb.app.design.StatGrid
 import com.shahidy.iikb.app.design.Tints
 import com.shahidy.iikb.app.design.card
 import com.shahidy.iikb.app.design.display
-import com.shahidy.iikb.app.glyph
+import com.shahidy.iikb.app.Symbols
 import com.shahidy.iikb.app.palette
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -96,7 +95,7 @@ private fun Today(activity: Activity) {
     val said = activity.channel(Kind.SAID, today)
     val words = typed.words + said.words
     StatCard(
-        Glyphs.CALENDAR, Tints.orange(palette), "Today", today.format(DateTimeFormatter.ofPattern("EEEE, MMM d")),
+        "calendar", Tints.orange(palette), "Today", today.format(DateTimeFormatter.ofPattern("EEEE, MMM d")),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -165,7 +164,7 @@ fun History(activity: Activity, kinds: List<Kind>) {
         else -> "written"
     }
     StatCard(
-        Glyphs.CHART, Tints.indigo(palette), "History",
+        "chart.bar.fill", Tints.indigo(palette), "History",
         if (measure == Measure.WORDS) "Words $noun per day" else "Words a minute per day",
         accessory = {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -251,18 +250,18 @@ private fun Records(activity: Activity) {
     }.maxByOrNull { it.second }
     val burst = activity.days.map { it.key to it.value.typed.peak }.maxByOrNull { it.second }
     val records = listOf(
-        Record(Glyphs.FLAME, Tints.orange(palette), "Streak", "$current", if (current == 1) "day" else "days", "Longest $longest ${if (longest == 1) "day" else "days"}"),
+        Record("flame.fill", Tints.orange(palette), "Streak", "$current", if (current == 1) "day" else "days", "Longest $longest ${if (longest == 1) "day" else "days"}"),
         Record(
-            Glyphs.TROPHY, Tints.yellow(palette), "Most words",
+            "trophy.fill", Tints.yellow(palette), "Most words",
             Format.short(most?.let { it.value.typed.words + it.value.said.words } ?: 0), "words",
             most?.let { Format.day(it.key) } ?: "–",
         ),
         Record(
-            Glyphs.GAUGE, Tints.green(palette), "Fastest day", Format.speed(fastest?.second), "wpm",
+            "gauge.with.dots.needle.67percent", Tints.green(palette), "Fastest day", Format.speed(fastest?.second), "wpm",
             fastest?.let { Format.day(it.first) } ?: "Two minutes of typing a day",
         ),
         Record(
-            Glyphs.BOLT, Tints.purple(palette), "Top burst",
+            "bolt.fill", Tints.purple(palette), "Top burst",
             Format.speed(burst?.second?.takeIf { it > 0 }), "wpm",
             burst?.takeIf { it.second > 0 }?.let { Format.day(it.first) } ?: "–",
         ),
@@ -301,7 +300,7 @@ private fun streaks(activity: Activity): Pair<Int, Int> {
 }
 
 private class Record(
-    val glyph: String, val color: Color, val title: String, val value: String, val unit: String, val detail: String,
+    val symbol: String, val color: Color, val title: String, val value: String, val unit: String, val detail: String,
 )
 
 @Composable
@@ -320,7 +319,7 @@ private fun RecordTile(record: Record) {
                     Modifier.size(26.dp).background(record.color.copy(alpha = 0.18f), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(glyph(record.glyph, 2.4f), null, tint = record.color, modifier = Modifier.size(15.dp))
+                    Icon(Symbols[record.symbol], null, tint = record.color, modifier = Modifier.size(17.7.dp))
                 }
                 Text(record.title, color = palette.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
@@ -346,7 +345,7 @@ fun Rhythm(activity: Activity, kinds: List<Kind>) {
     val sums = hours.map { it.sum() }
     val busiest = sums.indices.maxByOrNull { sums[it] } ?: return
     if (sums[busiest] <= 0) return
-    StatCard(Glyphs.CLOCK, Tints.teal(palette), "Daily rhythm", "Most active around ${Format.hour(busiest)}") {
+    StatCard("clock.fill", Tints.teal(palette), "Daily rhythm", "Most active around ${Format.hour(busiest)}") {
         ColumnChart(
             hours, kinds.map { Tints.gradient(it.color(palette)) }, Format.roundUp(sums[busiest]), 140.dp,
             listOf(0, 6, 12, 18).map { Tick(it, Format.hour(it)) }, ratio = 0.72f, radius = 2.dp,
@@ -376,7 +375,7 @@ fun Speeds(speeds: Map<Int, Double>) {
     val median = percentile(0.5)
     val usual = Brush.verticalGradient(listOf(Tints.cyan(palette), Tints.blue(palette), Tints.indigo(palette)))
     val other = Brush.verticalGradient(listOf(palette.secondary.copy(alpha = 0.5f), palette.secondary.copy(alpha = 0.5f)))
-    StatCard(Glyphs.SPEEDOMETER, Tints.blue(palette), "Speed range", "Usually $low–$high wpm · median ~$median wpm") {
+    StatCard("speedometer", Tints.blue(palette), "Speed range", "Usually $low–$high wpm · median ~$median wpm") {
         ColumnChart(
             bands.map { (speed, count) -> if (speed in low..high) listOf(count, null) else listOf(null, count) },
             listOf(usual, other), bands.maxOf { it.second }, 130.dp,
@@ -399,7 +398,7 @@ private fun Talking(activity: Activity) {
         activity.apps[Kind.TYPED].orEmpty().forEach { (name, words) -> merge(name, words to 0) { a, b -> a.first + b.first to a.second + b.second } }
         activity.apps[Kind.SAID].orEmpty().forEach { (name, words) -> merge(name, 0 to words) { a, b -> a.first + b.first to a.second + b.second } }
     }.toList().sortedByDescending { it.second.first + it.second.second }.take(5)
-    StatCard(Glyphs.WAVEFORM, Tints.pink(palette), "Dictation", "All time") {
+    StatCard("waveform", Tints.pink(palette), "Dictation", "All time") {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(Format.count(said.words), style = display(40f), color = palette.label, maxLines = 1, modifier = Modifier.alignByBaseline())
@@ -482,7 +481,7 @@ fun Year(activity: Activity, kinds: List<Kind> = listOf(Kind.TYPED, Kind.SAID)) 
         val active = activity.days.count { (date, _) -> date > since && words(date).let { it.first + it.second } > 0 }
         val months = (weeks / 4.35).roundToInt()
         StatCard(
-            Glyphs.GRID, Tints.green(palette), if (weeks >= 52) "Past year" else "Past $months months",
+            "square.grid.3x3.fill", Tints.green(palette), if (weeks >= 52) "Past year" else "Past $months months",
             "$active active ${if (active == 1) "day" else "days"} · shaded by words written",
         ) {
             val label = TextStyle(color = palette.secondary, fontSize = 9.sp, fontWeight = FontWeight.Medium)
@@ -565,7 +564,7 @@ private fun AllTime(activity: Activity) {
     val typed = activity.total(Kind.TYPED)
     val said = activity.total(Kind.SAID)
     val first = activity.activeDays.firstOrNull() ?: return
-    StatCard(Glyphs.INFINITY, Tints.gray(palette), "All time", "Since ${first.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}") {
+    StatCard("infinity", Tints.gray(palette), "All time", "Since ${first.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}") {
         StatGrid(
             3,
             listOf(

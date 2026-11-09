@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.Settings
 import com.shahidy.iikb.app.Divider
 import com.shahidy.iikb.app.ListPage
+import com.shahidy.iikb.app.Symbols
 import com.shahidy.iikb.app.MicSwitch
 import com.shahidy.iikb.app.LocalResumes
 import com.shahidy.iikb.app.design.Empty
@@ -218,7 +219,7 @@ private fun ClipRow(row: Clips.Row, copied: Boolean, clips: Clips, copy: (Clips.
                     Text(listOfNotNull(time, row.length).joinToString(" · "), color = palette.secondary, fontSize = 13.sp, maxLines = 1)
                 }
             }
-            if (row.pinned) Icon(glyph(Glyphs.PIN, 1.9f), "Pinned", tint = palette.secondary, modifier = Modifier.size(15.dp))
+            if (row.pinned) Icon(Symbols["pin.fill"], "Pinned", tint = palette.secondary, modifier = Modifier.size(17.7.dp))
         }
         Actions(row, menu, { menu = false }, clips, copy)
     }
@@ -271,7 +272,7 @@ private fun Badge(row: Clips.Row, copied: Boolean, clips: Clips, copy: (Clips.Ro
             } else {
                 Text("· ${row.age}", color = palette.secondary, fontSize = 15.sp, maxLines = 1)
             }
-            if (row.pinned) Icon(glyph(Glyphs.PIN, 1.9f), "Pinned", tint = palette.secondary, modifier = Modifier.size(12.dp))
+            if (row.pinned) Icon(Symbols["pin.fill"], "Pinned", tint = palette.secondary, modifier = Modifier.size(15.dp))
         }
         Actions(row, menu, { menu = false }, clips, copy)
     }

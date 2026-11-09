@@ -79,7 +79,7 @@ private fun Speed(kind: Kind, activity: Activity) {
     fastest?.let { lines += "Fastest day: ${it.second.roundToInt()} wpm, ${Format.day(it.first)}." }
     val noun = if (kind == Kind.TYPED) "typed" else "said"
     StatCard(
-        if (kind == Kind.TYPED) Glyphs.SPEEDOMETER else Glyphs.WAVEFORM, kind.color(palette),
+        if (kind == Kind.TYPED) "speedometer" else "waveform", kind.color(palette),
         if (kind == Kind.TYPED) "Typing speed" else "Talking speed",
     ) {
         LeadNumber(all.speed?.let { "${it.roundToInt()} wpm" } ?: "–", 52f, trend?.let { { TrendChip(it) } })
@@ -107,7 +107,7 @@ private fun WordSources(channel: Channel) {
     val corrected = minOf(channel.corrected, words)
     val picked = minOf(channel.picked, words - corrected)
     fun share(part: Int, whole: Int) = Format.percent(part.toDouble() / whole)
-    StatCard(Glyphs.CHARACTERS, Tints.blue(palette), "Your typed words") {
+    StatCard("character.cursor.ibeam", Tints.blue(palette), "Your typed words") {
         SegmentedBar(
             listOf(
                 Triple("As typed", (words - corrected - picked).toDouble() / words, Tints.blue(palette)),
@@ -133,7 +133,7 @@ private fun Apps(kind: Kind, apps: List<Pair<String, Int>>) {
     val palette = palette()
     val rows = if (apps.size > 6) apps.take(5) + ("Other apps" to apps.drop(5).sumOf { it.second }) else apps
     val top = rows.maxOf { it.second }.coerceAtLeast(1)
-    StatCard(Glyphs.APPS, Tints.purple(palette), if (kind == Kind.TYPED) "Where you type" else "Where you dictate") {
+    StatCard("square.grid.2x2.fill", Tints.purple(palette), if (kind == Kind.TYPED) "Where you type" else "Where you dictate") {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             rows.forEach { (name, words) ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -161,7 +161,7 @@ private fun Dictations(transcripts: List<Transcript>) {
     val lengths = all.map { it.seconds }.sorted()
     if (lengths.isEmpty()) return
     val model = all.mapNotNull { it.model }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
-    StatCard(Glyphs.TEXT_BUBBLE, Tints.pink(palette), "Your dictations") {
+    StatCard("text.bubble.fill", Tints.pink(palette), "Your dictations") {
         StatGrid(
             facts = listOfNotNull(
                 { Stat("Typical length", Format.clock(lengths[lengths.size / 2])) },

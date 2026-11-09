@@ -35,6 +35,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.Settings
@@ -55,6 +58,7 @@ import com.shahidy.iikb.app.design.StatCard
 import com.shahidy.iikb.app.design.TrendChip
 import com.shahidy.iikb.app.design.card
 import com.shahidy.iikb.app.design.display
+import com.shahidy.iikb.app.Symbols
 import com.shahidy.iikb.app.glyph
 import com.shahidy.iikb.app.palette
 import com.shahidy.iikb.folds
@@ -102,10 +106,18 @@ fun Taps() {
     val summary = remember(shown) { TapSummary(shown) }
     Numbers(summary, shown.screens.size > 1)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            SectionPills(TapMode.entries, mode, { it.title }) { mode = it }
-            Spacer(Modifier.weight(1f))
-            if (shown.screens.size > 1) Screens(shown) { signature = it }
+        val pills = @Composable { SectionPills(TapMode.entries, mode, { it.title }) { mode = it } }
+        if (shown.screens.size > 1) {
+            val row = @Composable { named: Boolean ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    pills()
+                    Spacer(Modifier.weight(1f).widthIn(min = 8.dp))
+                    Screens(shown, named) { signature = it }
+                }
+            }
+            FirstThatFits({ row(true) }, { row(false) })
+        } else {
+            pills()
         }
         TapMap(shown, mode, heat, selected) { selected = it }
         Legend(mode, selected != null)
@@ -115,22 +127,17 @@ fun Taps() {
     Misses(shown, summary, selected) { selected = it }
 }
 
-/** The screen whose taps show, at the end of the map's pills. */
+/** The screen whose taps show, at the end of the map's pills, by name where it fits. */
 @Composable
-private fun Screens(board: TapBoard, pick: (String) -> Unit) {
+private fun Screens(board: TapBoard, named: Boolean, pick: (String) -> Unit) {
     val palette = palette()
     var open by remember { mutableStateOf(false) }
     Box {
-        Row(
-            Modifier.clip(CircleShape).clickable { open = true }.padding(horizontal = 13.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                board.screens.firstOrNull { it.signature == board.signature }?.title ?: "Screen", color = palette.secondary,
-                fontSize = 16.sp, fontWeight = FontWeight.Medium, maxLines = 1,
-            )
-            Icon(glyph("M8 9l4-4 4 4 M8 15l4 4 4-4", 2f), null, tint = palette.secondary, modifier = Modifier.size(14.dp))
-        }
+        PillMenuLabel(
+            "rectangle.on.rectangle",
+            if (named) board.screens.firstOrNull { it.signature == board.signature }?.title ?: "Screen" else null,
+            Modifier.clip(CircleShape).clickable { open = true },
+        )
         DropdownMenu(open, { open = false }, containerColor = palette.card) {
             board.screens.forEach { screen ->
                 DropdownMenuItem(
@@ -155,7 +162,7 @@ private fun Screens(board: TapBoard, pick: (String) -> Unit) {
 private fun Numbers(summary: TapSummary, perScreen: Boolean) {
     val palette = palette()
     val trend = summary.lately?.let { ((it.first - summary.onTarget) * 100).roundToInt().takeIf { points -> points != 0 } }
-    StatCard(Glyphs.SCOPE, Tints.blue(palette), "On target") {
+    StatCard("scope", Tints.blue(palette), "On target") {
         LeadNumber(Format.percent(summary.onTarget), 52f, trend?.let { { TrendChip(it) } })
         Meter(summary.onTarget)
         val share = "Letter taps that land on the key you meant."
@@ -351,7 +358,7 @@ private fun MemoryBar(weights: List<Double>) {
 @Composable
 private fun Thumbs(board: TapBoard, summary: TapSummary) {
     val palette = palette()
-    StatCard(Glyphs.PULL, Tints.blue(palette), "How your thumbs pull") {
+    StatCard("arrow.up.and.down.and.arrow.left.and.right", Tints.blue(palette), "How your thumbs pull") {
         Pull(board)
         val targets = summary.halves + listOfNotNull(summary.space?.let { "Space bar" to it })
         val reach = maxOf(2.5, targets.maxOfOrNull { hypot(it.second.x, it.second.y) } ?: 0.0)
@@ -381,7 +388,7 @@ private fun Misses(board: TapBoard, summary: TapSummary, selected: Int?, pick: (
     if (shown.isEmpty()) return
     val typical = 1 - summary.onTarget
     val miss = Tints.miss(palette)
-    StatCard(Glyphs.MISS, Tints.orange(palette), "Misses by key") {
+    StatCard("xmark.circle.fill", Tints.orange(palette), "Misses by key") {
         val top = maxOf(shown.first().share, 0.05, typical * 1.4)
         ColumnChart(
             shown.map { listOf(it.share) }, listOf(Tints.gradient(miss.copy(alpha = 0.9f))),
@@ -400,7 +407,7 @@ private fun Misses(board: TapBoard, summary: TapSummary, selected: Int?, pick: (
                 ) {
                     Keycap(board.keys[it.key].name, 34f)
                     it.onto?.let { onto ->
-                        Icon(glyph(Glyphs.ARROW, 2.2f), null, tint = palette.secondary, modifier = Modifier.size(14.dp))
+                        Icon(Symbols["arrow.right"], null, tint = palette.secondary, modifier = Modifier.size(17.7.dp))
                         Keycap(board.keys[onto].name, 34f, 0.75f)
                     }
                     Spacer(Modifier.weight(1f).widthIn(min = 8.dp))
@@ -411,4 +418,30 @@ private fun Misses(board: TapBoard, summary: TapSummary, selected: Int?, pick: (
         }
         Caption("Each letter’s taps that land on another key, most missed first.")
     }
+}
+
+/** A menu at the end of a row of pills, in their unpicked look: its glyph, what it's set to, and the up-down chevron (iOS's `PillMenuLabel`). */
+@Composable
+fun PillMenuLabel(symbol: String, title: String?, modifier: Modifier = Modifier) {
+    val palette = palette()
+    Row(
+        modifier.height(36.dp).padding(horizontal = 13.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(Symbols[symbol], null, tint = palette.secondary, modifier = Modifier.size(23.2.dp))
+        if (title != null) Text(title, color = palette.secondary, fontSize = 16.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        Icon(Symbols["chevron.up.chevron.down"], null, tint = palette.secondary, modifier = Modifier.size(16.4.dp))
+    }
+}
+
+/** The first of `options` that fits the width at its own size, else the last, as SwiftUI's `ViewThatFits`. */
+@Composable
+fun FirstThatFits(vararg options: @Composable () -> Unit) = SubcomposeLayout { constraints ->
+    var chosen = emptyList<Measurable>()
+    for ((index, option) in options.withIndex()) {
+        chosen = subcompose(index, option)
+        if (index == options.lastIndex || chosen.all { it.maxIntrinsicWidth(Constraints.Infinity) <= constraints.maxWidth }) break
+    }
+    val placeables = chosen.map { it.measure(constraints.copy(minWidth = 0)) }
+    layout(constraints.maxWidth, placeables.maxOfOrNull { it.height } ?: 0) { placeables.forEach { it.place(0, 0) } }
 }
