@@ -137,9 +137,18 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         return panel
     }()
-    /// The chat open in a field as the keyboard went away, and its line, so the next keyboard in that field opens it
-    /// again: dictating into a chat can open iikb and come back.
-    private static var keptChat: (field: String, chat: String?, text: String, keysUp: Bool)?
+    /// The chat open in a field, its line and the drafts begun in other chats, so the next keyboard in that field opens
+    /// it again as you left it: dictating into a chat can open iikb and come back. It's on disk, since iOS ends the
+    /// keyboard's process while it's away, as it does at its memory limit (177 MB on the Duo, Nov 9).
+    private struct KeptChat: Codable {
+        var field: String
+        var chat: String?
+        var text: String
+        var keysUp: Bool
+        var drafts: [String: String]
+    }
+    private static let keptChat = StoredFile<KeptChat>(
+        URL.applicationSupportDirectory.appending(path: "chat-kept.json"))
     private var engine = TypingEngine()
     private var typingLog = TypingLog()
     private let memoryStore = MemoryStore()
@@ -305,11 +314,7 @@ open class FullKeyboardViewController: UIInputViewController {
         engine.emojiHistory.app = hostApp
         loadSettings()
         if hasFullAccess { clipboard.catchUp() }
-        if hasFullAccess, let kept = Self.keptChat {
-            Self.keptChat = nil
-            syncWithDocument()
-            if kept.field == field { openChat(kept.text, at: kept.chat, keysUp: kept.keysUp) }
-        }
+        syncWithDocument()
         if observers.isEmpty {
             observers = [SettingsStore.observe { [weak self] in self?.settingsChanged() }]
             if hasFullAccess {
@@ -353,7 +358,7 @@ open class FullKeyboardViewController: UIInputViewController {
     override open func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         isShown = false
-        if let line, let field { Self.keptChat = (field, chats.open?.id, line.text, keysUp) }
+        keepChat()
         leaveChat()
         engine.endSession()
         keepDictations()
@@ -439,6 +444,13 @@ open class FullKeyboardViewController: UIInputViewController {
                 }
             }
             keepDictations()
+            if let field, let kept = Self.keptChat.read().value {
+                Self.keptChat.remove()
+                if hasFullAccess, kept.field == field {
+                    drafts = kept.drafts
+                    return openChat(kept.text, at: kept.chat, keysUp: kept.keysUp)
+                }
+            }
         }
         let known = engine.text.before.count
         let report = engine.documentChanged(document)
@@ -844,7 +856,16 @@ open class FullKeyboardViewController: UIInputViewController {
         engine.documentChanged(line)
         chats.reload()
         chats.start(at: chat)
+        keepChat()
         render()
+    }
+
+    /// Notes the open chat where the next keyboard finds it, as it opens, as it switches and as the keyboard goes away,
+    /// so even a keyboard iOS ends while it's up comes back to it.
+    private func keepChat() {
+        guard let line, let field else { return }
+        Self.keptChat.save(
+            KeptChat(field: field, chat: chats.open?.id, text: line.text, keysUp: keysUp, drafts: drafts))
     }
 
     /// Another chat from its pill, the line you'd begun kept with the chat you left and the one you'd begun in this chat
@@ -856,12 +877,14 @@ open class FullKeyboardViewController: UIInputViewController {
         line.insert(drafts.removeValue(forKey: chat.id) ?? "")
         chats.pick(chat)
         engine.documentChanged(line)
+        keepChat()
         render()
     }
 
     /// Back to the app's field, as the keyboard found it.
     private func closeChat() {
         guard line != nil else { return }
+        Self.keptChat.remove()
         leaveChat()
         syncWithDocument()
     }
@@ -889,8 +912,8 @@ open class FullKeyboardViewController: UIInputViewController {
     /// Stops a dictation in progress, so what was heard is typed. Otherwise starts one, even while the last is still
     /// being written: in place while the app keeps the microphone on, or by opening the app, since a keyboard can't use
     /// the microphone and iOS starts a recording only in an app in front. It opens the app only from a host it can
-    /// bring you back to, never from one that leaving would close. A chat puts its keys down for it, so the thread
-    /// keeps the screen while what you say lands in its box.
+    /// bring you back to, never from one that leaving would close. A chat keeps its keys as they were, up or down,
+    /// while what you say lands in its box.
     private func toggleVoice() {
         guard hasFullAccess else {
             notice = "Voice needs Allow Full Access in Settings › Apps › iikb › Keyboards"
@@ -900,7 +923,6 @@ open class FullKeyboardViewController: UIInputViewController {
         menuOpen = false
         Dictation.host = hostApp
         if dictation.listening { return Dictation.send(.finish, from: keyboard) }
-        if line != nil { keysUp = false }
         notice = nil
         micIsOn = Dictation.micIsOn
         if micIsOn { return Dictation.send(.start) }
