@@ -114,12 +114,12 @@ fun ShelfHead(title: String, glyph: String, color: Color, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(24.dp).background(color, RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
-            if (glyph == "gif") GifBadge(Color.White) else Glyph(glyph, Color.White, 14.dp)
+            if (glyph == "gif") GifBadge(Color.White) else Glyph(glyph, Color.White, Glyphs.square(12f).dp, weight = Glyphs.SEMIBOLD)
         }
         Spacer(Modifier.width(8.dp))
         Text(title, color = look.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.width(6.dp))
-        Glyph("chevron.right", look.secondary, 11.dp)
+        Glyph("chevron.right", look.secondary, Glyphs.square(11f).dp, weight = Glyphs.SEMIBOLD)
     }
 }
 

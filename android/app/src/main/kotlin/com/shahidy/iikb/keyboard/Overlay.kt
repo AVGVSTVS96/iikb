@@ -176,12 +176,12 @@ val LocalActions = staticCompositionLocalOf<Overlay.Actions> { error("no actions
 /** Shows what's held over the whole keyboard (`Peek`), or, given nothing, puts it away. */
 val LocalHold = staticCompositionLocalOf<(Held?) -> Unit> { error("no hold") }
 
-/** One of the keyboard's glyphs (`Glyphs`), a square `size` on a side. */
+/** One of the keyboard's glyphs (`Glyphs`), a square `size` on a side, at a weight of `Glyphs`'. */
 @Composable
-fun Glyph(name: String, color: Color, size: Dp, modifier: Modifier = Modifier) {
+fun Glyph(name: String, color: Color, size: Dp, modifier: Modifier = Modifier, weight: Float = Glyphs.REGULAR) {
     val paint = remember { Paint(Paint.ANTI_ALIAS_FLAG) }
     Canvas(modifier.size(size)) {
         paint.color = color.toArgb()
-        drawIntoCanvas { Glyphs.draw(it.nativeCanvas, name, center.x, center.y, this.size.minDimension, paint) }
+        drawIntoCanvas { Glyphs.draw(it.nativeCanvas, name, center.x, center.y, this.size.minDimension, paint, weight) }
     }
 }

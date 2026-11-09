@@ -61,7 +61,7 @@ fun StopRow() {
     val look = LocalColors.current
     LookRow(STOPS, picked, 62.dp, { settings.set("stopAnimation", it); picked = it }) { name ->
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Glyph(STOP_GLYPHS.getValue(name), if (name == picked) look.record else look.label, 22.dp)
+            Glyph(STOP_GLYPHS.getValue(name), if (name == picked) look.record else look.label, Glyphs.square(17f).dp, weight = Glyphs.MEDIUM)
         }
     }
 }

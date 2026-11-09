@@ -226,7 +226,7 @@ private fun Menu(actions: List<Held.Action>, close: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.padding(start = 26.dp).width(26.dp), contentAlignment = Alignment.Center) {
-                    Glyph(action.glyph, tint, 21.dp)
+                    Glyph(action.glyph, tint, Glyphs.square(17f).dp)
                 }
                 Spacer(Modifier.width(11.dp))
                 Text(action.title, color = tint, fontSize = 17.sp)
@@ -240,10 +240,10 @@ private val Colors.previewSecondary get() = if (dark) Color(0x99EBEBF5) else Col
 /** iOS's preview card: secondarySystemBackground. */
 private val Colors.preview get() = if (dark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
 /**
- * iOS's menu glass as it reads over the dimmed keyboard, and its hairline: nearly opaque, since iOS blurs what's under
- * its glass and nothing blurs it here, so the rows behind would show through its titles.
+ * iOS's menu glass as it reads over the dimmed keyboard, measured on its shots: opaque, since iOS blurs what's under its
+ * glass to a frost and nothing blurs it here, where the rows behind would show through its titles.
  */
-private val Colors.glass get() = if (dark) Color(0xF5353537) else Color(0xF5E6E6EA)
+private val Colors.glass get() = if (dark) Color(0xFF323233) else Color(0xFFDCDDE1)
 private val Colors.glassEdge get() = if (dark) Color(0x1FFFFFFF) else Color(0x14000000)
 private val Colors.destructive get() = if (dark) Color(0xFFFF453A) else Color(0xFFFF3B30)
 

@@ -6,7 +6,6 @@ import android.graphics.RectF
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.widget.OverScroller
-import androidx.core.graphics.ColorUtils
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -108,21 +107,17 @@ class EmojiPanel(private val view: KeyboardView, private val scroller: OverScrol
     private fun drawSearch(canvas: Canvas, frame: Frame, g: Geometry, typeface: android.graphics.Typeface) {
         val theme = frame.theme
         fill.color = theme.label
-        Glyphs.draw(canvas, "chevron.left", g.back.centerX(), g.back.centerY(), 22f, fill)
+        Glyphs.draw(canvas, "chevron.left", g.back.centerX(), g.back.centerY(), Glyphs.square(22f), fill)
         val radius = g.field.height() / 2
-        if (ColorUtils.calculateLuminance(theme.card) > 0.5) {
-            fill.color = theme.shadow
-            canvas.drawRoundRect(g.field.left, g.field.top + 1, g.field.right, g.field.bottom + 1, radius, radius, fill)
-        }
         fill.color = theme.searchField
         canvas.drawRoundRect(g.field, radius, radius, fill)
         fill.color = theme.candidate
-        Glyphs.draw(canvas, "magnifyingglass", g.field.left + 14 + 9, g.field.centerY(), 18f, fill)
+        Glyphs.draw(canvas, "magnifyingglass", g.field.left + 14 + 10, g.field.centerY(), Glyphs.square(17f), fill)
         text.typeface = typeface
         text.textSize = 17f
         val metrics = text.fontMetrics
         val baseline = g.field.centerY() - (metrics.ascent + metrics.descent) / 2
-        val start = g.field.left + 14 + 18 + 8
+        val start = g.field.left + 14 + 20 + 6
         if (query.isEmpty()) {
             text.color = theme.candidate
             canvas.drawText("Search emoji", start, baseline, text)
@@ -135,9 +130,9 @@ class EmojiPanel(private val view: KeyboardView, private val scroller: OverScrol
             fill.color = theme.prominent
             canvas.drawRect(caret - 1, g.field.centerY() - 11, caret + 1, g.field.centerY() + 11, fill)
             fill.color = theme.candidate
-            canvas.drawCircle(g.field.right - 12 - 10, g.field.centerY(), 10f, fill)
+            canvas.drawCircle(g.field.right - 12 - 14, g.field.centerY(), 10f, fill)
             fill.color = theme.searchField
-            Glyphs.draw(canvas, "xmark", g.field.right - 12 - 10, g.field.centerY(), 11f, fill)
+            Glyphs.draw(canvas, "xmark", g.field.right - 12 - 14, g.field.centerY(), Glyphs.square(11f), fill, Glyphs.BOLD)
         }
     }
 

@@ -158,7 +158,7 @@ fun Card(row: Clips.Row) {
             )
         }
         if (row.pinned) Box(Modifier.align(Alignment.TopEnd).size(14.dp), contentAlignment = Alignment.Center) {
-            Glyph("pin.fill", secondary, 17.dp)
+            Glyph("pin.fill", secondary, Glyphs.square(13f).dp)
         }
     }
 }
@@ -208,7 +208,7 @@ private fun clipTitle(row: Clips.Row, size: Float, label: Color, secondary: Colo
     }
     val inline = InlineTextContent(Placeholder(mark.sp, mark.sp, PlaceholderVerticalAlign.TextCenter)) {
         if (glyph != null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Glyph(glyph, secondary, (size * 1.1f).dp) }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Glyph(glyph, secondary, Glyphs.square(size * 0.8f).dp, weight = Glyphs.MEDIUM) }
         } else {
             Box(
                 Modifier.fillMaxSize().clip(CircleShape).background(Color(row.color!!))
@@ -244,7 +244,7 @@ private fun Badge(row: Clips.Row, compact: Boolean, modifier: Modifier, onHold: 
             SiteIcon(row.site, secondary)
         },
         "pin" to InlineTextContent(Placeholder((size * 0.75f).sp, (size * 0.75f).sp, PlaceholderVerticalAlign.TextCenter)) {
-            Glyph("pin.fill", secondary, (size * 0.95f).dp)
+            Glyph("pin.fill", secondary, Glyphs.square(size * 0.75f).dp)
         },
     )
     Pressable(modifier.widthIn(max = 200.dp), 100.dp, onClick, onHold) {
@@ -357,7 +357,7 @@ fun ClipRow(row: Clips.Row, onClick: () -> Unit, onHold: (Rect) -> Unit) {
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.width(16.dp), contentAlignment = Alignment.Center) {
-                if (row.pinned) Glyph("pin.fill", look.secondary, 16.dp)
+                if (row.pinned) Glyph("pin.fill", look.secondary, Glyphs.square(13f).dp)
             }
             Spacer(Modifier.width(6.dp))
             Box(Modifier.weight(1f)) {
@@ -468,10 +468,10 @@ private fun Checked(circle: Color, mark: Color) = Canvas(Modifier.size(19.dp)) {
     drawPath(path, mark, style = Stroke(2f * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
 }
 
-/** The search row's glyphs: its leading glyph's, the back chevron's and an accessory's box, sized as iOS's symbols. */
-val LEADING = 24.dp
-private val BACK = 30.dp
-private val ACCESSORY = 26.dp
+/** The search row's glyphs, as iOS's symbols' point sizes: its leading glyph, the back chevron and an accessory. */
+val LEADING = Glyphs.square(17f).dp
+private val BACK = Glyphs.square(22f).dp
+private val ACCESSORY = Glyphs.square(18f).dp
 private const val GAP = 6f
 private const val BADGE_PADDING = 10f
 

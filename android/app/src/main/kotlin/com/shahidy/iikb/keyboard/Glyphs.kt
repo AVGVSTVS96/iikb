@@ -37,6 +37,13 @@ object Glyphs {
     }
 
     /** `thickness` is a share of the weight's line, for a symbol whose inner lines SF draws thinner than its outline. */
+    /** Grown `by` about the square's center, for a glyph drawn smaller than SF's ink measures (pin.fill 16.2 × 24, envelope 24.5 × 17.7). */
+    private fun Glyph.scaled(by: Float): Glyph {
+        val matrix = Matrix().apply { setScale(by, by, 12f, 12f) }
+        parts.forEach { it.path.transform(matrix) }
+        return this
+    }
+
     private fun lines(data: String, thickness: Float = 1f) = glyph(data, Ink.LINES, thickness)
 
     private fun solid(data: String) = glyph(data, Ink.SOLID)
@@ -150,10 +157,10 @@ object Glyphs {
         "square.on.square" to lines(
             "M10 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z M16 5V4.8A1.8 1.8 0 0 0 14.2 3H5a2 2 0 0 0-2 2v9.2A1.8 1.8 0 0 0 4.8 16H5",
         ),
-        "pin.fill" to shape("M8 3h8l-1.2 6.5L18 13v1.5h-5.2V21h-1.6v-6.5H6V13l3.2-3.5Z"),
-        "pin" to lines(PIN),
-        "pin.slash" to lines("$PIN M3.5 3.5l17 17"),
-        "envelope" to lines("M4.5 5.5h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z M3 7l9 6.5L21 7"),
+        "pin.fill" to shape("M8 3h8l-1.2 6.5L18 13v1.5h-5.2V21h-1.6v-6.5H6V13l3.2-3.5Z").scaled(1.333f),
+        "pin" to lines(PIN).scaled(1.236f),
+        "pin.slash" to lines("$PIN M3.5 3.5l17 17").scaled(1.15f),
+        "envelope" to lines("M4.5 5.5h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z M3 7l9 6.5L21 7").scaled(1.2f),
         "phone" to lines(
             "M7.2 3.5h-2a1.8 1.8 0 0 0-1.8 2A15.5 15.5 0 0 0 18.5 20.6a1.8 1.8 0 0 0 2-1.8v-2l-4-1.6-2 2a12 12 0 0 1-6.2-6.2l2-2Z",
         ),
