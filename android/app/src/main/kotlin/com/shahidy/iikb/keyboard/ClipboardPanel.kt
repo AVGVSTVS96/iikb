@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,10 +22,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -41,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -83,7 +81,7 @@ private fun Overlay.Actions.pick(row: Clips.Row) = row.image?.let(::pasteImage) 
 fun ClipShelf(height: Dp) {
     val rows = rememberClips("")
     val actions = LocalActions.current
-    var shown by remember { mutableStateOf<Clips.Row?>(null) }
+    val hold = rememberClipHold()
     if (rows.isEmpty()) return Empty("Things you copy show up here.")
     val links = rows.filter { it.kind == "link" }
     val perColumn = floor(height.value / 26f).toInt().coerceAtLeast(1)
@@ -98,17 +96,16 @@ fun ClipShelf(height: Dp) {
                     Modifier.fillMaxHeight(),
                     verticalArrangement = if (column.size == 1) Arrangement.Center else Arrangement.SpaceBetween,
                 ) {
-                    column.forEach { Badge(it, badge, onHold = { shown = it }) { actions.pick(it) } }
+                    column.forEach { row -> Badge(row, badge, onHold = { hold(row, it) }) { actions.pick(row) } }
                 }
             }
             items(rows.filter { it.kind != "link" }) { row ->
-                Pressable(Modifier.width(card).fillMaxHeight(), 10.dp, { actions.pick(row) }, { shown = row }) {
+                Pressable(Modifier.width(card).fillMaxHeight(), 10.dp, { actions.pick(row) }, { hold(row, it) }) {
                     Card(row)
                 }
             }
         }
     }
-    shown?.let { ClipPreview(it) { shown = null } }
 }
 
 /** A clip as a card: its text or a square of its image, its length and age under it, and its pin in the corner. */
@@ -176,7 +173,7 @@ private fun KindMark(row: Clips.Row, size: Dp) {
 
 /** A link as a one-line badge: its site's mark on a white tile, the site's name, and how long ago. */
 @Composable
-private fun Badge(row: Clips.Row, height: Dp, onHold: () -> Unit, onClick: () -> Unit) {
+private fun Badge(row: Clips.Row, height: Dp, onHold: (Rect) -> Unit, onClick: () -> Unit) {
     val look = LocalColors.current
     Pressable(Modifier.height(height), height / 2, onClick, onHold) {
         Row(Modifier.padding(start = 5.dp, end = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -210,7 +207,7 @@ fun ClipboardPanel(state: Overlay.State) {
     val look = LocalColors.current
     val actions = LocalActions.current
     var linksOnly by remember { mutableStateOf(false) }
-    var shown by remember { mutableStateOf<Clips.Row?>(null) }
+    val hold = rememberClipHold()
     val rows = rememberClips(state.query)
     val links = rows.filter { it.kind == "link" }
     Column(
@@ -225,15 +222,15 @@ fun ClipboardPanel(state: Overlay.State) {
                     if (links.isNotEmpty() && !linksOnly) {
                         item {
                             LazyRow(Modifier.height(32.dp), horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
-                                items(links) { Badge(it, 30.dp, { shown = it }) { actions.pick(it) } }
+                                items(links) { row -> Badge(row, 30.dp, { hold(row, it) }) { actions.pick(row) } }
                             }
                         }
                     }
                     items(if (linksOnly) links else rows.filter { it.kind != "link" }) { row ->
                         if (linksOnly) {
-                            Badge(row, 30.dp, { shown = row }) { actions.pick(row) }
+                            Badge(row, 30.dp, { hold(row, it) }) { actions.pick(row) }
                         } else {
-                            ClipRow(row, { actions.pick(row) }) { shown = row }
+                            ClipRow(row, { actions.pick(row) }) { hold(row, it) }
                         }
                     }
                 }
@@ -250,11 +247,10 @@ fun ClipboardPanel(state: Overlay.State) {
             },
         )
     }
-    shown?.let { ClipPreview(it) { shown = null } }
 }
 
 @Composable
-fun ClipRow(row: Clips.Row, onClick: () -> Unit, onHold: () -> Unit) {
+fun ClipRow(row: Clips.Row, onClick: () -> Unit, onHold: (Rect) -> Unit) {
     val look = LocalColors.current
     Pressable(Modifier.fillMaxWidth().height(44.dp), 10.dp, onClick, onHold) {
         Row(Modifier.fillMaxWidth().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -334,66 +330,29 @@ fun SearchRow(
     }
 }
 
-/** All of a clip, held: its whole text, scrolling where it's long, or its image, with Paste, Pin or Unpin, and Delete. */
+/** A clip held: all of it, a link under its site, with Paste, Pin or Unpin, and Delete, as iOS's context menu has it. */
 @Composable
-private fun ClipPreview(row: Clips.Row, close: () -> Unit) {
+private fun rememberClipHold(): (Clips.Row, Rect) -> Unit {
+    val hold = LocalHold.current
     val actions = LocalActions.current
     val clips = Clips.of(LocalContext.current)
-    Preview(row, close) { button ->
-        Action(button, "doc.on.clipboard", "Paste") {
-            close()
-            actions.pick(row)
+    return { row, source ->
+        val shows = when {
+            row.image != null -> Held.Shows.Image.of(clips.file(row.image))
+            row.kind == "link" -> Held.Shows.Text(row.text, row)
+            else -> Held.Shows.Text(row.text)
         }
-        Action(button, "pin.fill", if (row.pinned) "Unpin" else "Pin") {
-            close()
-            clips.pin(row, !row.pinned)
-        }
-        Action(button, "trash", "Delete", Color(0xFFFF3B30)) {
-            close()
-            clips.remove(row)
-        }
-    }
-}
-
-/** A held item's whole text over its actions, the card sized to the text; a tap elsewhere puts it away. */
-@Composable
-fun Preview(row: Clips.Row, close: () -> Unit, buttons: @Composable RowScope.(Modifier) -> Unit) {
-    val look = LocalColors.current
-    Column(
-        Modifier.fillMaxSize().background(look.card)
-            .clickable(remember { MutableInteractionSource() }, indication = null, onClick = close).padding(10.dp),
-    ) {
-        Box(
-            Modifier.weight(1f, fill = row.image != null).fillMaxWidth().background(look.key, RoundedCornerShape(12.dp))
-                .clickable(remember { MutableInteractionSource() }, indication = null, onClick = close)
-                .padding(14.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (row.image != null) {
-                val context = LocalContext.current
-                AsyncImage(Clips.of(context).file(row.image), "Image", imageLoader(), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-            } else {
-                Text(
-                    row.text, color = look.label, fontSize = 16.sp, style = textStyle(row),
-                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                )
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
-            buttons(Modifier.weight(1f).fillMaxHeight())
-        }
-    }
-}
-
-@Composable
-fun Action(modifier: Modifier, glyph: String, title: String, tint: Color? = null, onClick: () -> Unit) {
-    val look = LocalColors.current
-    Pressable(modifier, 20.dp, onClick) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Glyph(glyph, tint ?: look.keyLabel, 16.dp)
-            Spacer(Modifier.width(6.dp))
-            Text(title, color = tint ?: look.keyLabel, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-        }
+        hold(
+            Held(
+                source, shows,
+                listOf(
+                    Held.Action("doc.on.clipboard", "Paste") { actions.pick(row) },
+                    Held.Action(if (row.pinned) "pin.slash" else "pin", if (row.pinned) "Unpin" else "Pin") {
+                        clips.pin(row, !row.pinned)
+                    },
+                    Held.Action("trash", "Delete", destructive = true) { clips.remove(row) },
+                ),
+            ),
+        )
     }
 }

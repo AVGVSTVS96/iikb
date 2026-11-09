@@ -197,6 +197,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         val root = FrameLayout(this)
         root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         root.addView(overlay.view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))
+        root.addView(overlay.peek, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))
         overlay.attach(root)
         window.window?.decorView?.let(overlay::attach)
         overlay.resume()
@@ -229,6 +230,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         leaveChat()
         menuOpen = false
         keysUp = false
+        overlay?.held = null
         Native.panel(handle, null)
         Native.endSession(handle)
         if (!incognito) save()
@@ -423,6 +425,8 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     private fun place(frame: Frame, menuShown: Boolean, fromMenu: Boolean, inPlace: Boolean, hasChats: Boolean) {
         val overlay = overlay ?: return
         val shown = menuShown || fromMenu
+        val panel = if (menuShown) null else frame.panel
+        if (!shown || panel != overlay.state?.panel) overlay.held = null
         overlay.view.visibility = if (shown) View.VISIBLE else View.GONE
         if (!shown) return
         val density = resources.displayMetrics.density
@@ -444,9 +448,9 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         }
         overlay.state = Overlay.State(
             Colors.of(frame.theme), bar.blockMinX.toFloat(), bar.blockMaxX.toFloat(),
-            if (menuShown) null else frame.panel, frame.query, keysUp, bar.field.toFloat(), frame.width.toFloat(),
+            panel, frame.query, keysUp, bar.field.toFloat(), frame.width.toFloat(),
             Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }, hasChats,
-            dictation.phase.name,
+            dictation.phase.name, bottom.toFloat(),
         )
     }
 
@@ -541,8 +545,8 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     }
 
     /**
-     * A held GIF lifts out and drops into the app's field as the GIF itself, no paste: a drag across windows, which
-     * the app takes or not, as an image drop on iOS. What's under the finger is the GIF's first frame.
+     * A held GIF, moved, lifts out and drops into the app's field as the GIF itself, no paste: a drag across windows,
+     * which the app takes or not, as iOS's GIF tile's drag. What's under the finger is the GIF's first frame.
      */
     override fun dragGif(gif: Gif, search: String) {
         feedback(Feedback.Kind.OTHER)

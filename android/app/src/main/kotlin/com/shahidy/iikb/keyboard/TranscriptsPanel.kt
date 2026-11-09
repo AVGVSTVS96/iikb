@@ -21,10 +21,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.shahidy.iikb.Transcripts
@@ -51,20 +51,19 @@ private fun rememberTranscripts(query: String): List<Clips.Row> {
 fun TranscriptShelf() {
     val rows = rememberTranscripts("")
     val actions = LocalActions.current
-    var shown by remember { mutableStateOf<Clips.Row?>(null) }
+    val hold = rememberTranscriptHold()
     if (rows.isEmpty()) return Empty("What you dictate shows up here.")
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val card = (maxWidth - ITEM_GAP * 2) / 3
         val row = rememberLazyListState()
         LazyRow(Modifier.fillMaxSize().fadeEnds(row), state = row, horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
             items(rows) { row ->
-                Pressable(Modifier.width(card).fillMaxHeight(), 10.dp, { actions.paste(row.text) }, { shown = row }) {
+                Pressable(Modifier.width(card).fillMaxHeight(), 10.dp, { actions.paste(row.text) }, { hold(row.text, it) }) {
                     Card(row)
                 }
             }
         }
     }
-    shown?.let { TranscriptPreview(it) { shown = null } }
 }
 
 /** The Transcripts panel: the clipboard's rows of what you dictated over its search row; a tap types one. */
@@ -72,7 +71,7 @@ fun TranscriptShelf() {
 fun TranscriptsPanel(state: Overlay.State) {
     val look = LocalColors.current
     val actions = LocalActions.current
-    var shown by remember { mutableStateOf<Clips.Row?>(null) }
+    val hold = rememberTranscriptHold()
     val rows = rememberTranscripts(state.query)
     Column(
         Modifier.fillMaxSize().background(look.card)
@@ -83,29 +82,33 @@ fun TranscriptsPanel(state: Overlay.State) {
                 rows.isEmpty() && state.query.isBlank() -> Empty("What you dictate shows up here.")
                 rows.isEmpty() -> Empty("No transcripts for “${state.query.trim()}”")
                 else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    items(rows) { row -> ClipRow(row, { actions.paste(row.text) }) { shown = row } }
+                    items(rows) { row -> ClipRow(row, { actions.paste(row.text) }) { hold(row.text, it) } }
                 }
             }
         }
         Spacer(Modifier.height(6.dp))
         SearchRow(state, { Glyph("text.bubble", look.secondary, 18.dp) }, "Search transcripts")
     }
-    shown?.let { TranscriptPreview(it) { shown = null } }
 }
 
-/** A transcript held: all of it, with Paste and Copy. */
+/** A transcript held: all of it, with Paste and Copy, as iOS's context menu has it. */
 @Composable
-private fun TranscriptPreview(row: Clips.Row, close: () -> Unit) {
+private fun rememberTranscriptHold(): (String, Rect) -> Unit {
+    val hold = LocalHold.current
     val actions = LocalActions.current
     val context = LocalContext.current
-    Preview(row, close) { button ->
-        Action(button, "doc.on.clipboard", "Paste") {
-            close()
-            actions.paste(row.text)
-        }
-        Action(button, "square.on.square", "Copy") {
-            close()
-            context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Transcript", row.text))
-        }
+    return { text, source ->
+        hold(
+            Held(
+                source, Held.Shows.Text(text),
+                listOf(
+                    Held.Action("doc.on.clipboard", "Paste") { actions.paste(text) },
+                    Held.Action("square.on.square", "Copy") {
+                        context.getSystemService(ClipboardManager::class.java)
+                            .setPrimaryClip(ClipData.newPlainText("Transcript", text))
+                    },
+                ),
+            ),
+        )
     }
 }

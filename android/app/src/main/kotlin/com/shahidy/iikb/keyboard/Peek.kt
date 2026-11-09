@@ -1,0 +1,258 @@
+package com.shahidy.iikb.keyboard
+
+import android.graphics.BitmapFactory
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import java.io.File
+import kotlin.math.min
+import kotlin.math.roundToInt
+
+/**
+ * A held clip, transcript or GIF, as iOS's context menu shows one (docs/design.md, "The menu"): all of it on a card
+ * over the whole keyboard, dimmed behind it, with its actions in a menu under it.
+ */
+class Held(
+    /** What was held, in the window's pixels: the card starts at its top, centered on it where there's room. */
+    val source: Rect,
+    val shows: Shows,
+    val actions: List<Action> = emptyList(),
+    /** A tap on the card, a GIF's copy, as iOS's preview action; without one the tap puts it away. */
+    val tapped: (() -> Unit)? = null,
+) {
+    sealed interface Shows {
+        /** Text in full; a link's `row` heads it with its site, as the clip's badge names it. */
+        data class Text(val text: String, val link: Clips.Row? = null) : Shows
+
+        /** An image at its own aspect ratio, `width` by `height`: a file, or a GIF's address. */
+        data class Image(val model: Any, val width: Int, val height: Int) : Shows {
+            companion object {
+                fun of(file: File): Image {
+                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeFile(file.path, bounds)
+                    return Image(file, bounds.outWidth.coerceAtLeast(1), bounds.outHeight.coerceAtLeast(1))
+                }
+            }
+        }
+    }
+
+    class Action(val glyph: String, val title: String, val destructive: Boolean = false, val run: () -> Unit)
+}
+
+/**
+ * What's held over the keyboard, from its top down to the system's bar under it (`bottom`), as UIKit fits a context
+ * menu in a keyboard's window: the card where the held item was, moved up so its menu fits under it, or, where the
+ * keyboard is too short for both, at the top, shortened so the whole menu shows. A tap anywhere else puts it away.
+ */
+@Composable
+fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
+    val look = LocalColors.current
+    val appear = remember(held) { Animatable(0f) }
+    LaunchedEffect(held) { appear.animateTo(1f, tween(220)) }
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { origin = it.positionInWindow() }) {
+        val density = androidx.compose.ui.platform.LocalDensity.current.density
+        val source = held.source.translate(-origin.x, -origin.y).let {
+            Rect(it.left / density, it.top / density, it.right / density, it.bottom / density)
+        }
+        val width = maxWidth.value
+        val height = (maxHeight - bottom).value
+        val menu = if (held.actions.isEmpty()) 0f else MENU_PAD * 2 + MENU_ROW * held.actions.size
+        Box(
+            Modifier.fillMaxWidth().height(height.dp).graphicsLayer { alpha = appear.value }
+                .background(Color.Black.copy(alpha = if (look.dark) 0.47f else 0.2f))
+                .clickable(remember { MutableInteractionSource() }, indication = null, onClick = close),
+        )
+        Layout(
+            content = {
+                Card(held, close)
+                if (menu > 0) Menu(held.actions, close)
+            },
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                alpha = appear.value
+                val scale = 0.94f + 0.06f * appear.value
+                scaleX = scale
+                scaleY = scale
+            },
+        ) { measurables, constraints ->
+            val px = { dp: Float -> (dp * density).roundToInt() }
+            val sides = width - SIDE * 2
+            val natural = measurables[0].maxIntrinsicHeight(px(sides)) / density
+            // Where the card and its whole menu don't fit, the margins tighten and then the card gives way, its text
+            // scrolling, so the menu's every action stays in view.
+            val tight = menu > 0 && TOP + min(natural, MAX_TEXT) + GAP + menu > height - MENU_FLOOR
+            val (top, gap) = if (tight) TIGHT_TOP to TIGHT_GAP else TOP to GAP
+            val floor = if (menu > 0) height - MENU_FLOOR else height - BOTTOM
+            val room = Rect(SIDE, top, width - SIDE, floor)
+            val cardRoom = maxOf(CARD_FLOOR, room.height - if (menu > 0) gap + menu else 0f)
+            val card = measurables[0].measure(Constraints(maxWidth = px(sides), maxHeight = px(min(cardRoom, MAX_TEXT))))
+            val cardHeight = card.height / density
+            val cardWidth = card.width / density
+            val wanted = cardHeight + if (menu > 0) gap + menu else 0f
+            val cardTop = source.top.coerceAtMost(room.bottom - wanted).coerceAtLeast(room.top)
+            val left = (source.center.x - cardWidth / 2).coerceIn(room.left, room.right - cardWidth)
+            val menuTop = cardTop + cardHeight + gap
+            val placed = measurables.getOrNull(1)?.measure(
+                Constraints.fixed(px(MENU_WIDTH), px(min(menu, room.bottom - menuTop).coerceAtLeast(0f))),
+            )
+            val menuLeft = when {
+                left <= room.left -> room.left
+                left + cardWidth >= room.right -> room.right - MENU_WIDTH
+                else -> (left + cardWidth / 2 - MENU_WIDTH / 2).coerceIn(room.left, room.right - MENU_WIDTH)
+            }
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                card.place(px(left), px(cardTop))
+                placed?.place(px(menuLeft), px(menuTop))
+            }
+        }
+    }
+}
+
+/** All of what's held: text on the card iOS's previews use, scrolling where it's long, or the image, a GIF playing. */
+@Composable
+private fun Card(held: Held, close: () -> Unit) {
+    val look = LocalColors.current
+    val shape = RoundedCornerShape(CORNER.dp)
+    val tap = Modifier.clickable(remember { MutableInteractionSource() }, indication = null) {
+        held.tapped?.invoke()
+        close()
+    }
+    when (val shows = held.shows) {
+        is Held.Shows.Text -> Box(
+            Modifier.widthIn(max = TEXT_WIDTH.dp).fillMaxWidth().clip(shape).background(look.preview).then(tap)
+                .verticalScroll(rememberScrollState()).padding(horizontal = 17.dp, vertical = 14.dp),
+        ) {
+            val link = shows.link
+            if (link != null) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier.size(19.dp).clip(RoundedCornerShape(4.dp)).background(Color.White)
+                                .border(0.5.dp, Color(0x22000000), RoundedCornerShape(4.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) { SiteIcon(link.site) }
+                        Spacer(Modifier.width(8.dp))
+                        Text(link.site ?: "", color = look.label, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(shows.text.trim(), color = look.secondary, fontSize = 15.sp, lineHeight = 20.sp)
+                }
+            } else {
+                Text(shows.text, color = look.label, fontSize = 17.sp, lineHeight = 22.sp)
+            }
+        }
+        is Held.Shows.Image -> AsyncImage(
+            shows.model, "Image", imageLoader(), contentScale = ContentScale.Fit,
+            modifier = Modifier.widthIn(max = IMAGE_WIDTH.dp).aspectRatio(shows.width.toFloat() / shows.height).clip(shape)
+                .background(Color.Black).then(tap),
+        )
+    }
+}
+
+/** The held item's actions, iOS's menu: a glyph and a title a row, Delete in red, on glass over the dimmed keys. */
+@Composable
+private fun Menu(actions: List<Held.Action>, close: () -> Unit) {
+    val look = LocalColors.current
+    val shape = RoundedCornerShape(MENU_CORNER.dp)
+    Column(
+        Modifier.shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
+            .background(look.glass, shape).border(0.5.dp, look.glassEdge, shape)
+            .clip(shape).verticalScroll(rememberScrollState()).padding(vertical = MENU_PAD.dp),
+    ) {
+        for (action in actions) {
+            val interaction = remember { MutableInteractionSource() }
+            val pressed by interaction.collectIsPressedAsState()
+            val tint = if (action.destructive) look.destructive else look.label
+            Row(
+                Modifier.fillMaxWidth().height(MENU_ROW.dp)
+                    .background(if (pressed) look.label.copy(alpha = 0.08f) else Color.Transparent)
+                    .clickable(interaction, indication = null) {
+                        close()
+                        action.run()
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.padding(start = 26.dp).width(26.dp), contentAlignment = Alignment.Center) {
+                    Glyph(action.glyph, tint, 21.dp)
+                }
+                Spacer(Modifier.width(11.dp))
+                Text(action.title, color = tint, fontSize = 17.sp)
+            }
+        }
+    }
+}
+
+/** iOS's preview card: secondarySystemBackground. */
+private val Colors.preview get() = if (dark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
+/**
+ * iOS's menu glass as it reads over the dimmed keyboard, and its hairline: nearly opaque, since iOS blurs what's under
+ * its glass and nothing blurs it here, so the rows behind would show through its titles.
+ */
+private val Colors.glass get() = if (dark) Color(0xF5353537) else Color(0xF5E6E6EA)
+private val Colors.glassEdge get() = if (dark) Color(0x1FFFFFFF) else Color(0x14000000)
+private val Colors.destructive get() = if (dark) Color(0xFFFF453A) else Color(0xFFFF3B30)
+
+/** Measured on iOS's shots of a held clip, transcript and GIF (iPhone 17), in points. */
+private const val SIDE = 16f
+private const val TOP = 32f
+private const val BOTTOM = 16f
+/** The menu runs nearer the bottom than a card alone. */
+private const val MENU_FLOOR = 2f
+private const val GAP = 17f
+private const val CORNER = 22f
+private const val TEXT_WIDTH = 340f
+private const val MAX_TEXT = 480f
+private const val IMAGE_WIDTH = 300f
+/** Where the card and its menu don't fit: the top margin and gap tighten, and the card keeps at least this. */
+private const val TIGHT_TOP = 12f
+private const val TIGHT_GAP = 10f
+private const val CARD_FLOOR = 60f
+private const val MENU_WIDTH = 250f
+private const val MENU_ROW = 42f
+private const val MENU_PAD = 10f
+private const val MENU_CORNER = 26f

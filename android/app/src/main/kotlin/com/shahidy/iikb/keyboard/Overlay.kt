@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -49,7 +50,7 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         fun appearance()
         /** A GIF tapped, found by `search`: it goes on the clipboard. */
         fun copyGif(gif: Gif, search: String)
-        /** A GIF held: it lifts out of the keyboard to drop into the app's field as the GIF itself. */
+        /** A held GIF moved: it lifts out of the keyboard to drop into the app's field as the GIF itself. */
         fun dragGif(gif: Gif, search: String)
         /** A chat picked on the menu's shelf: it opens, with its line in place of the app's field. */
         fun openChat(id: String)
@@ -73,12 +74,24 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         val chats: Boolean = false,
         /** The dictation's phase, `OFF`, `LISTENING` or `WRITING`, which a chat's own mic shows. */
         val mic: String = "OFF",
+        /** The system's bar under the keyboard, which a held item's dimming stops at. */
+        val bottom: Float = 0f,
     ) {
         /** The space from the keys block's right edge to the keyboard's, which a panel keeps clear as on the left. */
         val endInset get() = width - maxX
     }
 
     var state by mutableStateOf<State?>(null)
+
+    /** What's held, shown over the whole keyboard by [peek] (`Peek`), until a tap puts it away or the keyboard goes. */
+    var held: Held?
+        get() = holding
+        set(value) {
+            holding = value
+            (peek.parent as? View)?.let { root -> peek.layoutParams = peek.layoutParams.apply { height = root.height } }
+            peek.visibility = if (value == null) View.GONE else View.VISIBLE
+        }
+    private var holding by mutableStateOf<Held?>(null)
 
     val view = ComposeView(context).apply {
         setContent {
@@ -89,6 +102,7 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
                 LocalActions provides actions,
                 LocalGifs provides gifs,
                 LocalChats provides chats,
+                LocalHold provides { held = it },
             ) {
                 if (state.line != null) return@CompositionLocalProvider ChatPanel(state, state.line)
                 when (state.panel) {
@@ -98,6 +112,19 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
                     "transcripts" -> TranscriptsPanel(state)
                 }
             }
+        }
+    }
+
+    /** The layer over the whole keyboard, bar and keys too, that a held item shows on. */
+    val peek = ComposeView(context).apply {
+        visibility = View.GONE
+        setContent {
+            val held = holding ?: return@setContent
+            val state = state ?: return@setContent
+            CompositionLocalProvider(
+                LocalDensity provides Density(resources.displayMetrics.density, 1f),
+                LocalColors provides state.colors,
+            ) { Peek(held, state.bottom.dp) { this@Overlay.held = null } }
         }
     }
 
@@ -144,6 +171,8 @@ data class Colors(
 
 val LocalColors = staticCompositionLocalOf<Colors> { error("no look") }
 val LocalActions = staticCompositionLocalOf<Overlay.Actions> { error("no actions") }
+/** Shows what's held over the whole keyboard (`Peek`), or, given nothing, puts it away. */
+val LocalHold = staticCompositionLocalOf<(Held?) -> Unit> { error("no hold") }
 
 /** One of the keyboard's glyphs (`Glyphs`), a square `size` on a side. */
 @Composable

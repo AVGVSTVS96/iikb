@@ -24,11 +24,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -125,19 +130,24 @@ fun GifBadge(color: Color) {
     ) { Text("GIF", color = color, fontSize = 6.5.sp, fontWeight = FontWeight.Black, lineHeight = 6.5.sp) }
 }
 
-/** A capsule or card in the key fill, darker while pressed; a hold, where there is one, shows all of it. */
+/**
+ * A capsule or card in the key fill, darker while pressed; a hold, where there is one, shows all of it, given where
+ * this sits in the window.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Pressable(
-    modifier: Modifier, radius: Dp, onClick: () -> Unit, onHold: (() -> Unit)? = null,
+    modifier: Modifier, radius: Dp, onClick: () -> Unit, onHold: ((Rect) -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val look = LocalColors.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    var bounds by remember { mutableStateOf(Rect.Zero) }
     Box(
-        modifier.background(if (pressed) look.pill else look.key, RoundedCornerShape(radius))
-            .combinedClickable(interaction, indication = null, onClick = onClick, onLongClick = onHold),
+        modifier.onGloballyPositioned { bounds = it.boundsInWindow() }
+            .background(if (pressed) look.pill else look.key, RoundedCornerShape(radius))
+            .combinedClickable(interaction, indication = null, onClick = onClick, onLongClick = onHold?.let { { it(bounds) } }),
         contentAlignment = Alignment.CenterStart,
     ) { content() }
 }

@@ -436,11 +436,6 @@ def panel(name, search):
         item = find(lambda text: text.startswith("On my way, grabbing coffee"))
     x, y = center(item)
     touch("DOWN", x, y)
-    if name == "gif":
-        # A held GIF is dragged (to drop into an app), where iOS opens a preview, so it's shot mid-hold.
-        shot("gif-hold", 1.5)
-        touch("CANCEL", x, y)
-        return
     time.sleep(1.2)
     touch("UP", x, y)
     shot(f"{name}-hold", 1.5)

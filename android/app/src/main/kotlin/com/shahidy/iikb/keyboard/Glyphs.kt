@@ -14,6 +14,7 @@ object Glyphs {
     private class Glyph(val path: Path, val filled: Boolean)
 
     private const val ARROW = "M12 2.8 2.4 12.4h5.4v7.9h8.4v-7.9h5.4Z"
+    private const val PIN = "M8 3h8l-1.2 6.5L18 13v1.5H6V13l3.2-3.5Z M12 14.5V21"
     private const val CAPS = "M12 2.8 3.4 11h4.9v4.6h7.4V11h4.9Z M8.3 18.2h7.4v2.4h-7.4Z"
 
     private val glyphs: Map<String, Glyph> = mapOf(
@@ -103,6 +104,8 @@ object Glyphs {
             "M10 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z M16 5V4.8A1.8 1.8 0 0 0 14.2 3H5a2 2 0 0 0-2 2v9.2A1.8 1.8 0 0 0 4.8 16H5",
         ),
         "pin.fill" to fill("M8 3h8l-1.2 6.5L18 13v1.5h-5.2V21h-1.6v-6.5H6V13l3.2-3.5Z"),
+        "pin" to stroke(PIN),
+        "pin.slash" to stroke("$PIN M3.5 3.5l17 17"),
         "envelope" to stroke("M4.5 5.5h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z M3 7l9 6.5L21 7"),
         "phone" to stroke(
             "M7.2 3.5h-2a1.8 1.8 0 0 0-1.8 2A15.5 15.5 0 0 0 18.5 20.6a1.8 1.8 0 0 0 2-1.8v-2l-4-1.6-2 2a12 12 0 0 1-6.2-6.2l2-2Z",
