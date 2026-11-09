@@ -6,12 +6,14 @@ import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.text.InputType
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.shahidy.iikb.Settings
+import com.shahidy.iikb.Transcripts
 import com.shahidy.iikb.app.MainActivity
 import java.io.File
 import java.io.FileInputStream
@@ -94,8 +96,12 @@ class IikbService : InputMethodService(), KeyboardView.Actions {
         view.handle = handle
         this.view = view
         feedback = Feedback(this, view)
-        voice = Voice(this) { heard -> event { Native.dictated(handle, heard.encodeToByteArray(), null, null) } }
-        voice?.onChange = { view.micListening = it; view.invalidate() }
+        voice = Voice(this, ::dictated)
+        voice?.onChange = {
+            if (it) listened = SystemClock.elapsedRealtime()
+            view.micListening = it
+            view.invalidate()
+        }
         ViewCompat.setOnApplyWindowInsetsListener(view) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.tappableElement())
             bottom = bars.bottom / resources.displayMetrics.density.toDouble()
@@ -109,7 +115,8 @@ class IikbService : InputMethodService(), KeyboardView.Actions {
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         if (!restarting) leave()
-        Native.changeApp(handle, info.packageName?.encodeToByteArray())
+        app = info.packageName
+        Native.changeApp(handle, app?.encodeToByteArray())
         traits(info)
         place()
         field.forget()
@@ -217,6 +224,16 @@ class IikbService : InputMethodService(), KeyboardView.Actions {
         )
         incognito = info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0 || password
         if (incognito) save()
+    }
+
+    /** The app typed in, and when the mic last started listening, for a dictation's transcript. */
+    private var app: String? = null
+    private var listened = 0L
+
+    /** A finished dictation is kept in Transcripts, then typed. */
+    private fun dictated(heard: String) {
+        Transcripts.add(heard, (SystemClock.elapsedRealtime() - listened) / 1000.0, app, "Android speech")
+        event { Native.dictated(handle, heard.encodeToByteArray(), null, null) }
     }
 
     /** A field that asks for no learning (an incognito tab) or holds a password: what's typed there isn't kept. */
