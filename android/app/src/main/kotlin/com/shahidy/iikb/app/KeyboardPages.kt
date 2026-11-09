@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.shahidy.iikb.folds
 import com.shahidy.iikb.keyboard.Feedback
+import com.shahidy.iikb.keyboard.Chip
 import com.shahidy.iikb.keyboard.Frame
 import com.shahidy.iikb.keyboard.KeyboardView
 import com.shahidy.iikb.keyboard.Keycaps
@@ -114,11 +115,7 @@ private fun KeyboardPreview(onTap: () -> Unit) {
     val frame = remember(lines, dark) {
         Native.configure(handle, lines.encodeToByteArray())
         Native.place(handle, screen.first, screen.first, screen.second, context.folds(), 0.0, dark, false)
-        Native.suggestionJob(handle).takeIf { it != 0L }?.let { job ->
-            Native.runJob(job)
-            Native.finishJob(handle, job)
-        }
-        Frame.parse(Native.frame(handle))
+        Frame.parse(Native.frame(handle)).copy(chips = PREVIEW_SUGGESTIONS.map { Chip(it, "candidate") })
     }
     Box(
         Modifier.fillMaxWidth().clip(shape).background(Color(frame.theme.card)).border(BorderStroke(1.dp, palette.edge), shape)
@@ -147,6 +144,9 @@ private fun Scaled(width: Float, content: @Composable () -> Unit) {
         }
     }
 }
+
+/** The words iOS's `KeyboardPreviewView` shows in the preview's bar, the same whatever the engine would suggest. */
+private val PREVIEW_SUGGESTIONS = listOf("The", "I", "And")
 
 /** The preview only draws: its touches go to the box over it. */
 private object Still : KeyboardView.Actions {

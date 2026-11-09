@@ -6,6 +6,17 @@ import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -45,31 +56,54 @@ private fun ModelSettings() {
     LaunchedEffect(picked) { if (picked != VoiceModel.Model.ANDROID) model.prepare() }
     Section(
         "Voice Model",
-        "What you say is written down on this phone with a Parakeet and never leaves it. What you dictate while one gets " +
-            "ready is written once it’s ready, in the order you said it.",
+        "What you say is written down on this phone with a Parakeet and never leaves it. What you dictate while a " +
+            "Parakeet gets ready is written once it’s ready, in the order you said it.",
     ) {
         VoiceModel.Model.entries.forEachIndexed { index, choice ->
             if (index > 0) Divider()
-            val parakeet = choice != VoiceModel.Model.ANDROID && picked == choice
-            Line(choice.title, if (parakeet) status(state, choice, model) else choice.detail, onClick = { model.picked = choice }) {
+            val preparing = choice != VoiceModel.Model.ANDROID && picked == choice && state != VoiceModel.State.Ready
+            Row(
+                Modifier.clickable { model.picked = choice }.row(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    RowText(choice.title, choice.detail)
+                    if (preparing) Preparing(state) { model.prepare() }
+                }
                 Radio(picked == choice)
             }
-            if (parakeet && state is VoiceModel.State.Downloading) Progress(state.fraction)
-        }
-        if (picked != VoiceModel.Model.ANDROID && state is VoiceModel.State.Failed) {
-            Divider()
-            Link("Try Again") { model.prepare() }
         }
     }
 }
 
-private fun status(state: VoiceModel.State, choice: VoiceModel.Model, model: VoiceModel) = when (state) {
-    VoiceModel.State.Missing -> choice.detail
-    is VoiceModel.State.Downloading ->
-        "Downloading, ${(state.fraction * model.parakeetFiles.total / 1_000_000).toInt()} of ${model.parakeetFiles.total / 1_000_000} MB"
-    VoiceModel.State.Loading -> "Getting ready"
-    VoiceModel.State.Ready -> choice.detail.substringBefore(" Downloads once")
-    is VoiceModel.State.Failed -> "Couldn’t download: ${state.reason}"
+/** How far the picked Parakeet is from ready, under its detail, as iOS's: its download, a spinner, or what failed. */
+@Composable
+private fun Preparing(state: VoiceModel.State, retry: () -> Unit) {
+    val palette = palette()
+    val footnote = TextStyle(color = palette.secondary, fontSize = Type.footnote)
+    Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        when (state) {
+            is VoiceModel.State.Downloading -> {
+                Text("Downloading, ${(state.fraction * 100).roundToInt()}%", style = footnote)
+                Progress(state.fraction)
+            }
+            VoiceModel.State.Loading -> Row(
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                CircularProgressIndicator(Modifier.size(12.dp), color = palette.secondary, strokeWidth = 1.5.dp)
+                Text("Getting ready", style = footnote)
+            }
+            is VoiceModel.State.Failed -> {
+                Text("Couldn’t get it ready: ${state.reason}", style = footnote.copy(color = palette.red))
+                Text(
+                    "Try Again", style = footnote.copy(color = palette.accent, fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.clickable(onClick = retry),
+                )
+            }
+            else -> {}
+        }
+    }
 }
 
 /** Which microphone iikb dictates with when there are several, as iOS's `MicrophoneSettings`. */
@@ -116,7 +150,7 @@ private fun detail(choice: Microphones.Choice, away: Boolean) = when {
 @Composable
 private fun Progress(fraction: Double) {
     val palette = palette()
-    Box(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp).height(4.dp).clip(CircleShape).background(palette.edge)) {
+    Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(palette.edge)) {
         Box(Modifier.fillMaxWidth(fraction.toFloat().coerceIn(0f, 1f)).height(4.dp).clip(CircleShape).background(palette.accent))
     }
 }
