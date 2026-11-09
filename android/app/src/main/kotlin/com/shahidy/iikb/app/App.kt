@@ -103,7 +103,9 @@ fun App(
                 },
             ) { padding ->
                 val bottom = PaddingValues(bottom = padding.calculateBottomPadding())
-                CompositionLocalProvider(LocalTabBar provides bottom.calculateBottomPadding()) {
+                var kept by remember { mutableStateOf(0.dp) }
+                if (!WindowInsets.isImeVisible) kept = bottom.calculateBottomPadding()
+                CompositionLocalProvider(LocalTabBar provides bottom.calculateBottomPadding(), LocalTabBarUnderKeys provides kept) {
                 Box(Modifier.consumeWindowInsets(bottom).layerBackdrop(backdrop)) {
                     when {
                         page != null -> SettingsPage(page!!) { page = null }
@@ -191,6 +193,9 @@ fun glyph(data: String, width: Float = 1.7f): ImageVector = ImageVector.Builder(
 
 /** How tall the tab bar is over the page's foot, for the page to scroll its end out from under it. */
 val LocalTabBar = compositionLocalOf { 0.dp }
+
+/** How tall the tab bar is even while the keyboard hides it, for a page that lies under the keyboard. */
+val LocalTabBarUnderKeys = compositionLocalOf { 0.dp }
 
 /** How many times the app has come forward, so a page reads again what the keyboard kept while it was away. */
 val LocalResumes = compositionLocalOf { 0 }

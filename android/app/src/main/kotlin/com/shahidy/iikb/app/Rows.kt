@@ -134,19 +134,21 @@ val CardShape = RoundedCornerShape(22.dp)
 /**
  * A page: its title and buttons in a bar pinned at the top, as iOS's navigation bar holds them, over a column of
  * sections 28 apart that scrolls under it. A tab's page has a large title until it scrolls (iOS's `.inlineLarge`);
- * one opened from another (`onBack`) a small one.
+ * one opened from another (`onBack`) a small one. It makes room for the keyboard unless it lies `underKeyboard`, as
+ * Home does (iOS's `.ignoresSafeArea(.keyboard)`).
  */
 @Composable
 fun Page(
     title: String, onBack: (() -> Unit)? = null, pinned: (@Composable () -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {}, content: @Composable ColumnScope.() -> Unit,
+    actions: @Composable RowScope.() -> Unit = {}, underKeyboard: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     val scroll = rememberScrollState()
     val scrolled by remember { derivedStateOf { scroll.value > 0 } }
     Frame(title, onBack, scrolled, pinned, actions) { top ->
         Column(
-            Modifier.fillMaxSize().imePadding().verticalScroll(scroll)
-                .padding(start = 16.dp, end = 16.dp, top = top + 8.dp, bottom = 40.dp + LocalTabBar.current),
+            Modifier.fillMaxSize().let { if (underKeyboard) it else it.imePadding() }.verticalScroll(scroll)
+                .padding(start = 16.dp, end = 16.dp, top = top + 8.dp, bottom = 40.dp + if (underKeyboard) LocalTabBarUnderKeys.current else LocalTabBar.current),
             verticalArrangement = Arrangement.spacedBy(28.dp),
             content = content,
         )

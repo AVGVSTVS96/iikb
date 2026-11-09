@@ -77,6 +77,7 @@ fun Home(open: (String) -> Unit, show: (Tab, StatsSection?) -> Unit) {
             }
             MicSwitch()
         },
+        underKeyboard = true,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             TryField { typing = it }
