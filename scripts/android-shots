@@ -13,13 +13,7 @@ scratch=$root/build/android-shots
 rm -rf "$scratch"
 mkdir -p "$scratch/demo" "$out"
 
-# The made-up data is iOS's, so both show the same; until the shots branch lands, its maker is read from there.
-if [ -f "$root/shots/demo/make.py" ]; then
-  python3 -I "$root/shots/demo/make.py" "$scratch/demo"
-else
-  git -C "$root" show origin/shots:shots/demo/make.py >"$scratch/make.py"
-  python3 -I "$scratch/make.py" "$scratch/demo"
-fi
+python3 -I "$root/shots/demo/make.py" "$scratch/demo"
 
 work=$(ssh mac 'mktemp -d /tmp/iikb-shots.XXXXXX' </dev/null)
 trap 'ssh mac "rm -rf $work" </dev/null' EXIT
