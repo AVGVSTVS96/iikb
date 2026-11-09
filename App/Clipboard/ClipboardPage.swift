@@ -123,7 +123,7 @@ struct ClipboardPage: View {
             .frame(maxWidth: .infinity)
         }
         .scrollDismissesKeyboard(.interactively)
-        .defaultScrollAnchor(LaunchOptions.scrollAnchor)
+        .scrollsToEndAtLaunch()
         .safeAreaInset(edge: .top, spacing: 0) {
             if !items.isEmpty {
                 SectionPills(sections: [false, true], selection: $linksOnly) { $0 ? "Links" : "All" }

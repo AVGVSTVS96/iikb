@@ -36,7 +36,6 @@ enum LaunchOptions {
     }
     /// `-iikbScrollToEnd YES` opens every page scrolled to its end, for screenshots of what sits above the tab bar.
     static var scrollsToEnd: Bool { defaults.bool(forKey: "iikbScrollToEnd") }
-    static var scrollAnchor: UnitPoint { scrollsToEnd ? .bottom : .top }
     /// The tab and page the app opens on: `-iikbTab transcripts`, `-iikbTaps YES` for Stats' Taps, `-iikbStats dictation`
     /// for another of its pills, `-iikbSettings typing` for a settings page (`YES` for the list), as `SettingsPage.Page`
     /// names them.

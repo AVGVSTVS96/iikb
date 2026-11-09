@@ -449,8 +449,31 @@ struct Column<Content: View>: View {
             if fills { height = $0 }
         }
         .scrollDismissesKeyboard(.interactively)
-        .defaultScrollAnchor(LaunchOptions.scrollAnchor)
-        .defaultScrollAnchor(LaunchOptions.scrollsToEnd ? .bottom : nil, for: .sizeChanges)
+        .scrollsToEndAtLaunch()
+    }
+}
+
+extension View {
+    /// Under `-iikbScrollToEnd YES`, holds a scroll view at its end as its content settles, and at its top while
+    /// everything fits.
+    func scrollsToEndAtLaunch() -> some View { modifier(ScrollToEnd()) }
+}
+
+private struct ScrollToEnd: ViewModifier {
+    @State private var position = ScrollPosition(edge: .top)
+
+    func body(content: Content) -> some View {
+        if LaunchOptions.scrollsToEnd {
+            content
+                .scrollPosition($position)
+                .onScrollGeometryChange(for: CGFloat.self) {
+                    $0.contentSize.height + $0.contentInsets.top + $0.contentInsets.bottom - $0.containerSize.height
+                } action: { _, overflow in
+                    if overflow > 0 { position.scrollTo(edge: .bottom) }
+                }
+        } else {
+            content
+        }
     }
 }
 

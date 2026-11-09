@@ -143,6 +143,7 @@ struct HomeView: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
+        .scrollsToEndAtLaunch()
         .ignoresSafeArea(.keyboard)
         .onGeometryChange(for: [CGFloat].self) {
             [$0.size.height + $0.safeAreaInsets.bottom, $0.safeAreaInsets.bottom]

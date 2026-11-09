@@ -92,7 +92,7 @@ struct TranscriptsPage: View {
             .frame(maxWidth: .infinity)
         }
         .scrollDismissesKeyboard(.interactively)
-        .defaultScrollAnchor(LaunchOptions.scrollAnchor)
+        .scrollsToEndAtLaunch()
         .sensoryFeedback(.success, trigger: copies)
     }
 
