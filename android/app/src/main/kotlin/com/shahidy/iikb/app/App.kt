@@ -20,6 +20,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -55,6 +56,7 @@ fun App(
         lightColorScheme(background = palette.page, surface = palette.page, primary = palette.accent)
     }
     val store = remember { Store(settings) }
+    DisposableEffect(store) { onDispose(store.listen()) }
     val access = Access(setup, onEnable, onPick, onMicrophone)
     CompositionLocalProvider(LocalPalette provides palette, LocalStore provides store, LocalAccess provides access) {
         MaterialTheme(colorScheme = colors) {

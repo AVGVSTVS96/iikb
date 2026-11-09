@@ -15,10 +15,15 @@ val LocalStore = staticCompositionLocalOf<Store> { error("no store") }
  */
 class Store(val settings: Settings) {
     private var revision by mutableIntStateOf(0)
-    private val changed = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> revision++ }
 
-    init {
+    /**
+     * Hears each change until the returned stop runs. SharedPreferences holds its listeners weakly, so the stop, kept
+     * by the caller, is what keeps this one alive; a field read only in `init` is one R8 removes.
+     */
+    fun listen(): () -> Unit {
+        val changed = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> revision++ }
         settings.preferences.registerOnSharedPreferenceChangeListener(changed)
+        return { settings.preferences.unregisterOnSharedPreferenceChangeListener(changed) }
     }
 
     fun bool(name: String): Boolean {
