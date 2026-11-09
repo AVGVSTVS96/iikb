@@ -1,6 +1,8 @@
 package com.shahidy.iikb.app.stats
 
 import android.content.Context
+import java.io.File
+import kotlinx.serialization.json.Json
 import com.shahidy.iikb.Transcript
 import com.shahidy.iikb.TypingHour
 import java.time.Instant
@@ -117,16 +119,39 @@ class Activity(
 }
 
 /**
- * Apps by the name their launcher shows, which Android tells iikb for any app it can open (the manifest's `queries`);
- * any other by its package's last part.
+ * Apps by the name their launcher shows, which Android tells iikb for any app it can open (the manifest's `queries`),
+ * kept in the cache's `app-names.json` once seen, as iOS keeps the App Store's, so an app uninstalled since keeps its
+ * name; any other by its package's last part. The keyboard asks as it opens in an app (`learn`), while it's installed.
  */
 class AppNames(private val context: Context) {
-    private val names = mutableMapOf<String, String>()
+    fun of(app: String): String = label(context, app) ?: known(context)[app]
+        ?: app.substringAfterLast('.').replaceFirstChar(Char::uppercase)
 
-    fun of(app: String): String = names.getOrPut(app) {
-        runCatching {
+    companion object {
+        private var names: MutableMap<String, String>? = null
+
+        private fun file(context: Context) = File(context.cacheDir, "app-names.json")
+
+        @Synchronized
+        private fun known(context: Context): MutableMap<String, String> = names ?: runCatching {
+            Json.decodeFromString<Map<String, String>>(file(context).readText()).toMutableMap()
+        }.getOrElse { mutableMapOf() }.also { names = it }
+
+        private fun label(context: Context, app: String): String? = runCatching {
             val manager = context.packageManager
             manager.getApplicationLabel(manager.getApplicationInfo(app, 0)).toString()
-        }.getOrElse { app.substringAfterLast('.').replaceFirstChar(Char::uppercase) }
+        }.getOrNull()
+
+        /** Keeps `app`'s name while it's installed; written beside, then moved over, as `Vocabulary` saves. */
+        @Synchronized
+        fun learn(context: Context, app: String) {
+            val name = label(context, app) ?: return
+            val names = known(context)
+            if (names[app] == name) return
+            names[app] = name
+            val next = File(context.cacheDir, "app-names.json.next")
+            next.writeText(Json.encodeToString(names.toMap()))
+            next.renameTo(file(context))
+        }
     }
 }

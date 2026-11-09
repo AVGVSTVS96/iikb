@@ -259,6 +259,11 @@ def staged():
     write("computers.json", json.dumps([{"name": "Mac", "url": "http://mac.local:2593", "token": "t"}]))
     with open(os.path.join(demo, "mac.json")) as file:
         write("Mac.json", file.read())
+    # The names the keyboard keeps for the apps it opens in (AppNames), which the emulator doesn't have; Apple's own are
+    # stood in for by Android's (Keep for Notes), named by the emulator or by their package.
+    with open(os.path.join(demo, "app-names.json")) as file:
+        names = json.load(file)
+    write("app-names.json", json.dumps({APPS[app]: name for app, name in names.items() if app in APPS and not app.startswith("com.apple.")}))
     adb("shell", f"rm -rf {STAGE} && mkdir -p {STAGE}/recordings")
     adb("push", os.path.join(work, "stage") + "/.", STAGE)
     adb("push", os.path.join(demo, "recordings") + "/.", f"{STAGE}/recordings")
@@ -290,10 +295,11 @@ def seed(**settings):
         f"rm -f {DATA}/files/emoji-history.json {DATA}/files/*.next && "
         f"cp {STAGE}/transcripts.jsonl {STAGE}/typing.jsonl {STAGE}/typing-memory.json {STAGE}/clipboard.json {STAGE}/computers.json {DATA}/files/ && "
         f"rm -rf {DATA}/cache/computers && mkdir -p {DATA}/cache/computers && cp {STAGE}/Mac.json {DATA}/cache/computers/ && "
+        f"cp {STAGE}/app-names.json {DATA}/cache/ && rm -rf {DATA}/cache/site-icons && "
         f"rm -rf {DATA}/no_backup/recordings && mkdir -p {DATA}/no_backup/recordings && "
         f"cp {STAGE}/recordings/*.wav {DATA}/no_backup/recordings/ && "
         f"cp {STAGE}/settings.xml {DATA}/shared_prefs/settings.xml && "
-        f"chown -R {owner} {DATA}/files {DATA}/shared_prefs {DATA}/no_backup/recordings {DATA}/cache/computers && restorecon -R {DATA}"
+        f"chown -R {owner} {DATA}/files {DATA}/shared_prefs {DATA}/no_backup/recordings {DATA}/cache/computers {DATA}/cache/app-names.json && restorecon -R {DATA}"
     )
 
 

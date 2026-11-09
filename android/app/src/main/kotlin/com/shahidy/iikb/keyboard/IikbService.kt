@@ -27,6 +27,7 @@ import com.shahidy.iikb.Settings
 import com.shahidy.iikb.TypingStats
 import com.shahidy.iikb.app.MIC_ON
 import com.shahidy.iikb.app.MainActivity
+import com.shahidy.iikb.app.stats.AppNames
 import com.shahidy.iikb.folds
 import com.shahidy.iikb.voice.Dictation
 import kotlinx.serialization.json.Json
@@ -215,6 +216,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             learnLexicon()
         }
         app = info.packageName
+        app?.let { ranking.execute { AppNames.learn(this, it) } }
         chats.reload()
         Native.changeApp(handle, app?.encodeToByteArray())
         traits(info)
