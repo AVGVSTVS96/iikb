@@ -237,7 +237,7 @@ private fun Bar(title: String, onBack: (() -> Unit)?, scrolled: Boolean, actions
                 Box(
                     Modifier.layoutId("back").size(44.dp).glass(CircleShape).clip(CircleShape).clickable(onClick = onBack),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Symbols["chevron.left"], "Back", tint = palette.label, modifier = Modifier.size(20.dp)) }
+                ) { Icon(Symbols["chevron.left"], "Back", tint = palette.label, modifier = Modifier.size(30.dp)) }
             } else {
                 Text(
                     title, color = palette.label, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em,

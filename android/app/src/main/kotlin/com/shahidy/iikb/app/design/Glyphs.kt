@@ -8,8 +8,6 @@ object Glyphs {
     const val TAP = "M9 11V5a1.5 1.5 0 0 1 3 0v5 M12 10V9a1.5 1.5 0 0 1 3 0v1.5 M15 10.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7l-2.3-3.6a1.5 1.5 0 0 1 2.4-1.8L9 15"
     const val LINK = "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1 M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"
     const val SEARCH = "M11 4a7 7 0 1 1 0 14a7 7 0 1 1 0-14Z M16 16l4 4"
-    const val ENVELOPE = "M4 6h16v12H4Z M4 7l8 6 8-6"
-    const val PHONE = "M6 3h3l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2Z"
     const val XMARK = "M6 6l12 12 M18 6 6 18"
     const val CLEAR = "M12 3a9 9 0 1 1 0 18a9 9 0 1 1 0-18Z M9.5 9.5l5 5 M14.5 9.5l-5 5"
     const val CHEVRON = "M9 4.5l7.5 7.5L9 19.5"

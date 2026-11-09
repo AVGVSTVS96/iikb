@@ -38,6 +38,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -198,7 +208,10 @@ fun LegendDot(color: Color, name: String) {
 
 /** A small number over its label, in a card's grid of facts. */
 @Composable
-fun Stat(label: String, value: String, unit: String? = null, detail: String? = null, detailColor: Color? = null) {
+fun Stat(
+    label: String, value: String, unit: String? = null, detail: String? = null, detailColor: Color? = null,
+    trend: Format.Change? = null,
+) {
     val palette = palette()
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(label, color = palette.secondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -216,6 +229,44 @@ fun Stat(label: String, value: String, unit: String? = null, detail: String? = n
                 detail, color = detailColor ?: palette.secondary, fontSize = 12.sp, fontWeight = FontWeight.Medium,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
+        }
+        if (trend != null) {
+            val color = detailColor ?: palette.secondary
+            Text(
+                buildAnnotatedString {
+                    appendInlineContent("arrow")
+                    append(" ${trend.text}")
+                },
+                color = color, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                inlineContent = mapOf("arrow" to Arrow.inline(trend.up, color)),
+            )
+        }
+    }
+}
+
+/**
+ * SF Pro's ↑ and ↓ as iOS draws them in a line of text, measured off SF at 12 pt medium: Roboto's arrows are hairlines
+ * beside SF's, which match its digits' weight.
+ */
+private object Arrow {
+    fun inline(up: Boolean, color: Color) = InlineTextContent(
+        Placeholder(0.794.em, 0.73.em, PlaceholderVerticalAlign.AboveBaseline),
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val em = size.width / 0.794f
+            val x = 0.397f * em
+            val head = 0.2525f * em
+            fun y(above: Float) = if (up) size.height - above * em else size.height - (0.716f - above) * em
+            val tip = y(0.6825f)
+            val arms = if (up) tip + head else tip - head
+            val path = Path().apply {
+                moveTo(x, y(0.034f))
+                lineTo(x, tip)
+                moveTo(x - head, arms)
+                lineTo(x, tip)
+                lineTo(x + head, arms)
+            }
+            drawPath(path, color, style = Stroke(0.093f * em, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
     }
 }
@@ -466,12 +517,15 @@ object Format {
     /** <1% for a share under one percent, else a whole percent. */
     fun percent(share: Double) = if (share > 0 && share < 0.01) "<1%" else "${(share * 100).roundToInt()}%"
 
+    /** How much `now` is above or below `before`, after the arrow `Stat` draws for it. */
+    class Change(val text: String, val up: Boolean)
+
     /** How much `now` is above or below `before`, once there's a before. */
-    fun change(now: Double, before: Double): Pair<String, Boolean>? {
+    fun change(now: Double, before: Double): Change? {
         if (before <= 0) return null
         val share = now / before - 1
         if (abs(share) < 0.005) return null
-        return "${if (share > 0) "↑" else "↓"} ${(abs(share) * 100).roundToInt()}% vs previous" to (share > 0)
+        return Change("${(abs(share) * 100).roundToInt()}% vs previous", share > 0)
     }
 }
 

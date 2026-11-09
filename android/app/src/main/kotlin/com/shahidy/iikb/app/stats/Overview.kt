@@ -217,15 +217,15 @@ fun History(activity: Activity, kinds: List<Kind>) {
                     facts = listOf(
                         {
                             Stat(
-                                "Words · ${span}d", Format.short(now.words), detail = words?.first,
-                                detailColor = words?.let { if (it.second) up else down },
+                                "Words · ${span}d", Format.short(now.words), detailColor = words?.let { if (it.up) up else down },
+                                trend = words,
                             )
                         },
                         { Stat("Per active day", Format.short(if (active > 0) now.words / active else 0)) },
                         {
                             Stat(
                                 if (kinds.size > 1) "Overall speed" else "Speed", Format.speed(speed(now)), "wpm",
-                                pace?.first, pace?.let { if (it.second) up else down },
+                                detailColor = pace?.let { if (it.up) up else down }, trend = pace,
                             )
                         },
                         { Stat("Active days", "$active", "of $span") },

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -238,8 +239,8 @@ private fun Title(row: Clips.Row) {
     when (row.kind) {
         "email", "phone" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(
-                glyph(if (row.kind == "email") Glyphs.ENVELOPE else Glyphs.PHONE, 1.8f), null, tint = palette.secondary,
-                modifier = Modifier.size(20.dp),
+                Symbols[if (row.kind == "email") "envelope" else "phone"], null, tint = palette.secondary,
+                modifier = Modifier.size(20.dp).requiredSize(20.45.dp),
             )
             Text(plain, color = palette.label, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
