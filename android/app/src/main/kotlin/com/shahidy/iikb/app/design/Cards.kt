@@ -424,16 +424,13 @@ object Format {
     /** 1,234 below ten thousand, 12.3k and 1.2M above. */
     fun short(value: Int) = if (value >= 10_000) compact(value) else count(value)
 
-    /** 860, 8.6k, 21k: a chart's label, short at any size. */
-    fun compact(value: Int): String = when {
-        value >= 1_000_000 -> trim(value / 1_000_000.0) + "m"
-        value >= 1_000 -> trim(value / 1_000.0) + "k"
-        else -> value.toString()
-    }
-
-    private fun trim(value: Double): String {
-        val rounded = (value * 10).roundToInt() / 10.0
-        return if (rounded >= 100 || rounded == floor(rounded)) rounded.roundToInt().toString() else "%.1f".format(rounded)
+    /** 860, 8.6k, 21k, 136.7k: a chart's label, short at any size, as iOS's compact name with up to one decimal. */
+    fun compact(value: Int): String {
+        val (scale, suffix) = listOf(1e9 to "b", 1e6 to "m", 1e3 to "k").firstOrNull { (scale, _) ->
+            Math.rint(abs(value) / scale * 10) / 10 >= 1
+        } ?: return value.toString()
+        val rounded = Math.rint(value / scale * 10) / 10
+        return (if (rounded == floor(rounded)) rounded.toLong().toString() else "%.1f".format(rounded)) + suffix
     }
 
     /** The round number at or above `value` a chart's top reads: 1, 1.5, 2, 2.5, 3, 4, 5, 6 or 8 times a power of ten. */
@@ -446,18 +443,32 @@ object Format {
     fun speed(speed: Double?) = speed?.roundToInt()?.toString() ?: "–"
 
     /** 45s, 12m, 1h 5m. */
-    fun time(seconds: Double): String {
-        if (seconds < 60) return "${seconds.toInt()}s"
-        val minutes = (seconds / 60).roundToInt()
-        return if (minutes < 60) "${minutes}m" else "${minutes / 60}h" + (minutes % 60).let { if (it > 0) " ${it}m" else "" }
+    fun time(seconds: Double): String = if (seconds < 60) "${seconds.toInt()}s" else units(seconds, withSeconds = false)
+
+    /**
+     * A length in its two largest units, narrow, as iOS's `Duration` units style writes it: 2m 45s, 1h 5m. The last unit
+     * shown takes the rest, rounded half to even; a unit at zero is left out.
+     */
+    fun units(length: Double, withSeconds: Boolean = true): String {
+        val allowed = listOf(3600L to "h", 60L to "m", 1L to "s").let { if (withSeconds) it else it.dropLast(1) }
+        val first = allowed.indexOfFirst { length >= it.first }.let { if (it < 0) allowed.lastIndex else it }
+        val last = minOf(first + 1, allowed.lastIndex)
+        var rest = Math.rint(length / allowed[last].first).toLong() * allowed[last].first
+        val parts = allowed.take(last + 1).mapNotNull { (size, unit) ->
+            (rest / size).also { rest %= size }.takeIf { it > 0 }?.let { "$it$unit" }
+        }.take(2)
+        return parts.joinToString(" ").ifEmpty { "0${allowed[last].second}" }
     }
+
+    /** 0:05, 2:45: a recording's length, minutes and seconds, as iOS's `.time(pattern: .minuteSecond)`. */
+    fun clock(seconds: Double): String = Math.rint(seconds).toLong().let { "%d:%02d".format(it / 60, it % 60) }
 
     fun day(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("MMM d"))
 
     fun hour(hour: Int): String = LocalTime.of(hour, 0).format(DateTimeFormatter.ofPattern("h a"))
 
     /** <1% for a share under one percent, else a whole percent. */
-    fun percent(share: Double) = "${(share * 100).roundToInt()}%"
+    fun percent(share: Double) = if (share > 0 && share < 0.01) "<1%" else "${(share * 100).roundToInt()}%"
 
     /** How much `now` is above or below `before`, once there's a before. */
     fun change(now: Double, before: Double): Pair<String, Boolean>? {

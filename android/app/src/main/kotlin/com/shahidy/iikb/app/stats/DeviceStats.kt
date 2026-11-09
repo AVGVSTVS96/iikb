@@ -161,12 +161,11 @@ private fun Dictations(transcripts: List<Transcript>) {
     val lengths = all.map { it.seconds }.sorted()
     if (lengths.isEmpty()) return
     val model = all.mapNotNull { it.model }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
-    fun length(seconds: Double) = seconds.roundToInt().let { "%d:%02d".format(it / 60, it % 60) }
     StatCard(Glyphs.TEXT_BUBBLE, Tints.pink(palette), "Your dictations") {
         StatGrid(
             facts = listOfNotNull(
-                { Stat("Typical length", length(lengths[lengths.size / 2])) },
-                { Stat("Longest", length(lengths.last())) },
+                { Stat("Typical length", Format.clock(lengths[lengths.size / 2])) },
+                { Stat("Longest", Format.clock(lengths.last())) },
                 { Stat("Not typed", Format.count(all.count { !it.typed })) },
                 model?.let { { Stat("Written most by", it) } },
             ),

@@ -29,17 +29,34 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.app.design.Format
 import com.shahidy.iikb.app.palette
+import kotlin.math.abs
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.log10
+import kotlin.math.pow
 
 /** A label under a chart's column: centered on it, or starting at its leading edge. */
 class Tick(val index: Int, val text: String, val centered: Boolean = false)
+
+/**
+ * Round values from 0 to `top` for an axis, about `count` of them, a step of 1, 2 or 5 times a power of ten, as Swift
+ * Charts' automatic marks pick them.
+ */
+fun niceMarks(top: Double, count: Int): List<Double> {
+    if (top <= 0) return listOf(0.0)
+    val rough = top / count
+    val power = 10.0.pow(floor(log10(rough)))
+    val step = listOf(1.0, 2.0, 5.0, 10.0).map { it * power }.minBy { abs(ln(it / rough)) }
+    return (0..(top / step + 1e-9).toInt()).map { it * step }
+}
 
 /** A dashed line across a chart at `value`, with a note over its trailing end, or its leading one. */
 class Rule(val value: Double, val note: String? = null, val leading: Boolean = false)
 
 /**
  * Columns, each a stack of `values` (one per series, bottom first, painted by `fills`), or with `lines` the same values as a
- * line per series through the days that have one. The y axis reads 0, half and `top` at the trailing edge (`yLabel`), or
- * nothing without one. A tap picks a column and a horizontal drag moves the pick; a tap on the picked one lets it go.
+ * line per series through the days that have one. The y axis reads `marks` (0, half and `top`, on dashed lines, unless
+ * given) at the trailing edge (`yLabel`), or nothing without one. A tap picks a column and a horizontal drag moves the pick; a tap on the picked one lets it go.
  */
 @Composable
 fun ColumnChart(
@@ -50,7 +67,8 @@ fun ColumnChart(
     ticks: List<Tick>,
     ratio: Float = 0.7f,
     radius: Dp = 3.dp,
-    yLabel: ((Double) -> String)? = { Format.compact(it.toInt()) },
+    yLabel: ((Double) -> String)? = { Format.short(it.toInt()) },
+    marks: List<Double>? = null,
     lines: Boolean = false,
     lineColors: List<Color> = emptyList(),
     dim: (Int) -> Boolean = { false },
@@ -85,9 +103,9 @@ fun ColumnChart(
         val plot = size.width - axis
         val step = plot / count
         val y = { value: Double -> (bottom - (value / top).coerceIn(0.0, 1.0) * (bottom - 6.dp.toPx())).toFloat() }
-        val dash = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 3.dp.toPx()))
+        val dash = if (marks == null) PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 3.dp.toPx())) else null
         if (yLabel != null) {
-            for (mark in listOf(0.0, top / 2, top)) {
+            for (mark in marks ?: listOf(0.0, top / 2, top)) {
                 drawLine(palette.divider, Offset(0f, y(mark)), Offset(plot, y(mark)), 1.dp.toPx(), pathEffect = dash)
                 text(measurer, yLabel(mark), label, Offset(plot + 6.dp.toPx(), y(mark)), centerY = true)
             }

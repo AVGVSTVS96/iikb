@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.Transcript
@@ -167,8 +168,6 @@ fun title(day: LocalDate): String {
     }
 }
 
-private fun length(seconds: Double) = seconds.roundToInt().let { "%d:%02d".format(it / 60, it % 60) }
-
 private val clock = DateTimeFormatter.ofPattern("h:mm a")
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -181,7 +180,7 @@ private fun TranscriptRow(transcript: Transcript, names: AppNames, open: () -> U
     Box {
         Column(
             Modifier.fillMaxWidth().heightIn(min = 56.dp).combinedClickable(onLongClick = { menu = true }, onClick = open)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
             Text(
@@ -189,10 +188,18 @@ private fun TranscriptRow(transcript: Transcript, names: AppNames, open: () -> U
                 fontSize = 17.sp, lineHeight = 22.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             )
             val parts = listOfNotNull(
-                transcript.time().format(clock), length(transcript.seconds),
+                transcript.time().format(clock), Format.clock(transcript.seconds),
                 if (transcript.typed) transcript.app?.let(names::of) else if (transcript.recovered == true) "Recovered" else "Not typed",
             )
-            Text(parts.joinToString(" · "), color = palette.secondary, fontSize = 13.sp, maxLines = 1)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                parts.forEachIndexed { index, part ->
+                    if (index > 0) Text("·", color = palette.secondary, fontSize = 13.sp)
+                    Text(
+                        part, color = palette.secondary, maxLines = 1,
+                        style = TextStyle(fontSize = 13.sp, fontFeatureSettings = if (index == 1) "tnum" else null),
+                    )
+                }
+            }
         }
         DropdownMenu(menu, { menu = false }, containerColor = palette.card) {
             DropdownMenuItem({ Text("Copy", color = palette.label) }, {
@@ -279,7 +286,7 @@ private fun Summary(transcripts: List<Transcript>, openStats: () -> Unit) {
         Hairline()
         Figures(
             listOf(
-                Figure(Format.time(seconds), "talking"),
+                Figure(Format.units(seconds), "talking"),
                 Figure(if (seconds >= 1) "${(words / seconds * 60).roundToInt()} wpm" else "–", "pace"),
                 Figure(Format.count(days.last().second), "today"),
             ),
@@ -332,7 +339,7 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
             }
             TranscriptActions(transcript)
             Rows {
-                Line("Length", value = length(transcript.seconds))
+                Line("Length", value = Format.clock(transcript.seconds))
                 Divider()
                 Line("Words", value = Format.count(transcript.words))
                 if (transcript.seconds >= 1) {

@@ -382,11 +382,12 @@ private fun Misses(board: TapBoard, summary: TapSummary, selected: Int?, pick: (
     val typical = 1 - summary.onTarget
     val miss = Tints.miss(palette)
     StatCard(Glyphs.MISS, Tints.orange(palette), "Misses by key") {
+        val top = maxOf(shown.first().share, 0.05, typical * 1.4)
         ColumnChart(
             shown.map { listOf(it.share) }, listOf(Tints.gradient(miss.copy(alpha = 0.9f))),
-            maxOf(shown.first().share, 0.05, typical * 1.4), 132.dp,
+            top, 132.dp,
             shown.mapIndexed { index, it -> Tick(index, board.keys[it.key].name, true) }, ratio = 0.62f,
-            yLabel = { Format.percent(it) }, dim = { selected != null && shown[it].key != selected },
+            yLabel = { Format.percent(it) }, marks = niceMarks(top, 3), dim = { selected != null && shown[it].key != selected },
             rule = Rule(typical, "all letters ${Format.percent(typical)}"),
             onPick = { index -> index?.let { pick(shown[it].key) } },
         )
