@@ -361,13 +361,18 @@ private fun About() {
     }
     Section(
         footer = "iikb types like Apple’s keyboard and learns where your thumbs land. It’s open source, under the MIT license.",
-    ) { ActionRow("Source Code") { open("https://github.com/AVGVSTVS96/iikb") } }
+    ) { WebLink("Source Code") { open("https://github.com/AVGVSTVS96/iikb") } }
     Section {
-        ActionRow("Swipe typing powered by FUTO Swipe") {
+        WebLink("Swipe typing powered by FUTO Swipe") {
             open("https://github.com/AVGVSTVS96/iikb/blob/main/Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/SWIPE-LICENSE")
         }
     }
 }
+
+/** A link that leaves the app, in the accent with iOS's ↗ in gray at its right. */
+@Composable
+private fun WebLink(title: String, open: () -> Unit) =
+    Line(title, color = palette().accent, onClick = open) { Trailing("arrow.up.forward") }
 
 /** The app icon's mark: iikb flush left on the bottom margin of a black square, as brand/logo/gen.ts draws it. */
 @Composable
