@@ -36,7 +36,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
  * keys up), drawn with Compose over [KeyboardView], which keeps drawing the bar and keys around it. Sizes are dp, and
  * text is dp too, as the keys' is, whatever the phone's font size.
  */
-class Overlay(context: Context, private val actions: Actions) {
+class Overlay(context: Context, private val actions: Actions, private val gifs: Gifs?) {
     interface Actions {
         fun paste(text: String)
         fun open(panel: String)
@@ -44,13 +44,18 @@ class Overlay(context: Context, private val actions: Actions) {
         fun raiseKeys()
         fun clearSearch()
         fun settings()
+        /** A GIF tapped, found by `search`: it goes on the clipboard. */
+        fun copyGif(gif: Gif, search: String)
     }
 
     /** What's shown: the menu, or a panel by its KeyboardCore name, with its search and whether the keys are up. */
     data class State(
         val colors: Colors, val minX: Float, val maxX: Float, val panel: String?, val query: String, val keysUp: Boolean,
-        val field: Float, val results: Float,
-    )
+        val field: Float, val results: Float, val width: Float,
+    ) {
+        /** The space from the keys block's right edge to the keyboard's, which a panel keeps clear as on the left. */
+        val endInset get() = width - maxX
+    }
 
     var state by mutableStateOf<State?>(null)
 
@@ -61,10 +66,13 @@ class Overlay(context: Context, private val actions: Actions) {
                 LocalDensity provides Density(resources.displayMetrics.density, 1f),
                 LocalColors provides state.colors,
                 LocalActions provides actions,
+                LocalGifs provides gifs,
             ) {
                 when (state.panel) {
                     null -> Menu(state)
                     "clipboard" -> ClipboardPanel(state)
+                    "gif" -> GifPanel(state)
+                    "transcripts" -> TranscriptsPanel(state)
                 }
             }
         }

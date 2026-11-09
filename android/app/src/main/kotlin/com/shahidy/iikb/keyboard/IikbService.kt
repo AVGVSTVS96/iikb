@@ -36,6 +36,9 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
     private var view: KeyboardView? = null
     private var overlay: Overlay? = null
     private lateinit var clips: Clips
+    /** KLIPY's GIFs, where the build has its key. */
+    private var gifs: Gifs? = null
+    private var shownPanel: String? = null
     private lateinit var clipboard: ClipboardManager
     /** The bar's More menu is out, or was when a panel opened from it. */
     private var menuOpen = false
@@ -71,6 +74,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         clips = Clips.of(this)
         clipboard = getSystemService(ClipboardManager::class.java)
         clipboard.addPrimaryClipChangedListener(copied)
+        gifs = Klipy.of(this)?.let { Gifs(this, it) }
         configure()
     }
 
@@ -98,6 +102,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         settings.preferences.unregisterOnSharedPreferenceChangeListener(changed)
         clipboard.removePrimaryClipChangedListener(copied)
         overlay?.destroy()
+        gifs?.close()
         save()
         voice?.close()
         Native.destroy(handle)
@@ -144,7 +149,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
             place()
             insets
         }
-        val overlay = Overlay(this, this)
+        val overlay = Overlay(this, this, gifs)
         this.overlay = overlay
         overlay.view.visibility = View.GONE
         val root = FrameLayout(this)
@@ -292,17 +297,18 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         val view = view ?: return
         val frame = Frame.parse(Native.frame(handle))
         if (frame.panel == null) keysUp = false
-        val fromMenu = frame.panel != null && frame.panel != "emoji"
+        val fromMenu = frame.panel in setOf("clipboard", "transcripts", "gif")
         val menuShown = menuOpen && frame.panel == null
         val inPlace = fromMenu && !keysUp
         val metrics = resources.displayMetrics
         val normal = (frame.toolbar.height + frame.height).toFloat()
-        view.grown = if (menuShown || inPlace) maxOf(normal, metrics.heightPixels / metrics.density - ROOM_FOR_APP) else 0f
+        view.grown = if (menuShown) maxOf(normal, metrics.heightPixels / metrics.density - ROOM_FOR_APP) else 0f
         view.keysHidden = menuShown || inPlace
         view.barCovered = fromMenu && keysUp
         view.moreOn = menuShown || inPlace
         view.edits = if (menuShown) edits() else null
         view.frame = frame
+        follow(frame, menuShown)
         place(frame, menuShown, fromMenu, inPlace)
         rank()
     }
@@ -315,8 +321,10 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         if (!shown) return
         val density = resources.displayMetrics.density
         val bar = frame.toolbar
-        val (top, height) = if (menuShown || inPlace) {
+        val (top, height) = if (menuShown) {
             bar.height to (view!!.grown - bar.height - bottom)
+        } else if (inPlace) {
+            bar.height to frame.height - bottom
         } else {
             0.0 to bar.panelHeight
         }
@@ -331,7 +339,29 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         overlay.state = Overlay.State(
             Colors.of(frame.theme), bar.blockMinX.toFloat(), bar.blockMaxX.toFloat(),
             if (menuShown) null else frame.panel, frame.query, keysUp, bar.field.toFloat(), bar.results.toFloat(),
+            frame.width.toFloat(),
         )
+    }
+
+    /** The GIF feed follows the panel's search, and shows trending on the menu's shelf. */
+    private fun follow(frame: Frame, menuShown: Boolean) {
+        val gifs = gifs ?: return
+        if (frame.panel == "gif" && shownPanel != "gif") gifs.reset()
+        shownPanel = frame.panel
+        if (frame.panel == "gif") gifs.show(frame.query, app) else if (menuShown) gifs.show("", app)
+    }
+
+    override fun copyGif(gif: Gif, search: String) {
+        feedback(Feedback.Kind.INPUT)
+        gifs?.copy(gif, search, app) { said ->
+            if (menuOpen && view?.frame?.panel == null) {
+                menuOpen = false
+                view?.notice = said
+                render()
+            } else {
+                gifs?.notice = said
+            }
+        }
     }
 
     /** What Cut, Copy and Paste can do: cut and copy need a selection, paste text on the clipboard. */
@@ -371,6 +401,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
     // KeyboardView.Actions
 
     override fun down(index: Int, taps: Int) {
+        gifs?.notice = null
         val cap = view?.frame?.caps?.getOrNull(index)
         feedback(
             when (cap?.action) {

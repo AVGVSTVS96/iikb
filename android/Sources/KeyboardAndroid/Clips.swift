@@ -92,3 +92,15 @@ public func clipsRemove(env: Env, _: jclass, handle: jlong, text: jbyteArray?) {
 public func clipsClear(env: Env, _: jclass, handle: jlong) {
     _ = clips(handle).history.removeUnpinned()
 }
+
+/// How long ago, as a row shows it: "now", "5m", "2d" (`ClipboardHistory.age`).
+@_cdecl("Java_com_shahidy_iikb_keyboard_Native_age")
+public func age(env: Env, _: jclass, found: jdouble, now: jdouble) -> jbyteArray? {
+    env.array(ClipboardHistory.age(of: found, now: now))
+}
+
+/// A text's length as a row shows it: "48 words", "312 chars" (`ClipboardHistory.length`).
+@_cdecl("Java_com_shahidy_iikb_keyboard_Native_length")
+public func length(env: Env, _: jclass, text: jbyteArray?, words: jboolean) -> jbyteArray? {
+    env.array(ClipboardHistory.length(of: env.string(text) ?? "", in: words != 0 ? .words : .characters))
+}

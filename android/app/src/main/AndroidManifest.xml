@@ -3,6 +3,7 @@
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <queries>
         <intent>
@@ -41,5 +42,12 @@
                 android:name="android.view.im"
                 android:resource="@xml/method" />
         </service>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.shahidy.iikb.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/files" />
+        </provider>
     </application>
 </manifest>

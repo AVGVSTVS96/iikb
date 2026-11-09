@@ -81,6 +81,23 @@ abstract class SwiftLibrary : DefaultTask() {
     }
 }
 
+/** The API keys kept out of git (`Resources/Keys`), as assets; a build without KLIPY's has no GIFs. */
+abstract class Keys : DefaultTask() {
+    @get:InputFiles abstract val keys: ConfigurableFileCollection
+    @get:OutputDirectory abstract val output: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val out = output.get().asFile.apply { deleteRecursively(); mkdirs() }
+        keys.files.filter { it.isFile }.forEach { it.copyTo(out.resolve(it.name)) }
+    }
+}
+
+val keys = tasks.register<Keys>("keys") {
+    keys.from(fileTree(repo.resolve("Packages/KeyboardModules/Sources/FullKeyboard/Resources/Keys")) { include("*.key") })
+    output = layout.buildDirectory.dir("generated/keys")
+}
+
 val swift = tasks.register<SwiftLibrary>("swiftLibrary") {
     pkg = rootProject.layout.projectDirectory
     sources.from(
@@ -94,6 +111,7 @@ val swift = tasks.register<SwiftLibrary>("swiftLibrary") {
 androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(swift, SwiftLibrary::output)
+        variant.sources.assets?.addGeneratedSourceDirectory(keys, Keys::output)
         variant.sources.assets?.addStaticSourceDirectory(
             repo.resolve("Packages/KeyboardModules/Sources/KeyboardEnglish/Resources").path,
         )
@@ -108,4 +126,7 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.core)
     implementation(libs.serialization.json)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
+    implementation(libs.coil.network)
 }

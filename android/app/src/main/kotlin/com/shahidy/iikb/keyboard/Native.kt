@@ -63,4 +63,12 @@ object Native {
     @JvmStatic external fun clipsPin(handle: Long, text: ByteArray, pinned: Boolean)
     @JvmStatic external fun clipsRemove(handle: Long, text: ByteArray)
     @JvmStatic external fun clipsClear(handle: Long)
+    @JvmStatic external fun gifsCreate(recents: ByteArray?): Long
+    @JvmStatic external fun gifsWant(handle: Long, feed: ByteArray, app: ByteArray?): ByteArray?
+    @JvmStatic external fun gifsMore(handle: Long): ByteArray?
+    @JvmStatic external fun gifsReceived(handle: Long, request: ByteArray, found: ByteArray?, hasNext: Boolean): ByteArray?
+    @JvmStatic external fun gifsShown(handle: Long): ByteArray
+    @JvmStatic external fun gifsUse(handle: Long, slug: ByteArray, app: ByteArray?): ByteArray?
+    @JvmStatic external fun age(found: Double, now: Double): ByteArray
+    @JvmStatic external fun length(text: ByteArray, words: Boolean): ByteArray
 }

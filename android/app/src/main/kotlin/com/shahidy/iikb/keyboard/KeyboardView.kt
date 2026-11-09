@@ -95,6 +95,9 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     /** A panel drawn over the bar's place (`Overlay`), with the keys up under it. */
     var barCovered = false
 
+    /** A line in the bar's place until your next touch, like a GIF's "Copied" once the menu gives the keys back. */
+    var notice: String? = null
+
     var characterPreview = "attached"
     var micListening = false
 
@@ -199,6 +202,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             Glyphs.draw(canvas, glyph, box.midX.toFloat(), box.midY.toFloat(), (box.width * share).toFloat(), fill)
         }
         edits?.let { return drawEdits(canvas, frame, it) }
+        notice?.let { return drawNotice(canvas, frame, it) }
         if (!frame.showsSuggestions || frame.panel != null) return
         val showsEmoji = frame.emoji.isNotEmpty()
         val slots = if (showsEmoji && !bar.emojiBeside) bar.slots.dropLast(1) else bar.slots
@@ -236,16 +240,27 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         if (showsEmoji) drawEmoji(canvas, frame)
     }
 
+    private fun drawNotice(canvas: Canvas, frame: Frame, notice: String) {
+        val bar = frame.toolbar
+        text.typeface = painter.labels
+        text.textSize = 15f
+        text.color = frame.theme.candidate
+        val left = (bar.more?.let { it.x + it.width } ?: bar.blockMinX).toFloat()
+        val right = (bar.mic?.x ?: bar.blockMaxX).toFloat()
+        val label = ellipsize(notice, right - left - 16)
+        canvas.drawText(label, (left + right) / 2 - text.measureText(label) / 2, (bar.top + bar.bar / 2).toFloat() + 5f, text)
+    }
+
     /** Cut, Copy and Paste as three pills in the key fill, from the More button to the mic. */
     private fun editPills(frame: Frame): List<Pair<String, RectF>> {
         val bar = frame.toolbar
         val left = (bar.more?.let { it.x + it.width } ?: bar.blockMinX).toFloat() + 6
         val right = (bar.mic?.x ?: bar.blockMaxX).toFloat() - 6
-        val width = (right - left - 12) / 3
-        val height = bar.button.toFloat() + 4
+        val width = (right - left - 16) / 3
+        val height = minOf(bar.bar - 4, bar.button + 8).toFloat()
         val top = (bar.top + bar.bar / 2).toFloat() - height / 2
         return EDITS.mapIndexed { index, name ->
-            val x = left + index * (width + 6)
+            val x = left + index * (width + 8)
             name to RectF(x, top, x + width, top + height)
         }
     }
@@ -353,6 +368,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val frame = frame ?: return false
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) notice = null
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val pointer = event.actionIndex

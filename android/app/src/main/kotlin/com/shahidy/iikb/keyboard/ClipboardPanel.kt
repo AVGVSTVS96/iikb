@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,7 +35,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -98,7 +101,7 @@ fun ClipShelf(height: Dp) {
 }
 
 @Composable
-private fun Card(row: Clips.Row) {
+fun Card(row: Clips.Row) {
     val look = LocalColors.current
     Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp)) {
         Row(Modifier.weight(1f)) {
@@ -159,7 +162,7 @@ private fun Badge(row: Clips.Row, height: Dp, onHold: () -> Unit, onClick: () ->
 }
 
 @Composable
-private fun Empty(text: String) {
+fun Empty(text: String) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(text, color = LocalColors.current.secondary, fontSize = 15.sp)
     }
@@ -180,9 +183,9 @@ fun ClipboardPanel(state: Overlay.State) {
     val links = rows.filter { it.kind == "link" }
     Column(
         Modifier.fillMaxSize().background(look.card)
-            .padding(start = state.minX.dp, top = 3.dp, bottom = if (state.keysUp) 0.dp else 11.dp),
+            .padding(start = state.minX.dp, end = state.endInset.dp, top = 3.dp, bottom = if (state.keysUp) 0.dp else 11.dp),
     ) {
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(end = 4.dp)) {
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             when {
                 rows.isEmpty() && state.query.isBlank() -> Empty("Things you copy show up here.")
                 rows.isEmpty() -> Empty("No clips for “${state.query.trim()}”")
@@ -206,7 +209,7 @@ fun ClipboardPanel(state: Overlay.State) {
         }
         Spacer(Modifier.height(6.dp))
         SearchRow(
-            state, "doc.on.clipboard", if (linksOnly) "Search links" else "Search clipboard",
+            state, { Glyph("doc.on.clipboard", look.secondary, 18.dp) }, if (linksOnly) "Search links" else "Search clipboard",
             trailing = {
                 Box(
                     Modifier.padding(start = 4.dp).size(36.dp, state.field.dp).clickable { linksOnly = !linksOnly },
@@ -219,7 +222,7 @@ fun ClipboardPanel(state: Overlay.State) {
 }
 
 @Composable
-private fun ClipRow(row: Clips.Row, onClick: () -> Unit, onHold: () -> Unit) {
+fun ClipRow(row: Clips.Row, onClick: () -> Unit, onHold: () -> Unit) {
     val look = LocalColors.current
     Pressable(Modifier.fillMaxWidth().height(44.dp), 10.dp, onClick, onHold) {
         Row(Modifier.fillMaxWidth().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -245,39 +248,46 @@ private fun ClipRow(row: Clips.Row, onClick: () -> Unit, onHold: () -> Unit) {
  */
 @Composable
 fun SearchRow(
-    state: Overlay.State, glyph: String, placeholder: String, trailing: @Composable () -> Unit = {},
+    state: Overlay.State, leading: @Composable () -> Unit, placeholder: String, notice: String? = null,
+    trailing: @Composable () -> Unit = {},
 ) {
     val look = LocalColors.current
     val actions = LocalActions.current
     val height = state.field.dp
-    Row(Modifier.fillMaxWidth().height(height).padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(height), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(36.dp, height).clickable { actions.back() }, contentAlignment = Alignment.Center) {
             Glyph("chevron.left", look.label, 22.dp)
         }
         Spacer(Modifier.width(4.dp))
         Row(
             Modifier.weight(1f).height(height)
-                .then(if (look.dark) Modifier else Modifier.shadow(1.dp, CircleShape, ambientColor = look.shadow, spotColor = look.shadow))
+                .then(if (look.dark) Modifier else Modifier.drawBehind {
+                    drawRoundRect(look.shadow, Offset(0f, 1.dp.toPx()), size, CornerRadius(size.height / 2))
+                })
                 .background(look.field, CircleShape)
                 .clickable(remember { MutableInteractionSource() }, indication = null) { actions.raiseKeys() }
                 .padding(start = 14.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Glyph(glyph, look.secondary, 18.dp)
+            leading()
             Spacer(Modifier.width(8.dp))
             val caret = @Composable { if (state.keysUp) Box(Modifier.width(2.dp).height(22.dp).background(look.accent)) }
-            if (state.query.isEmpty()) {
+            if (notice != null) {
+                Text(notice, color = look.secondary, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f))
+            } else if (state.query.isEmpty()) {
                 caret()
                 Text(placeholder, color = look.secondary, fontSize = 17.sp, maxLines = 1, modifier = Modifier.weight(1f))
             } else {
-                Text(
-                    state.query, color = look.label, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                caret()
-                Spacer(Modifier.weight(1f))
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        state.query, color = look.label, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    caret()
+                }
             }
-            if (state.query.isNotEmpty()) {
+            if (state.query.isNotEmpty() && notice == null) {
                 Box(
                     Modifier.size(20.dp).background(look.secondary, CircleShape).clickable { actions.clearSearch() },
                     contentAlignment = Alignment.Center,
@@ -291,12 +301,34 @@ fun SearchRow(
 /** All of a clip, held: its whole text, scrolling where it's long, with Paste, Pin or Unpin, and Delete. */
 @Composable
 private fun ClipPreview(row: Clips.Row, close: () -> Unit) {
-    val look = LocalColors.current
     val actions = LocalActions.current
     val clips = Clips.of(LocalContext.current)
-    Column(Modifier.fillMaxSize().background(look.card).padding(10.dp)) {
+    Preview(row, close) { button ->
+        Action(button, "doc.on.clipboard", "Paste") {
+            close()
+            actions.paste(row.text)
+        }
+        Action(button, "pin.fill", if (row.pinned) "Unpin" else "Pin") {
+            close()
+            clips.pin(row.text, !row.pinned)
+        }
+        Action(button, "trash", "Delete", Color(0xFFFF3B30)) {
+            close()
+            clips.remove(row.text)
+        }
+    }
+}
+
+/** A held item's whole text over its actions, the card sized to the text; a tap elsewhere puts it away. */
+@Composable
+fun Preview(row: Clips.Row, close: () -> Unit, buttons: @Composable RowScope.(Modifier) -> Unit) {
+    val look = LocalColors.current
+    Column(
+        Modifier.fillMaxSize().background(look.card)
+            .clickable(remember { MutableInteractionSource() }, indication = null, onClick = close).padding(10.dp),
+    ) {
         Box(
-            Modifier.weight(1f).fillMaxWidth().background(look.key, RoundedCornerShape(12.dp))
+            Modifier.weight(1f, fill = false).fillMaxWidth().background(look.key, RoundedCornerShape(12.dp))
                 .clickable(remember { MutableInteractionSource() }, indication = null, onClick = close)
                 .padding(14.dp),
         ) {
@@ -307,25 +339,13 @@ private fun ClipPreview(row: Clips.Row, close: () -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
-            val button = Modifier.weight(1f).fillMaxHeight()
-            Action(button, "doc.on.clipboard", "Paste") {
-                close()
-                actions.paste(row.text)
-            }
-            Action(button, "pin.fill", if (row.pinned) "Unpin" else "Pin") {
-                close()
-                clips.pin(row.text, !row.pinned)
-            }
-            Action(button, "xmark", "Delete", Color(0xFFFF3B30)) {
-                close()
-                clips.remove(row.text)
-            }
+            buttons(Modifier.weight(1f).fillMaxHeight())
         }
     }
 }
 
 @Composable
-private fun Action(modifier: Modifier, glyph: String, title: String, tint: Color? = null, onClick: () -> Unit) {
+fun Action(modifier: Modifier, glyph: String, title: String, tint: Color? = null, onClick: () -> Unit) {
     val look = LocalColors.current
     Pressable(modifier, 20.dp, onClick) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {

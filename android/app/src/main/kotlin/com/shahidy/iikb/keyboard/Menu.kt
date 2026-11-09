@@ -43,7 +43,8 @@ import kotlin.math.floor
 fun Menu(state: Overlay.State) {
     val look = LocalColors.current
     val actions = LocalActions.current
-    val shelves = Shelf.entries
+    val gifs = LocalGifs.current
+    val shelves = Shelf.entries.filter { it != Shelf.GIFS || gifs != null }
     BoxWithConstraints(Modifier.fillMaxSize().background(look.card)) {
         val count = shelves.size
         val room = maxHeight.value - HEAD - GAP * (count + 1) - (HEAD + HEAD_GAP) * count
@@ -58,6 +59,8 @@ fun Menu(state: Overlay.State) {
                 Box(Modifier.fillMaxWidth().height(row)) {
                     when (shelf) {
                         Shelf.CLIPBOARD -> ClipShelf(row)
+                        Shelf.TRANSCRIPTS -> TranscriptShelf()
+                        Shelf.GIFS -> GifShelf(row)
                     }
                 }
                 Spacer(Modifier.height(GAP.dp))
@@ -73,6 +76,8 @@ private const val HEAD_GAP = 6f
 /** The menu's shelves, each with the color Home's card for it has. */
 enum class Shelf(val title: String, val panel: String, val glyph: String, val color: Color) {
     CLIPBOARD("Clipboard", "clipboard", "doc.on.clipboard", Color(0xFFFF9500)),
+    TRANSCRIPTS("Transcripts", "transcripts", "text.bubble", Color(0xFFFF2D55)),
+    GIFS("GIFs", "gif", "photo", Color(0xFFAF52DE)),
 }
 
 /** A shelf's name: its glyph on a colored tile, then the name and a chevron; a tap opens its panel. */
