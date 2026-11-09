@@ -37,6 +37,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -64,7 +65,7 @@ import com.shahidy.iikb.app.transcripts.TranscriptsPage
 @Composable
 fun App(
     settings: Settings, setup: Setup, startPage: String?, onEnable: () -> Unit, onPick: () -> Unit,
-    onMicrophone: () -> Unit,
+    onMicrophone: () -> Unit, added: AddedComputer? = null,
 ) {
     val dark = isSystemInDarkTheme()
     val palette = if (dark) Palette.dark else Palette.light
@@ -81,6 +82,13 @@ fun App(
             var page by rememberSaveable { mutableStateOf(startPage?.takeIf { it != MainActivity.VOICE }) }
             var tab by rememberSaveable { mutableIntStateOf(if (page != null) Tab.SETTINGS.ordinal else 0) }
             var stats by rememberSaveable { mutableStateOf(StatsSection.OVERVIEW) }
+            var statsComputer by rememberSaveable { mutableStateOf<String?>(null) }
+            LaunchedEffect(added) {
+                added ?: return@LaunchedEffect
+                statsComputer = added.name
+                tab = Tab.STATS.ordinal
+                page = null
+            }
             BackHandler(enabled = page != null) { page = null }
             val backdrop = rememberLayerBackdrop()
             Scaffold(
@@ -114,7 +122,7 @@ fun App(
                                 tab = Tab.STATS.ordinal
                             }
                             Tab.CLIPBOARD -> ClipboardPage()
-                            Tab.STATS -> StatsPage(stats) { stats = it }
+                            Tab.STATS -> StatsPage(stats, { stats = it }, statsComputer) { statsComputer = it }
                             Tab.SETTINGS -> SettingsList { page = it }
                         }
                     }
@@ -124,6 +132,9 @@ fun App(
         }
     }
 }
+
+/** A computer a link just added, for Stats to show; each link its own, so the same computer linked again shows again. */
+class AddedComputer(val name: String)
 
 /** The five tabs, by the SF Symbols iOS's tab bar fills (house, waveform, list.clipboard, chart.bar.xaxis, gearshape). */
 enum class Tab(val title: String, val symbol: String) {

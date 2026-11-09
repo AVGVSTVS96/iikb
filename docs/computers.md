@@ -48,3 +48,9 @@ The address is `https`, or `http` on the local network (`.local`), as for source
 The computers you add are in the app's `Application Support/computers.json`, so the backup keeps them. Stats reads each
 one as it comes forward and keeps its last answer in `Caches/computers/`, so a computer shows as it last was while it's
 asleep or out of reach. The menu's Forget removes one.
+
+## On Android
+
+The same: the computers you added are in the app's `files/computers.json`, which Android's Auto Backup keeps, and each
+one's last answer is in `cache/computers/`. Stats reads them each time it comes forward. Android's camera may only show
+the QR code's link rather than open it, so paste it into Stats › Add Computer.

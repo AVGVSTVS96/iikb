@@ -52,7 +52,10 @@ import com.shahidy.iikb.app.Palette
 import com.shahidy.iikb.app.glyph
 import com.shahidy.iikb.app.palette
 import java.text.NumberFormat
+import android.text.format.DateUtils
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
@@ -449,6 +452,20 @@ object Format {
     fun clock(seconds: Double): String = Math.rint(seconds).toLong().let { "%d:%02d".format(it / 60, it % 60) }
 
     fun day(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("MMM d"))
+
+    /** A time, with its day unless it's today's: "2:23 PM", "Nov 8, 2:23 PM". */
+    fun moment(time: Instant): String {
+        val local = time.atZone(ZoneId.systemDefault())
+        val today = local.toLocalDate() == LocalDate.now()
+        return local.format(DateTimeFormatter.ofPattern(if (today) "h:mm a" else "MMM d, h:mm a"))
+    }
+
+    /** How long ago, as iOS's named relative dates say it: "now", "8 minutes ago", "yesterday". */
+    fun ago(time: Instant): String {
+        val now = System.currentTimeMillis()
+        val then = time.toEpochMilli()
+        return if (now - then < 60_000) "now" else DateUtils.getRelativeTimeSpanString(then, now, DateUtils.MINUTE_IN_MILLIS).toString()
+    }
 
     fun hour(hour: Int): String = LocalTime.of(hour, 0).format(DateTimeFormatter.ofPattern("h a"))
 

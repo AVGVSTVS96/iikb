@@ -47,6 +47,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="iikb" android:host="extension" />
                 <data android:host="source" />
+                <data android:host="computer" />
             </intent-filter>
         </activity>
 

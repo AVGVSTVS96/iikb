@@ -202,6 +202,27 @@ def tap_text(match, settle=1.5, last=False):
     tap(*center(find(match, last=last)), settle)
 
 
+def tap_described(description, settle=1.5):
+    """Taps the node a screen reader names `description`, for a button that's only a glyph."""
+    end = time.time() + 6
+    while True:
+        hits = [bounds for _, desc, bounds in nodes() if desc == description]
+        if hits:
+            return tap(*center(hits[0]), settle)
+        if time.time() > end:
+            raise RuntimeError(f"nothing on screen is described as {description}")
+        time.sleep(0.5)
+
+
+def computer(section=None):
+    """Stats on the Mac, picked from the device menu, at `section`."""
+    tab("Stats")
+    tap_described("Phone")
+    tap_text("Mac")
+    if section:
+        tap_text(section)
+
+
 # The made-up data, as Android's iikb keeps it: dates since 1970, Android's packages, the touch model inside the
 # keyboard's memory, and the clipboard's history without iOS's store around it.
 def staged():
@@ -234,6 +255,10 @@ def staged():
     write("typing-memory.json", json.dumps(memory, separators=(",", ":")))
     with open(os.path.join(demo, "clipboard.json")) as file:
         write("clipboard.json", json.dumps(json.load(file)["history"], separators=(",", ":")))
+    # A Mac, as Stats keeps one you added: the list, and Keystroke's file as it last answered (scripts/sim fill's).
+    write("computers.json", json.dumps([{"name": "Mac", "url": "http://mac.local:2593", "token": "t"}]))
+    with open(os.path.join(demo, "mac.json")) as file:
+        write("Mac.json", file.read())
     adb("shell", f"rm -rf {STAGE} && mkdir -p {STAGE}/recordings")
     adb("push", os.path.join(work, "stage") + "/.", STAGE)
     adb("push", os.path.join(demo, "recordings") + "/.", f"{STAGE}/recordings")
@@ -263,11 +288,12 @@ def seed(**settings):
     owner = sh(f"stat -c %u:%g {DATA}").strip()
     sh(
         f"rm -f {DATA}/files/emoji-history.json {DATA}/files/*.next && "
-        f"cp {STAGE}/transcripts.jsonl {STAGE}/typing.jsonl {STAGE}/typing-memory.json {STAGE}/clipboard.json {DATA}/files/ && "
+        f"cp {STAGE}/transcripts.jsonl {STAGE}/typing.jsonl {STAGE}/typing-memory.json {STAGE}/clipboard.json {STAGE}/computers.json {DATA}/files/ && "
+        f"rm -rf {DATA}/cache/computers && mkdir -p {DATA}/cache/computers && cp {STAGE}/Mac.json {DATA}/cache/computers/ && "
         f"rm -rf {DATA}/no_backup/recordings && mkdir -p {DATA}/no_backup/recordings && "
         f"cp {STAGE}/recordings/*.wav {DATA}/no_backup/recordings/ && "
         f"cp {STAGE}/settings.xml {DATA}/shared_prefs/settings.xml && "
-        f"chown -R {owner} {DATA}/files {DATA}/shared_prefs {DATA}/no_backup/recordings && restorecon -R {DATA}"
+        f"chown -R {owner} {DATA}/files {DATA}/shared_prefs {DATA}/no_backup/recordings {DATA}/cache/computers && restorecon -R {DATA}"
     )
 
 
@@ -506,6 +532,10 @@ PAGES_ALL = [
     ("overview", lambda: tab("Stats")),
     ("stats", lambda: (tab("Stats"), tap_text("Typing"))),
     ("stats-dictation", lambda: (tab("Stats"), tap_text("Dictation"))),
+    ("overview-mac", lambda: computer()),
+    ("stats-mac", lambda: computer("Typing")),
+    ("stats-mac-dictation", lambda: computer("Dictation")),
+    ("add-computer", lambda: (tab("Stats"), tap_text("Typing"), tap_described("Phone"), tap_text("Add Computer…"))),
     ("taps", lambda: (tab("Stats"), tap_text("Taps"))),
     ("taps-aim", lambda: (tab("Stats"), tap_text("Taps"), tap_text("Aim"), taps_key("e"))),
     ("sources", "sources"),
@@ -752,6 +782,7 @@ def main():
             adb("reverse", "--remove", f"tcp:{port}")
         sh(f"am force-stop {PACKAGE}")
         owner = sh(f"stat -c %u:%g {DATA}").strip()
+        sh(f"rm -rf {DATA}/cache/computers")
         sh(f"[ -d {backup}/files ] && rm -rf {DATA}/files {DATA}/shared_prefs && cp -a {backup}/files {backup}/shared_prefs {DATA}/ && "
            f"chown -R {owner} {DATA}/files {DATA}/shared_prefs && rm -rf {DATA}/no_backup/recordings && "
            f"{{ [ ! -d {backup}/recordings ] || mv {backup}/recordings {DATA}/no_backup/recordings; }} && restorecon -R {DATA} && rm -rf {backup} {STAGE}")

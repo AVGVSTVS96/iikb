@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -67,13 +68,13 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * Everything the phone wrote, typed and said together, in typing's blue and dictation's pink: today, words or speed a
+ * Everything one device wrote, typed and said together, in typing's blue and dictation's pink: today, words or speed a
  * day over 7, 30 or 90 days, your records, the hours and speeds you write at, where your words went, the past year and
  * all of it.
  */
 @Composable
-fun Overview(activity: Activity) {
-    Today(activity)
+fun Overview(activity: Activity, computer: String?) {
+    Today(activity, computer)
     History(activity, listOf(Kind.TYPED, Kind.SAID))
     Records(activity)
     Rhythm(activity, listOf(Kind.TYPED, Kind.SAID))
@@ -90,13 +91,22 @@ private val today get() = LocalDate.now()
 
 /** Today's words, large, split typed and said, then today's typing speed, time, accuracy and keys. */
 @Composable
-private fun Today(activity: Activity) {
+private fun Today(activity: Activity, computer: String?) {
     val palette = palette()
     val typed = activity.channel(Kind.TYPED, today)
     val said = activity.channel(Kind.SAID, today)
     val words = typed.words + said.words
+    val asOf = computer?.let { Computers.of(LocalContext.current).asOf[it] }
     StatCard(
         "calendar", Hues.orange.on(palette), "Today", today.format(DateTimeFormatter.ofPattern("EEEE, MMM d")),
+        accessory = asOf?.let {
+            {
+                Text(
+                    Format.ago(it), color = palette.secondary, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clip(CircleShape).background(palette.pressed).padding(horizontal = 8.dp, vertical = 3.dp),
+                )
+            }
+        },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

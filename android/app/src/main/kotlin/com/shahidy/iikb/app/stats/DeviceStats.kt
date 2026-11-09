@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.Transcript
@@ -41,27 +42,34 @@ import kotlin.math.roundToInt
  * into, and the past year.
  */
 @Composable
-fun DeviceStats(kind: Kind, activity: Activity, transcripts: List<Transcript>) {
+fun DeviceStats(kind: Kind, activity: Activity, transcripts: List<Transcript>, computer: String?) {
     if (activity.isEmpty(kind)) {
-        return if (kind == Kind.TYPED) {
-            Empty(Glyphs.KEYBOARD, "No Typing Yet", "Type with the keyboard anywhere. Your typing shows up here each time it closes.")
-        } else {
-            Empty(Glyphs.WAVEFORM, "No Dictation Yet", "Tap the mic at the right end of the keyboard’s suggestions and talk.")
-        }
+        val noun = if (kind == Kind.TYPED) "typing" else "dictation"
+        return Empty(
+            if (kind == Kind.TYPED) Glyphs.KEYBOARD else Glyphs.WAVEFORM, if (kind == Kind.TYPED) "No Typing Yet" else "No Dictation Yet",
+            when {
+                computer != null -> "Keystroke hasn’t counted any $noun on $computer yet."
+                kind == Kind.TYPED -> "Type with the keyboard anywhere. Your typing shows up here each time it closes."
+                else -> "Tap the mic at the right end of the keyboard’s suggestions and talk."
+            },
+        )
     }
-    Speed(kind, activity)
+    Speed(kind, activity, computer)
     History(activity, listOf(kind))
     Rhythm(activity, listOf(kind))
     if (kind == Kind.TYPED && activity.speeds.isNotEmpty()) Speeds(activity.speeds)
-    if (kind == Kind.TYPED) WordSources(activity.total(Kind.TYPED)) else Dictations(transcripts)
+    if (computer == null) {
+        if (kind == Kind.TYPED) WordSources(activity.total(Kind.TYPED)) else Dictations(transcripts)
+    }
     activity.apps[kind]?.takeIf { it.isNotEmpty() }?.let { Apps(kind, it) }
     Year(activity, listOf(kind))
 }
 
 /** How fast you type or talk, large, with a chip for how the last week compares, then how much and for how long. */
 @Composable
-private fun Speed(kind: Kind, activity: Activity) {
+private fun Speed(kind: Kind, activity: Activity, computer: String?) {
     val palette = palette()
+    val asOf = computer?.let { Computers.of(LocalContext.current).asOf[it] }
     val all = activity.total(kind)
     val today = LocalDate.now()
     val trend = all.speed?.let { speed ->
@@ -71,7 +79,11 @@ private fun Speed(kind: Kind, activity: Activity) {
         day[kind].takeIf { it.seconds >= 120 }?.speed?.let { date to it }
     }.maxByOrNull { it.second }
     val lines = mutableListOf(
-        if (kind == Kind.TYPED) "Words of five letters a minute while you type, pauses over 4 seconds left out." else "Words a minute while you talk.",
+        when {
+            kind == Kind.TYPED -> "Words of five letters a minute while you type, pauses over 4 seconds left out."
+            computer != null -> "Words of five letters a minute, over the dictations Keystroke timed."
+            else -> "Words a minute while you talk."
+        },
     )
     val typed = activity.total(Kind.TYPED).speed
     if (kind == Kind.SAID && all.speed != null && typed != null && typed > 0) {
@@ -97,6 +109,7 @@ private fun Speed(kind: Kind, activity: Activity) {
                 },
             ),
         )
+        if (computer != null) Caption("From Keystroke on $computer${asOf?.let { ", as of ${Format.moment(it)}" }.orEmpty()}.")
     }
 }
 

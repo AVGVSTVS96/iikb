@@ -23,12 +23,15 @@ import androidx.compose.runtime.setValue
 import com.shahidy.iikb.Services
 import com.shahidy.iikb.Settings
 import com.shahidy.iikb.app.clipboard.keepCopied
+import com.shahidy.iikb.app.stats.Computer
+import com.shahidy.iikb.app.stats.Computers
 import com.shahidy.iikb.keyboard.IikbService
 
 /** iikb's app: setting the keyboard up, a field to try it, and every setting. */
 class MainActivity : ComponentActivity() {
     private var resumes by mutableIntStateOf(0)
     private var setup by mutableStateOf(Setup(enabled = false, picked = false, microphone = false))
+    private var linked by mutableStateOf<AddedComputer?>(null)
     private val microphone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
         refresh()
         if (!allowed && !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) refused()
@@ -48,6 +51,7 @@ class MainActivity : ComponentActivity() {
                     onEnable = { startActivity(Intent(ACTION_INPUT_METHOD_SETTINGS)) },
                     onPick = { getSystemService(InputMethodManager::class.java).showInputMethodPicker() },
                     onMicrophone = { microphone.launch(Manifest.permission.RECORD_AUDIO) },
+                    added = linked,
                 )
             }
         }
@@ -56,10 +60,17 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * A service's link asks before it's added: an extension's (docs/extensions.md) before its chats open from the
-     * keyboard's menu, a source's (docs/sources.md) before it's told what you type.
+     * A computer's link (docs/computers.md) adds it and opens Stats on it, as iOS's does. A service's link asks before
+     * it's added: an extension's (docs/extensions.md) before its chats open from the keyboard's menu, a source's
+     * (docs/sources.md) before it's told what you type.
      */
     private fun offer(intent: Intent) {
+        intent.data?.let(Computer::of)?.let { computer ->
+            setIntent(Intent(this, MainActivity::class.java))
+            Computers.of(this).add(computer)
+            linked = AddedComputer(computer.name)
+            return
+        }
         val (kind, added) = intent.data?.let(Services::of) ?: return
         setIntent(Intent(this, MainActivity::class.java))
         val host = Uri.parse(added.url).host
