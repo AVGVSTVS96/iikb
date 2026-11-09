@@ -19,12 +19,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import com.shahidy.iikb.Selectable
+import com.shahidy.iikb.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -334,7 +334,7 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
             fontSize = 15.sp, fontWeight = FontWeight.Medium,
             modifier = Modifier.fillMaxWidth().heightIn(min = 34.dp).wrapContentHeight().padding(horizontal = 4.dp),
         )
-        SelectionContainer {
+        Selectable {
             Text(
                 transcript.shown, color = if (transcript.text.isEmpty()) palette.secondary else palette.label,
                 fontSize = 20.sp, lineHeight = 27.sp, modifier = Modifier.fillMaxWidth().card(palette).padding(20.dp),
@@ -365,7 +365,7 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
         }
         transcript.replaced?.let { first ->
             Rows("First Written") {
-                SelectionContainer {
+                Selectable {
                     Line(first.text.ifEmpty { "Nothing heard" }, detail = first.model?.let { "Written by $it" })
                 }
             }
@@ -496,7 +496,7 @@ private fun RecordingSection(transcript: Transcript) {
                 if (written.text.isEmpty()) {
                     Line("Nothing heard", detail = "Written by ${written.model}")
                 } else {
-                    SelectionContainer { Line(written.text, detail = "Written by ${written.model}") }
+                    Selectable { Line(written.text, detail = "Written by ${written.model}") }
                     Divider()
                     ActionRow("Use This Transcript", null, palette.accent) {
                         Transcripts.replace(transcript.id, written.text, written.heard, written.model)
