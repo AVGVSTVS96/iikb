@@ -87,6 +87,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.unit.Constraints
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawPlainBackdrop
+import com.kyant.backdrop.effects.blur
+import com.shahidy.iikb.app.design.isDark
 
 /** iOS's Dynamic Type sizes at Large, which the iOS app's text takes. */
 object Type {
@@ -133,10 +142,10 @@ fun Page(
 ) {
     val scroll = rememberScrollState()
     val scrolled by remember { derivedStateOf { scroll.value > 0 } }
-    Frame(title, onBack, scrolled, pinned, actions) {
+    Frame(title, onBack, scrolled, pinned, actions) { top ->
         Column(
             Modifier.fillMaxSize().imePadding().verticalScroll(scroll)
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp + LocalTabBar.current),
+                .padding(start = 16.dp, end = 16.dp, top = top + 8.dp, bottom = 40.dp + LocalTabBar.current),
             verticalArrangement = Arrangement.spacedBy(28.dp),
             content = content,
         )
@@ -151,30 +160,66 @@ fun ListPage(
 ) {
     val list = rememberLazyListState()
     val scrolled by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }
-    Frame(title, onBack, scrolled, pinned, actions) {
+    Frame(title, onBack, scrolled, pinned, actions) { top ->
         LazyColumn(
             Modifier.fillMaxSize().imePadding(),
             state = list,
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp + LocalTabBar.current),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top + 8.dp, bottom = 40.dp + LocalTabBar.current),
         ) { content() }
     }
 }
 
-/** A page's bar, its title, Back and buttons, with what's pinned under it, over what scrolls. */
+/**
+ * A page's bar, its title, Back and buttons, with what's pinned under it, over what scrolls, which starts `top` down
+ * and runs under the bar and the status bar. Once it's under them they blur and wash it out to a hard edge at the
+ * bar's foot, as iOS 26's navigation bar does with its own background hidden; what's pinned keeps the page's color
+ * behind it, as iOS's inset rows do, so there nothing shows through.
+ */
 @Composable
 private fun Frame(
     title: String, onBack: (() -> Unit)?, scrolled: Boolean, pinned: (@Composable () -> Unit)?,
-    actions: @Composable RowScope.() -> Unit, content: @Composable () -> Unit,
+    actions: @Composable RowScope.() -> Unit, content: @Composable (top: Dp) -> Unit,
 ) {
     val palette = palette()
-    Column(Modifier.fillMaxSize().background(palette.page).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
-        Bar(title, onBack, scrolled, actions)
-        pinned?.let { Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) { it() } }
-        Box(Modifier.weight(1f)) {
-            content()
-            Box(Modifier.fillMaxWidth().height(14.dp).background(Brush.verticalGradient(listOf(palette.page, palette.page.copy(alpha = 0f)))))
+    val backdrop = rememberLayerBackdrop()
+    val under by animateFloatAsState(if (scrolled && pinned == null) 1f else 0f, tween(150), label = "edge")
+    SubcomposeLayout(Modifier.fillMaxSize().background(palette.page)) { constraints ->
+        val loose = constraints.copy(minHeight = 0)
+        val header = subcompose("header") {
+            Column(
+                Modifier.fillMaxWidth().let { if (pinned != null) it.background(palette.page) else it }
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
+            ) {
+                Bar(title, onBack, scrolled, actions)
+                pinned?.let { Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) { it() } }
+            }
+        }.map { it.measure(loose) }
+        val height = header.maxOfOrNull { it.height } ?: 0
+        val body = subcompose("content") {
+            Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) { content(height.toDp()) }
+        }.map { it.measure(constraints) }
+        val edge = subcompose("edge") {
+            Box(Modifier.fillMaxSize().scrollEdge(backdrop, under))
+        }.map { it.measure(Constraints.fixed(constraints.maxWidth, height)) }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            body.forEach { it.place(0, 0) }
+            edge.forEach { it.place(0, 0) }
+            header.forEach { it.place(0, 0) }
         }
     }
+}
+
+/** iOS 26's scroll edge under a bar: what's under it blurred and washed toward white in light and near black in dark. */
+@Composable
+private fun Modifier.scrollEdge(backdrop: Backdrop, shown: Float): Modifier {
+    if (shown == 0f) return this
+    val wash = if (palette().isDark) Color(0xFF121212).copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f)
+    return drawPlainBackdrop(
+        backdrop, { RectangleShape },
+        effects = { blur(16.dp.toPx()) },
+        layerBlock = { alpha = shown },
+        onDrawSurface = { drawRect(wash) },
+    )
 }
 
 /**
