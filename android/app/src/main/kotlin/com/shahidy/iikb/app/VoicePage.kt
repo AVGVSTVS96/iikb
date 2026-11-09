@@ -143,6 +143,7 @@ private fun MicrophoneSettings() {
 
 private fun detail(choice: Microphones.Choice, away: Boolean) = when {
     away -> "Not connected. Used when it is."
+    choice.kind == Microphones.Kind.PHONE -> "The phone’s own, tuned by Android for speech."
     choice.kind == Microphones.Kind.BLUETOOTH -> "Call quality while you dictate."
     else -> null
 }

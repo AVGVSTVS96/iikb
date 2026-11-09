@@ -4,7 +4,6 @@ import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
-import android.provider.Settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -56,23 +55,22 @@ class Microphones private constructor(private val context: Context) {
 
     /** A microphone as Settings › Voice names it, or null for one it never lists. */
     fun choice(device: AudioDeviceInfo): Choice? =
-        kind(device.type)?.let { Choice(it, if (it == Kind.PHONE) phone() else device.productName.toString()) }
+        kind(device.type)?.let { Choice(it, if (it == Kind.PHONE) PHONE else device.productName.toString()) }
 
     private fun inputs(): List<Pair<AudioDeviceInfo, Choice>> =
         audio.getDevices(AudioManager.GET_DEVICES_INPUTS).mapNotNull { device -> choice(device)?.let { device to it } }
 
     private fun read(): Choice? {
         val (kind, name) = preferences.getString(KEY, null)?.split(":", limit = 2)?.takeIf { it.size == 2 } ?: return null
-        return Choice(Kind.entries.firstOrNull { it.name == kind } ?: return null, name)
+        val picked = Kind.entries.firstOrNull { it.name == kind } ?: return null
+        return Choice(picked, if (picked == Kind.PHONE) PHONE else name)
     }
-
-    /** The phone's name as Settings › About shows it, so its microphones read as the phone's. */
-    private fun phone() =
-        Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)?.takeIf { it.isNotBlank() }
-            ?: Build.MODEL
 
     companion object {
         private const val KEY = "microphone"
+
+        /** The phone's own microphones, named as iOS names an iPhone's ("iPhone Microphone"), one though they're several. */
+        const val PHONE = "Phone Microphone"
         @Volatile private var shared: Microphones? = null
 
         fun of(context: Context): Microphones =
