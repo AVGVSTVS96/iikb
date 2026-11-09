@@ -1,0 +1,20 @@
+#!/bin/bash
+# Sends the newest APK in ~/.local/share/iikb/android/builds to the Beta testers on Firebase App Distribution
+# (invite link https://appdistribution.firebase.dev/i/952f24c76638b646). The same path unit as android-download runs
+# main's copy whenever a build lands; it sends only when the newest APK isn't the one sent.
+set -euo pipefail
+data=$HOME/.local/share/iikb/android
+apk=$(ls "$data"/builds/iikb-*.apk | sort -V | tail -1)
+version=$(basename "$apk" .apk)
+version=${version#iikb-}
+sha=$(sha256sum "$apk" | cut -d' ' -f1)
+[ "$(cat "$data/.firebase" 2>/dev/null)" != "$sha" ] || exit 0
+
+key=$(mktemp -p "${XDG_RUNTIME_DIR:-/tmp}")
+trap 'rm -f "$key"' EXIT
+enclave get iikb-firebase service_account > "$key"
+GOOGLE_APPLICATION_CREDENTIALS=$key bunx firebase-tools@latest appdistribution:distribute "$apk" \
+  --app 1:614178593810:android:c819684c9dab61a9a28ccb --groups beta \
+  --release-notes "iikb $version for Android. Open the app after installing to turn the keyboard on."
+echo "$sha" > "$data/.firebase"
+echo "iikb $version sent to the Beta testers"
