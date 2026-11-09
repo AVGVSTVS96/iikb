@@ -19,6 +19,7 @@ import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -298,7 +299,7 @@ class MicBar(private val view: View) {
         fill.color = ColorUtils.setAlphaComponent(theme.candidatePill, (Color.alpha(theme.candidatePill) * opacity).toInt())
         canvas.drawCircle(x, y, radius, fill)
         fill.color = ColorUtils.setAlphaComponent(theme.label, (Color.alpha(theme.label) * opacity).toInt())
-        Glyphs.draw(canvas, "xmark", x, y, radius * 2 * 0.39f * 24 / 12, fill)
+        Glyphs.draw(canvas, "xmark", x, y, Glyphs.square((radius * 2 * 0.39f).roundToInt().toFloat()), fill, Glyphs.SEMIBOLD)
     }
 
     /** Where the cancel button is: its center and radius, riding the capsule's growth out of the mic, or in its place. */
@@ -337,11 +338,11 @@ class MicBar(private val view: View) {
         val glyph = idle.at(now)
         if (glyph > 0.001f) {
             fill.color = ColorUtils.setAlphaComponent(theme.micGlyph, (Color.alpha(theme.micGlyph) * glyph.coerceIn(0f, 1f)).toInt())
-            Glyphs.draw(canvas, "waveform", cx, cy, mic.width() * 0.6f * (0.5f + 0.5f * glyph), fill)
+            Glyphs.draw(canvas, "waveform", cx, cy, micGlyph(mic.width(), WAVE) * (0.5f + 0.5f * glyph), fill)
         }
         if (reddened > 0.001f) {
             fill.color = ColorUtils.setAlphaComponent(Color.WHITE, (255 * reddened).toInt())
-            Glyphs.draw(canvas, "stop.fill", cx, cy, mic.width() * 0.74f * (0.5f + 0.5f * reddened), fill)
+            Glyphs.draw(canvas, "stop.fill", cx, cy, micGlyph(mic.width(), STOP) * (0.5f + 0.5f * reddened), fill, Glyphs.SEMIBOLD)
         }
         val ringing = ring.at(now).coerceIn(0f, 1f)
         if (ringing > 0.001f) {
@@ -353,7 +354,7 @@ class MicBar(private val view: View) {
         }
         val spinning = spinner.at(now).coerceIn(0f, 1f)
         if (spinning > 0.001f) drawSpinner(canvas, cx, cy, 20f * (0.5f + 0.25f * spinning), theme.micGlyph, spinning, now)
-        if (checking != 0L) drawCheck(canvas, theme.micGlyph, cx, cy, mic.width() * 0.69f, (now - checking) / 1000f)
+        if (checking != 0L) drawCheck(canvas, theme.micGlyph, cx, cy, micGlyph(mic.width(), STOP), (now - checking) / 1000f)
         drawDot(canvas, mic, now)
         canvas.restore()
     }
@@ -403,12 +404,12 @@ class MicBar(private val view: View) {
         val glyph = idle.at(now)
         if (glyph > 0.001f) {
             fill.color = ColorUtils.setAlphaComponent(theme.micGlyph, (Color.alpha(theme.micGlyph) * glyph.coerceIn(0f, 1f)).toInt())
-            Glyphs.draw(canvas, "waveform", cx, cy, min(side * 0.6f, 26f) * (0.5f + 0.5f * glyph), fill)
+            Glyphs.draw(canvas, "waveform", cx, cy, micGlyph(side, WAVE) * (0.5f + 0.5f * glyph), fill)
         }
         if (reddened > 0.001f) {
             fill.color = ColorUtils.setAlphaComponent(Color.WHITE, (255 * reddened).toInt())
             val swell = 1 + 0.4f * voice.at(now)
-            Glyphs.draw(canvas, "stop.fill", cx, cy, min(side * 0.74f, 22f) * (0.5f + 0.5f * reddened) * swell, fill)
+            Glyphs.draw(canvas, "stop.fill", cx, cy, micGlyph(side, STOP) * (0.5f + 0.5f * reddened) * swell, fill, Glyphs.SEMIBOLD)
         }
         val ringing = ring.at(now).coerceIn(0f, 1f)
         if (ringing > 0.001f) {
@@ -420,7 +421,7 @@ class MicBar(private val view: View) {
         }
         val spinning = spinner.at(now).coerceIn(0f, 1f)
         if (spinning > 0.001f) drawSpinner(canvas, cx, cy, 20f * (0.5f + 0.25f * spinning), theme.micGlyph, spinning, now)
-        if (checking != 0L) drawCheck(canvas, theme.micGlyph, cx, cy, min(side * 0.69f, 21f), (now - checking) / 1000f)
+        if (checking != 0L) drawCheck(canvas, theme.micGlyph, cx, cy, micGlyph(side, STOP), (now - checking) / 1000f)
         drawDot(canvas, oval.apply { set(cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2) }, now)
         canvas.restore()
         if (sank != 0L) drawKeyRipple(canvas, theme, key, corner, (now - sank) / 1000f - SINK)
@@ -495,7 +496,7 @@ class MicBar(private val view: View) {
         val came = CHECK_IN.progress(min(t, 0.5f))
         val shown = if (t < 0.5f) came else came * (1 - CHECK_OUT.progress(t - 0.5f))
         fill.color = ColorUtils.setAlphaComponent(color, (Color.alpha(color) * shown.coerceIn(0f, 1f)).toInt())
-        Glyphs.draw(canvas, "checkmark", cx, cy, size * (0.5f + 0.5f * shown), fill)
+        Glyphs.draw(canvas, "checkmark", cx, cy, size * (0.5f + 0.5f * shown), fill, Glyphs.SEMIBOLD)
     }
 
     /** Drain: the red pours into the mic, its tail thinning, the bars riding in inside it, and fades as the mic comes back. */
@@ -555,8 +556,8 @@ class MicBar(private val view: View) {
         val t = (now - played.start) / 1000f
         text.textSize = 15f
         text.textAlign = Paint.Align.LEFT
-        val wave = 18f
-        val width = text.measureText(played.length) + 6 + wave * 16 / 24 + 2 * 12
+        val wave = Glyphs.square(13f)
+        val width = text.measureText(played.length) + 6 + wave * WAVE_INK + 2 * 12
         val circle = played.circle
         val from = if (circle != null) played.capsule else RectF(played.capsule).apply { offset(-12f, 0f) }
         val rest = if (circle != null) circle.left - 8 - width else from.left
@@ -578,7 +579,7 @@ class MicBar(private val view: View) {
         val x = card.left + 12
         canvas.drawText(played.length, x, card.centerY() + text.textSize * 0.35f, text)
         fill.color = ColorUtils.setAlphaComponent(tint, (0.85f * 255 * opacity).toInt())
-        Glyphs.draw(canvas, "waveform", x + text.measureText(played.length) + 6 + wave * 16 / 24 / 2, card.centerY(), wave, fill)
+        Glyphs.draw(canvas, "waveform", x + text.measureText(played.length) + 6 + wave * WAVE_INK / 2, card.centerY(), wave, fill)
         canvas.restore()
     }
 
@@ -698,6 +699,16 @@ class MicBar(private val view: View) {
         /** iOS's system green, `#30D158`, and the dot's side. */
         private const val GREEN = 0xFF30D158.toInt()
         private const val DOT = 6f
+
+        /** iOS's `MicButton` glyphs: the waveform's point size is 0.54 of the side up to 17, the stop's and check's 0.43 up to 13. */
+        private class MicGlyph(val ratio: Float, val largest: Float)
+        private val WAVE = MicGlyph(0.54f, 17f)
+        private val STOP = MicGlyph(0.43f, 13f)
+
+        /** How much of its square the waveform's bars span. */
+        private const val WAVE_INK = 0.82f
+
+        private fun micGlyph(side: Float, glyph: MicGlyph) = Glyphs.square(min((side * glyph.ratio).roundToInt().toFloat(), glyph.largest))
 
         fun clock(seconds: Int) = "%d:%02d".format(seconds / 60, seconds % 60)
 
