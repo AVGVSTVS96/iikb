@@ -19,6 +19,10 @@ package final class ButtonScrollView: UIScrollView {
     package var fadesEnds = false {
         didSet { setNeedsLayout() }
     }
+    /// How far in from a cut end the fade runs.
+    package var fadeLength = 16.0 {
+        didSet { setNeedsLayout() }
+    }
     private lazy var fade: CAGradientLayer = {
         let fade = CAGradientLayer()
         fade.startPoint = CGPoint(x: 0, y: 0.5)
@@ -33,7 +37,7 @@ package final class ButtonScrollView: UIScrollView {
             layer.mask = nil
             return
         }
-        let edge = min(16 / bounds.width, 0.5)
+        let edge = min(fadeLength / bounds.width, 0.5)
         let before = contentOffset.x > 0.5 ? edge : 0
         let after = contentOffset.x + bounds.width < contentSize.width - 0.5 ? edge : 0
         CATransaction.begin()

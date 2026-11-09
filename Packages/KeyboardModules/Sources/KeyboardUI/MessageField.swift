@@ -34,13 +34,15 @@ public final class MessageField: UIView, UITextViewDelegate {
         var caret: Bool
         var mic: MicButton.Phase
         var canSend: Bool { text.contains { !$0.isWhitespace } }
+        /// The mic shows while there's nothing to send, as Messages', or while a dictation runs, to stop it.
+        var showsMic: Bool { !canSend || mic == .listening || mic == .writing }
     }
 
     private static let font = UIFont.systemFont(ofSize: 17)
     private static let lineHeight: CGFloat = 22
     private static let sendSize: CGFloat = 28
     private static let sendMargin: CGFloat = 6
-    private static let inset = UIEdgeInsets(top: 9, left: 14, bottom: 9, right: 2 * sendSize + 3 * sendMargin)
+    private static let inset = UIEdgeInsets(top: 9, left: 14, bottom: 9, right: sendSize + 2 * sendMargin)
     private static let cornerRadius: CGFloat = 20
     private static let lines = {
         let style = NSMutableParagraphStyle()
@@ -56,8 +58,6 @@ public final class MessageField: UIView, UITextViewDelegate {
         super.init(frame: frame)
         layer.cornerCurve = .continuous
         layer.cornerRadius = Self.cornerRadius
-        layer.shadowOffset = CGSize(width: 0, height: 1)
-        layer.shadowRadius = 0
         field.delegate = self
         field.backgroundColor = .clear
         field.textContainerInset = Self.inset
@@ -89,7 +89,9 @@ public final class MessageField: UIView, UITextViewDelegate {
         mic.accessibilityIdentifier = "iikb.chat.mic"
         mic.addAction(UIAction { [unowned self] _ in onMic() }, for: .touchUpInside)
         addSubview(mic)
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _) in self.showShadow() }
+        registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitDisplayScale.self]) { (self: Self, _) in
+            self.showEdge()
+        }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -109,8 +111,7 @@ public final class MessageField: UIView, UITextViewDelegate {
         defer { showing = false }
         if next.theme != last?.theme {
             backgroundColor = theme.searchField.ui
-            layer.shadowColor = theme.shadow.ui.withAlphaComponent(1).cgColor
-            showShadow()
+            showEdge()
             field.tintColor = theme.prominent.ui
             placeholder.textColor = theme.candidate.ui
             var look = UIButton.Configuration.filled()
@@ -142,7 +143,9 @@ public final class MessageField: UIView, UITextViewDelegate {
             field.resignFirstResponder()
         }
         field.focusable = caret
-        if next.canSend != last?.canSend { showSend(next.canSend, animated: last != nil && window != nil) }
+        if next.canSend != last?.canSend || next.showsMic != last?.showsMic {
+            showButtons(animated: last != nil && window != nil)
+        }
         setNeedsLayout()
     }
 
@@ -158,9 +161,11 @@ public final class MessageField: UIView, UITextViewDelegate {
         return Self.inset.top + Self.inset.bottom + Self.lineHeight * min(max(shown, 1), CGFloat(lines))
     }
 
-    /// The keys' shadow, which only light keys have.
-    private func showShadow() {
-        layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0 : Float(shown?.theme.shadow.alpha ?? 0)
+    /// A hairline round the box, a pixel wide, as Messages' box has.
+    private func showEdge() {
+        let dark = traitCollection.userInterfaceStyle == .dark
+        layer.borderWidth = 1 / max(traitCollection.displayScale, 1)
+        layer.borderColor = UIColor(white: dark ? 1 : 0, alpha: dark ? 0.1 : 0.09).cgColor
     }
 
     override public func layoutSubviews() {
@@ -171,21 +176,35 @@ public final class MessageField: UIView, UITextViewDelegate {
             x: inset.left, y: inset.top, width: max(bounds.width - inset.left - inset.right, 0), height: Self.lineHeight
         )
         let size = Self.sendSize
+        let both = shown.map { $0.canSend && $0.showsMic } ?? false
+        field.textContainerInset.right = both ? 2 * size + 3 * Self.sendMargin : Self.inset.right
+        let last = CGPoint(x: bounds.maxX - Self.sendMargin - size / 2, y: bounds.maxY - Self.sendMargin - size / 2)
         send.bounds.size = CGSize(width: size, height: size)
-        send.center = CGPoint(x: bounds.maxX - Self.sendMargin - size / 2, y: bounds.maxY - Self.sendMargin - size / 2)
-        mic.frame = send.frame.offsetBy(dx: -(size + Self.sendMargin), dy: 0)
+        send.center = last
+        mic.bounds.size = send.bounds.size
+        mic.center = both ? CGPoint(x: last.x - size - Self.sendMargin, y: last.y) : last
         field.scrollRangeToVisible(field.selectedRange)
     }
 
-    private func showSend(_ visible: Bool, animated: Bool) {
-        let change = { [send] in send.alpha = visible ? 1 : 0.3 }
-        send.isEnabled = visible
+    /// Send and the mic share the box's end, as Messages' do: the mic while there's nothing to send, send once there
+    /// is, each growing in where the other shrinks away.
+    private func showButtons(animated: Bool) {
+        guard let shown else { return }
+        let change = { [send, mic] in
+            for (button, on) in [(send as UIView, shown.canSend), (mic, shown.showsMic)] {
+                button.alpha = on ? 1 : 0
+                button.transform = on ? .identity : CGAffineTransform(scaleX: 0.5, y: 0.5)
+            }
+            self.layoutIfNeeded()
+        }
+        send.isEnabled = shown.canSend
+        mic.isUserInteractionEnabled = shown.showsMic
         if animated { UIView.animate(springDuration: 0.3, bounce: 0.2, animations: change) } else { change() }
     }
 
     override public func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        if send.frame.insetBy(dx: -4, dy: -8).contains(point) { return send }
-        if mic.frame.insetBy(dx: -4, dy: -8).contains(point) { return mic }
+        if send.isEnabled, send.frame.insetBy(dx: -4, dy: -8).contains(point) { return send }
+        if mic.isUserInteractionEnabled, mic.frame.insetBy(dx: -4, dy: -8).contains(point) { return mic }
         return super.hitTest(point, with: event)
     }
 

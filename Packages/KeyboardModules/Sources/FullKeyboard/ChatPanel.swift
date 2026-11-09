@@ -21,6 +21,10 @@ final class ChatPanel: UIView, PanelContent {
     var onReplace: (Range<Int>, String) -> Void = { _, _ in }
     /// A link in a message was opened.
     var onOpen: (URL) -> Void = { _ in }
+    /// A chat's tab was tapped, by its index in the list.
+    var onPick: (Int) -> Void = { _ in }
+    /// The chats with something newer than what you saw, by index.
+    var fresh: Set<Int> = []
     var field: PanelField { .own(composer) }
     private let composer = MessageField()
     private var line: LineDocument?
@@ -36,8 +40,11 @@ final class ChatPanel: UIView, PanelContent {
     private var shown: Shown?
     private let thread = ChatThread()
     private let message = PanelNotice()
-    /// The open chat's name over the messages while the keys are up, where the bar's pills that name it are gone.
-    private let title = UILabel()
+    /// The chats as tabs over the messages while the keys are up, just where the bar shows them with the keys down,
+    /// so they stay put as the keys come and go.
+    private let tabs = ChatTabs()
+    /// The bar's height, whose row the tabs sit in.
+    private var bar = 38.0
 
     init(chats: Chats) {
         self.chats = chats
@@ -52,9 +59,8 @@ final class ChatPanel: UIView, PanelContent {
         composer.onReplace = { [unowned self] in onReplace($0, $1) }
         message.accessibilityIdentifier = "iikb.chat.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
-        title.font = .systemFont(ofSize: 13, weight: .semibold)
-        title.textAlignment = .center
-        [thread, title, message].forEach(addSubview)
+        tabs.onPick = { [unowned self] in onPick($0) }
+        [thread, tabs, message].forEach(addSubview)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -78,8 +84,9 @@ final class ChatPanel: UIView, PanelContent {
                 mic: mic,
                 theme: theme)
         }
-        title.text = chats.open?.name
-        title.textColor = theme.candidate.ui
+        bar = metrics.toolbar.bar
+        tabs.show(
+            chats.list.map(\.name), open: chats.list.firstIndex { $0 == chats.open }, fresh: fresh, theme: theme)
         let next = Shown(revision: chats.revision, theme: theme)
         guard next != shown else { return }
         shown = next
@@ -107,9 +114,12 @@ final class ChatPanel: UIView, PanelContent {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        title.isHidden = !typing || title.text == nil
-        title.frame = CGRect(x: 0, y: 0, width: bounds.width, height: title.isHidden ? 0 : 20)
-        thread.frame = bounds.inset(by: UIEdgeInsets(top: title.frame.height, left: 0, bottom: 0, right: 0))
+        tabs.isHidden = !typing || chats.list.isEmpty
+        let row = CGFloat(bar)
+        tabs.frame = CGRect(
+            x: 0, y: ((row - ChatTabs.height) / 2).rounded(), width: tabs.width(within: bounds.width),
+            height: ChatTabs.height)
+        thread.frame = bounds.inset(by: UIEdgeInsets(top: tabs.isHidden ? 0 : row - 6, left: 0, bottom: 0, right: 0))
         message.frame = bounds
     }
 }

@@ -24,6 +24,10 @@ open class FullKeyboardViewController: UIInputViewController {
     /// The record button in the bottom row, where Settings › Layout › Record Key puts it in the globe's place.
     private let keyMic = MicButton()
     private let panelView = PanelView()
+    /// An open chat's card, opaque where iOS's glass would show the app through: over the tabs and the chat with the
+    /// keys down, over the chat alone above them with the keys up. Its top corners round inside iOS's own card, whose
+    /// edge starts 4 above the keyboard (on the Duo, Nov 9).
+    private let chatCard = UIView()
     private let menuView = MenuView()
     private let toolbarView = UIView()
     private var toolbar = KeyboardMetrics.phone(width: 390).toolbar
@@ -73,6 +77,7 @@ open class FullKeyboardViewController: UIInputViewController {
     /// What you'd begun in each chat you switched away from, by chat id.
     private var drafts: [String: String] = [:]
     private let chats = Chats()
+    private let seen = ChatSeen()
     private lazy var chatShelf: ChatShelf = {
         let shelf = ChatShelf(chats: chats)
         shelf.fullAccess = { [unowned self] in hasFullAccess }
@@ -117,6 +122,7 @@ open class FullKeyboardViewController: UIInputViewController {
             toggleVoice()
         }
         panel.onFocus = { [unowned self] in raiseKeys() }
+        panel.onPick = { [unowned self] in suggestionBar.onChat($0) }
         panel.onOpen = { [unowned self] in open($0) }
         panel.onReplace = { [unowned self] range, text in
             guard let line else { return }
@@ -175,6 +181,11 @@ open class FullKeyboardViewController: UIInputViewController {
             view.addSubview($0)
         }
         toolbarView.addSubview(suggestionBar)
+        chatCard.isUserInteractionEnabled = false
+        chatCard.layer.cornerRadius = 18
+        chatCard.layer.cornerCurve = .continuous
+        chatCard.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        view.insertSubview(chatCard, at: 0)
         view.addSubview(panelView)
         keysMinimumConstraint.priority = .required - 1
         toolbarHeightConstraint.priority = .required - 2
@@ -296,6 +307,10 @@ open class FullKeyboardViewController: UIInputViewController {
             : line != nil
                 ? CGRect(x: 0, y: 0, width: width, height: max(room - toolbar.height, 0))
                 : CGRect(x: 0, y: max(room - bar - toolbar.panelHeight, 0), width: width, height: toolbar.panelHeight)
+        chatCard.frame =
+            panelInKeysPlace
+            ? CGRect(x: 0, y: 0, width: width, height: view.bounds.height)
+            : CGRect(x: 0, y: 0, width: width, height: panelView.frame.maxY)
         TouchTrace.shared.layout(view)
     }
 
@@ -604,16 +619,19 @@ open class FullKeyboardViewController: UIInputViewController {
             view.setNeedsLayout()
         }
         panelView.showsBack = line == nil
-        panelView.backgroundColor = line == nil ? nil : theme.card.ui
+        chatCard.isHidden = line == nil
+        chatCard.backgroundColor = theme.card.ui
         panelView.bottomInset = line == nil ? PanelView.inset : CGFloat(metrics.bottomInset)
         suggestionBar.isHidden = engine.panel != nil && !inPlace
         panelView.block = block
         suggestionBar.toolbar = toolbar
         suggestionBar.maximumSlotWidth = metrics.toolbar.slot
         suggestionBar.update(tools: tools, theme: theme)
+        let fresh = line != nil ? seen.update(chats) : []
+        chatPanel.fresh = fresh
         suggestionBar.update(
             chats: line != nil && !keysUp ? chats.list.map(\.name) : nil,
-            open: chats.list.firstIndex { $0 == chats.open }, theme: theme)
+            open: chats.list.firstIndex { $0 == chats.open }, fresh: fresh, theme: theme)
         suggestionBar.update(more: true, on: menuOpen || inPlace)
         suggestionBar.update(edits: menuOpen && panel == nil ? edits : nil, theme: theme)
         suggestionBar.update(

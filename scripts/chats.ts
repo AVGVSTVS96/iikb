@@ -39,6 +39,78 @@ const threads = new Map<string, Thread>([
       messages: [{ from: "hex", text: "The site's hero folds on its hinge now." }],
     },
   ],
+  [
+    "design",
+    {
+      name: "Design",
+      pinned: false,
+      messages: [{ from: "hex", text: "The new icons are in. Light and dark both checked." }],
+    },
+  ],
+  [
+    "android",
+    {
+      name: "Android",
+      pinned: false,
+      messages: [{ from: "hex", text: "The APK builds on every push now." }],
+    },
+  ],
+  [
+    "voice",
+    {
+      name: "Voice",
+      pinned: false,
+      messages: [{ from: "hex", text: "Calls ring through again." }],
+    },
+  ],
+  [
+    "builds",
+    {
+      name: "Builds",
+      pinned: false,
+      messages: [{ from: "hex", text: "Build 880 is on the phone." }],
+    },
+  ],
+  [
+    "research",
+    {
+      name: "Research",
+      pinned: false,
+      messages: [{ from: "hex", text: "Three papers on swipe typing, summarized." }],
+    },
+  ],
+  [
+    "releases",
+    {
+      name: "Releases",
+      pinned: false,
+      messages: [{ from: "hex", text: "Release notes for 0.3 are drafted." }],
+    },
+  ],
+  [
+    "ideas",
+    {
+      name: "Ideas",
+      pinned: false,
+      messages: [{ from: "hex", text: "Saved: a widget for the clipboard." }],
+    },
+  ],
+  [
+    "reading",
+    {
+      name: "Reading",
+      pinned: false,
+      messages: [{ from: "hex", text: "Two long reads for the flight." }],
+    },
+  ],
+  [
+    "travel",
+    {
+      name: "Travel",
+      pinned: false,
+      messages: [{ from: "hex", text: "Boarding passes are in your email." }],
+    },
+  ],
 ]);
 
 let version = 1;

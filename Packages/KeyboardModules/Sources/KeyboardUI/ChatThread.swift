@@ -58,6 +58,9 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
     public var fetch: (URL) async -> Data? = { _ in nil }
 
     private let scroll = UIScrollView()
+    /// Messages fade out over a line and a bit as they scroll up under the tabs, and over less into the box below.
+    private static let topFade = 28.0
+    private static let bottomFade = 10.0
     private let fade = CAGradientLayer()
     private var bubbles: [any ChatBubble] = []
     private var photo: PhotoView?
@@ -162,12 +165,13 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         fade.frame = bounds
-        let edge = bounds.height == 0 ? 0 : min(14 / bounds.height, 0.5)
-        fade.locations = [0, edge, 1 - edge, 1].map { NSNumber(value: $0) }
+        let top = bounds.height == 0 ? 0 : min(Self.topFade / bounds.height, 0.5)
+        let bottom = bounds.height == 0 ? 0 : min(Self.bottomFade / bounds.height, 0.5)
+        fade.locations = [0, top, 1 - bottom, 1].map { NSNumber(value: $0) }
         CATransaction.commit()
         let width = bounds.width
         let widest = min((width * 0.75).rounded(.down), 520)
-        var y = 0.0
+        var y = Self.topFade - 12
         for (index, bubble) in bubbles.enumerated() {
             let after = index > 0 && bubbles[index - 1].mine == bubble.mine
             let before = index + 1 < bubbles.count && bubbles[index + 1].mine == bubble.mine
