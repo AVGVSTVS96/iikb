@@ -20,6 +20,10 @@ data class Transcript(
     val app: String? = null,
     /** What the model wrote, when your style changed it. */
     val heard: String? = null,
+    /** The microphone it was said into, as Settings › Voice names it; null for Android's recognizer, which listens itself. */
+    val mic: String? = null,
+    /** Whether that microphone was heard through a call's voice processing; never, since iikb records with Android's source for speech recognition. */
+    val voiceProcessing: Boolean? = null,
     /** Written after iikb ended mid-dictation, the next time it started. */
     val recovered: Boolean? = null,
     /** What it was first written as, kept once Transcribe Again put another writing in its place. */

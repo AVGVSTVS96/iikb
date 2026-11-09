@@ -43,6 +43,10 @@ class Microphone(
 
     val recording get() = running
 
+    /** The microphone the dictation being recorded started on, as Settings › Voice names it. */
+    var input: String? = null
+        private set
+
     /** Starts recording; false when Android won't give iikb the microphone (another app holds it, or no permission). */
     @SuppressLint("MissingPermission")
     fun start(): Boolean {
@@ -67,6 +71,7 @@ class Microphone(
             hangUp()
             return false
         }
+        input = (record.routedDevice ?: microphones.input())?.let(microphones::choice)?.name
         audio.registerAudioDeviceCallback(devices, main)
         running = true
         thread = Thread({ capture(record, chunk) }, "iikb-microphone").also(Thread::start)

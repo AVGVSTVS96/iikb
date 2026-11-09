@@ -214,9 +214,13 @@ def staged():
             file.write(text)
 
     os.makedirs(os.path.join(work, "stage"), exist_ok=True)
+    # The phone's own microphone, named as Settings › Voice names it: the phone's name.
+    name = sh("settings get global device_name").strip()
+    phone = name if name not in ("", "null") else sh("getprop ro.product.model").strip()
     transcripts = []
     for said in lines("transcripts.jsonl"):
-        said = {key: value for key, value in said.items() if key not in ("mic", "voiceProcessing")}
+        if said.get("mic") == "iPhone Microphone":
+            said["mic"] = phone
         said["date"] = round(said["date"] + FOUNDATION, 3)
         if "app" in said:
             said["app"] = APPS.get(said["app"], said["app"])

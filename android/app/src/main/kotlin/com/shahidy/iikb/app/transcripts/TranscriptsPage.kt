@@ -427,8 +427,9 @@ private fun TranscriptActions(transcript: Transcript) {
 }
 
 /**
- * Where iikb kept a transcript's sound: writing it again with the voice model picked now, to keep or not, as iOS's
- * `RecordingSection`. A Parakeet not yet downloaded is fetched first; Android's recognizer hears the recording piped in.
+ * The microphone a transcript was said into and whether voice processing heard it, and, where iikb kept its sound,
+ * writing it again with the voice model picked now, to keep or not, as iOS's `RecordingSection`. A Parakeet not yet
+ * downloaded is fetched first; Android's recognizer hears the recording piped in.
  */
 @Composable
 private fun RecordingSection(transcript: Transcript) {
@@ -440,7 +441,8 @@ private fun RecordingSection(transcript: Transcript) {
     var writing by remember(transcript.id) { mutableStateOf<Job?>(null) }
     var again by remember(transcript.id) { mutableStateOf<Again?>(null) }
     var failure by remember(transcript.id) { mutableStateOf<String?>(null) }
-    if (!remember(transcript.id) { Transcripts.hasRecording(transcript.id) }) return
+    val kept = remember(transcript.id) { Transcripts.hasRecording(transcript.id) }
+    if (!kept && transcript.mic == null) return
     val picked = model.pickedShown
     val ready = picked == VoiceModel.Model.ANDROID || model.state == VoiceModel.State.Ready
     val stalled = (model.state as? VoiceModel.State.Failed)?.takeIf { writing != null && picked != VoiceModel.Model.ANDROID }
@@ -461,38 +463,46 @@ private fun RecordingSection(transcript: Transcript) {
             writing = null
         }
     }
-    Section(footer = "iikb keeps the sound of each dictation on this phone, so it can be sent or written again with ${picked.title}.") {
-        val busy = writing != null && stalled == null
-        ActionRow(
-            when {
-                !busy -> "Transcribe Again"
-                ready -> "Transcribing Again…"
-                else -> "Transcribing Again once ${picked.title} is ready…"
-            },
-            "M19 12a7 7 0 1 1-2.05-4.95 M19 4v4h-4", if (busy) palette.secondary else palette.accent,
-        ) { if (!busy) write() }
-        stalled?.let {
+    Section(footer = if (kept) "iikb keeps the sound of each dictation on this phone, so it can be sent or written again with ${picked.title}." else null) {
+        transcript.mic?.let { Line("Microphone", value = it) }
+        transcript.voiceProcessing?.let {
             Divider()
-            Line("${picked.title} couldn’t download: ${it.reason}", color = palette.red)
+            Line("Voice Processing", value = if (it) "On" else "Off")
         }
-        again?.let { written ->
-            Divider()
-            if (written.text.isEmpty()) {
-                Line("Nothing heard", detail = "Written by ${written.model}")
-            } else {
-                SelectionContainer { Line(written.text, detail = "Written by ${written.model}") }
+        if (kept) {
+            if (transcript.mic != null) Divider()
+            val busy = writing != null && stalled == null
+            ActionRow(
+                when {
+                    !busy -> "Transcribe Again"
+                    ready -> "Transcribing Again…"
+                    else -> "Transcribing Again once ${picked.title} is ready…"
+                },
+                "M19 12a7 7 0 1 1-2.05-4.95 M19 4v4h-4", if (busy) palette.secondary else palette.accent,
+            ) { if (!busy) write() }
+            stalled?.let {
                 Divider()
-                ActionRow("Use This Transcript", "M6.5 12.5l4 4L18 8", palette.accent) {
-                    Transcripts.replace(transcript.id, written.text, written.heard, written.model)
-                    again = null
-                }
-                Divider()
-                CopyRow(written.text)
+                Line("${picked.title} couldn’t download: ${it.reason}", color = palette.red)
             }
-        }
-        failure?.let {
-            Divider()
-            Line(it, color = palette.red)
+            again?.let { written ->
+                Divider()
+                if (written.text.isEmpty()) {
+                    Line("Nothing heard", detail = "Written by ${written.model}")
+                } else {
+                    SelectionContainer { Line(written.text, detail = "Written by ${written.model}") }
+                    Divider()
+                    ActionRow("Use This Transcript", "M6.5 12.5l4 4L18 8", palette.accent) {
+                        Transcripts.replace(transcript.id, written.text, written.heard, written.model)
+                        again = null
+                    }
+                    Divider()
+                    CopyRow(written.text)
+                }
+            }
+            failure?.let {
+                Divider()
+                Line(it, color = palette.red)
+            }
         }
     }
 }

@@ -54,11 +54,12 @@ class Microphones private constructor(private val context: Context) {
                 ?: audio.availableCommunicationDevices.firstOrNull { it.type == input.type }
         }
 
+    /** A microphone as Settings › Voice names it, or null for one it never lists. */
+    fun choice(device: AudioDeviceInfo): Choice? =
+        kind(device.type)?.let { Choice(it, if (it == Kind.PHONE) phone() else device.productName.toString()) }
+
     private fun inputs(): List<Pair<AudioDeviceInfo, Choice>> =
-        audio.getDevices(AudioManager.GET_DEVICES_INPUTS).mapNotNull { device ->
-            val kind = kind(device.type) ?: return@mapNotNull null
-            device to Choice(kind, if (kind == Kind.PHONE) phone() else device.productName.toString())
-        }
+        audio.getDevices(AudioManager.GET_DEVICES_INPUTS).mapNotNull { device -> choice(device)?.let { device to it } }
 
     private fun read(): Choice? {
         val (kind, name) = preferences.getString(KEY, null)?.split(":", limit = 2)?.takeIf { it.size == 2 } ?: return null

@@ -36,7 +36,7 @@ class Dictation(context: Context, private val typist: Typist) {
     /** One dictation: where it was said, and its sound once recorded (none for Android's recognizer). */
     private class Take(
         val id: String, val date: Long, val field: Int, val app: String?, val speech: Boolean = false,
-        val recovered: Boolean = false,
+        val recovered: Boolean = false, val mic: String? = null,
     ) {
         var recording: Recording? = null
         var canceled = false
@@ -118,7 +118,7 @@ class Dictation(context: Context, private val typist: Typist) {
         }
         recorded = 0.0
         started = System.currentTimeMillis()
-        listening = Take(UUID.randomUUID().toString(), started, field, app, speech)
+        listening = Take(UUID.randomUUID().toString(), started, field, app, speech, mic = microphone.input.takeUnless { speech })
         onChange()
         return true
     }
@@ -207,7 +207,7 @@ class Dictation(context: Context, private val typist: Typist) {
             Transcript(
                 id = take.id, date = take.date / 1000.0, text = text, seconds = seconds, typed = typed,
                 recovered = take.recovered.takeIf { it }, model = model, heard = heard.takeIf { it != text },
-                app = take.app,
+                app = take.app, mic = take.mic, voiceProcessing = take.mic?.let { false },
             ),
         )
     }
