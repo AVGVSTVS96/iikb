@@ -48,7 +48,7 @@ IIKB_TOKEN=secret PORT=2593 bun extensions/notes.ts
 
 It listens on `127.0.0.1`; put it behind `https` on your own devices, for example `tailscale serve --bg --set-path /notes 2593`.
 
-`extensions/hex.ts` is the first: your hex sessions as chats, DM and General first, through hex's voice API.
+[hex](https://github.com/AVGVSTVS96/hex) serves one itself: your Telegram with hex as chats, the DM and General first, from its hub ([channels/iikb](https://github.com/AVGVSTVS96/hex/tree/main/channels/iikb)).
 
 ## Adding one
 
