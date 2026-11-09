@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.text.InputType
+import android.graphics.BitmapFactory
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -379,6 +380,26 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
             } else {
                 gifs?.notice = said
             }
+        }
+    }
+
+    /**
+     * A held GIF lifts out and drops into the app's field as the GIF itself, no paste: a drag across windows, which
+     * the app takes or not, as an image drop on iOS. What's under the finger is the GIF's first frame.
+     */
+    override fun dragGif(gif: Gif, search: String) {
+        feedback(Feedback.Kind.OTHER)
+        gifs?.drag(gif, search, app) { clip, file ->
+            val view = overlay?.view ?: return@drag
+            if (clip == null || file == null) {
+                gifs?.notice = "Couldn't get that GIF."
+                return@drag
+            }
+            val frame = BitmapFactory.decodeFile(file.path) ?: return@drag
+            view.startDragAndDrop(
+                clip, GifShadow(frame, resources.displayMetrics.density), null,
+                View.DRAG_FLAG_GLOBAL or View.DRAG_FLAG_GLOBAL_URI_READ,
+            )
         }
     }
 

@@ -71,7 +71,7 @@ class Klipy private constructor(private val key: String, private val customer: S
     /** The GIF's file, downloaded into `directory`, or null when the download failed. */
     fun download(gif: Gif, directory: File): File? = runCatching {
         directory.mkdirs()
-        val file = File(directory, base(gif.id).replace(Regex("[^A-Za-z0-9_-]"), "") + ".gif")
+        val file = File(directory, fileName(gif))
         val connection = URL(gif.full.url).openConnection() as HttpURLConnection
         if (connection.responseCode != 200) return null
         connection.inputStream.use { input -> file.outputStream().use { input.copyTo(it) } }
@@ -104,6 +104,8 @@ class Klipy private constructor(private val key: String, private val customer: S
 
     companion object {
         private val json = Json { ignoreUnknownKeys = true }
+
+        fun fileName(gif: Gif) = base(gif.id).replace(Regex("[^A-Za-z0-9_-]"), "") + ".gif"
 
         /** A slug without the suffix a search adds to it, as `gifs/items` answers with it, so a GIF is one recent. */
         fun base(slug: String) = slug.substringBefore("--")

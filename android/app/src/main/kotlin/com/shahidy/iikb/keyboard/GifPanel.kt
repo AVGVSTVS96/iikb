@@ -2,6 +2,7 @@ package com.shahidy.iikb.keyboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -56,6 +57,7 @@ fun imageLoader(): ImageLoader {
  * GIFs in rows of a fixed height, each at its own aspect ratio, scrolling sideways (docs/design.md, "GIF"): only the
  * tiles on screen are made, so only they animate. A tap copies the GIF; near the end the next page comes.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun GifRows(gifs: Gifs, rows: Int, height: Dp, query: String) {
     val look = LocalColors.current
@@ -84,7 +86,7 @@ private fun GifRows(gifs: Gifs, rows: Int, height: Dp, query: String) {
             AsyncImage(
                 gif.preview.url, gif.title, loader, contentScale = ContentScale.Crop,
                 modifier = Modifier.width(width).height(height).clip(RoundedCornerShape(8.dp)).background(look.key)
-                    .clickable { actions.copyGif(gif, query) },
+                    .combinedClickable(onLongClick = { actions.dragGif(gif, query) }) { actions.copyGif(gif, query) },
             )
         }
     }

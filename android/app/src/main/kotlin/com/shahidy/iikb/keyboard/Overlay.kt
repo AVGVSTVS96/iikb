@@ -47,6 +47,8 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         fun appearance()
         /** A GIF tapped, found by `search`: it goes on the clipboard. */
         fun copyGif(gif: Gif, search: String)
+        /** A GIF held: it lifts out of the keyboard to drop into the app's field as the GIF itself. */
+        fun dragGif(gif: Gif, search: String)
     }
 
     /** What's shown: the menu, or a panel by its KeyboardCore name, with its search and whether the keys are up. */

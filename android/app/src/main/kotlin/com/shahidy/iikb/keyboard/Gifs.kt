@@ -74,24 +74,35 @@ class Gifs(private val context: Context, private val klipy: Klipy) {
     }
 
     /** Puts the GIF itself on the clipboard to paste, and keeps it in recents. `done` gets what to say. */
-    fun copy(gif: Gif, search: String, app: String?, done: (String) -> Unit) {
+    fun copy(gif: Gif, search: String, app: String?, done: (String) -> Unit) = send(gif, search, app) { clip ->
+        if (clip == null) return@send done("Couldn't copy that GIF.")
+        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+        done("Copied. Paste it, or hold a GIF to drag it in.")
+    }
+
+    /** The GIF as a file the app may read, for a drag into its field; recents keep it once it's sent. */
+    fun drag(gif: Gif, search: String, app: String?, ready: (ClipData?, File?) -> Unit) =
+        send(gif, search, app) { clip -> ready(clip, clip?.let { File(context.cacheDir, "gifs/" + file(gif)) }) }
+
+    /** Downloads the GIF, then hands over a clip of it; it goes first in recents and KLIPY is told it was shared. */
+    private fun send(gif: Gif, search: String, app: String?, then: (ClipData?) -> Unit) {
         work.execute {
             val file = klipy.download(gif, File(context.cacheDir, "gifs"))
             main.post {
-                if (file == null) return@post done("Couldn't copy that GIF.")
+                if (file == null) return@post then(null)
                 val uri = FileProvider.getUriForFile(context, "com.shahidy.iikb.files", file)
-                context.getSystemService(ClipboardManager::class.java)
-                    .setPrimaryClip(ClipData.newUri(context.contentResolver, gif.title.ifEmpty { "GIF" }, uri))
                 Native.gifsUse(handle, Klipy.base(gif.id).encodeToByteArray(), app?.encodeToByteArray())?.let {
                     val next = File(recentsFile.parentFile, recentsFile.name + ".next")
                     next.writeBytes(it)
                     next.renameTo(recentsFile)
                 }
-                done("Copied. Paste it where you want it.")
+                then(ClipData.newUri(context.contentResolver, gif.title.ifEmpty { "GIF" }, uri))
                 work.execute { klipy.shared(gif, search) }
             }
         }
     }
+
+    private fun file(gif: Gif) = Klipy.fileName(gif)
 
     fun close() = work.shutdown()
 
