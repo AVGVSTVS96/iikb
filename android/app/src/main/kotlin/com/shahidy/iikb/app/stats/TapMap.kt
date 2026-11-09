@@ -54,11 +54,8 @@ import kotlin.math.sin
 
 enum class TapMode(val title: String) { HEAT("Heat"), AIM("Aim"), ACCURACY("Accuracy") }
 
-/** A keycap's fill on the Taps backdrop: a letter's, or the darker one of a key that doesn't learn, as the keys are drawn. */
-fun keyFill(palette: Palette, learns: Boolean = true) = when {
-    palette.isDark -> if (learns) Color(0xFF3D3D40) else Color(0xFF2C2C2E)
-    else -> if (learns) Color.White else Color(0xFFC6C9D0)
-}
+/** A keycap's fill on the Taps backdrop, every key's alike, as the keyboard's own theme draws them (iOS's `TapMapView`). */
+fun keyFill(palette: Palette) = if (palette.isDark) Color(0xFF3D3D40) else Color.White
 
 /**
  * The keyboard at its size, or smaller where the card is narrower, with what the touch model learned drawn over it, as
@@ -93,7 +90,7 @@ fun TapMap(board: TapBoard, mode: TapMode, heat: ImageBitmap?, selected: Int?, o
                 val picked = board.aims.firstOrNull { it.key == selected }
                 board.keys.forEach { key ->
                     drawRoundRect(
-                        keyFill(palette, key.learns), Offset(key.x.toFloat(), key.y.toFloat()),
+                        keyFill(palette), Offset(key.x.toFloat(), key.y.toFloat()),
                         Size(key.width.toFloat(), key.height.toFloat()), CornerRadius(8.5f),
                     )
                 }
@@ -279,7 +276,7 @@ fun CloseUp(board: TapBoard, aim: TapBoard.Aim) {
             val topLeft = map(key.x, key.y)
             val rect = Size(key.width.toFloat() * scale, key.height.toFloat() * scale)
             if (topLeft.x > size.width || topLeft.y > size.height || topLeft.x + rect.width < 0 || topLeft.y + rect.height < 0) return@forEachIndexed
-            drawRoundRect(keyFill(palette, key.learns), topLeft, rect, CornerRadius(corner))
+            drawRoundRect(keyFill(palette), topLeft, rect, CornerRadius(corner))
             val isTarget = index == aim.key
             val name = measurer.measure(
                 key.name,
@@ -331,7 +328,7 @@ fun Pull(board: TapBoard) {
         drawRoundRect(Tints.backdrop(palette), cornerRadius = CornerRadius(16 * density))
         board.keys.forEach { key ->
             drawRoundRect(
-                keyFill(palette, key.learns), Offset(key.x.toFloat() * scale, key.y.toFloat() * scale),
+                keyFill(palette), Offset(key.x.toFloat() * scale, key.y.toFloat() * scale),
                 Size(key.width.toFloat() * scale, key.height.toFloat() * scale), CornerRadius(6 * scale),
             )
         }
