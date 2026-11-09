@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.Transcripts
+import com.shahidy.iikb.TypingStats
 import com.shahidy.iikb.Vocabulary
 import com.shahidy.iikb.keyboard.Clips
 import com.shahidy.iikb.voice.VoiceModel
@@ -209,7 +210,7 @@ private fun Privacy() {
     Section("What Leaves This Phone") {
         Fact(
             "iphone",
-            "Learned words, app-specific language and emoji choices, dictations and clipboard history stay here.",
+            "Learned words, app-specific language and emoji choices, typing counts, dictations and clipboard history stay here.",
         )
         Divider()
         Fact(
@@ -224,6 +225,13 @@ private fun Privacy() {
             asking = Ask("iikb will forget the words it learned and everything it learned about your taps.", "Reset") {
                 store.resetMemory()
             }
+        }
+    }
+    Section(
+        footer = "Deletes the counts Stats keeps of your typing on this phone: never what you typed, only how much, how fast and in which app.",
+    ) {
+        ActionRow("Delete Typing Stats", destructive = true) {
+            asking = Ask("Delete your typing stats from this phone?", "Delete") { TypingStats.delete() }
         }
     }
     Section(
