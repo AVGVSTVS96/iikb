@@ -84,7 +84,10 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             memoryFile.delete()
             Native.resetMemory(handle)
         }
-        if (name == MIC_ON && !settings.bool(MIC_ON)) dictation.stop()
+        if (name == MIC_ON) {
+            if (!settings.bool(MIC_ON)) dictation.stop()
+            showDictation()
+        }
         configure()
     }
 
@@ -212,6 +215,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         Native.changeApp(handle, app?.encodeToByteArray())
         traits(info)
         place()
+        showDictation()
         field.forget()
         Native.documentChanged(handle)
         catchUp()
@@ -756,7 +760,9 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     }
 
     private fun showDictation() {
-        view?.mic?.show(dictation.phase, dictation.recorded, dictation.saved, dictation.waitingFor)
+        val mic = view?.mic ?: return
+        mic.ready = settings.bool(MIC_ON) && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        mic.show(dictation.phase, dictation.recorded, dictation.saved, dictation.waitingFor)
     }
 
     // Dictation.Typist

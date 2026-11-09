@@ -29,7 +29,8 @@ import kotlin.math.sin
  * into the mic as it shrinks, a ring and a check while it writes), Drain (the red pours into the mic, which glows
  * while it writes) or Card (the recording folds into a card that lifts off the keyboard's top). Cancelling turns the
  * recording to dust (`Dust`). The dictations waiting for the model stack as cards in the recording's place
- * (`PendingStack`). In dp.
+ * (`PendingStack`). While idle with the mic on (`ready`), a green dot at its top right says a tap records right here, as
+ * iOS's does while its app keeps the microphone on. In dp.
  */
 class MicBar(private val view: View) {
     var stopAnimation = "squeeze"
@@ -47,6 +48,17 @@ class MicBar(private val view: View) {
     private val red = Moving(0f)
     /** The mic's own glyph, shown while it's idle. */
     private val idle = Moving(1f)
+    /** The green dot, while it's idle and a tap would record in place. */
+    private val dot = Moving(0f)
+
+    /** Whether a tap records right here: Home's mic switch is on and iikb has the microphone. */
+    var ready = false
+        set(value) {
+            if (value == field) return
+            field = value
+            dot.go(if (phase == Dictation.Phase.OFF && value) 1f else 0f, Curve.settle)
+            view.postInvalidateOnAnimation()
+        }
     /** Squeeze's ring, while it writes. */
     private val ring = Moving(0f)
     /** The spinner Drain and Card show while it writes. */
@@ -221,7 +233,7 @@ class MicBar(private val view: View) {
 
     private fun busy(now: Long) = phase != Dictation.Phase.OFF || played != null || ghost != null || dust != null ||
         checking != 0L || gave != null || sank != 0L || waveform.busy(now) || stack.busy(now) ||
-        listOf(growth, red, idle, ring, spinner, voice, micAlpha, micScale, micPress, cancelPress, keyPress, under).any { it.moving(now) }
+        listOf(growth, red, idle, dot, ring, spinner, voice, micAlpha, micScale, micPress, cancelPress, keyPress, under).any { it.moving(now) }
 
     /** The cancel button, the mic and the recording in it, as they are at `now`. */
     private fun drawParts(canvas: Canvas, frame: Frame, mic: RectF?, capsule: RectF, now: Long) {
@@ -261,6 +273,7 @@ class MicBar(private val view: View) {
         glowing = if (writing && stopAnimation == "drain") glowing.takeIf { it != 0L } ?: now else 0L
         red.go(if (listening) 1f else 0f, curve, now = now)
         idle.go(if (phase == Dictation.Phase.OFF && checking == 0L) 1f else 0f, curve, now = now)
+        dot.go(if (phase == Dictation.Phase.OFF && ready) 1f else 0f, curve, now = now)
         ring.go(if (writing && stopAnimation == "squeeze") 1f else 0f, curve, now = now)
         spinner.go(if (writing && stopAnimation != "squeeze") 1f else 0f, curve, now = now)
     }
@@ -341,7 +354,17 @@ class MicBar(private val view: View) {
         val spinning = spinner.at(now).coerceIn(0f, 1f)
         if (spinning > 0.001f) drawSpinner(canvas, cx, cy, 20f * (0.5f + 0.25f * spinning), theme.micGlyph, spinning, now)
         if (checking != 0L) drawCheck(canvas, theme.micGlyph, cx, cy, mic.width() * 0.69f, (now - checking) / 1000f)
+        drawDot(canvas, mic, now)
         canvas.restore()
+    }
+
+    /** iOS's 6 dp system green dot, inset 4% of the mic's side from its top right, growing in from half its size. */
+    private fun drawDot(canvas: Canvas, end: RectF, now: Long) {
+        val shown = dot.at(now).coerceIn(0f, 1f)
+        if (shown <= 0.001f) return
+        fill.color = ColorUtils.setAlphaComponent(GREEN, (255 * shown).toInt())
+        val inset = end.width() * 0.04f
+        canvas.drawCircle(end.right - DOT / 2 - inset, end.top + inset + DOT / 2, DOT / 2 * (0.5f + 0.5f * shown), fill)
     }
 
     /**
@@ -398,6 +421,7 @@ class MicBar(private val view: View) {
         val spinning = spinner.at(now).coerceIn(0f, 1f)
         if (spinning > 0.001f) drawSpinner(canvas, cx, cy, 20f * (0.5f + 0.25f * spinning), theme.micGlyph, spinning, now)
         if (checking != 0L) drawCheck(canvas, theme.micGlyph, cx, cy, min(side * 0.69f, 21f), (now - checking) / 1000f)
+        drawDot(canvas, oval.apply { set(cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2) }, now)
         canvas.restore()
         if (sank != 0L) drawKeyRipple(canvas, theme, key, corner, (now - sank) / 1000f - SINK)
         if (busy(now)) view.postInvalidateOnAnimation()
@@ -671,6 +695,9 @@ class MicBar(private val view: View) {
         private const val DRAIN_END = 1f
         private const val CARD_END = 0.78f
         private const val GLOW = 10f
+        /** iOS's system green, `#30D158`, and the dot's side. */
+        private const val GREEN = 0xFF30D158.toInt()
+        private const val DOT = 6f
 
         fun clock(seconds: Int) = "%d:%02d".format(seconds / 60, seconds % 60)
 
