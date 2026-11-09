@@ -73,6 +73,20 @@ object Glyphs {
             "M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-4.5 3.5V17H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z M7.5 8.5h9M7.5 12h6",
         ),
         "clock" to stroke("M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0Z M12 7v5l3 2"),
+        "scissors" to stroke(
+            "M9.5 6.5a3 3 0 1 1-6 0a3 3 0 1 1 6 0Z M9.5 17.5a3 3 0 1 1-6 0a3 3 0 1 1 6 0Z M8.6 8.6 20.5 18 M8.6 15.4 20.5 6",
+        ),
+        "square.on.square" to stroke(
+            "M10 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z M16 5V4.8A1.8 1.8 0 0 0 14.2 3H5a2 2 0 0 0-2 2v9.2A1.8 1.8 0 0 0 4.8 16H5",
+        ),
+        "pin.fill" to fill("M8 3h8l-1.2 6.5L18 13v1.5h-5.2V21h-1.6v-6.5H6V13l3.2-3.5Z"),
+        "envelope" to stroke("M4.5 5.5h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z M3 7l9 6.5L21 7"),
+        "phone" to stroke(
+            "M7.2 3.5h-2a1.8 1.8 0 0 0-1.8 2A15.5 15.5 0 0 0 18.5 20.6a1.8 1.8 0 0 0 2-1.8v-2l-4-1.6-2 2a12 12 0 0 1-6.2-6.2l2-2Z",
+        ),
+        "link" to stroke(
+            "M10.5 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1 M13.5 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+        ),
     )
 
     private fun stroke(data: String) = Glyph(PathParser.createPathFromPathData(data), false)

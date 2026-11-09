@@ -1,6 +1,8 @@
 #!/bin/bash
 # iikb for Android (android/AGENTS.md): the signed release APK, built here. --emulator also installs it on the Mac's
-# Android emulator, booting it headless if it isn't up, and makes iikb the keyboard there.
+# Android emulator, booting it headless if it isn't up, and makes iikb the keyboard there; a script after it runs on the
+# Mac right after the install. Agents share the one emulator, so the install and that script hold its lock together,
+# and no other build lands mid-test.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 export JAVA_HOME=${JAVA_HOME:-/usr/lib/jvm/java-25-openjdk} ANDROID_HOME=${ANDROID_HOME:-$HOME/Android/Sdk}
@@ -11,7 +13,14 @@ echo "$apk"
 [ "${1:-}" = --emulator ] || exit 0
 
 ssh mac 'bash -s' < "$root/scripts/android-emulator"
-scp -q "$apk" mac:/tmp/iikb.apk
-ssh mac 'adb=~/Library/Android/sdk/platform-tools/adb; $adb install -r /tmp/iikb.apk >/dev/null && rm /tmp/iikb.apk &&
-    $adb shell ime enable com.shahidy.iikb/.keyboard.IikbService >/dev/null &&
-    $adb shell ime set com.shahidy.iikb/.keyboard.IikbService >/dev/null && echo installed on the emulator'
+run=$(ssh mac 'mktemp -d /tmp/iikb-run.XXXXXX')
+scp -q "$apk" "mac:$run/iikb.apk"
+if [ -n "${2:-}" ]; then scp -q "$2" "mac:$run/drive.sh"; fi
+ssh mac "lockf /tmp/iikb-emulator.lock bash -c '
+    adb=~/Library/Android/sdk/platform-tools/adb
+    \$adb install -r $run/iikb.apk >/dev/null || exit 1
+    for _ in 1 2 3; do \$adb shell ime enable com.shahidy.iikb/.keyboard.IikbService >/dev/null && break; sleep 1; done
+    \$adb shell ime set com.shahidy.iikb/.keyboard.IikbService >/dev/null
+    echo installed on the emulator
+    [ ! -f $run/drive.sh ] || bash $run/drive.sh
+'; rm -rf $run"

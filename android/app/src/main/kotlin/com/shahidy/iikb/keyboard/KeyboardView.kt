@@ -44,6 +44,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         fun pickEmoji(emoji: String, base: String?)
         fun closePanel()
         fun clearSearch()
+        /** One of the menu's Cut, Copy and Paste. */
+        fun edit(name: String)
         fun emojiResults(): List<String>
         fun tones(emoji: String): List<String>
     }
@@ -81,6 +83,18 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     private var emojiHold: Runnable? = null
     private var toneOf: String? = null
 
+    /** What the menu's Cut, Copy and Paste can do now, while the menu is out; the bar shows them over its suggestions. */
+    data class Edits(val cut: Boolean, val copy: Boolean, val paste: Boolean)
+
+    var edits: Edits? = null
+    /** The More button stays pressed while the menu, or a panel opened from it, is out. */
+    var moreOn = false
+    /** The menu or a panel sits in the keys' place, over a keyboard grown to `grown` dp. */
+    var keysHidden = false
+    var grown = 0f
+    /** A panel drawn over the bar's place (`Overlay`), with the keys up under it. */
+    var barCovered = false
+
     var characterPreview = "attached"
     var micListening = false
 
@@ -106,11 +120,13 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     )
 
     private val bar get() = frame?.toolbar
-    private val barHeight get() = frame?.let { (if (it.panel != null) it.toolbar.panelHeight else it.toolbar.height).toFloat() } ?: 0f
+    private val barHeight get() = frame?.let {
+        (if (it.panel != null && !keysHidden) it.toolbar.panelHeight else it.toolbar.height).toFloat()
+    } ?: 0f
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val frame = frame
-        val height = if (frame == null) 0 else ((barHeight + frame.height) * density).toInt()
+        val height = if (frame == null) 0 else (maxOf(barHeight + frame.height.toFloat(), grown) * density).toInt()
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), height)
     }
 
@@ -119,7 +135,11 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         canvas.drawColor(frame.theme.card)
         canvas.save()
         canvas.scale(density, density)
-        if (frame.panel == "emoji") emoji.draw(canvas, frame, painter.labels) else drawBar(canvas, frame)
+        when {
+            frame.panel == "emoji" -> emoji.draw(canvas, frame, painter.labels)
+            !barCovered -> drawBar(canvas, frame)
+        }
+        if (keysHidden) return canvas.restore()
         canvas.translate(0f, barHeight)
         val pressed = pressedKeys(frame)
         val trackpad = touches.values.any { it.mode == Mode.TRACKPAD }
@@ -167,7 +187,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val bar = frame.toolbar
         val theme = frame.theme
         bar.more?.let { box ->
-            if (pressedBar == "more") circle(canvas, box, theme.candidatePill)
+            if (pressedBar == "more" || moreOn) circle(canvas, box, theme.candidatePill)
             fill.color = theme.label
             Glyphs.draw(canvas, "more", box.midX.toFloat(), box.midY.toFloat(), bar.glyph.toFloat() * 0.92f, fill)
         }
@@ -178,6 +198,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             val share = if (micListening) 0.6f else 0.6f
             Glyphs.draw(canvas, glyph, box.midX.toFloat(), box.midY.toFloat(), (box.width * share).toFloat(), fill)
         }
+        edits?.let { return drawEdits(canvas, frame, it) }
         if (!frame.showsSuggestions || frame.panel != null) return
         val showsEmoji = frame.emoji.isNotEmpty()
         val slots = if (showsEmoji && !bar.emojiBeside) bar.slots.dropLast(1) else bar.slots
@@ -213,6 +234,46 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             canvas.drawRect(x - 0.5f, box.midY.toFloat() - 14, x + 0.5f, box.midY.toFloat() + 14, fill)
         }
         if (showsEmoji) drawEmoji(canvas, frame)
+    }
+
+    /** Cut, Copy and Paste as three pills in the key fill, from the More button to the mic. */
+    private fun editPills(frame: Frame): List<Pair<String, RectF>> {
+        val bar = frame.toolbar
+        val left = (bar.more?.let { it.x + it.width } ?: bar.blockMinX).toFloat() + 6
+        val right = (bar.mic?.x ?: bar.blockMaxX).toFloat() - 6
+        val width = (right - left - 12) / 3
+        val height = bar.button.toFloat() + 4
+        val top = (bar.top + bar.bar / 2).toFloat() - height / 2
+        return EDITS.mapIndexed { index, name ->
+            val x = left + index * (width + 6)
+            name to RectF(x, top, x + width, top + height)
+        }
+    }
+
+    private fun drawEdits(canvas: Canvas, frame: Frame, edits: Edits) {
+        val theme = frame.theme
+        text.typeface = android.graphics.Typeface.create(painter.labels, 500, false)
+        text.textSize = 16f
+        for ((name, box) in editPills(frame)) {
+            val enabled = enabled(edits, name)
+            fill.color = if (pressedBar == name) theme.letter.pressedTop else theme.letter.top
+            canvas.drawRoundRect(box, box.height() / 2, box.height() / 2, fill)
+            val color = ColorUtils.setAlphaComponent(theme.letter.label, if (enabled) 255 else 90)
+            val title = name.replaceFirstChar(Char::uppercase)
+            val glyph = 16f
+            val width = glyph + 6 + text.measureText(title)
+            val x = box.centerX() - width / 2
+            fill.color = color
+            Glyphs.draw(canvas, EDIT_GLYPHS.getValue(name), x + glyph / 2, box.centerY(), glyph, fill)
+            text.color = color
+            canvas.drawText(title, x + glyph + 6, box.centerY() + text.textSize * 0.35f, text)
+        }
+    }
+
+    private fun enabled(edits: Edits, name: String) = when (name) {
+        "cut" -> edits.cut
+        "copy" -> edits.copy
+        else -> edits.paste
     }
 
     private fun emojiPlaces(frame: Frame): List<Pair<String, Float>> {
@@ -261,6 +322,9 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val bar = frame.toolbar
         bar.more?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "more" }
         bar.mic?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "mic" }
+        edits?.let { edits ->
+            return editPills(frame).firstOrNull { (name, box) -> enabled(edits, name) && x >= box.left && x <= box.right }?.first
+        }
         if (!frame.showsSuggestions || frame.panel != null) return null
         val showsEmoji = frame.emoji.isNotEmpty()
         if (showsEmoji && bar.emoji.contains(x.toDouble(), bar.emoji.y)) {
@@ -277,6 +341,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         when {
             target == "more" -> actions.more()
             target == "mic" -> actions.mic()
+            target in EDITS -> actions.edit(target)
             target.startsWith("slot") -> actions.select(target.removePrefix("slot").toInt())
             target.startsWith("emoji") ->
                 emojiPlaces(frame).getOrNull(target.removePrefix("emoji").toInt())?.let { actions.acceptEmoji(it.first) }
@@ -365,7 +430,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
 
     private fun begin(frame: Frame, id: Int, x: Float, y: Float) {
         val keyY = y - barHeight
-        if (keyY < -TOP_ROW_REACH) {
+        if (keyY < -TOP_ROW_REACH || keysHidden) {
             val target = barTarget(frame, x, y) ?: return
             barPointer = id
             pressedBar = target
@@ -676,5 +741,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         const val ACCENT_HOLD = 450L
         const val TRACKPAD_HOLD = 400L
         const val MENU_HOLD = 500L
+        val EDITS = listOf("cut", "copy", "paste")
+        val EDIT_GLYPHS = mapOf("cut" to "scissors", "copy" to "square.on.square", "paste" to "doc.on.clipboard")
     }
 }

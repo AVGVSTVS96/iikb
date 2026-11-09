@@ -1,5 +1,7 @@
 package com.shahidy.iikb.keyboard
 
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.Configuration
@@ -9,6 +11,8 @@ import android.os.Looper
 import android.os.SystemClock
 import android.text.InputType
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.view.inputmethod.EditorInfo
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -25,11 +29,18 @@ import java.util.concurrent.Executors
  * iikb as Android's input method: the engine in Swift (`Native`), the app's field (`Field`), and the keys
  * (`KeyboardView`), wired as `FullKeyboardViewController` wires them on iOS.
  */
-class IikbService : InputMethodService(), KeyboardView.Actions {
+class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions {
     private lateinit var settings: Settings
     private lateinit var field: Field
     private var handle = 0L
     private var view: KeyboardView? = null
+    private var overlay: Overlay? = null
+    private lateinit var clips: Clips
+    private lateinit var clipboard: ClipboardManager
+    /** The bar's More menu is out, or was when a panel opened from it. */
+    private var menuOpen = false
+    /** A panel opened from the menu has the keys up under it, typing into its search. */
+    private var keysUp = false
     private var feedback: Feedback? = null
     private var voice: Voice? = null
     private var bottom = 0.0
@@ -57,11 +68,36 @@ class IikbService : InputMethodService(), KeyboardView.Actions {
         memoryFile.takeIf { it.exists() }?.readBytes()?.let { Native.restoreMemory(handle, it) }
         emojiFile.takeIf { it.exists() }?.readBytes()?.let { Native.restoreEmojiHistory(handle, it) }
         settings.preferences.registerOnSharedPreferenceChangeListener(changed)
+        clips = Clips.of(this)
+        clipboard = getSystemService(ClipboardManager::class.java)
+        clipboard.addPrimaryClipChangedListener(copied)
         configure()
+    }
+
+    private val copied = ClipboardManager.OnPrimaryClipChangedListener { catchUp() }
+
+    /**
+     * Keeps what's on the clipboard if the history hasn't seen it, by the time Android says it was copied: the keyboard
+     * reads the clipboard only while it's Android's keyboard, so what was copied while it wasn't is kept when it's
+     * next up. Never kept: what an app marks sensitive (a password manager's) and anything copied in a password or
+     * incognito field.
+     */
+    private fun catchUp() {
+        val clip = runCatching { clipboard.primaryClip }.getOrNull() ?: return
+        val description = clip.description
+        val time = description.timestamp
+        val seen = settings.preferences.getLong(SEEN_CLIP, 0)
+        if (time <= seen) return
+        settings.preferences.edit().putLong(SEEN_CLIP, time).apply()
+        if (incognito || description.extras?.getBoolean(ClipDescription.EXTRA_IS_SENSITIVE) == true) return
+        val text = clip.getItemAt(0)?.text?.toString()?.takeIf { it.isNotBlank() } ?: return
+        clips.keep(text, time / 1000.0)
     }
 
     override fun onDestroy() {
         settings.preferences.unregisterOnSharedPreferenceChangeListener(changed)
+        clipboard.removePrimaryClipChangedListener(copied)
+        overlay?.destroy()
         save()
         voice?.close()
         Native.destroy(handle)
@@ -108,8 +144,17 @@ class IikbService : InputMethodService(), KeyboardView.Actions {
             place()
             insets
         }
+        val overlay = Overlay(this, this)
+        this.overlay = overlay
+        overlay.view.visibility = View.GONE
+        val root = FrameLayout(this)
+        root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        root.addView(overlay.view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))
+        overlay.attach(root)
+        window.window?.decorView?.let(overlay::attach)
+        overlay.resume()
         configure()
-        return view
+        return root
     }
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
@@ -121,11 +166,15 @@ class IikbService : InputMethodService(), KeyboardView.Actions {
         place()
         field.forget()
         Native.documentChanged(handle)
+        catchUp()
         render()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         voice?.stop()
+        menuOpen = false
+        keysUp = false
+        Native.panel(handle, null)
         Native.endSession(handle)
         if (!incognito) save()
         super.onFinishInputView(finishingInput)
@@ -241,8 +290,57 @@ class IikbService : InputMethodService(), KeyboardView.Actions {
 
     private fun render() {
         val view = view ?: return
-        view.frame = Frame.parse(Native.frame(handle))
+        val frame = Frame.parse(Native.frame(handle))
+        if (frame.panel == null) keysUp = false
+        val fromMenu = frame.panel != null && frame.panel != "emoji"
+        val menuShown = menuOpen && frame.panel == null
+        val inPlace = fromMenu && !keysUp
+        val metrics = resources.displayMetrics
+        val normal = (frame.toolbar.height + frame.height).toFloat()
+        view.grown = if (menuShown || inPlace) maxOf(normal, metrics.heightPixels / metrics.density - ROOM_FOR_APP) else 0f
+        view.keysHidden = menuShown || inPlace
+        view.barCovered = fromMenu && keysUp
+        view.moreOn = menuShown || inPlace
+        view.edits = if (menuShown) edits() else null
+        view.frame = frame
+        place(frame, menuShown, fromMenu, inPlace)
         rank()
+    }
+
+    /** The overlay in the keys' place for the menu or a panel opened from it, or in the bar's with the keys up. */
+    private fun place(frame: Frame, menuShown: Boolean, fromMenu: Boolean, inPlace: Boolean) {
+        val overlay = overlay ?: return
+        val shown = menuShown || fromMenu
+        overlay.view.visibility = if (shown) View.VISIBLE else View.GONE
+        if (!shown) return
+        val density = resources.displayMetrics.density
+        val bar = frame.toolbar
+        val (top, height) = if (menuShown || inPlace) {
+            bar.height to (view!!.grown - bar.height - bottom)
+        } else {
+            0.0 to bar.panelHeight
+        }
+        val params = overlay.view.layoutParams as FrameLayout.LayoutParams
+        val wanted = (height.toFloat() * density).toInt()
+        val margin = (top.toFloat() * density).toInt()
+        if (params.height != wanted || params.topMargin != margin) {
+            params.height = wanted
+            params.topMargin = margin
+            overlay.view.layoutParams = params
+        }
+        overlay.state = Overlay.State(
+            Colors.of(frame.theme), bar.blockMinX.toFloat(), bar.blockMaxX.toFloat(),
+            if (menuShown) null else frame.panel, frame.query, keysUp, bar.field.toFloat(), bar.results.toFloat(),
+        )
+    }
+
+    /** What Cut, Copy and Paste can do: cut and copy need a selection, paste text on the clipboard. */
+    private fun edits(): KeyboardView.Edits {
+        val selected = !currentInputConnection?.getSelectedText(0).isNullOrEmpty()
+        val paste = clipboard.primaryClipDescription?.let {
+            it.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) || it.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML)
+        } == true
+        return KeyboardView.Edits(selected, selected, paste)
     }
 
     /** Suggestions rank off the main thread, as on iOS, one job at a time; the newest text wins. */
@@ -339,9 +437,64 @@ class IikbService : InputMethodService(), KeyboardView.Actions {
         event { Native.acceptEmoji(handle, emoji.encodeToByteArray()) }
     }
 
+    /** More opens the menu, and closes it or a panel opened from it, giving the keys back. */
     override fun more() {
-        openApp()
+        feedback(Feedback.Kind.OTHER)
+        val panel = view?.frame?.panel
+        if (panel != null && panel != "emoji") {
+            menuOpen = false
+            return event { Native.panel(handle, null) }
+        }
+        menuOpen = !menuOpen
+        if (menuOpen) catchUp()
+        render()
     }
+
+    override fun edit(name: String) {
+        menuOpen = false
+        feedback(Feedback.Kind.OTHER)
+        when (name) {
+            "cut" -> currentInputConnection?.performContextMenuAction(android.R.id.cut)
+            "copy" -> currentInputConnection?.performContextMenuAction(android.R.id.copy)
+            else -> clipboard.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString()?.let { return paste(it) }
+        }
+        render()
+    }
+
+    // Overlay.Actions
+
+    /** Something picked in a panel or the menu's shelves is typed, and the menu gives the keys back. */
+    override fun paste(text: String) {
+        feedback(Feedback.Kind.INPUT)
+        menuOpen = false
+        event { Native.paste(handle, text.encodeToByteArray()) }
+    }
+
+    override fun open(panel: String) {
+        feedback(Feedback.Kind.OTHER)
+        keysUp = false
+        event { Native.panel(handle, panel.encodeToByteArray()) }
+    }
+
+    /** Back steps out one level: the keys down, then the panel back to the menu it was opened from. */
+    override fun back() {
+        feedback(Feedback.Kind.OTHER)
+        if (keysUp) {
+            keysUp = false
+            return render()
+        }
+        menuOpen = true
+        event { Native.panel(handle, null) }
+    }
+
+    override fun raiseKeys() {
+        if (keysUp) return
+        feedback(Feedback.Kind.OTHER)
+        keysUp = true
+        render()
+    }
+
+    override fun settings() = openApp()
 
     override fun mic() {
         feedback(Feedback.Kind.OTHER)
@@ -363,7 +516,10 @@ class IikbService : InputMethodService(), KeyboardView.Actions {
     }
 
     /** Opening the panel again empties its search. */
-    override fun clearSearch() = event { Native.panel(handle, "emoji".encodeToByteArray()) }
+    override fun clearSearch() {
+        val panel = view?.frame?.panel ?: return
+        event { Native.panel(handle, panel.encodeToByteArray()) }
+    }
 
     override fun emojiResults() = Native.emojiResults(handle).decodeToString().split("\n").filter { it.isNotEmpty() }
 
@@ -380,5 +536,11 @@ class IikbService : InputMethodService(), KeyboardView.Actions {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .apply { page?.let { putExtra(MainActivity.PAGE, it) } },
         )
+    }
+
+    private companion object {
+        /** The menu fills a keyboard grown to all of the screen but this, in dp, for the app (docs/design.md). */
+        const val ROOM_FOR_APP = 140f
+        const val SEEN_CLIP = "clipboard.seen"
     }
 }

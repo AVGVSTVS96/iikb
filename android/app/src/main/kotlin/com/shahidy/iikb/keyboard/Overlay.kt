@@ -1,0 +1,125 @@
+package com.shahidy.iikb.keyboard
+
+import android.content.Context
+import android.graphics.Paint
+import android.os.Bundle
+import android.view.View
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+
+/**
+ * What the keyboard shows in the keys' place (the menu, a panel opened from it) or in the bar's (that panel with the
+ * keys up), drawn with Compose over [KeyboardView], which keeps drawing the bar and keys around it. Sizes are dp, and
+ * text is dp too, as the keys' is, whatever the phone's font size.
+ */
+class Overlay(context: Context, private val actions: Actions) {
+    interface Actions {
+        fun paste(text: String)
+        fun open(panel: String)
+        fun back()
+        fun raiseKeys()
+        fun clearSearch()
+        fun settings()
+    }
+
+    /** What's shown: the menu, or a panel by its KeyboardCore name, with its search and whether the keys are up. */
+    data class State(
+        val colors: Colors, val minX: Float, val maxX: Float, val panel: String?, val query: String, val keysUp: Boolean,
+        val field: Float, val results: Float,
+    )
+
+    var state by mutableStateOf<State?>(null)
+
+    val view = ComposeView(context).apply {
+        setContent {
+            val state = state ?: return@setContent
+            CompositionLocalProvider(
+                LocalDensity provides Density(resources.displayMetrics.density, 1f),
+                LocalColors provides state.colors,
+                LocalActions provides actions,
+            ) {
+                when (state.panel) {
+                    null -> Menu(state)
+                    "clipboard" -> ClipboardPanel(state)
+                }
+            }
+        }
+    }
+
+    /** A Compose view outside an activity needs a lifecycle of its own: the keyboard's window is one. */
+    fun attach(root: View) {
+        root.setViewTreeLifecycleOwner(owner)
+        root.setViewTreeSavedStateRegistryOwner(owner)
+    }
+
+    fun resume() = owner.move(Lifecycle.Event.ON_RESUME)
+    fun pause() = owner.move(Lifecycle.Event.ON_PAUSE)
+    fun destroy() = owner.move(Lifecycle.Event.ON_DESTROY)
+
+    private val owner = Owner()
+
+    private class Owner : LifecycleOwner, SavedStateRegistryOwner {
+        private val registry = LifecycleRegistry(this)
+        private val saved = SavedStateRegistryController.create(this)
+        override val lifecycle: Lifecycle get() = registry
+        override val savedStateRegistry: SavedStateRegistry get() = saved.savedStateRegistry
+
+        init {
+            saved.performRestore(Bundle())
+            registry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        }
+
+        fun move(event: Lifecycle.Event) = registry.handleLifecycleEvent(event)
+    }
+}
+
+/** The theme's colors, as the overlay paints with them. */
+data class Colors(
+    val card: Color, val label: Color, val secondary: Color, val key: Color, val keyLabel: Color, val field: Color,
+    val accent: Color, val pill: Color, val shadow: Color, val dark: Boolean,
+) {
+    companion object {
+        fun of(theme: Theme) = Colors(
+            Color(theme.card), Color(theme.label), Color(theme.candidate), Color(theme.letter.top),
+            Color(theme.letter.label), Color(theme.searchField), Color(theme.prominent), Color(theme.candidatePill),
+            Color(theme.shadow), androidx.core.graphics.ColorUtils.calculateLuminance(theme.card) < 0.5,
+        )
+    }
+}
+
+val LocalColors = staticCompositionLocalOf<Colors> { error("no look") }
+val LocalActions = staticCompositionLocalOf<Overlay.Actions> { error("no actions") }
+
+/** One of the keyboard's glyphs (`Glyphs`), a square `size` on a side. */
+@Composable
+fun Glyph(name: String, color: Color, size: Dp, modifier: Modifier = Modifier) {
+    val paint = remember { Paint(Paint.ANTI_ALIAS_FLAG) }
+    Canvas(modifier.size(size)) {
+        paint.color = color.toArgb()
+        drawIntoCanvas { Glyphs.draw(it.nativeCanvas, name, center.x, center.y, this.size.minDimension, paint) }
+    }
+}

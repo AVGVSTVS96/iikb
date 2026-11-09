@@ -55,4 +55,12 @@ object Native {
     @JvmStatic external fun restoreEmojiHistory(handle: Long, bytes: ByteArray)
     @JvmStatic external fun changeApp(handle: Long, app: ByteArray?)
     @JvmStatic external fun resetMemory(handle: Long)
+
+    @JvmStatic external fun clipsCreate(json: ByteArray?): Long
+    @JvmStatic external fun clipsSave(handle: Long): ByteArray?
+    @JvmStatic external fun clipsKeep(handle: Long, text: ByteArray, time: Double)
+    @JvmStatic external fun clipsRows(handle: Long, search: ByteArray, words: Boolean, now: Double): ByteArray
+    @JvmStatic external fun clipsPin(handle: Long, text: ByteArray, pinned: Boolean)
+    @JvmStatic external fun clipsRemove(handle: Long, text: ByteArray)
+    @JvmStatic external fun clipsClear(handle: Long)
 }
