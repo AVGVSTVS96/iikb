@@ -24,9 +24,8 @@ open class FullKeyboardViewController: UIInputViewController {
     /// The record button in the bottom row, where Settings › Layout › Record Key puts it in the globe's place.
     private let keyMic = MicButton()
     private let panelView = PanelView()
-    /// An open chat's card, opaque where iOS's glass would show the app through: over the tabs and the chat with the
-    /// keys down, over the chat alone above them with the keys up. Its top corners round inside iOS's own card, whose
-    /// edge starts 4 above the keyboard (on the Duo, Nov 9).
+    /// An open chat's card behind the whole keyboard, tabs, chat and keys, opaque where iOS's glass would show the app
+    /// through. Its top corners round inside iOS's own card, whose edge starts 4 above the keyboard (on the Duo, Nov 9).
     private let chatCard = UIView()
     private let menuView = MenuView()
     private let toolbarView = UIView()
@@ -315,10 +314,7 @@ open class FullKeyboardViewController: UIInputViewController {
             : line != nil
                 ? CGRect(x: 0, y: 0, width: width, height: max(room - toolbar.height, 0))
                 : CGRect(x: 0, y: max(room - bar - toolbar.panelHeight, 0), width: width, height: toolbar.panelHeight)
-        chatCard.frame =
-            panelInKeysPlace
-            ? CGRect(x: 0, y: 0, width: width, height: view.bounds.height)
-            : CGRect(x: 0, y: 0, width: width, height: panelView.frame.maxY)
+        chatCard.frame = view.bounds
         TouchTrace.shared.layout(view)
     }
 

@@ -6,13 +6,18 @@ import UIKit
 /// scrolling with its cut ends faded when they don't fit. The capsule is iOS's Liquid Glass. Holding it lists every chat
 /// in iOS's menu, the open one checked, so a chat far along the row is one pick away. A chat with something you haven't
 /// seen has a dot after its name, in its padding, so marking it moves nothing.
-public final class ChatTabs: UIView, UIContextMenuInteractionDelegate {
+public final class ChatTabs: UIView, UIContextMenuInteractionDelegate, UIScrollViewDelegate {
     /// A tab was tapped, by its index.
     public var onPick: (Int) -> Void = { _ in }
 
     private let track = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
     private let scroll = ButtonScrollView()
+    /// Holds the scroll view, so the fade masks what it shows wherever it's scrolled.
+    private let strip = UIView()
     private let platter = UIView()
+    /// Fades a cut end out over the capsule's straight side, clear under its round cap, so a tab cut there fades rather
+    /// than meeting the cap.
+    private let fade = CAGradientLayer()
     private var tabs: [UIButton] = []
     private var dots: [UIView] = []
     private var fresh: Set<Int> = []
@@ -33,10 +38,12 @@ public final class ChatTabs: UIView, UIContextMenuInteractionDelegate {
         track.cornerConfiguration = .capsule()
         track.clipsToBounds = true
         addSubview(track)
-        scroll.fadesEnds = true
-        scroll.fadeLength = 36
+        fade.startPoint = CGPoint(x: 0, y: 0.5)
+        fade.endPoint = CGPoint(x: 1, y: 0.5)
+        fade.colors = [UIColor.clear, .clear, .black, .black, .clear, .clear].map(\.cgColor)
         scroll.alwaysBounceHorizontal = false
-        track.contentView.addSubview(scroll)
+        strip.addSubview(scroll)
+        track.contentView.addSubview(strip)
         platter.isUserInteractionEnabled = false
         platter.layer.cornerCurve = .continuous
         scroll.addSubview(platter)
@@ -126,6 +133,7 @@ public final class ChatTabs: UIView, UIContextMenuInteractionDelegate {
     override public func layoutSubviews() {
         super.layoutSubviews()
         track.frame = bounds
+        strip.frame = bounds
         scroll.frame = bounds
         var x = Self.inset
         let row = bounds.height - 2 * Self.inset
@@ -141,6 +149,8 @@ public final class ChatTabs: UIView, UIContextMenuInteractionDelegate {
                 x: tab.frame.minX + text.maxX + 3, y: tab.frame.midY - Self.dot / 2, width: Self.dot, height: Self.dot)
         }
         scroll.contentSize = CGSize(width: x + Self.inset, height: bounds.height)
+        scroll.delegate = self
+        showFade()
         platter.layer.cornerRadius = row / 2
         guard let open, tabs.indices.contains(open) else {
             platter.isHidden = true
@@ -165,5 +175,27 @@ public final class ChatTabs: UIView, UIContextMenuInteractionDelegate {
         } else {
             settle()
         }
+    }
+
+    public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        showFade()
+    }
+
+    private func showFade() {
+        let width = scroll.bounds.width
+        guard width > 0 else { return }
+        let cap = bounds.height / 2
+        let length = 28.0
+        let before = scroll.contentOffset.x > 0.5
+        let after = scroll.contentOffset.x + width < scroll.contentSize.width - 0.5
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        fade.frame = strip.bounds
+        fade.locations = [
+            0, before ? cap / width : 0, before ? (cap + length) / width : 0,
+            after ? 1 - (cap + length) / width : 1, after ? 1 - cap / width : 1, 1,
+        ].map { NSNumber(value: $0) }
+        CATransaction.commit()
+        strip.layer.mask = before || after ? fade : nil
     }
 }
