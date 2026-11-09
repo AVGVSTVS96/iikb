@@ -43,7 +43,6 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         fun back()
         fun raiseKeys()
         fun clearSearch()
-        fun settings()
         /** The app's Appearance page, from the names of the menu's Theme and Stop Animation rows. */
         fun appearance()
         /** A GIF tapped, found by `search`: it goes on the clipboard. */
@@ -53,7 +52,7 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
     /** What's shown: the menu, or a panel by its KeyboardCore name, with its search and whether the keys are up. */
     data class State(
         val colors: Colors, val minX: Float, val maxX: Float, val panel: String?, val query: String, val keysUp: Boolean,
-        val field: Float, val results: Float, val width: Float,
+        val field: Float, val width: Float,
     ) {
         /** The space from the keys block's right edge to the keyboard's, which a panel keeps clear as on the left. */
         val endInset get() = width - maxX

@@ -341,8 +341,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         }
         overlay.state = Overlay.State(
             Colors.of(frame.theme), bar.blockMinX.toFloat(), bar.blockMaxX.toFloat(),
-            if (menuShown) null else frame.panel, frame.query, keysUp, bar.field.toFloat(), bar.results.toFloat(),
-            frame.width.toFloat(),
+            if (menuShown) null else frame.panel, frame.query, keysUp, bar.field.toFloat(), frame.width.toFloat(),
         )
     }
 
@@ -527,8 +526,6 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
         keysUp = true
         render()
     }
-
-    override fun settings() = openApp()
 
     override fun appearance() {
         menuOpen = false
