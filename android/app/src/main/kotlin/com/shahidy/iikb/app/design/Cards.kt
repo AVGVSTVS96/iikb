@@ -66,9 +66,8 @@ import kotlin.math.roundToInt
 
 val Palette.isDark get() = this == Palette.dark
 
-/** iOS's system colors as they change with the page's appearance, for the charts and figures on cards. */
+/** The app's own colors beside iOS's system ones (`Hues`), as they change with the page's appearance. */
 object Tints {
-
     /** A field's placeholder, iOS's `placeholderText`. */
     fun placeholder(p: Palette) = if (p.isDark) Color(0x4DEBEBF5) else Color(0x4D3C3C43)
 

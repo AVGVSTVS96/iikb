@@ -36,9 +36,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.layout.Measurable
-import androidx.compose.ui.layout.SubcomposeLayout
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.Settings
@@ -48,6 +45,7 @@ import com.shahidy.iikb.app.design.isDark
 import com.shahidy.iikb.app.design.Empty
 import com.shahidy.iikb.app.design.Figure
 import com.shahidy.iikb.app.design.Figures
+import com.shahidy.iikb.app.design.FirstThatFits
 import com.shahidy.iikb.app.design.Format
 import com.shahidy.iikb.app.design.Glyphs
 import com.shahidy.iikb.app.design.Hairline
@@ -433,16 +431,4 @@ fun PillMenuLabel(symbol: String, title: String?, modifier: Modifier = Modifier)
         if (title != null) Text(title, color = palette.secondary, fontSize = 16.sp, fontWeight = FontWeight.Medium, maxLines = 1)
         Icon(Symbols["chevron.up.chevron.down"], null, tint = palette.secondary, modifier = Modifier.size(16.4.dp))
     }
-}
-
-/** The first of `options` that fits the width at its own size, else the last, as SwiftUI's `ViewThatFits`. */
-@Composable
-fun FirstThatFits(vararg options: @Composable () -> Unit) = SubcomposeLayout { constraints ->
-    var chosen = emptyList<Measurable>()
-    for ((index, option) in options.withIndex()) {
-        chosen = subcompose(index, option)
-        if (index == options.lastIndex || chosen.all { it.maxIntrinsicWidth(Constraints.Infinity) <= constraints.maxWidth }) break
-    }
-    val placeables = chosen.map { it.measure(constraints.copy(minWidth = 0)) }
-    layout(constraints.maxWidth, placeables.maxOfOrNull { it.height } ?: 0) { placeables.forEach { it.place(0, 0) } }
 }
