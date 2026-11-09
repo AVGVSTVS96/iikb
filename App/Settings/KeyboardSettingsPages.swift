@@ -85,7 +85,8 @@ struct TryPreview: View {
 }
 
 /// What the settings pages read and write: the keyboard's switches through `SettingsStore`, so the keyboard and
-/// Settings › Apps › iikb see the same values, and the sources iikb tells what you type.
+/// Settings › Apps › iikb see the same values, and the sources iikb tells what you type. What the keyboard's menu picks
+/// shows at once, as on the open iPhone Duo, where the app sits beside the keys.
 @Observable final class SettingsModel {
     static let shared = SettingsModel()
 
@@ -100,10 +101,12 @@ struct TryPreview: View {
         ) { _ in
             MainActor.assumeIsolated { SettingsModel.shared.reload() }
         }
+        _ = SettingsStore.observe { SettingsModel.shared.reload() }
     }
 
     func reload() {
-        settings = SettingsStore.load()
+        let loaded = SettingsStore.load()
+        if loaded != settings { withAnimation(.snappy) { settings = loaded } }
         sources = SourceStore.load()
         extensions = ExtensionStore.load()
         keepMicOn = SettingsStore.keepMicOn

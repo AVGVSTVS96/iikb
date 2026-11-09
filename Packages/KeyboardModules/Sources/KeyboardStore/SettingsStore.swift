@@ -47,6 +47,10 @@ public enum SettingsStore {
     /// Globe Key was a switch, turned off to stop taps landing on the globe, which Spacer now does with the globe kept.
     private static let globeKey = Choice(
         key: "globe", path: \.globeKey, switchKey: "globeKey", on: .switches, off: .spacer)
+    private static let choices: [any Picked] = [
+        theme, themeAppearance, stopAnimation, characterPreview, haptics, keySpacing, keyRoundness, dictationStyle,
+        dictationEditing, dictationLists, dictationTextMode, keyboardMenu, clipboardLength, globeKey,
+    ]
     private static let skinToneKey = "skinTone"
     private static let appWritingStylesKey = "appWritingStyles"
 
@@ -63,20 +67,7 @@ public enum SettingsStore {
             if let value = value(forKey: key, sharing: sharing) as? Bool { settings[keyPath: path] = value }
         }
         settings.oneHanded = (value(forKey: oneHandedKey, sharing: sharing) as? String).flatMap(OneHanded.init) ?? .off
-        theme.load(into: &settings, sharing: sharing)
-        themeAppearance.load(into: &settings, sharing: sharing)
-        stopAnimation.load(into: &settings, sharing: sharing)
-        characterPreview.load(into: &settings, sharing: sharing)
-        haptics.load(into: &settings, sharing: sharing)
-        keySpacing.load(into: &settings, sharing: sharing)
-        keyRoundness.load(into: &settings, sharing: sharing)
-        dictationStyle.load(into: &settings, sharing: sharing)
-        dictationEditing.load(into: &settings, sharing: sharing)
-        dictationLists.load(into: &settings, sharing: sharing)
-        dictationTextMode.load(into: &settings, sharing: sharing)
-        keyboardMenu.load(into: &settings, sharing: sharing)
-        clipboardLength.load(into: &settings, sharing: sharing)
-        globeKey.load(into: &settings, sharing: sharing)
+        for choice in choices { choice.load(into: &settings, sharing: sharing) }
         settings.skinTone = (value(forKey: skinToneKey, sharing: sharing) as? String).flatMap(SkinTone.init)
         settings.appDictationStyles = (value(forKey: appWritingStylesKey, sharing: sharing) as? [String: String] ?? [:])
             .compactMapValues(DictationStyle.init)
@@ -88,20 +79,7 @@ public enum SettingsStore {
         defer { notify_post(changed) }
         for (key, path) in toggles { set(settings[keyPath: path], forKey: key) }
         set(settings.oneHanded)
-        theme.save(settings)
-        themeAppearance.save(settings)
-        stopAnimation.save(settings)
-        characterPreview.save(settings)
-        haptics.save(settings)
-        keySpacing.save(settings)
-        keyRoundness.save(settings)
-        dictationStyle.save(settings)
-        dictationEditing.save(settings)
-        dictationLists.save(settings)
-        dictationTextMode.save(settings)
-        keyboardMenu.save(settings)
-        clipboardLength.save(settings)
-        globeKey.save(settings)
+        for choice in choices { choice.save(settings) }
         set(settings.skinTone?.rawValue ?? "", forKey: skinToneKey)
         set(settings.appDictationStyles.mapValues(\.rawValue), forKey: appWritingStylesKey)
     }
@@ -121,6 +99,16 @@ public enum SettingsStore {
     public static func set(_ value: Bool, for path: WritableKeyPath<KeyboardSettings, Bool>, sharing: Bool = true) {
         guard let key = toggles.first(where: { $0.path == path })?.key else { return }
         set(value, forKey: key, sharing: sharing)
+    }
+
+    /// Keeps one value picked from a list, as the keyboard's menu picks a theme, and tells the app and every keyboard
+    /// that's up, as `save` does.
+    public static func set<Value: RawRepresentable<String>>(
+        _ value: Value, for path: WritableKeyPath<KeyboardSettings, Value>, sharing: Bool
+    ) {
+        guard let choice = choices.first(where: { $0.keyPath == path }) else { return }
+        set(value.rawValue, forKey: choice.key, sharing: sharing)
+        notify_post(changed)
     }
 
     public static func set(_ oneHanded: OneHanded, sharing: Bool = true) {
@@ -167,7 +155,14 @@ public enum SettingsStore {
     }
 }
 
-private struct Choice<Value: RawRepresentable<String>> {
+private protocol Picked: Sendable {
+    var key: String { get }
+    var keyPath: PartialKeyPath<KeyboardSettings> { get }
+    func load(into settings: inout KeyboardSettings, sharing: Bool)
+    func save(_ settings: KeyboardSettings)
+}
+
+private struct Choice<Value: RawRepresentable<String>>: Picked {
     let key: String
     let path: WritableKeyPath<KeyboardSettings, Value>
     var switchKey: String?
@@ -183,6 +178,8 @@ private struct Choice<Value: RawRepresentable<String>> {
         self.on = on
         self.off = off
     }
+
+    var keyPath: PartialKeyPath<KeyboardSettings> { path }
 
     func load(into settings: inout KeyboardSettings, sharing: Bool) {
         if let raw = SettingsStore.value(forKey: key, sharing: sharing) as? String {

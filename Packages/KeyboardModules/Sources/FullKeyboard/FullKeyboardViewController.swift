@@ -189,6 +189,13 @@ open class FullKeyboardViewController: UIInputViewController {
             menuOpen = false
             handle(.settings)
         }
+        menuView.onTheme = { [unowned self] in pick(\.theme, $0) }
+        menuView.onStop = { [unowned self] in pick(\.stopAnimation, $0) }
+        menuView.onAppearance = { [unowned self] in
+            feedback(.other)
+            menuOpen = false
+            open(AppLink.appearance)
+        }
         suggestionBar.onMore = { [unowned self] in toggleMenu() }
         suggestionBar.onMic = { [unowned self] in toggleVoice() }
         suggestionBar.onTool = { [unowned self] in tool($0) }
@@ -367,6 +374,19 @@ open class FullKeyboardViewController: UIInputViewController {
         suggestionBar.stopAnimation = engine.settings.stopAnimation
         keyMic.stopAnimation = engine.settings.stopAnimation
         engine.suggestionsChanged()
+    }
+
+    /// A look picked in the menu, kept where the app reads it too, so its Appearance page shows it at once. A new theme
+    /// fades in over the old.
+    private func pick<Value: RawRepresentable<String>>(_ path: WritableKeyPath<KeyboardSettings, Value>, _ value: Value)
+    {
+        feedback(.other)
+        SettingsStore.set(value, for: path, sharing: hasFullAccess)
+        loadSettings()
+        guard path == \.theme else { return render() }
+        UIView.transition(with: view, duration: 0.25, options: [.transitionCrossDissolve, .allowUserInteraction]) {
+            self.render()
+        }
     }
 
     /// The app kept new settings while the keyboard is up, as beside it on the open iPhone Duo.
@@ -625,6 +645,8 @@ open class FullKeyboardViewController: UIInputViewController {
             maxX: width - CGFloat(metrics.margin.trailing + metrics.sideInset)
         )
         menuView.show(settings: context.menu.isEmpty, theme: theme, metrics: metrics, block: block)
+        let dark = textDocumentProxy.keyboardAppearance == .dark || traitCollection.userInterfaceStyle == .dark
+        menuView.show(look: engine.settings, dark: dark, theme: theme)
     }
 
     /// Chats' shelf, with Full Access and an extension added, where the keyboard is an iPhone's width or more.

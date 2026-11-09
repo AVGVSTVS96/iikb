@@ -163,6 +163,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
         if contexts.contains(where: { $0.url == AppLink.settings }) { return AppStatus.openPasteSetting() }
         if contexts.contains(where: { $0.url == AppLink.keyboard }) { return Router.shared.show(.settings) }
+        if contexts.contains(where: { $0.url == AppLink.appearance }) {
+            return Router.shared.show(.settings, settings: .appearance)
+        }
         if contexts.contains(where: { $0.url == AppLink.mic }) {
             Router.shared.show(.home)
             Task { try? await Listener.shared.turnMicOn() }
