@@ -451,7 +451,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             Colors.of(frame.theme), bar.blockMinX.toFloat(), bar.blockMaxX.toFloat(),
             panel, frame.query, keysUp, bar.field.toFloat(), frame.width.toFloat(),
             Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }, hasChats,
-            dictation.phase.name, bottom.toFloat(),
+            dictation.phase.name, bottom.toFloat(), bar.compact,
         )
     }
 

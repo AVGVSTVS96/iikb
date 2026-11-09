@@ -127,6 +127,8 @@ struct Look: Encodable {
 
 /// Colors are ARGB, as Android's `Color` ints are.
 struct Theme: Encodable {
+    /// The plain key fill and its pressed fill, which iOS's cards, badges and tiles take, whatever the keys' own paint.
+    var key, keyPressed: Int32
     var card, label, secondaryLabel, prominent, prominentLabel, shadow: Int32
     var candidate, candidateHighlighted, candidatePill, candidateDivider, expander: Int32
     var mic, micGlyph, record, searchField, bubble, bubbleLabel, selection, selectionLabel: Int32
@@ -134,6 +136,8 @@ struct Theme: Encodable {
     var letter, function, prominentKey: Paint
 
     init(_ t: KeyboardTheme) {
+        key = t.key.argb
+        keyPressed = t.keyPressed.argb
         card = t.card.argb
         label = t.label.argb
         secondaryLabel = t.secondaryLabel.argb

@@ -125,6 +125,8 @@ data class Look(
 
 @Serializable
 data class Theme(
+    val key: Int,
+    val keyPressed: Int,
     val card: Int,
     val label: Int,
     val secondaryLabel: Int,

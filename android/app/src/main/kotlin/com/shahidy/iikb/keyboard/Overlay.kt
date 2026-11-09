@@ -76,6 +76,8 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         val mic: String = "OFF",
         /** The system's bar under the keyboard, which a held item's dimming stops at. */
         val bottom: Float = 0f,
+        /** The bar is compact (a short screen, landscape): a panel over the keys shows one row of results, as iOS's. */
+        val compact: Boolean = false,
     ) {
         /** The space from the keys block's right edge to the keyboard's, which a panel keeps clear as on the left. */
         val endInset get() = width - maxX
@@ -155,15 +157,15 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
     }
 }
 
-/** The theme's colors, as the overlay paints with them. */
+/** The theme's colors, as the overlay paints with them: cards, badges and tiles in the plain key fill, as iOS's are. */
 data class Colors(
-    val card: Color, val label: Color, val secondary: Color, val key: Color, val keyLabel: Color, val field: Color,
+    val card: Color, val label: Color, val secondary: Color, val key: Color, val keyPressed: Color, val field: Color,
     val accent: Color, val accentLabel: Color, val mic: Color, val micGlyph: Color, val pill: Color, val shadow: Color, val record: Color, val dark: Boolean,
 ) {
     companion object {
         fun of(theme: Theme) = Colors(
-            Color(theme.card), Color(theme.label), Color(theme.candidate), Color(theme.letter.top),
-            Color(theme.letter.label), Color(theme.searchField), Color(theme.prominent), Color(theme.prominentLabel), Color(theme.mic), Color(theme.micGlyph), Color(theme.candidatePill),
+            Color(theme.card), Color(theme.label), Color(theme.candidate), Color(theme.key),
+            Color(theme.keyPressed), Color(theme.searchField), Color(theme.prominent), Color(theme.prominentLabel), Color(theme.mic), Color(theme.micGlyph), Color(theme.candidatePill),
             Color(theme.shadow), Color(theme.record), androidx.core.graphics.ColorUtils.calculateLuminance(theme.card) < 0.5,
         )
     }
