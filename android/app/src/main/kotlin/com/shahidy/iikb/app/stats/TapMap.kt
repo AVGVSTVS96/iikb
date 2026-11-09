@@ -154,7 +154,12 @@ private fun DrawScope.outline(key: TapBoard.Box, color: Color) = drawRoundRect(
 private fun DrawScope.aim(
     board: TapBoard, picked: TapBoard.Aim?, measurer: TextMeasurer, palette: Palette, accent: Color, text: Float,
 ) {
-    board.keys.forEach { key -> if (key.learns) plain(measurer, key, palette, text) else face(measurer, key, palette, text) }
+    board.keys.forEach { key ->
+        when {
+            !key.learns -> face(measurer, key, palette, text)
+            key.name != "space" -> plain(measurer, key, palette, text)
+        }
+    }
     for (aim in board.aims) {
         val alpha = picked?.let { if (it.key == aim.key) 1f else 0.25f } ?: 1f
         val box = board.box(aim)
