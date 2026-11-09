@@ -23,8 +23,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotateRad
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
@@ -39,9 +42,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.app.Palette
 import com.shahidy.iikb.app.design.Format
-import com.shahidy.iikb.app.design.isDark
 import com.shahidy.iikb.app.design.Tints
+import com.shahidy.iikb.app.design.isDark
 import com.shahidy.iikb.app.palette
+import com.shahidy.iikb.keyboard.Glyphs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -126,7 +130,7 @@ private fun DrawScope.heat(
     }
     val halo = if (palette.isDark) Color.Black.copy(alpha = 0.7f) else keyFill(palette)
     board.keys.forEach { key ->
-        if (!key.learns) return@forEach plain(measurer, key, palette, text)
+        if (!key.learns) return@forEach face(measurer, key, palette, text)
         val space = key.name == "space"
         val style = TextStyle(
             color = palette.label.copy(alpha = if (palette.isDark) 0.9f else 0.62f),
@@ -152,7 +156,7 @@ private fun DrawScope.outline(key: TapBoard.Box, color: Color) = drawRoundRect(
 private fun DrawScope.aim(
     board: TapBoard, picked: TapBoard.Aim?, measurer: TextMeasurer, palette: Palette, accent: Color, text: Float,
 ) {
-    board.keys.forEach { key -> plain(measurer, key, palette, text) }
+    board.keys.forEach { key -> if (key.learns) plain(measurer, key, palette, text) else face(measurer, key, palette, text) }
     for (aim in board.aims) {
         val alpha = picked?.let { if (it.key == aim.key) 1f else 0.25f } ?: 1f
         val box = board.box(aim)
@@ -183,6 +187,19 @@ private fun DrawScope.ellipse(
             drawOval(color.copy(alpha = stroke * alpha), Offset(-a, -b), Size(2 * a, 2 * b), style = Stroke(line))
         }
     }
+}
+
+/** A key that doesn't learn, with the face the keyboard gives it: its glyph, or its word as 123 has. */
+private fun DrawScope.face(measurer: TextMeasurer, key: TapBoard.Box, palette: Palette, text: Float) = when (key.face) {
+    "symbol" -> drawIntoCanvas {
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = palette.label.toArgb() }
+        Glyphs.draw(it.nativeCanvas, key.label, key.midX.toFloat(), key.midY.toFloat(), 20 * text, paint)
+    }
+    "text", "smallText" -> label(
+        measurer, key.label, TextStyle(color = palette.label, fontSize = ((if (key.face == "text") 16 else 13) * text).sp),
+        key.midX, key.midY,
+    )
+    else -> plain(measurer, key, palette, text)
 }
 
 /** A key's name, faint, as the map shows a key with nothing drawn on it. */

@@ -31,7 +31,10 @@ data class TapBoard(
     data class Screen(val signature: String, val title: String, val taps: Int)
 
     @Serializable
-    data class Box(val name: String, val x: Double, val y: Double, val width: Double, val height: Double, val learns: Boolean) {
+    data class Box(
+        val name: String, val face: String, val label: String, val x: Double, val y: Double, val width: Double,
+        val height: Double, val learns: Boolean,
+    ) {
         val midX get() = x + width / 2
         val midY get() = y + height / 2
         fun contains(px: Double, py: Double) = px >= x && px < x + width && py >= y && py < y + height

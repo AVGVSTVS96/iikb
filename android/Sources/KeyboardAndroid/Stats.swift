@@ -64,6 +64,8 @@ struct TapsBoard: Encodable {
 
     struct Box: Encodable {
         let name: String
+        /// What the keyboard draws on the key (`KeyFace.Content`'s kind and value), as the map shows a key that doesn't learn.
+        let face, label: String
         let x, y, width, height: Double
         /// A letter or the space bar, which learn from your taps.
         let learns: Bool
@@ -122,14 +124,17 @@ struct TapsBoard: Encodable {
         let geometry = KeyboardGeometry(context, screen: kept.screen(on: screen), style: .ios27)
         let grid = KeyGrid(geometry.layout, width: geometry.width, metrics: geometry.metrics.grid, signature: picked)
         let items = Array(grid.rows.joined())
+        let faces = KeyFaceContext(
+            device: device, layer: kept.layer, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
         width = geometry.width
         let frames = items.map(\.frame)
         let top = frames.map(\.y).min() ?? 0
         height = (frames.map { $0.y + $0.height }.max() ?? geometry.height) + top
         keys = items.map { key, frame in
-            Box(
-                name: Self.name(of: key), x: frame.x, y: frame.y, width: frame.width, height: frame.height,
-                learns: key.label != nil)
+            let face = KeyFace(key, trailing: frame.midX > geometry.width / 2, context: faces).content
+            return Box(
+                name: Self.name(of: key), face: face.kind, label: face.value, x: frame.x, y: frame.y,
+                width: frame.width, height: frame.height, learns: key.label != nil)
         }
         let index = { (key: Key?) in key.flatMap { key in items.firstIndex { $0.key == key } } }
         aims = touches.aims(on: grid).compactMap { aim in
