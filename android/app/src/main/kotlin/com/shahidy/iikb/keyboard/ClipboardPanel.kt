@@ -265,12 +265,18 @@ fun SearchRow(
         ) {
             Glyph(glyph, look.secondary, 18.dp)
             Spacer(Modifier.width(8.dp))
-            if (state.keysUp) Box(Modifier.width(2.dp).height(22.dp).background(look.accent))
-            Text(
-                state.query.ifEmpty { placeholder }, color = if (state.query.isEmpty()) look.secondary else look.label,
-                fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).padding(start = if (state.keysUp) 1.dp else 0.dp),
-            )
+            val caret = @Composable { if (state.keysUp) Box(Modifier.width(2.dp).height(22.dp).background(look.accent)) }
+            if (state.query.isEmpty()) {
+                caret()
+                Text(placeholder, color = look.secondary, fontSize = 17.sp, maxLines = 1, modifier = Modifier.weight(1f))
+            } else {
+                Text(
+                    state.query, color = look.label, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                caret()
+                Spacer(Modifier.weight(1f))
+            }
             if (state.query.isNotEmpty()) {
                 Box(
                     Modifier.size(20.dp).background(look.secondary, CircleShape).clickable { actions.clearSearch() },
