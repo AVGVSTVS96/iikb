@@ -1,0 +1,1 @@
+iikb is a free, open-source keyboard for iPhone and iPad: autocorrect that learns where your thumbs land, swipe typing, voice typing on the device, a clipboard tray and stats on how you type. To turn it on: Settings › General › Keyboard › Keyboards › Add New Keyboard… › iikb, then Allow Full Access.

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec bun "$(git rev-parse --show-toplevel)/scripts/public-review.ts" --pre-push

@@ -38,12 +38,13 @@ Development happens on a Linux box. Simulator builds, tests and screenshots run 
 
 Prefer committing straight to main, merge parallel work like a zipper on new projects
 
-TestFlight's public link gets the `beta` branch, a commit of main Bassim OKs: Xcode Cloud builds every push to it (`ci_scripts/`, without private API), and after 24 hours with no push to beta, `.github/workflows/beta.yml` moves it to main's latest.
+TestFlight's public link gets the `beta` branch, a commit of main Bassim OKs: Xcode Cloud builds every push to it (`ci_scripts/`, without private API), and after 24 hours with no push to beta, `.github/workflows/beta.yml` moves it to main's latest. Its testers' note and iikb's description there are `TestFlight/WhatToTest.en-US.txt` and `TestFlight/Description.en-US.txt`; App Store Connect takes the description from main's copy.
 
 ```sh
 scripts/mac scripts/build                       # sync to the Mac, xcodegen, build for the simulator
 scripts/coretest                                # KeyboardCore's tests here on Linux, no Mac (about 25 s)
 scripts/check                                   # this checkout built for the iPhone here on Linux, unsigned (a few minutes; one at a time)
+scripts/public-review.ts [--all|--text <where>]  # a reviewer reads what iikb shows the public: what changed since origin/main, all of it, or text going elsewhere (stdin)
 scripts/format [--check]                        # swift format on every tracked Swift file (.swift-format); --check is what scripts/check and CI run
 bun run check                                   # the TypeScript and JavaScript (after bun install): oxlint, oxfmt --check, tsc, bun test, as CI runs it
 bun run fix                                     # oxlint's fixes, then oxfmt
@@ -89,3 +90,4 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | No comments unless they record a non-obvious fact | judgment: nothing enforces it |
 | Every AGENTS.md names only code that exists, and no file keeps a conflict marker | `ArchitectureTests` |
 | A change you'd notice in the app or keyboard carries a `Changelog:` trailer, one short line (App/Settings/ChangelogPage.swift) | judgment: nothing enforces it |
+| What the public sees (`TestFlight/`, the README, docs/, the site, Changelog lines, the app's words) passes a reviewer before it goes out | `scripts/hooks/pre-push` runs `scripts/public-review.ts` on every push to main (`git config core.hooksPath scripts/hooks`) |
