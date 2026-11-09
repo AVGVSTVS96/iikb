@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.shahidy.iikb.folds
 import com.shahidy.iikb.keyboard.Feedback
 import com.shahidy.iikb.keyboard.Frame
 import com.shahidy.iikb.keyboard.KeyboardView
@@ -112,7 +113,7 @@ private fun KeyboardPreview(onTap: () -> Unit) {
     val lines = store.lines()
     val frame = remember(lines, dark) {
         Native.configure(handle, lines.encodeToByteArray())
-        Native.place(handle, screen.first, screen.first, screen.second, 0.0, dark, false)
+        Native.place(handle, screen.first, screen.first, screen.second, context.folds(), 0.0, dark, false)
         Native.suggestionJob(handle).takeIf { it != 0L }?.let { job ->
             Native.runJob(job)
             Native.finishJob(handle, job)

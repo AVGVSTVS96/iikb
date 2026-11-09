@@ -21,6 +21,7 @@ final class Keyboard {
     private var bottom = 0.0
     private var dark = false
     private var showsGlobe = false
+    private var folds = false
     private let style = KeyboardStyle.ios27
     private let emojiSearch: EmojiSearch
 
@@ -35,10 +36,11 @@ final class Keyboard {
     }
 
     /// The room Android gives the keyboard, in dp: its width, the screen's size, and what the navigation bar takes
-    /// under it.
-    func place(width: Double, screen: Size, bottom: Double, dark: Bool, showsGlobe: Bool) {
+    /// under it, on a phone that `folds` or not.
+    func place(width: Double, screen: Size, folds: Bool, bottom: Double, dark: Bool, showsGlobe: Bool) {
         self.width = width
         self.screen = screen
+        self.folds = folds
         self.bottom = bottom
         self.dark = dark
         self.showsGlobe = showsGlobe
@@ -51,9 +53,7 @@ final class Keyboard {
         engine.suggestionsChanged()
     }
 
-    private var device: DeviceClass {
-        DeviceClass(isPad: min(screen.width, screen.height) >= 600, shortSide: min(screen.width, screen.height))
-    }
+    private var device: DeviceClass { DeviceClass(screen: screen, folds: folds) }
 
     private var theme: KeyboardTheme {
         KeyboardTheme.named(
@@ -288,5 +288,15 @@ extension Keyboard {
 enum Json {
     static func encode(_ value: some Encodable) -> [UInt8] {
         (try? JSONEncoder().encode(value)).map { [UInt8]($0) } ?? []
+    }
+}
+
+extension DeviceClass {
+    /// What Android's device is on a `screen` this size in dp, as iOS's idiom tells an iPhone from an iPad: a phone that
+    /// folds is a phone open or folded, as the iPhone Duo is, and which of its screens it's on follows the screen's size
+    /// (`Duo.isOpen`), never the hinge; anything else is a tablet once its short side reaches 600.
+    init(screen: Size, folds: Bool) {
+        let short = min(screen.width, screen.height)
+        self.init(isPad: !folds && short >= 600, shortSide: short)
     }
 }

@@ -27,6 +27,7 @@ import com.shahidy.iikb.Settings
 import com.shahidy.iikb.TypingStats
 import com.shahidy.iikb.app.MIC_ON
 import com.shahidy.iikb.app.MainActivity
+import com.shahidy.iikb.folds
 import com.shahidy.iikb.voice.Dictation
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -282,7 +283,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         val width = (view?.width?.takeIf { it > 0 } ?: metrics.widthPixels) / metrics.density
         Native.place(
             handle, width.toDouble(), metrics.widthPixels / metrics.density.toDouble(),
-            metrics.heightPixels / metrics.density.toDouble(), bottom, dark, false,
+            metrics.heightPixels / metrics.density.toDouble(), folds(), bottom, dark, false,
         )
         render()
     }

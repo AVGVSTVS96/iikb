@@ -33,15 +33,16 @@ public func written(env: Env, _: jclass, heard: jbyteArray?, settings: jbyteArra
 private final class Mapped {}
 
 /// Which of Appearance's layout settings change iikb's keys on a screen this size (iOS's `KeysHere`). Android draws its
-/// own keyboard switcher, so there's never a globe.
+/// own keyboard switcher, so there's never a globe. Split shows on a phone that folds, open or folded, as iOS shows it on
+/// the folded Duo, since opening it splits the keys; never on one that can't open, where it would do nothing.
 struct KeysHere: Encodable {
     var numberRow, emojiKey, recordKey, keyboardMenu, split, oneHanded, largePanels, characterPreview: Bool
 }
 
 @_cdecl("Java_com_shahidy_iikb_app_Core_keysHere")
-public func keysHere(env: Env, _: jclass, width: jdouble, height: jdouble) -> jbyteArray? {
+public func keysHere(env: Env, _: jclass, width: jdouble, height: jdouble, folds: jboolean) -> jbyteArray? {
     let short = min(width, height)
-    let device = DeviceClass(isPad: short >= 600, shortSide: short)
+    let device = DeviceClass(screen: Size(width: width, height: height), folds: folds != 0)
     let all = LayoutContext(
         device: device, layer: .letters, showsEmoji: true, showsNumberRow: true, keyboardMenu: .hold)
     let upright = Size(width: short, height: max(width, height))
@@ -49,7 +50,7 @@ public func keysHere(env: Env, _: jclass, width: jdouble, height: jdouble) -> jb
         numberRow: all.showsNumberRow, emojiKey: all.showsEmoji,
         recordKey: LayoutContext(device: device, layer: .letters, showsMicKey: true).showsMicKey,
         keyboardMenu: all.keyboardMenu == .hold,
-        split: LayoutContext(device: device, layer: .letters, isLandscape: true, isOpen: Duo.isOpen(short: short))
+        split: LayoutContext(device: device, layer: .letters, isLandscape: true, isOpen: folds != 0)
             .allowsSplit,
         oneHanded: LayoutContext(device: device, layer: .letters).allowsOneHanded,
         largePanels: !KeyboardGeometry(LayoutContext(device: device, layer: .letters), screen: upright, style: .ios27)

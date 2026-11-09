@@ -56,13 +56,13 @@ public func destroy(env: Env, _: jclass, handle: jlong) {
 
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_place")
 public func place(
-    env: Env, _: jclass, handle: jlong, width: jdouble, screenWidth: jdouble, screenHeight: jdouble, bottom: jdouble,
-    dark: jboolean, globe: jboolean
+    env: Env, _: jclass, handle: jlong, width: jdouble, screenWidth: jdouble, screenHeight: jdouble, folds: jboolean,
+    bottom: jdouble, dark: jboolean, globe: jboolean
 ) {
     with(env, handle) {
         $0.place(
-            width: width, screen: Size(width: screenWidth, height: screenHeight), bottom: bottom, dark: dark != 0,
-            showsGlobe: globe != 0)
+            width: width, screen: Size(width: screenWidth, height: screenHeight), folds: folds != 0, bottom: bottom,
+            dark: dark != 0, showsGlobe: globe != 0)
     }
 }
 

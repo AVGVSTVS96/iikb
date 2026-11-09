@@ -57,6 +57,7 @@ import com.shahidy.iikb.app.design.card
 import com.shahidy.iikb.app.design.display
 import com.shahidy.iikb.app.glyph
 import com.shahidy.iikb.app.palette
+import com.shahidy.iikb.folds
 import com.shahidy.iikb.keyboard.Native
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -87,6 +88,7 @@ fun Taps() {
                 Native.taps(
                     memory, Settings(context).lines().encodeToByteArray(), signature?.encodeToByteArray(),
                     metrics.widthPixels / metrics.density.toDouble(), metrics.heightPixels / metrics.density.toDouble(),
+                    context.folds(),
                 ),
             )
         }

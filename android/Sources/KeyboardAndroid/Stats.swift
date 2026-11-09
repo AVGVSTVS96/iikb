@@ -37,16 +37,17 @@ public func takeTyping(env: Env, _: jclass, log handle: jlong) -> jbyteArray? {
 }
 
 /// Taps' board for the screen named by `signature` (else the one the app is on, else the one with most taps), from the
-/// kept `TypingMemory`, laid out with the settings' `name=value` lines on a `width` × `height` screen in dp.
+/// kept `TypingMemory`, laid out with the settings' `name=value` lines on a `width` × `height` screen in dp, on a phone
+/// that `folds` or not.
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_taps")
 public func taps(
     env: Env, _: jclass, memory: jbyteArray?, settings: jbyteArray?, signature: jbyteArray?, width: jdouble,
-    height: jdouble
+    height: jdouble, folds: jboolean
 ) -> jbyteArray? {
     let touches =
         (try? JSONDecoder().decode(TypingMemory.self, from: Data(env.bytes(memory))))?.touches.finite() ?? TouchModel()
     let screen = Size(width: width, height: height)
-    let device = DeviceClass(isPad: min(width, height) >= 600, shortSide: min(width, height))
+    let device = DeviceClass(screen: screen, folds: folds != 0)
     let board = TapsBoard(
         touches, settings: KeyboardSettings(parsing: env.string(settings) ?? ""), device: device, screen: screen,
         signature: env.string(signature))

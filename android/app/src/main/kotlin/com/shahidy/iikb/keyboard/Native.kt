@@ -14,8 +14,8 @@ object Native {
 
     @JvmStatic external fun destroy(handle: Long)
     @JvmStatic external fun place(
-        handle: Long, width: Double, screenWidth: Double, screenHeight: Double, bottom: Double, dark: Boolean,
-        globe: Boolean,
+        handle: Long, width: Double, screenWidth: Double, screenHeight: Double, folds: Boolean, bottom: Double,
+        dark: Boolean, globe: Boolean,
     )
 
     @JvmStatic external fun configure(handle: Long, settings: ByteArray)
@@ -96,6 +96,6 @@ object Native {
     @JvmStatic external fun noteTyping(log: Long, handle: Long, time: Double, day: ByteArray, hour: Int, app: ByteArray?)
     @JvmStatic external fun takeTyping(log: Long): ByteArray
     @JvmStatic external fun taps(
-        memory: ByteArray?, settings: ByteArray, signature: ByteArray?, width: Double, height: Double,
+        memory: ByteArray?, settings: ByteArray, signature: ByteArray?, width: Double, height: Double, folds: Boolean,
     ): ByteArray
 }

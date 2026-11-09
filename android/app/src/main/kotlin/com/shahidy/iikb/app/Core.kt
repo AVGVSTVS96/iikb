@@ -2,6 +2,7 @@ package com.shahidy.iikb.app
 
 import android.content.Context
 import com.shahidy.iikb.Settings
+import com.shahidy.iikb.folds
 import com.shahidy.iikb.keyboard.Native
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -23,7 +24,7 @@ object Core {
     @JvmStatic private external fun preview(field: PreviewField, lexicon: ByteBuffer, network: ByteBuffer): Long
 
     @JvmStatic private external fun typed(said: ByteArray, settings: ByteArray, lexicon: ByteBuffer?): ByteArray
-    @JvmStatic private external fun keysHere(width: Double, height: Double): ByteArray
+    @JvmStatic private external fun keysHere(width: Double, height: Double, folds: Boolean): ByteArray
     @JvmStatic private external fun taps(memory: ByteArray): Int
 
     /** The model files, mapped once and kept for as long as the app runs, since the engine reads them in place. */
@@ -56,7 +57,9 @@ object Core {
     /** Which of Appearance's layout settings change the keys on this phone's screen, in dp. */
     fun keysHere(context: Context): KeysHere {
         val metrics = context.resources.displayMetrics
-        val bytes = keysHere(metrics.widthPixels / metrics.density.toDouble(), metrics.heightPixels / metrics.density.toDouble())
+        val bytes = keysHere(
+            metrics.widthPixels / metrics.density.toDouble(), metrics.heightPixels / metrics.density.toDouble(), context.folds(),
+        )
         return Json.decodeFromString(bytes.decodeToString())
     }
 
