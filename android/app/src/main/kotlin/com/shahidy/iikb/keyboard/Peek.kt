@@ -44,6 +44,8 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -123,10 +125,11 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
             val px = { dp: Float -> (dp * density).roundToInt() }
             val sides = width - SIDE * 2
             val natural = measurables[0].maxIntrinsicHeight(px(sides)) / density
-            // Where the card and its whole menu don't fit, the margins tighten and then the card gives way, its text
-            // scrolling, so the menu's every action stays in view.
-            val tight = menu > 0 && TOP + min(natural, MAX_TEXT) + GAP + menu > height - MENU_FLOOR
-            val (top, gap) = if (tight) TIGHT_TOP to TIGHT_GAP else TOP to GAP
+            // Where the card and its whole menu don't fit, the top margin tightens, then the gap, and then the card
+            // gives way, its text scrolling, so the menu's every action stays in view.
+            val short = if (menu == 0f) 0f else TOP + min(natural, MAX_TEXT) + GAP + menu - (height - MENU_FLOOR)
+            val top = TOP - short.coerceIn(0f, TOP - TIGHT_TOP)
+            val gap = GAP - (short - (TOP - TIGHT_TOP)).coerceIn(0f, GAP - TIGHT_GAP)
             val floor = if (menu > 0) height - MENU_FLOOR else height - BOTTOM
             val room = Rect(SIDE, top, width - SIDE, floor)
             val cardRoom = maxOf(CARD_FLOOR, room.height - if (menu > 0) gap + menu else 0f)
@@ -194,8 +197,8 @@ private fun Card(held: Held, close: () -> Unit) {
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        shows.text.trim().replace("/", "/\u200B"), color = look.previewSecondary, fontSize = 15.sp,
-                        lineHeight = 20.sp,
+                        shows.text.trim().replace("/", "/\u200B"), color = look.previewSecondary,
+                        style = TextStyle(fontSize = 15.sp, lineHeight = 18.sp, lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)),
                     )
                 }
             } else {
@@ -261,14 +264,14 @@ private const val TOP = 32f
 private const val BOTTOM = 16f
 /** The menu runs nearer the bottom than a card alone. */
 private const val MENU_FLOOR = 2f
-private const val GAP = 17f
+private const val GAP = 18f
 private const val CORNER = 22f
 private const val TEXT_WIDTH = 340f
 private const val MAX_TEXT = 480f
 private const val IMAGE_WIDTH = 300f
 /** Above and below a GIF's preview, which grows to the keyboard's height less these. */
 private const val IMAGE_MARGIN = 15f
-/** Where the card and its menu don't fit: the top margin and gap tighten, and the card keeps at least this. */
+/** Where the card and its menu don't fit, the top margin and gap tighten down to these, and the card keeps at least this. */
 private const val TIGHT_TOP = 12f
 private const val TIGHT_GAP = 10f
 private const val CARD_FLOOR = 60f
