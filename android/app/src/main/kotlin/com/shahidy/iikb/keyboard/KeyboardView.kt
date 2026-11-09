@@ -11,7 +11,6 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
-import androidx.core.graphics.ColorUtils
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.hypot
@@ -288,7 +287,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         canvas.drawText(label, (left + right) / 2 - text.measureText(label) / 2, (bar.top + bar.bar / 2).toFloat() + 5f, text)
     }
 
-    /** Cut, Copy and Paste as three pills in the key fill, from the More button to the mic. */
+    /** Cut, Copy and Paste as three pills in the theme's key color, from the More button to the mic. */
     private fun editPills(frame: Frame): List<Pair<String, RectF>> {
         val bar = frame.toolbar
         val left = (bar.more?.let { it.x + it.width } ?: bar.blockMinX).toFloat() + 6
@@ -308,9 +307,9 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         text.textSize = 16f
         for ((name, box) in editPills(frame)) {
             val enabled = enabled(edits, name)
-            fill.color = if (pressedBar == name) theme.letter.pressedTop else theme.letter.top
+            fill.color = if (pressedBar == name) theme.keyPressed else theme.key
             canvas.drawRoundRect(box, box.height() / 2, box.height() / 2, fill)
-            val color = ColorUtils.setAlphaComponent(theme.letter.label, if (enabled) 255 else 90)
+            val color = if (enabled) theme.label else theme.candidate
             val title = name.replaceFirstChar(Char::uppercase)
             val glyph = Glyphs.square(15f)
             val width = glyph + 6 + text.measureText(title)
