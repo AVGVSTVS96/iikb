@@ -42,7 +42,7 @@ public final class SuggestionBar: UIView {
     /// A chat's pill was tapped, by its index.
     public var onChat: (Int) -> Void = { _ in }
     /// How the recording goes back into the mic when you stop (Settings › Appearance).
-    public var stopAnimation = StopAnimation.squeeze { didSet { mic.writes = stopAnimation } }
+    public var stopAnimation = StopAnimation.squeeze { didSet { mic.stopAnimation = stopAnimation } }
     public var maximumSlotWidth = CGFloat.infinity { didSet { setNeedsLayout() } }
     /// The top row's keys, left to right, as their edges.
     public var keys: [(minX: Double, maxX: Double)] = [] {
@@ -93,6 +93,10 @@ public final class SuggestionBar: UIView {
     private var dissolving = false
     /// How long the recording ran, for Card's card.
     private var heard: Double = 0
+    /// Where the recording runs: the mic's capsule, or the waveform's track beside the Record Key.
+    private var span = CGRect.zero
+    /// What a stop animation laid over the bar, taken away once it's played, or as the next recording starts.
+    private var stopping: [UIView] = []
     private var enabled = true
     private var noticed = false
     private var theme = KeyboardTheme.lightCurrent
@@ -197,6 +201,7 @@ public final class SuggestionBar: UIView {
         refresh()
         guard grows else { return }
         setNeedsLayout()
+        if mic == .listening { endStop() }
         guard window != nil else {
             cancel.isHidden = mic != .listening
             return
@@ -206,10 +211,13 @@ public final class SuggestionBar: UIView {
             return
         }
         if mic != .listening {
-            switch stopAnimation {
-            case .squeeze: waveform.rush()
-            case .drain: return drain(shown, theme: theme)
-            case .card: return lift(shown, theme: theme)
+            switch (stopAnimation, micInBar) {
+            case (.squeeze, true): waveform.rush(toward: 1)
+            case (.squeeze, false): waveform.rush(toward: -1)
+            case (.drain, true): return drain(shown, theme: theme)
+            case (.drain, false): waveform.sink()
+            case (.card, true): return lift(shown, theme: theme)
+            case (.card, false): return lift(span, theme: theme)
             }
         }
         morph(
@@ -322,9 +330,21 @@ public final class SuggestionBar: UIView {
         }
     }
 
+    /// A stop animation's leftovers go, and the mic and waveform are as a recording needs them, whether it finished or a
+    /// new recording cut it short.
+    private func endStop() {
+        stopping.forEach { $0.removeFromSuperview() }
+        stopping = []
+        mic.layer.removeAllAnimations()
+        mic.alpha = 1
+        mic.transform = .identity
+        waveform.mask = micInBar ? capsule : nil
+    }
+
     /// Drain and Card start from the bar as it is once stopped, the mic hidden in its place until the recording has left.
     /// The cancel button fades where it was rather than tucking behind a capsule that's gone.
     private func settleUnder() {
+        endStop()
         if let ghost = cancel.snapshotView(afterScreenUpdates: false) {
             ghost.frame = cancel.frame
             addSubview(ghost)
@@ -340,13 +360,11 @@ public final class SuggestionBar: UIView {
         mic.alpha = 0
     }
 
-    /// Drain: the red pours into the mic, its tail thinning, then a ripple as it lands and the mic comes up in its place.
+    /// Drain: the red pours into the mic, its tail thinning, the bars riding in inside it; then a ripple as it lands
+    /// and the mic comes up in its place as the red goes.
     private func drain(_ capsule: CGRect, theme: KeyboardTheme) {
         settleUnder()
         let circle = mic.frame
-        let red = CAShapeLayer()
-        red.fillColor = theme.record.ui.cgColor
-        layer.insertSublayer(red, below: waveform.layer)
         let steps = 16
         let paths = (0...steps).map { step -> CGPath in
             let u = CGFloat(step) / CGFloat(steps)
@@ -355,66 +373,68 @@ public final class SuggestionBar: UIView {
             return liquid(
                 left: capsule.minX + (circle.minX - capsule.minX) * along, mic: circle, neck: 1 - 0.78 * thinning)
         }
-        let flow = CAKeyframeAnimation(keyPath: "path")
-        flow.values = paths
-        flow.duration = 0.5
-        red.path = paths[steps]
+        let red = ShapeView(frame: bounds)
+        red.shape.fillColor = theme.record.ui.cgColor
+        insertSubview(red, belowSubview: waveform)
+        let inside = ShapeView(frame: waveform.bounds)
+        var moved = CGAffineTransform(translationX: -waveform.frame.minX, y: -waveform.frame.minY)
+        let insidePaths = paths.compactMap { $0.copy(using: &moved) }
+        waveform.mask = inside
+        waveform.rush(toward: 1, duration: 0.5)
+        stopping += [red]
         CATransaction.begin()
-        CATransaction.setCompletionBlock { [weak self] in
-            guard let self else { return }
-            let ripple = CAShapeLayer()
-            ripple.frame = circle
-            ripple.path = UIBezierPath(ovalIn: CGRect(origin: .zero, size: circle.size)).cgPath
-            ripple.fillColor = nil
-            ripple.strokeColor = theme.record.ui.cgColor
-            ripple.lineWidth = 2
-            ripple.opacity = 0
-            layer.addSublayer(ripple)
-            CATransaction.begin()
-            CATransaction.setCompletionBlock { ripple.removeFromSuperlayer() }
-            let grow = CABasicAnimation(keyPath: "transform.scale")
-            grow.fromValue = 1
-            grow.toValue = 1.8
-            let fade = CABasicAnimation(keyPath: "opacity")
-            fade.fromValue = 0.6
-            fade.toValue = 0
-            let spread = CAAnimationGroup()
-            spread.animations = [grow, fade]
-            spread.duration = 0.5
-            spread.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            ripple.add(spread, forKey: "ripple")
-            CATransaction.commit()
+        CATransaction.setCompletionBlock { [weak self, weak red] in
+            guard let self, let red, red.superview != nil else { return }
+            ripple(
+                UIBezierPath(ovalIn: CGRect(origin: .zero, size: circle.size)).cgPath, in: circle,
+                color: theme.record.ui, on: self)
             UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
                 self.mic.alpha = 1
+                red.alpha = 0
+            } completion: { _ in
+                self.endStop()
             }
-            red.removeFromSuperlayer()
         }
-        red.add(flow, forKey: "flow")
+        for (view, keyframes) in [(red, paths), (inside, insidePaths)] {
+            let flow = CAKeyframeAnimation(keyPath: "path")
+            flow.values = keyframes
+            flow.duration = 0.5
+            view.shape.path = keyframes[steps]
+            view.shape.add(flow, forKey: "flow")
+        }
         CATransaction.commit()
     }
 
-    /// Card: the recording folds into a card with its length beside the mic, which lifts away off the keyboard's top as
-    /// the mic comes back.
-    private func lift(_ capsule: CGRect, theme: KeyboardTheme) {
+    /// Card: the recording folds into a card with its length, beside the mic or where the waveform began beside the Record
+    /// Key, its time holding still as the bars give way to a little waveform; then it lifts off the bar as the mic comes
+    /// back. In the bar it stays the recording's red; beside the Record Key, whose red is the key's, it's a gray pill.
+    private func lift(_ from: CGRect, theme: KeyboardTheme) {
         settleUnder()
-        let card = StopCard(length: Waveform.clock(Int(heard)), tint: theme.label.ui)
-        card.backgroundColor = theme.record.ui
-        card.frame = capsule
+        let card = StopCard(length: Waveform.clock(Int(heard)), tint: micInBar ? .white : theme.label.ui)
+        card.backgroundColor = micInBar ? theme.record.ui : theme.candidatePill.ui
+        let start =
+            micInBar
+            ? from : CGRect(x: from.minX - StopCard.inset, y: from.minY, width: from.width, height: from.height)
+        card.frame = start
         addSubview(card)
-        let width: CGFloat = 84
-        let rest = CGRect(x: mic.frame.minX - 8 - width, y: capsule.minY, width: width, height: capsule.height)
-        UIView.animate(springDuration: 0.42, bounce: 0.1) {
+        stopping.append(card)
+        let width = card.fittingWidth
+        let rest = CGRect(
+            x: micInBar ? mic.frame.minX - 8 - width : start.minX, y: start.minY, width: width, height: start.height)
+        if !micInBar { card.alpha = 0 }
+        UIView.animate(springDuration: 0.4, bounce: 0.15) {
             card.frame = rest
-            card.backgroundColor = theme.candidatePill.ui
+            card.alpha = 1
         }
-        UIView.animate(withDuration: 0.4, delay: 0.42, options: [.curveEaseIn]) {
-            card.transform = CGAffineTransform(translationX: 0, y: -(rest.maxY + 12))
+        UIView.animate(withDuration: 0.28, delay: 0.5, options: [.curveEaseIn]) {
+            card.transform = CGAffineTransform(translationX: 0, y: -14).scaledBy(x: 1.08, y: 1.08)
             card.alpha = 0
         } completion: { _ in
             card.removeFromSuperview()
         }
+        guard micInBar else { return }
         mic.transform = CGAffineTransform(scaleX: 0.4, y: 0.4)
-        UIView.animate(springDuration: 0.45, bounce: 0.25, delay: 0.3, options: [.allowUserInteraction]) {
+        UIView.animate(springDuration: 0.45, bounce: 0.25, delay: 0.25, options: [.allowUserInteraction]) {
             self.mic.alpha = 1
             self.mic.transform = .identity
         }
@@ -571,7 +591,7 @@ public final class SuggestionBar: UIView {
         for (index, divider) in dividers.enumerated() {
             divider.frame = CGRect(x: slots[index].frame.maxX - 0.5, y: row.midY - 14, width: 1, height: 28)
         }
-        let span = CGRect(layout.recording)
+        span = CGRect(layout.recording)
         if micInBar {
             waveform.frame = span
             waveform.insets = (leading: 12, trailing: span.height)

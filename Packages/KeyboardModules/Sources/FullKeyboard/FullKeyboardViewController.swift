@@ -310,6 +310,7 @@ open class FullKeyboardViewController: UIInputViewController {
                     Dictation.observeLevel { [weak self] level, recorded in
                         self?.recorded = recorded
                         self?.suggestionBar.hear(level, recorded: recorded)
+                        self?.keyMic.hear(level)
                     },
                 ]
                 Dictation.send(.appeared, from: keyboard)
@@ -364,6 +365,7 @@ open class FullKeyboardViewController: UIInputViewController {
         haptics.strength = Float(engine.settings.haptics.strength)
         keyboardView.characterPreview = engine.settings.characterPreview
         suggestionBar.stopAnimation = engine.settings.stopAnimation
+        keyMic.stopAnimation = engine.settings.stopAnimation
         engine.suggestionsChanged()
     }
 

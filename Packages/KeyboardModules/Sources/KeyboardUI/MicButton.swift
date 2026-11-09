@@ -4,7 +4,7 @@ import UIKit
 /// The bar's mic: a round button, white on dark and black on light, with a green dot while the app keeps the
 /// microphone on. While it listens it turns record red and grows into a capsule over the suggestions, which holds the
 /// recording, with a white stop where the mic was and a soft red halo that swells as you talk; while the
-/// app writes a dictation down a spinner, or the ring `writes` picks, takes the glyph's place, and a tap still starts the next one. Tap to start or
+/// app writes a dictation down a spinner, or what its `stopAnimation` shows, takes the glyph's place, and a tap still starts the next one. Tap to start or
 /// stop; only the app turns the microphone off.
 public final class MicButton: UIControl {
     public enum Phase { case off, on, listening, writing }
@@ -16,7 +16,7 @@ public final class MicButton: UIControl {
     var breathes = false
     /// The stop animation the bar plays, which picks what shows while the app writes: Squeeze's ring and check,
     /// Drain's glow, or the spinner.
-    var writes = StopAnimation.squeeze
+    public var stopAnimation = StopAnimation.squeeze
     private(set) var phase = Phase.off
     private let halo = UIView()
     private let face = UIView()
@@ -29,6 +29,8 @@ public final class MicButton: UIControl {
     private let check = UIImageView()
     /// The check Squeeze shows once a dictation is written, which holds the glyph back until it's gone.
     private var checking = false
+    /// Drain's red running out of the Record Key, in its face's shape.
+    private var draining: CALayer?
     private var theme = KeyboardTheme.lightCurrent
     private var glyphSide: CGFloat = 0
     private var voice: CGFloat = 0
@@ -89,10 +91,15 @@ public final class MicButton: UIControl {
             case .off, .listening: nil
             }
         if phase != .listening { voice = 0 }
+        if phase == .listening {
+            draining?.removeFromSuperlayer()
+            draining = nil
+        }
+        if old == .listening, phase != .listening, corner != nil, window != nil { release() }
         if phase == .writing { spinner.startAnimating() }
-        spin(phase == .writing && writes == .squeeze)
-        glow(phase == .writing && writes == .drain)
-        if old == .writing, phase == .on || phase == .off, writes == .squeeze, window != nil { written() }
+        spin(phase == .writing && stopAnimation == .squeeze)
+        glow(phase == .writing && stopAnimation == .drain)
+        if old == .writing, phase == .on || phase == .off, stopAnimation == .squeeze, window != nil { written() }
         let done: (Bool) -> Void = { _ in if self.phase != .writing { self.spinner.stopAnimating() } }
         guard phase != old, window != nil else {
             refresh()
@@ -105,11 +112,74 @@ public final class MicButton: UIControl {
         }
     }
 
-    /// The halo swells with your voice, on a softer spring than the bars, so it breathes rather than flickers.
-    func hear(_ level: Float) {
-        guard phase == .listening, breathes else { return }
+    /// The halo swells with your voice, on a softer spring than the bars, so it breathes rather than flickers. As the
+    /// Record Key, whose neighbors sit too close for a halo, its stop swells instead.
+    public func hear(_ level: Float) {
+        guard phase == .listening else { return }
         voice = loudness(level)
+        guard breathes else {
+            let scale = 1 + 0.4 * voice
+            return follow(duration: 0.32) { self.stop.transform = CGAffineTransform(scaleX: scale, y: scale) }
+        }
         follow(duration: 0.32) { self.layoutHalo() }
+    }
+
+    /// As the Record Key, it answers the bar's stop in its own place: Squeeze squeezes it, Drain lets its red run down out
+    /// of it and ripples its edge, and Card lets it give and spring back as the card lifts off the bar.
+    private func release() {
+        switch stopAnimation {
+        case .squeeze: give(x: 0.8, y: 0.9)
+        case .drain: sink()
+        case .card: give(x: 0.9, y: 0.9)
+        }
+    }
+
+    private func give(x: CGFloat, y: CGFloat) {
+        UIView.animate(
+            withDuration: 0.12, delay: 0, options: [.curveEaseOut, .beginFromCurrentState, .allowUserInteraction]
+        ) {
+            self.transform = CGAffineTransform(scaleX: x, y: y)
+        } completion: { _ in
+            UIView.animate(springDuration: 0.5, bounce: 0.45, options: [.beginFromCurrentState, .allowUserInteraction])
+            {
+                self.transform = .identity
+            }
+        }
+    }
+
+    /// Drain's red runs down out of the key, its surface dipping as over a drain, then a ripple from its edge.
+    private func sink() {
+        let clip = CALayer()
+        clip.frame = bounds
+        clip.cornerRadius = face.layer.cornerRadius
+        clip.cornerCurve = .continuous
+        clip.masksToBounds = true
+        let red = CAShapeLayer()
+        red.fillColor = theme.record.ui.cgColor
+        clip.addSublayer(red)
+        layer.insertSublayer(clip, above: face.layer)
+        draining?.removeFromSuperlayer()
+        draining = clip
+        let steps = 12
+        let paths = (0...steps).map { step -> CGPath in
+            let u = CGFloat(step) / CGFloat(steps)
+            return sinking(bounds, level: u * u)
+        }
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { [weak self, weak clip] in
+            guard let self, let clip, draining === clip else { return }
+            clip.removeFromSuperlayer()
+            draining = nil
+            ripple(
+                UIBezierPath(roundedRect: bounds, cornerRadius: face.layer.cornerRadius).cgPath, in: frame,
+                color: theme.record.ui, on: superview ?? self)
+        }
+        let flow = CAKeyframeAnimation(keyPath: "path")
+        flow.values = paths
+        flow.duration = 0.45
+        red.path = paths[steps]
+        red.add(flow, forKey: "flow")
+        CATransaction.commit()
     }
 
     /// The glyphs never change color: the mic's waveform shrinks away in its own color as the stop, always white,
@@ -128,10 +198,10 @@ public final class MicButton: UIControl {
         dot.alpha = phase == .on ? 1 : 0
         dot.transform = phase == .on ? .identity : CGAffineTransform(scaleX: 0.5, y: 0.5)
         spinner.color = theme.micGlyph.ui
-        spinner.alpha = phase == .writing && writes != .squeeze ? 1 : 0
+        spinner.alpha = phase == .writing && stopAnimation != .squeeze ? 1 : 0
         arc.strokeColor = theme.micGlyph.ui.cgColor
         check.tintColor = theme.micGlyph.ui
-        ring.alpha = phase == .writing && writes == .squeeze ? 1 : 0
+        ring.alpha = phase == .writing && stopAnimation == .squeeze ? 1 : 0
         spinner.transform = CGAffineTransform(scaleX: phase == .writing ? 0.75 : 0.5, y: phase == .writing ? 0.75 : 0.5)
         layoutHalo()
     }

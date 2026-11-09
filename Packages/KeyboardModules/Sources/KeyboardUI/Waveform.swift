@@ -115,12 +115,27 @@ public final class Waveform: UIView {
         tick()
     }
 
-    /// Squeeze: the stopped bars rush right into the stop as the capsule springs after them.
-    func rush() {
-        UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseIn, .beginFromCurrentState]) {
-            self.strip.transform = self.strip.transform.translatedBy(x: self.track.bounds.width * 0.7, y: 0)
+    /// Squeeze: the stopped bars rush into the stop as the capsule springs after them, right, or left toward the Record
+    /// Key; Drain's bars ride its red into the mic the same way, a little slower.
+    func rush(toward direction: CGFloat, duration: TimeInterval = 0.3) {
+        UIView.animate(withDuration: duration, delay: 0, options: [.curveEaseIn, .beginFromCurrentState]) {
+            self.strip.transform = self.strip.transform.translatedBy(x: direction * self.track.bounds.width * 0.7, y: 0)
             self.alpha = 0
         }
+    }
+
+    /// Drain toward the Record Key: the bars sink to dots and run down out of the bar, the ones nearest the key first.
+    func sink() {
+        let shown = bars.suffix(fits + 1)
+        for (index, bar) in shown.enumerated() {
+            UIView.animate(
+                withDuration: 0.28, delay: 0.22 * Double(index) / Double(max(shown.count, 1)),
+                options: [.curveEaseIn, .beginFromCurrentState]
+            ) {
+                bar.view.transform = CGAffineTransform(translationX: 0, y: 9).scaledBy(x: 1, y: 0.15)
+            }
+        }
+        UIView.animate(withDuration: 0.5, delay: 0, options: [.curveEaseIn, .beginFromCurrentState]) { self.alpha = 0 }
     }
 
     private var fits: Int { Int(track.bounds.width / Self.pitch) }
