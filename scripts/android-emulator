@@ -1,16 +1,18 @@
 #!/bin/bash
-# Runs on the Mac: boots the `iikb` Android emulator headless, making it first if there's none, and waits until Android
-# is up. One emulator at a time; `adb emu kill` closes it.
+# Runs on the Mac: boots the `iikb` Android emulator headless on port 5554, making it first if there's none, and waits
+# until Android is up. Other AVDs (the fold's, on 5556) may run beside it, so adb is pointed at this one by its serial;
+# `adb emu kill` closes it.
 set -euo pipefail
 sdk=~/Library/Android/sdk
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21 ANDROID_HOME=$sdk
+export ANDROID_SERIAL=emulator-5554
 adb=$sdk/platform-tools/adb
 image="system-images;android-37.0;google_apis_ps16k;arm64-v8a"
 if ! $sdk/emulator/emulator -list-avds | grep -qx iikb; then
     echo no | $sdk/cmdline-tools/latest/bin/avdmanager create avd -n iikb -k "$image" -d pixel_9 >/dev/null
 fi
-if ! $adb devices | grep -q '^emulator-'; then
-    nohup $sdk/emulator/emulator -avd iikb -no-window -no-audio -no-boot-anim -no-snapshot-save -gpu swiftshader_indirect \
+if ! $adb devices | grep -q "^$ANDROID_SERIAL[[:space:]]"; then
+    nohup $sdk/emulator/emulator -avd iikb -port 5554 -no-window -no-audio -no-boot-anim -no-snapshot-save -gpu swiftshader_indirect \
         >/tmp/iikb-emulator.log 2>&1 &
 fi
 $adb wait-for-device
