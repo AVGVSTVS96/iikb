@@ -3,6 +3,7 @@ package com.shahidy.iikb.voice
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
+import com.k2fsa.sherpa.onnx.OfflineRecognizerResult
 import com.k2fsa.sherpa.onnx.OfflineTransducerModelConfig
 import com.k2fsa.sherpa.onnx.SileroVadModelConfig
 import com.k2fsa.sherpa.onnx.Vad
@@ -20,13 +21,29 @@ class Parakeet private constructor(
     private val recognizer: OfflineRecognizer,
     private val talking: Vad,
 ) {
+    /** What was said, written in one pass up to Parakeet's 15 s window, and past it in windows ([Windows]). */
     fun write(recording: Recording): String {
-        if (recording.samples.isEmpty() || !talks(recording.samples)) return ""
+        val samples = recording.samples
+        if (samples.isEmpty() || !talks(samples)) return ""
+        if (samples.size <= Windows.CHUNK) return decode(samples).text.trim()
+        var tokens = emptyList<Windows.Token>()
+        for (window in Windows.plan(samples)) {
+            val heard = decode(samples.copyOfRange(window.begin, window.end))
+            val offset = window.begin / Recording.RATE.toFloat()
+            val keep = window.keep / Recording.RATE.toFloat() - 1e-6f
+            val own = heard.tokens.indices.map { Windows.Token(heard.tokens[it], offset + heard.timestamps[it]) }
+                .filter { it.start >= keep }
+            tokens = if (window.cut) tokens + own else Windows.merge(tokens, own)
+        }
+        return tokens.joinToString("") { it.text }.trim()
+    }
+
+    private fun decode(samples: FloatArray): OfflineRecognizerResult {
         val stream = recognizer.createStream()
         try {
-            stream.acceptWaveform(recording.samples, Recording.RATE)
+            stream.acceptWaveform(samples, Recording.RATE)
             recognizer.decode(stream)
-            return recognizer.getResult(stream).text.trim()
+            return recognizer.getResult(stream)
         } finally {
             stream.release()
         }
