@@ -359,6 +359,7 @@ open class FullKeyboardViewController: UIInputViewController {
         super.viewWillDisappear(animated)
         isShown = false
         keepChat()
+        chats.keep()
         leaveChat()
         engine.endSession()
         keepDictations()

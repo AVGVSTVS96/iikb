@@ -16,7 +16,7 @@ final class Chats {
         func holds(_ message: UnsentMessage) -> Bool { message.service == service.id && message.chat == id }
     }
 
-    nonisolated struct Message: Decodable, Hashable, Sendable {
+    nonisolated struct Message: Codable, Hashable, Sendable {
         let from: String
         let text: String
         var pending: Bool?
@@ -25,7 +25,7 @@ final class Chats {
         var mine: Bool { from == "me" }
 
         /// A file sent with the message, at `url` relative to the extension's address.
-        struct File: Decodable, Hashable, Sendable {
+        struct File: Codable, Hashable, Sendable {
             let name: String
             let url: String
             var type: String?
@@ -63,7 +63,50 @@ final class Chats {
 
     func reload() {
         services = ExtensionStore.load()
+        if list.isEmpty { restore() }
         deliver()
+    }
+
+    /// What the chats showed as the keyboard last went away: the list and each chat's last answer, so a new keyboard,
+    /// as after iOS ends one, shows them at once while it asks again.
+    private struct Shown: Codable {
+        struct Listed: Codable {
+            var service: String
+            var id: String
+            var name: String
+            var line: String?
+            var pinned: Bool
+        }
+
+        var list: [Listed]
+        var seen: [String: [Message]]
+    }
+
+    private static let shown = StoredFile<Shown>(URL.applicationSupportDirectory.appending(path: "chats-shown.json"))
+
+    /// Notes the list and the last 40 messages of each chat seen, as the keyboard goes away.
+    func keep() {
+        guard listed, !list.isEmpty else { return }
+        let ids = Set(list.map { $0.service.id + $0.id })
+        Self.shown.save(
+            Shown(
+                list: list.map {
+                    .init(service: $0.service.id, id: $0.id, name: $0.name, line: $0.line, pinned: $0.pinned)
+                },
+                seen: seen.filter { ids.contains($0.key) }.mapValues { Array($0.suffix(40)) }))
+    }
+
+    private func restore() {
+        guard let shown = Self.shown.read().value else { return }
+        list = shown.list.compactMap { listed in
+            services.first { $0.id == listed.service }.map {
+                Chat(service: $0, id: listed.id, name: listed.name, line: listed.line, pinned: listed.pinned)
+            }
+        }
+        guard !list.isEmpty else { return }
+        listed = true
+        seen.merge(shown.seen) { now, _ in now }
+        report()
     }
 
     /// Every extension's chats, pinned first, kept on show until the new list comes; then, `opening` them (the panel
