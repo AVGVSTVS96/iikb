@@ -10,12 +10,12 @@ import androidx.core.graphics.ColorUtils
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
-import kotlin.math.roundToInt
 
 /**
- * The emoji panel in the bar's place (docs/design.md, "Emoji"): ten columns across the keys block, what you pick most
- * first, then every emoji, or what its search finds; the keys type into the search row under it. One row that scrolls
- * sideways where height is short. Drawn and touched in dp, from the top of the keyboard.
+ * The emoji panel in the bar's place (docs/design.md, "Emoji"): ten square cells across the keys block (more where it's
+ * wider than ten of 44), what you pick most first, then every emoji, or what its search finds; the keys type into the
+ * search row under it. The rows run past the bottom as iOS's grid's do, the next one showing in part, so it reads as
+ * scrolling. One row that scrolls sideways where height is short. Drawn and touched in dp, from the top of the keyboard.
  */
 class EmojiPanel(private val view: KeyboardView, private val scroller: OverScroller) {
     var results: List<String> = emptyList()
@@ -35,25 +35,27 @@ class EmojiPanel(private val view: KeyboardView, private val scroller: OverScrol
     var holding = -1
         private set
 
-    private class Geometry(val area: RectF, val cell: Float, val rowHeight: Float, val compact: Boolean, val field: RectF, val back: RectF)
+    private class Geometry(val area: RectF, val columns: Int, val cell: Float, val compact: Boolean, val field: RectF, val back: RectF) {
+        val rowHeight get() = if (compact) area.height() else cell
+    }
 
     private fun geometry(bar: Bar): Geometry {
         val minX = bar.blockMinX.toFloat()
         val maxX = bar.blockMaxX.toFloat()
         val top = bar.top.toFloat()
         val area = RectF(minX, top, maxX, top + bar.results.toFloat())
-        val cell = (maxX - minX) / COLUMNS
+        val columns = maxOf(10, floor((maxX - minX) / 44).toInt())
+        val cell = (maxX - minX) / columns
         val fieldTop = area.bottom + 6
         val back = RectF(minX, fieldTop, minX + 36, fieldTop + bar.field.toFloat())
         val field = RectF(back.right + 4, fieldTop, maxX, fieldTop + bar.field.toFloat())
-        val rows = (area.height() / cell).roundToInt().coerceAtLeast(1)
-        return Geometry(area, cell, if (bar.compact) area.height() else area.height() / rows, bar.compact, field, back)
+        return Geometry(area, columns, cell, bar.compact, field, back)
     }
 
     private fun extent(g: Geometry): Float = if (g.compact) {
         (results.size * g.cell - g.area.width()).coerceAtLeast(0f)
     } else {
-        (ceil(results.size / COLUMNS.toFloat()) * g.rowHeight - g.area.height()).coerceAtLeast(0f)
+        (ceil(results.size / g.columns.toFloat()) * g.rowHeight - g.area.height()).coerceAtLeast(0f)
     }
 
     fun scroll() {
@@ -96,7 +98,7 @@ class EmojiPanel(private val view: KeyboardView, private val scroller: OverScrol
         val (x, y) = if (g.compact) {
             g.area.left + index * g.cell - offset to g.area.top
         } else {
-            g.area.left + (index % COLUMNS) * g.cell to g.area.top + (index / COLUMNS) * g.rowHeight - offset
+            g.area.left + (index % g.columns) * g.cell to g.area.top + (index / g.columns) * g.rowHeight - offset
         }
         if (x + g.cell < g.area.left - g.cell || x > g.area.right + g.cell) return null
         if (y + g.rowHeight < g.area.top || y > g.area.bottom) return null
@@ -218,13 +220,12 @@ class EmojiPanel(private val view: KeyboardView, private val scroller: OverScrol
         val index = if (g.compact) {
             floor((x - g.area.left + offset) / g.cell).toInt()
         } else {
-            floor((y - g.area.top + offset) / g.rowHeight).toInt() * COLUMNS + floor((x - g.area.left) / g.cell).toInt()
+            floor((y - g.area.top + offset) / g.rowHeight).toInt() * g.columns + floor((x - g.area.left) / g.cell).toInt()
         }
         return if (index in results.indices) index else -1
     }
 
     private companion object {
-        const val COLUMNS = 10
         /** The cell the spec's emoji sizes are set in, on the Duo's cover screen. */
         const val DUO_CELL = 45.3f
         const val SLOP = 8f
