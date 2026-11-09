@@ -65,10 +65,11 @@ final class Chats {
     }
 
     /// Every extension's chats, pinned first, kept on show until the new list comes; then, `opening` them (the panel
-    /// rather than the menu's shelf), `kept` open again, or the first.
+    /// rather than the menu's shelf), `kept` open again, or the first. A `kept` chat already on show opens at once.
     func start(at kept: String? = nil, opening: Bool = true) {
         stop()
         if list.isEmpty { listed = false }
+        if opening, let shown = list.first(where: { $0.id == kept }) { pick(shown) }
         listing = Task { [weak self, services] in
             var all: [Chat] = []
             var unreachable: [String] = []
