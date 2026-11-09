@@ -33,7 +33,7 @@ class Settings(context: Context) {
             "periodShortcut" to "true",
             "predictiveText" to "true",
             "slideToType" to "true",
-            "sound" to "false",
+            "sound" to "true",
             "emojiKey" to "true",
             "micKey" to "false",
             "numberRow" to "false",
