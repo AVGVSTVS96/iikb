@@ -1,5 +1,6 @@
 package com.shahidy.iikb.app.design
 
+import com.shahidy.iikb.app.Hues
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -64,16 +65,6 @@ val Palette.isDark get() = this == Palette.dark
 
 /** iOS's system colors as they change with the page's appearance, for the charts and figures on cards. */
 object Tints {
-    fun blue(p: Palette) = if (p.isDark) Color(0xFF0A84FF) else Color(0xFF007AFF)
-    fun pink(p: Palette) = if (p.isDark) Color(0xFFFF375F) else Color(0xFFFF2D55)
-    fun indigo(p: Palette) = if (p.isDark) Color(0xFF5E5CE6) else Color(0xFF5856D6)
-    fun orange(p: Palette) = if (p.isDark) Color(0xFFFF9F0A) else Color(0xFFFF9500)
-    fun teal(p: Palette) = if (p.isDark) Color(0xFF40CBE0) else Color(0xFF30B0C7)
-    fun green(p: Palette) = if (p.isDark) Color(0xFF30D158) else Color(0xFF34C759)
-    fun purple(p: Palette) = if (p.isDark) Color(0xFFBF5AF2) else Color(0xFFAF52DE)
-    fun yellow(p: Palette) = if (p.isDark) Color(0xFFFFD60A) else Color(0xFFFFCC00)
-    fun cyan(p: Palette) = if (p.isDark) Color(0xFF64D2FF) else Color(0xFF32ADE6)
-    fun gray(p: Palette) = Color(0xFF8E8E93)
 
     /** A field's placeholder, iOS's `placeholderText`. */
     fun placeholder(p: Palette) = if (p.isDark) Color(0x4DEBEBF5) else Color(0x4D3C3C43)
@@ -317,7 +308,7 @@ fun LeadNumber(value: String, size: Float, beside: (@Composable () -> Unit)? = n
 fun TrendChip(points: Int, unit: String = " lately") {
     val palette = palette()
     val up = points > 0
-    val color = if (up) Tints.green(palette) else Tints.miss(palette)
+    val color = if (up) Hues.green.on(palette) else Tints.miss(palette)
     Text(
         "${if (up) "+" else "−"}${abs(points)}$unit", color = color, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
         maxLines = 1, softWrap = false,

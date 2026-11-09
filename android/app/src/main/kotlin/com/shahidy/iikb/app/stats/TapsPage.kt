@@ -1,5 +1,6 @@
 package com.shahidy.iikb.app.stats
 
+import com.shahidy.iikb.app.Hues
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -162,7 +163,7 @@ private fun Screens(board: TapBoard, named: Boolean, pick: (String) -> Unit) {
 private fun Numbers(summary: TapSummary, perScreen: Boolean) {
     val palette = palette()
     val trend = summary.lately?.let { ((it.first - summary.onTarget) * 100).roundToInt().takeIf { points -> points != 0 } }
-    StatCard("scope", Tints.blue(palette), "On target") {
+    StatCard("scope", Hues.blue.on(palette), "On target") {
         LeadNumber(Format.percent(summary.onTarget), 52f, trend?.let { { TrendChip(it) } })
         Meter(summary.onTarget)
         val share = "Letter taps that land on the key you meant."
@@ -187,7 +188,7 @@ private fun Meter(share: Double) {
     BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 6.dp).height(8.dp)) {
         val total = maxWidth
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            val blue = Modifier.height(8.dp).clip(CircleShape).background(Tints.gradient(Tints.blue(palette)))
+            val blue = Modifier.height(8.dp).clip(CircleShape).background(Tints.gradient(Hues.blue.on(palette)))
             if (share >= 0.995) {
                 Box(blue.fillMaxWidth())
             } else {
@@ -202,7 +203,7 @@ private fun Meter(share: Double) {
 @Composable
 private fun Legend(mode: TapMode, selected: Boolean) {
     val palette = palette()
-    val accent = Tints.blue(palette)
+    val accent = Hues.blue.on(palette)
     Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         when (mode) {
             TapMode.HEAT -> Scale("Fewer taps", "More", (0 until 24).map { TapHeat.color(sqrt(it / 23.0), palette.isDark) })
@@ -297,13 +298,13 @@ private fun KeyDetail(board: TapBoard, aim: TapBoard.Aim, close: () -> Unit) {
             val strays = aim.recent.mapNotNull { it.landed?.takeIf { key -> key != aim.key } }.groupingBy { it }.eachCount()
                 .entries.sortedByDescending { it.value }.joinToString(", ") { "${board.keys[it.key].name} ${it.value}" }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Dot(Tints.blue(palette), "$hits of the last ${aim.recent.size} on $name")
+                Dot(Hues.blue.on(palette), "$hits of the last ${aim.recent.size} on $name")
                 if (strays.isNotEmpty()) Dot(Tints.miss(palette), strays)
             }
         }
         Section("Where its taps land") {
             val misses = aim.landing.filter { it.key != aim.key }.take(3).filter { it.share >= 0.005 }
-            val parts = listOf(Triple(name, aim.onTarget, Tints.blue(palette))) +
+            val parts = listOf(Triple(name, aim.onTarget, Hues.blue.on(palette))) +
                 misses.map { Triple(board.keys[it.key].name, it.share, Tints.miss(palette)) }
             val rest = 1 - parts.sumOf { it.second }
             SegmentedBar(if (rest >= 0.005) parts + Triple("other", rest, palette.secondary.copy(alpha = 0.45f)) else parts)
@@ -358,7 +359,7 @@ private fun MemoryBar(weights: List<Double>) {
 @Composable
 private fun Thumbs(board: TapBoard, summary: TapSummary) {
     val palette = palette()
-    StatCard("arrow.up.and.down.and.arrow.left.and.right", Tints.blue(palette), "How your thumbs pull") {
+    StatCard("arrow.up.and.down.and.arrow.left.and.right", Hues.blue.on(palette), "How your thumbs pull") {
         Pull(board)
         val targets = summary.halves + listOfNotNull(summary.space?.let { "Space bar" to it })
         val reach = maxOf(2.5, targets.maxOfOrNull { hypot(it.second.x, it.second.y) } ?: 0.0)
@@ -388,7 +389,7 @@ private fun Misses(board: TapBoard, summary: TapSummary, selected: Int?, pick: (
     if (shown.isEmpty()) return
     val typical = 1 - summary.onTarget
     val miss = Tints.miss(palette)
-    StatCard("xmark.circle.fill", Tints.orange(palette), "Misses by key") {
+    StatCard("xmark.circle.fill", Hues.orange.on(palette), "Misses by key") {
         val top = maxOf(shown.first().share, 0.05, typical * 1.4)
         ColumnChart(
             shown.map { listOf(it.share) }, listOf(Tints.gradient(miss.copy(alpha = 0.9f))),

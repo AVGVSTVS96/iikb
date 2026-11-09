@@ -1,5 +1,6 @@
 package com.shahidy.iikb.app.stats
 
+import com.shahidy.iikb.app.Hues
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
@@ -66,7 +67,7 @@ fun keyFill(palette: Palette) = if (palette.isDark) Color(0xFF3D3D40) else Color
 fun TapMap(board: TapBoard, mode: TapMode, heat: ImageBitmap?, selected: Int?, onSelect: (Int?) -> Unit) {
     val palette = palette()
     val measurer = rememberTextMeasurer()
-    val accent = Tints.blue(palette)
+    val accent = Hues.blue.on(palette)
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val width = min(maxWidth.value, board.width.toFloat())
         val scale = width / board.width.toFloat()
@@ -249,7 +250,7 @@ private fun DrawScope.shares(
 fun CloseUp(board: TapBoard, aim: TapBoard.Aim) {
     val palette = palette()
     val measurer = rememberTextMeasurer()
-    val accent = Tints.blue(palette)
+    val accent = Hues.blue.on(palette)
     val miss = Tints.miss(palette)
     Canvas(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(16.dp))) {
         drawRect(Tints.backdrop(palette))
@@ -322,7 +323,7 @@ fun DrawScope.memory(index: Int, at: Offset, color: Color, dp: Float) = when (in
 @Composable
 fun Pull(board: TapBoard) {
     val palette = palette()
-    val accent = Tints.blue(palette)
+    val accent = Hues.blue.on(palette)
     Canvas(Modifier.fillMaxWidth().aspectRatio((board.width / board.height).toFloat().coerceAtLeast(0.1f))) {
         val scale = size.width / board.width.toFloat()
         drawRoundRect(Tints.backdrop(palette), cornerRadius = CornerRadius(16 * density))
@@ -363,7 +364,7 @@ const val MAGNIFY = 4f
 @Composable
 fun Target(drift: TapBoard.Point, reach: Double) {
     val palette = palette()
-    val accent = Tints.blue(palette)
+    val accent = Hues.blue.on(palette)
     Canvas(Modifier.size(76.dp)) {
         val radius = size.minDimension / 2
         val center = Offset(radius, size.height / 2)

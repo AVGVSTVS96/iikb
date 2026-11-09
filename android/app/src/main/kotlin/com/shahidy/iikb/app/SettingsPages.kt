@@ -48,7 +48,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /** Every settings page, by the name the app and the keyboard open it with, under the Settings list's three sections. */
-enum class SettingsPage(val title: String, val symbol: String, val hue: Color) {
+enum class SettingsPage(val title: String, val symbol: String, val hue: Hue) {
     APPEARANCE("Appearance", "paintpalette.fill", Hues.purple),
     TYPING("Typing", "character.cursor.ibeam", Hues.cyan),
     FEEDBACK("Sound & Haptics", "hand.tap.fill", Hues.pink),
@@ -121,7 +121,7 @@ fun SettingsList(open: (String) -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        Glyph(page.symbol, page.hue)
+                        Glyph(page.symbol, page.hue.on(palette()))
                         Text(page.title, color = palette().label, fontSize = Type.body, modifier = Modifier.weight(1f), maxLines = 1)
                         page.value()?.let { Text(it, color = palette().secondary, fontSize = Type.body, maxLines = 1) }
                         Trailing("chevron.right")

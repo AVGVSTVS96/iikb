@@ -142,7 +142,7 @@ private fun TryField(typing: (Boolean) -> Unit) {
 
 /** One of Home's counts, opening the tab that keeps it. */
 private class Count(
-    val symbol: String, val color: Color, val value: Int, val label: String, val title: String, val tab: Tab,
+    val symbol: String, val hue: Hue, val value: Int, val label: String, val title: String, val tab: Tab,
     val section: StatsSection? = null,
 )
 
@@ -201,7 +201,7 @@ private fun Counts(show: (Tab, StatsSection?) -> Unit) {
                         Modifier.weight(1f).cardPress { show(count.tab, count.section) }.padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        Glyph(count.symbol, count.color, 34.dp)
+                        Glyph(count.symbol, count.hue.on(palette), 34.dp)
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
                                 "%,d".format(count.value), color = palette.label, fontSize = size.sp, fontWeight = FontWeight.Bold,
@@ -221,7 +221,7 @@ private fun Counts(show: (Tab, StatsSection?) -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        Glyph(count.symbol, count.color, 28.dp)
+                        Glyph(count.symbol, count.hue.on(palette), 28.dp)
                         Text(count.title, color = palette.label, fontSize = Type.body, maxLines = 1, modifier = Modifier.weight(1f))
                         Text("%,d".format(count.value), color = palette.label, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     }
@@ -242,7 +242,7 @@ private fun ShortcutCards(open: (String) -> Unit) {
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             for (page in row) {
                 Tile(
-                    page.symbol, page.hue, page.title, page.value(),
+                    page.symbol, page.hue.on(palette()), page.title, page.value(),
                     Modifier.weight(1f).fillMaxHeight().cardPress { open(page.id) },
                 )
             }

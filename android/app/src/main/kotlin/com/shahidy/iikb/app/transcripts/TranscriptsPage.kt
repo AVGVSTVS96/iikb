@@ -1,5 +1,6 @@
 package com.shahidy.iikb.app.transcripts
 
+import com.shahidy.iikb.app.Hues
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -253,7 +254,7 @@ fun share(context: Context, text: String) {
 @Composable
 private fun Summary(transcripts: List<Transcript>, openStats: () -> Unit) {
     val palette = palette()
-    val pink = Tints.pink(palette)
+    val pink = Hues.pink.on(palette)
     val words = transcripts.sumOf { it.words }
     val seconds = transcripts.filter { it.text.isNotEmpty() }.sumOf { it.seconds }
     val today = LocalDate.now()
@@ -300,7 +301,7 @@ private fun Summary(transcripts: List<Transcript>, openStats: () -> Unit) {
 @Composable
 private fun Fortnight(days: List<Pair<LocalDate, Int>>) {
     val palette = palette()
-    val pink = Tints.pink(palette)
+    val pink = Hues.pink.on(palette)
     val active = days.filter { it.second > 0 }
     val average = if (active.isEmpty()) 0 else active.sumOf { it.second } / active.size
     val best = days.maxByOrNull { it.second }?.takeIf { it.second > 0 }
@@ -308,7 +309,7 @@ private fun Fortnight(days: List<Pair<LocalDate, Int>>) {
     val marked = { day: LocalDate -> day == today || day == best?.first }
     ColumnChart(
         days.map { (day, words) -> if (marked(day)) listOf(words.toDouble(), null) else listOf(null, words.toDouble()) },
-        listOf(Brush.verticalGradient(listOf(pink, Tints.purple(palette))), Brush.verticalGradient(listOf(pink.copy(alpha = 0.8f), pink.copy(alpha = 0.8f)))),
+        listOf(Brush.verticalGradient(listOf(pink, Hues.purple.on(palette))), Brush.verticalGradient(listOf(pink.copy(alpha = 0.8f), pink.copy(alpha = 0.8f)))),
         (best?.second ?: 1) * 1.25, 112.dp, listOf(0, 7).map { Tick(it, Format.day(days[it].first), true) },
         ratio = 0.64f, radius = 4.dp, yLabel = null,
         rule = if (active.size > 1) Rule(average.toDouble(), "avg ${Format.compact(average)}", leading = true) else null,
