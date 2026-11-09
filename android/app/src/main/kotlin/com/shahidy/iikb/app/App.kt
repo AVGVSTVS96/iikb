@@ -1,7 +1,30 @@
 package com.shahidy.iikb.app
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,9 +34,6 @@ import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
@@ -36,7 +56,6 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 import com.shahidy.iikb.Settings
 import com.shahidy.iikb.app.clipboard.ClipboardPage
-import com.shahidy.iikb.app.design.Glyphs
 import com.shahidy.iikb.app.stats.StatsPage
 import com.shahidy.iikb.app.stats.StatsSection
 import com.shahidy.iikb.app.transcripts.TranscriptsPage
@@ -68,23 +87,9 @@ fun App(
                 containerColor = palette.page,
                 bottomBar = {
                     if (!WindowInsets.isImeVisible) {
-                        NavigationBar(containerColor = palette.card) {
-                            Tab.entries.forEachIndexed { index, item ->
-                                NavigationBarItem(
-                                    selected = tab == index,
-                                    onClick = {
-                                        tab = index
-                                        page = null
-                                    },
-                                    icon = { Icon(item.icon, contentDescription = null) },
-                                    label = { Text(item.title) },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = palette.accent, selectedTextColor = palette.accent,
-                                        indicatorColor = Color.Transparent, unselectedIconColor = palette.secondary,
-                                        unselectedTextColor = palette.secondary,
-                                    ),
-                                )
-                            }
+                        TabBar(tab) {
+                            tab = it
+                            page = null
                         }
                     }
                 },
@@ -118,17 +123,55 @@ fun App(
     }
 }
 
-enum class Tab(val title: String, val icon: ImageVector) {
-    HOME("iikb", glyph("M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z M7 10h1m3 0h2m3 0h1M8 14h8")),
-    TRANSCRIPTS("Transcripts", glyph(Glyphs.TEXT_BUBBLE)),
-    CLIPBOARD("Clipboard", glyph(Glyphs.CLIPBOARD)),
-    STATS("Stats", glyph(Glyphs.CHART)),
-    SETTINGS(
-        "Settings",
-        glyph(
-            "M15 12a3 3 0 1 1-6 0a3 3 0 1 1 6 0Z M12 2.5l1.6 2.4 2.8-.7.7 2.8 2.4 1.6-1.2 2.6 1.2 2.6-2.4 1.6-.7 2.8-2.8-.7L12 21.5l-1.6-2.4-2.8.7-.7-2.8-2.4-1.6L5.7 12 4.5 9.4l2.4-1.6.7-2.8 2.8.7Z",
-        ),
-    ),
+/** The five tabs, by the SF Symbols iOS's tab bar fills (house, waveform, list.clipboard, chart.bar.xaxis, gearshape). */
+enum class Tab(val title: String, val symbol: String) {
+    HOME("iikb", "house.fill"),
+    TRANSCRIPTS("Transcripts", "waveform"),
+    CLIPBOARD("Clipboard", "list.clipboard.fill"),
+    STATS("Stats", "chart.bar.xaxis"),
+    SETTINGS("Settings", "gearshape.fill"),
+}
+
+/**
+ * The tabs as iOS's tab bar draws them on an iPhone: a capsule floating over the page's foot, each tab its filled
+ * glyph over its name in the label's color, the picked one tinted on a pill of its own.
+ */
+@Composable
+private fun TabBar(tab: Int, pick: (Int) -> Unit) {
+    val palette = palette()
+    val dark = palette == Palette.dark
+    val capsule = RoundedCornerShape(percent = 50)
+    Box(
+        Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(palette.page.copy(alpha = 0f), palette.page)))
+            .navigationBarsPadding().padding(start = 21.dp, end = 21.dp, top = 6.dp, bottom = 4.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().height(62.dp)
+                .shadow(if (dark) 0.dp else 14.dp, capsule, ambientColor = Color(0x33000000), spotColor = Color(0x22000000))
+                .background(if (dark) Color(0xFF1C1C1E) else Color.White.copy(alpha = 0.96f), capsule)
+                .border(BorderStroke(0.5.dp, palette.edge), capsule)
+                .padding(4.dp),
+        ) {
+            Tab.entries.forEachIndexed { index, item ->
+                val picked = index == tab
+                val tint = if (picked) palette.accent else palette.label
+                Column(
+                    Modifier.weight(1f).fillMaxHeight().clip(capsule)
+                        .background(if (picked) palette.label.copy(alpha = if (dark) 0.12f else 0.06f) else Color.Transparent)
+                        .clickable(interactionSource = null, indication = null) { pick(index) }
+                        .semantics { role = Role.Tab; selected = picked },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Icon(Symbols[item.symbol], null, tint = tint, modifier = Modifier.size(25.dp))
+                    Text(
+                        item.title, color = tint, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1,
+                        modifier = Modifier.padding(top = 1.dp),
+                    )
+                }
+            }
+        }
+    }
 }
 
 /** A 24-unit glyph from path data, stroked as the keyboard's are. */
