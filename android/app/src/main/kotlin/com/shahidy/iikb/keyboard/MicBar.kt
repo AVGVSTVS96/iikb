@@ -374,6 +374,7 @@ class MicBar(private val view: View) {
         glow(theme, now)
         canvas.drawRoundRect(key, corner, corner, fill)
         fill.clearShadowLayer()
+        if (sank != 0L) drawSink(canvas, theme, key, corner, (now - sank) / 1000f)
         val cx = key.centerX()
         val cy = key.centerY()
         val glyph = idle.at(now)
@@ -397,13 +398,12 @@ class MicBar(private val view: View) {
         val spinning = spinner.at(now).coerceIn(0f, 1f)
         if (spinning > 0.001f) drawSpinner(canvas, cx, cy, 20f * (0.5f + 0.25f * spinning), theme.micGlyph, spinning, now)
         if (checking != 0L) drawCheck(canvas, theme.micGlyph, cx, cy, min(side * 0.69f, 21f), (now - checking) / 1000f)
-        if (sank != 0L) drawSink(canvas, theme, key, corner, (now - sank) / 1000f)
         canvas.restore()
         if (sank != 0L) drawKeyRipple(canvas, theme, key, corner, (now - sank) / 1000f - SINK)
         if (busy(now)) view.postInvalidateOnAnimation()
     }
 
-    /** Drain's red in the Record Key, running down out of it, its surface dipping in the middle as water over a drain. */
+    /** Drain's red in the Record Key, over its face and under its glyphs, running down out of it, its surface dipping in the middle as water over a drain. */
     private fun drawSink(canvas: Canvas, theme: Theme, key: RectF, corner: Float, t: Float) {
         if (t >= SINK) return
         val u = t / SINK
