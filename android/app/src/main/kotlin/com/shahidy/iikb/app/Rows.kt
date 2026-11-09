@@ -3,6 +3,7 @@ package com.shahidy.iikb.app
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -36,6 +37,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +50,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,10 +67,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -96,17 +103,19 @@ val CardShape = RoundedCornerShape(22.dp)
 
 /**
  * A page: its title and buttons in a bar pinned at the top, as iOS's navigation bar holds them, over a column of
- * sections 28 apart that scrolls under it. A tab's page has a large title; one opened from another (`onBack`) a small
- * one beside Back.
+ * sections 28 apart that scrolls under it. A tab's page has a large title until it scrolls (iOS's `.inlineLarge`);
+ * one opened from another (`onBack`) a small one.
  */
 @Composable
 fun Page(
     title: String, onBack: (() -> Unit)? = null, pinned: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}, content: @Composable ColumnScope.() -> Unit,
 ) {
-    Frame(title, onBack, pinned, actions) {
+    val scroll = rememberScrollState()
+    val scrolled by remember { derivedStateOf { scroll.value > 0 } }
+    Frame(title, onBack, scrolled, pinned, actions) {
         Column(
-            Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())
+            Modifier.fillMaxSize().imePadding().verticalScroll(scroll)
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(28.dp),
             content = content,
@@ -120,9 +129,12 @@ fun ListPage(
     title: String, onBack: (() -> Unit)? = null, pinned: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}, content: LazyListScope.() -> Unit,
 ) {
-    Frame(title, onBack, pinned, actions) {
+    val list = rememberLazyListState()
+    val scrolled by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }
+    Frame(title, onBack, scrolled, pinned, actions) {
         LazyColumn(
             Modifier.fillMaxSize().imePadding(),
+            state = list,
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp),
         ) { content() }
     }
@@ -131,37 +143,70 @@ fun ListPage(
 /** A page's bar, its title, Back and buttons, with what's pinned under it, over what scrolls. */
 @Composable
 private fun Frame(
-    title: String, onBack: (() -> Unit)?, pinned: (@Composable () -> Unit)?, actions: @Composable RowScope.() -> Unit,
-    content: @Composable () -> Unit,
+    title: String, onBack: (() -> Unit)?, scrolled: Boolean, pinned: (@Composable () -> Unit)?,
+    actions: @Composable RowScope.() -> Unit, content: @Composable () -> Unit,
 ) {
     val palette = palette()
     Column(Modifier.fillMaxSize().background(palette.page).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (onBack != null) {
-                Box(
-                    Modifier.size(44.dp).clip(CircleShape).background(palette.card)
-                        .border(BorderStroke(1.dp, palette.edge), CircleShape).clickable(onClick = onBack),
-                    contentAlignment = Alignment.Center,
-                ) { Icon(Symbols["chevron.left"], "Back", tint = palette.label, modifier = Modifier.size(20.dp)) }
-                Text(
-                    title, color = palette.label, fontSize = Type.body, fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 14.dp).weight(1f), maxLines = 1,
-                )
-            } else {
-                Text(
-                    title, color = palette.label, fontSize = 34.sp, fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.02).em, modifier = Modifier.padding(start = 4.dp).weight(1f), maxLines = 1,
-                )
-            }
-            actions()
-        }
+        Bar(title, onBack, scrolled, actions)
         pinned?.let { Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) { it() } }
         Box(Modifier.weight(1f)) {
             content()
             Box(Modifier.fillMaxWidth().height(14.dp).background(Brush.verticalGradient(listOf(palette.page, palette.page.copy(alpha = 0f)))))
+        }
+    }
+}
+
+/**
+ * iOS's navigation bar: Back at the left, the buttons at the right, and the small title centered on the screen, or
+ * just after Back when centered it would run into either. A tab's large title sits at the left until the page scrolls,
+ * then gives way to the small one.
+ */
+@Composable
+private fun Bar(title: String, onBack: (() -> Unit)?, scrolled: Boolean, actions: @Composable RowScope.() -> Unit) {
+    val palette = palette()
+    val small by animateFloatAsState(if (onBack != null || scrolled) 1f else 0f, tween(200), label = "title")
+    Layout(
+        content = {
+            if (onBack != null) {
+                Box(
+                    Modifier.layoutId("back").size(44.dp).clip(CircleShape).background(palette.card)
+                        .border(BorderStroke(1.dp, palette.edge), CircleShape).clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Symbols["chevron.left"], "Back", tint = palette.label, modifier = Modifier.size(20.dp)) }
+            } else {
+                Text(
+                    title, color = palette.label, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.layoutId("large").padding(start = 4.dp).alpha(1 - small),
+                )
+            }
+            Text(
+                title, color = palette.label, fontSize = Type.body, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, modifier = Modifier.layoutId("small").alpha(small),
+            )
+            Row(Modifier.layoutId("actions"), verticalAlignment = Alignment.CenterVertically, content = actions)
+        },
+        modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
+    ) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val gap = 14.dp.roundToPx()
+        fun part(id: String) = measurables.firstOrNull { it.layoutId == id }
+        val back = part("back")?.measure(loose)
+        val trailing = part("actions")!!.measure(loose)
+        val end = width - trailing.width - if (trailing.width > 0) gap else 0
+        val start = back?.let { it.width + gap } ?: 0
+        val large = part("large")?.measure(loose.copy(maxWidth = maxOf(end, 0)))
+        val inline = part("small")!!.measure(loose.copy(maxWidth = maxOf(end - start, 0)))
+        val height = maxOf(constraints.minHeight, back?.height ?: 0, trailing.height, large?.height ?: 0, inline.height)
+        layout(width, height) {
+            fun Placeable.center(x: Int) = place(x, (height - this.height) / 2)
+            back?.center(0)
+            large?.center(0)
+            trailing.center(width - trailing.width)
+            val centered = (width - inline.width) / 2
+            inline.center(if (centered >= start && centered + inline.width <= end) centered else start)
         }
     }
 }
