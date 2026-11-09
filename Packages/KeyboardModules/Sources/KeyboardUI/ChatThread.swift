@@ -52,7 +52,7 @@ public protocol ChatBubble: UIView {
 public final class ChatThread: UIView, UIGestureRecognizerDelegate {
     /// A link in a message was opened. A keyboard has no public way to open one, so its owner does.
     public var onOpen: (URL) -> Void = { _ in }
-    /// The messages were tapped, or text in them selected: you're reading.
+    /// The messages were tapped: you're reading. Selecting text in them leaves the keys where they are.
     public var onRead: () -> Void = {}
     /// A file's bytes, which only the owner can fetch.
     public var fetch: (URL) async -> Data? = { _ in nil }
@@ -124,7 +124,6 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
     private func text() -> MessageBubble {
         let bubble = MessageBubble()
         bubble.onOpen = { [unowned self] in onOpen($0) }
-        bubble.onSelect = { [unowned self] in onRead() }
         return bubble
     }
 
@@ -201,8 +200,6 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
 public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
     /// A link in the message was tapped, or Open picked from its menu.
     public var onOpen: (URL) -> Void = { _ in }
-    /// Text in the message was selected.
-    public var onSelect: () -> Void = {}
     public private(set) var mine = false
     /// Whether the message above and below is from the same side, whose corners on that side tighten, as Messages'.
     public var joined = (above: false, below: false) { didSet { if joined != oldValue { setNeedsLayout() } } }
@@ -315,10 +312,6 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
         shape.frame = bounds
         shape.path = path.cgPath
         CATransaction.commit()
-    }
-
-    public func textViewDidChangeSelection(_ textView: UITextView) {
-        if textView.selectedRange.length > 0 { onSelect() }
     }
 
     public func textView(_ textView: UITextView, primaryActionFor textItem: UITextItem, defaultAction: UIAction)

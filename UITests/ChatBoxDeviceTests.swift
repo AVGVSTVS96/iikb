@@ -48,6 +48,53 @@ final class ChatBoxDeviceTests: XCTestCase {
         element("iikb.more", in: app).tap()
     }
 
+    /// The keyboard goes away and comes back in the same field, as it does when the mic goes through iikb: the chat
+    /// opens again with its line and its keys up. More then leaves it, keys up and all.
+    func testAChatComesBackAsYouLeftItOnThePhone() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-iikbFocus", "YES"]
+        app.launch()
+        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        element("iikb.more", in: app).tap()
+        let card = element("iikb.chats.shelf.0", in: app)
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
+        card.tap()
+        let field = element("iikb.chat.field", in: app)
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the chat opens with its message box")
+        field.tap()
+        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 5), "tapping the box brings the keys up")
+        for character in "kept" { key(String(character), in: app).tap() }
+        Thread.sleep(forTimeInterval: 1)
+        shot("7-before-leaving")
+
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 3)
+        app.activate()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the chat is open again")
+        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 5), "with its keys up")
+        Thread.sleep(forTimeInterval: 2)
+        shot("8-back")
+
+        let messages = app.textViews.matching(NSPredicate(format: "identifier != 'iikb.chat.field'"))
+        if let last = messages.allElementsBoundByIndex.last(where: \.isHittable) {
+            last.press(forDuration: 1.2)
+            Thread.sleep(forTimeInterval: 1.5)
+            shot("8b-selected")
+            XCTAssertTrue(key("space", in: app).exists, "selecting in a message leaves the keys up")
+            XCTAssertTrue(app.menuItems["Copy"].waitForExistence(timeout: 3), "with the selection's Copy")
+            Thread.sleep(forTimeInterval: 3)
+            XCTAssertTrue(app.menuItems["Copy"].exists, "which stays as the chat redraws")
+        }
+
+        for _ in 0..<4 { key("delete", in: app).tap() }
+        element("iikb.more", in: app).tap()
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertFalse(field.exists, "More leaves the chat with its keys up")
+        XCTAssertTrue(key("space", in: app).exists, "and gives the app's keys back")
+        shot("9-left")
+    }
+
     func testThePanelSearchIsARealFieldOnThePhone() throws {
         continueAfterFailure = false
         let app = XCUIApplication()

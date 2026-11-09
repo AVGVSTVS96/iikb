@@ -96,7 +96,8 @@ public final class MessageField: UIView, UITextViewDelegate {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    /// `caret` while the keys are up to type into it, which focuses the box; `mic` the dictation's phase, which the
+    /// `caret` while the keys are up to type into it, which focuses the box as they come up and as the keys change its
+    /// line, never otherwise, so text selected in a message keeps its selection while the keys stay up; `mic` the dictation's phase, which the
     /// box's mic shows, so a message can be said and sent with the keys down.
     public func show(
         _ line: LineDocument, placeholder text: String, caret: Bool, mic: MicButton.Phase, theme: KeyboardTheme
@@ -136,7 +137,8 @@ public final class MessageField: UIView, UITextViewDelegate {
             location: next.text.utf16(fromCharacters: next.selection.lowerBound),
             length: String(next.text.dropFirst(next.selection.lowerBound).prefix(next.selection.count)).utf16.count)
         if field.selectedRange != range { field.selectedRange = range }
-        if caret, !field.isFirstResponder {
+        let typed = last?.caret != true || next.text != last?.text || next.selection != last?.selection
+        if caret, typed, !field.isFirstResponder {
             field.focusable = true
             field.becomeFirstResponder()
         } else if !caret, field.isFirstResponder {
