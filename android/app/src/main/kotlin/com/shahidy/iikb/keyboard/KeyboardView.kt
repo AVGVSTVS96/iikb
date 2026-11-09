@@ -133,7 +133,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
 
     private class Accents(
         val options: List<String>, val symbols: Boolean, val box: RectF, val cell: Float, val padding: Float,
-        var selected: Int,
+        val highlight: Float, var selected: Int,
     )
 
     private val bar get() = frame?.toolbar
@@ -311,11 +311,11 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             canvas.drawRoundRect(box, box.height() / 2, box.height() / 2, fill)
             val color = ColorUtils.setAlphaComponent(theme.letter.label, if (enabled) 255 else 90)
             val title = name.replaceFirstChar(Char::uppercase)
-            val glyph = 16f
+            val glyph = Glyphs.square(15f)
             val width = glyph + 6 + text.measureText(title)
             val x = box.centerX() - width / 2
             fill.color = color
-            Glyphs.draw(canvas, EDIT_GLYPHS.getValue(name), x + glyph / 2, box.centerY(), glyph, fill)
+            Glyphs.draw(canvas, EDIT_GLYPHS.getValue(name), x + glyph / 2, box.centerY(), glyph, fill, Glyphs.MEDIUM)
             text.color = color
             canvas.drawText(title, x + glyph + 6, box.centerY() + text.textSize * 0.35f, text)
         }
@@ -817,13 +817,14 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
 
     private fun showAccents(frame: Frame, cap: Cap, options: List<String>, symbols: Boolean, selected: Int) {
         val padding = 10f
-        val cell = (cap.width + 4).toFloat()
-        val height = (cap.height * 1.57).toFloat()
+        val cell = if (symbols) 50f else (cap.width + 4).toFloat()
+        val height = (if (symbols) cap.height + 18 else cap.height * 1.57).toFloat()
+        val highlight = (cap.height + if (symbols) 2 else 4).toFloat()
         val width = cell * options.size + padding * 2
         val x = (cap.x + cap.width / 2 - padding - cell * (selected + 0.5)).toFloat()
             .coerceIn(7f, (frame.width - width - 7).toFloat().coerceAtLeast(7f))
         val y = (cap.y - height - 3).toFloat().coerceAtLeast(-keysTop + 1)
-        accents = Accents(options, symbols, RectF(x, y, x + width, y + height), cell, padding, selected)
+        accents = Accents(options, symbols, RectF(x, y, x + width, y + height), cell, padding, highlight, selected)
     }
 
     private fun track(accents: Accents, x: Float) {
@@ -837,7 +838,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         fill.setShadowLayer(4f, 0f, 1f, frame.theme.shadow)
         canvas.drawRoundRect(accents.box, r * 2, r * 2, fill)
         fill.clearShadowLayer()
-        val cellHeight = (frame.look.keyHeight + 4).toFloat()
+        val cellHeight = accents.highlight
         val left = accents.box.left + accents.padding + accents.selected * accents.cell
         val top = accents.box.centerY() - cellHeight / 2
         fill.color = frame.theme.selection
@@ -849,7 +850,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             val cx = accents.box.left + accents.padding + accents.cell * (index + 0.5f)
             if (accents.symbols) {
                 fill.color = color
-                Glyphs.draw(canvas, option, cx, accents.box.centerY(), 24f, fill)
+                Glyphs.draw(canvas, option, cx, accents.box.centerY(), Glyphs.square(frame.look.symbolSize.toFloat()), fill)
             } else {
                 text.color = color
                 val width = text.measureText(option)
