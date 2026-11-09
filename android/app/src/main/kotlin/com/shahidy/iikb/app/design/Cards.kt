@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import com.shahidy.iikb.Text
+import com.shahidy.iikb.app.Type
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -170,7 +171,7 @@ fun <T> SectionPills(values: List<T>, picked: T, title: (T) -> String, onPick: (
             val on = value == picked
             val fill by animateColorAsState(if (on) palette.selected else Color.Transparent, label = "pill")
             Text(
-                title(value), color = if (on) palette.selectedLabel else palette.secondary, fontSize = 16.sp,
+                title(value), color = if (on) palette.selectedLabel else palette.secondary, fontSize = Type.body,
                 fontWeight = FontWeight.Medium, maxLines = 1,
                 modifier = Modifier.clip(CircleShape).background(fill).clickable { onPick(value) }
                     .padding(horizontal = 13.dp, vertical = 8.dp),

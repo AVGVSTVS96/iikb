@@ -70,7 +70,6 @@ import com.shahidy.iikb.app.design.SearchField
 import com.shahidy.iikb.app.design.Tints
 import com.shahidy.iikb.app.design.TrendChip
 import com.shahidy.iikb.app.design.card
-import com.shahidy.iikb.app.glyph
 import com.shahidy.iikb.app.palette
 import com.shahidy.iikb.app.stats.AppNames
 import com.shahidy.iikb.app.stats.ColumnChart
@@ -96,6 +95,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 
 /** The phone's transcripts, read again each time one is added or deleted. */
 @Composable
@@ -272,8 +276,10 @@ private fun Summary(transcripts: List<Transcript>, openStats: () -> Unit) {
             Glyph("waveform", pink, 26.dp)
             Text("Dictation", color = palette.secondary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.weight(1f))
-            Text("Stats", color = palette.secondary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-            Icon(glyph(Glyphs.CHEVRON, 2.4f), null, tint = palette.secondary, modifier = Modifier.size(13.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("Stats", color = palette.secondary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Icon(StatsChevron, null, tint = palette.secondary)
+            }
         }
         LeadNumber(Format.count(words), 44f) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -567,3 +573,12 @@ private fun ActionRow(title: String, symbol: String?, color: Color, onClick: () 
     Line(title, onClick = onClick, color = color) {
         if (symbol != null) Icon(Symbols[symbol], null, tint = color, modifier = Modifier.size(20.5.dp))
     }
+
+/** SF's `chevron.right` at footnote size, semibold, cropped to its ink as an SF Symbol's image is: 5.4 by 10.7. */
+private val StatsChevron = ImageVector.Builder(
+    defaultWidth = 5.4.dp, defaultHeight = 10.7.dp, viewportWidth = 10.33f, viewportHeight = 17.83f,
+).addPath(
+    pathData = PathParser().parsePathString("M1.415 1.415l7.5 7.5L1.415 16.415").toNodes(),
+    stroke = SolidColor(Color.Black), strokeLineWidth = 2.83f,
+    strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
+).build()

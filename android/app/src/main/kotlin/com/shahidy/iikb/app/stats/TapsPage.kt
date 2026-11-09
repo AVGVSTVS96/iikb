@@ -394,7 +394,7 @@ private fun Misses(board: TapBoard, summary: TapSummary, selected: Int?, pick: (
             top, 132.dp,
             shown.mapIndexed { index, it -> Tick(index, board.keys[it.key].name, true) }, ratio = 0.62f,
             yLabel = { Format.percent(it) }, marks = niceMarks(top, 3), dim = { selected != null && shown[it].key != selected },
-            rule = Rule(typical, "all letters ${Format.percent(typical)}"),
+            rule = Rule(typical, "all letters ${Format.percent(typical)}", weight = FontWeight.Medium),
             onPick = { index -> index?.let { pick(shown[it].key) } },
         )
         Column {

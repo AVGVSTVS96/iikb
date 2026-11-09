@@ -115,7 +115,7 @@ fun StatsPage(section: StatsSection, pick: (StatsSection) -> Unit, computer: Str
                     MicSwitch()
                 },
             ) {
-                Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(28.dp)) {
                     val device = shown?.let { computers.activity.getValue(it) } ?: activity
                     when (picked) {
                         StatsSection.OVERVIEW -> Overview(device, shown)

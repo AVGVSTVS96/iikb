@@ -51,7 +51,7 @@ fun niceMarks(top: Double, count: Int): List<Double> {
 }
 
 /** A dashed line across a chart at `value`, with a note over its trailing end, or its leading one. */
-class Rule(val value: Double, val note: String? = null, val leading: Boolean = false)
+class Rule(val value: Double, val note: String? = null, val leading: Boolean = false, val weight: FontWeight = FontWeight.Normal)
 
 /**
  * Columns, each a stack of `values` (one per series, bottom first, painted by `fills`), or with `lines` the same values as a
@@ -157,7 +157,7 @@ fun ColumnChart(
             val at = y(rule.value)
             drawLine(palette.secondary.copy(alpha = 0.7f), Offset(0f, at), Offset(plot, at), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())))
             rule.note?.let {
-                val note = measurer.measure(it, label.copy(fontSize = 10.sp, fontWeight = FontWeight.Medium))
+                val note = measurer.measure(it, label.copy(fontSize = 11.sp, fontWeight = rule.weight))
                 drawText(note, topLeft = Offset(if (rule.leading) 0f else plot - note.size.width, at - note.size.height - 2.dp.toPx()))
             }
         }

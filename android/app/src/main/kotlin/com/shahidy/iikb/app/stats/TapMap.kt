@@ -135,11 +135,18 @@ private fun DrawScope.heat(
             fontSize = ((if (space) 13 else 17) * text).sp, fontWeight = FontWeight.Medium,
             shadow = Shadow(halo, blurRadius = if (palette.isDark) 4f else 3f),
         )
-        if (space) {
-            val layout = measurer.measure(key.name, style, density = androidx.compose.ui.unit.Density(1f))
-            drawText(layout, topLeft = Offset(key.midX.toFloat() - layout.size.width / 2f, (key.y + key.height).toFloat() - layout.size.height - 4))
-        } else {
-            label(measurer, key.name, style, key.midX, key.midY)
+        // UIKit's negative strokeWidth: filled, then outlined at 4% of the size, which dark mode's label takes.
+        val outline = style.copy(
+            color = Color.Black.copy(alpha = 0.55f), shadow = null,
+            drawStyle = Stroke(width = style.fontSize.value * 0.04f),
+        )
+        for (pass in if (palette.isDark) listOf(style, outline) else listOf(style)) {
+            if (space) {
+                val layout = measurer.measure(key.name, pass, density = androidx.compose.ui.unit.Density(1f))
+                drawText(layout, topLeft = Offset(key.midX.toFloat() - layout.size.width / 2f, (key.y + key.height).toFloat() - layout.size.height - 4))
+            } else {
+                label(measurer, key.name, pass, key.midX, key.midY)
+            }
         }
     }
     picked?.let { outline(board.box(it), accent) }
