@@ -40,6 +40,7 @@ class Settings(context: Context) {
             "compactPanels" to "false",
             "theme" to "standard",
             "themeAppearance" to "automatic",
+            "stopAnimation" to "squeeze",
             "characterPreviewStyle" to "attached",
             "hapticFeedback" to "standard",
             "keySpacing" to "standard",
