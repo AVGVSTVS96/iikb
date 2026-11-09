@@ -9,8 +9,13 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -82,6 +87,8 @@ val LocalPalette = staticCompositionLocalOf {
 @Composable
 fun palette() = LocalPalette.current
 
+/** The tabs go under the keyboard while it's up, as iOS's do, so the page keeps the room above the keys. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun App(
     settings: Settings, setup: Setup, startPage: String?, onEnable: () -> Unit, onPick: () -> Unit,
@@ -110,7 +117,7 @@ fun App(
             Scaffold(
                 containerColor = palette.page,
                 bottomBar = {
-                    if (page == null) {
+                    if (page == null && !WindowInsets.isImeVisible) {
                         NavigationBar(containerColor = palette.card) {
                             Tab.entries.forEachIndexed { index, item ->
                                 NavigationBarItem(
@@ -129,7 +136,8 @@ fun App(
                     }
                 },
             ) { padding ->
-                Box(Modifier.padding(bottom = padding.calculateBottomPadding())) {
+                val bottom = PaddingValues(bottom = padding.calculateBottomPadding())
+                Box(Modifier.padding(bottom).consumeWindowInsets(bottom)) {
                     when {
                         page != null -> SettingsPage(page!!) { page = null }
                         Tab.entries[tab] == Tab.HOME -> Home(setup, onEnable, onPick, onMicrophone) { page = it }
