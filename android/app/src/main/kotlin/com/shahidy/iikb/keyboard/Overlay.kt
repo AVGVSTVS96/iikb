@@ -44,6 +44,8 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         fun raiseKeys()
         fun clearSearch()
         fun settings()
+        /** The app's Appearance page, from the names of the menu's Theme and Stop Animation rows. */
+        fun appearance()
         /** A GIF tapped, found by `search`: it goes on the clipboard. */
         fun copyGif(gif: Gif, search: String)
     }
@@ -108,13 +110,13 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
 /** The theme's colors, as the overlay paints with them. */
 data class Colors(
     val card: Color, val label: Color, val secondary: Color, val key: Color, val keyLabel: Color, val field: Color,
-    val accent: Color, val pill: Color, val shadow: Color, val dark: Boolean,
+    val accent: Color, val pill: Color, val shadow: Color, val record: Color, val dark: Boolean,
 ) {
     companion object {
         fun of(theme: Theme) = Colors(
             Color(theme.card), Color(theme.label), Color(theme.candidate), Color(theme.letter.top),
             Color(theme.letter.label), Color(theme.searchField), Color(theme.prominent), Color(theme.candidatePill),
-            Color(theme.shadow), androidx.core.graphics.ColorUtils.calculateLuminance(theme.card) < 0.5,
+            Color(theme.shadow), Color(theme.record), androidx.core.graphics.ColorUtils.calculateLuminance(theme.card) < 0.5,
         )
     }
 }

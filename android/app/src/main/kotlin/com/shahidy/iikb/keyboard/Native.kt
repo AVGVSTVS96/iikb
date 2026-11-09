@@ -71,4 +71,5 @@ object Native {
     @JvmStatic external fun gifsUse(handle: Long, slug: ByteArray, app: ByteArray?): ByteArray?
     @JvmStatic external fun age(found: Double, now: Double): ByteArray
     @JvmStatic external fun length(text: ByteArray, words: Boolean): ByteArray
+    @JvmStatic external fun swatch(name: ByteArray, appearance: ByteArray, dark: Boolean): ByteArray
 }

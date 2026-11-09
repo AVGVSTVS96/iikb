@@ -527,6 +527,12 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions 
 
     override fun settings() = openApp()
 
+    override fun appearance() {
+        menuOpen = false
+        render()
+        openApp("appearance")
+    }
+
     override fun mic() {
         feedback(Feedback.Kind.OTHER)
         val voice = voice ?: return

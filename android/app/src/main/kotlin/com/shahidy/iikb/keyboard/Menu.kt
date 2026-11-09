@@ -65,6 +65,14 @@ fun Menu(state: Overlay.State) {
                 }
                 Spacer(Modifier.height(GAP.dp))
             }
+            ShelfHead("Theme", "paintpalette.fill", Color(0xFF30B0C7)) { actions.appearance() }
+            Spacer(Modifier.height(HEAD_GAP.dp))
+            ThemeRow(look.dark)
+            Spacer(Modifier.height(GAP.dp))
+            ShelfHead("Stop Animation", "stop.fill", Color(0xFFFF3B30)) { actions.appearance() }
+            Spacer(Modifier.height(HEAD_GAP.dp))
+            StopRow()
+            Spacer(Modifier.height(GAP.dp))
         }
     }
 }

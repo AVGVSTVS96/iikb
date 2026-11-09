@@ -112,7 +112,7 @@ fun App(
     CompositionLocalProvider(LocalPalette provides palette, LocalStore provides store) {
         MaterialTheme(colorScheme = colors) {
             var tab by rememberSaveable { mutableIntStateOf(0) }
-            var page by rememberSaveable { mutableStateOf<String?>(null) }
+            var page by rememberSaveable { mutableStateOf(startPage?.takeIf { it != MainActivity.VOICE }) }
             BackHandler(enabled = page != null) { page = null }
             Scaffold(
                 containerColor = palette.page,

@@ -41,6 +41,15 @@ class MainActivity : ComponentActivity() {
         if (page == VOICE && !setup.microphone) microphone.launch(Manifest.permission.RECORD_AUDIO)
     }
 
+    /** The keyboard opens a page of the app it's already running, like Appearance from the menu's Theme row. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getStringExtra(PAGE) != null) {
+            setIntent(intent)
+            recreate()
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         refresh()
