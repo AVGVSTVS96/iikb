@@ -1,0 +1,34 @@
+#!/bin/bash
+# Every screen of iikb on Android, light and dark, under the names iOS's scripts/parity gives its own, for the parity
+# page that sets each beside its iOS twin: this checkout's APK built and installed on the Mac's emulator
+# (scripts/android --emulator), scripts/android-shots.py driving it there with iOS's made-up data (shots/demo/make.py),
+# and the shots put in OUT in place of its last run's, so no shot there is older than this build. SECTIONS narrows it
+# (android-shots.py names them) and then keeps the rest. OUT defaults to the parity page's android/ folder, whose page
+# is rebuilt after.
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+out=${OUT:-$HOME/Developer/pages/pages/iikb-android/parity/android}
+pairs=$HOME/.local/share/iikb/android/pairs.py
+scratch=$root/build/android-shots
+rm -rf "$scratch"
+mkdir -p "$scratch/demo" "$out"
+
+# The made-up data is iOS's, so both show the same; until the shots branch lands, its maker is read from there.
+if [ -f "$root/shots/demo/make.py" ]; then
+  python3 -I "$root/shots/demo/make.py" "$scratch/demo"
+else
+  git -C "$root" show origin/shots:shots/demo/make.py >"$scratch/make.py"
+  python3 -I "$scratch/make.py" "$scratch/demo"
+fi
+
+work=$(ssh mac 'mktemp -d /tmp/iikb-shots.XXXXXX' </dev/null)
+trap 'ssh mac "rm -rf $work" </dev/null' EXIT
+scp -qr "$root/scripts/android-shots.py" "$scratch/demo" "mac:$work/"
+printf 'python3 %s/android-shots.py %s %s\n' "$work" "$work" "${SECTIONS:-}" >"$scratch/drive.sh"
+"$root/scripts/android" --emulator "$scratch/drive.sh" </dev/null
+mkdir -p "$scratch/out"
+scp -q "mac:$work/out/*.png" "$scratch/out/"
+[ -n "${SECTIONS:-}" ] || rm -f "$out"/*.png
+mv "$scratch/out"/*.png "$out/"
+echo "$(ls "$out" | wc -l) shots in $out"
+[ ! -f "$pairs" ] || python3 -I "$pairs" "$(dirname "$out")"

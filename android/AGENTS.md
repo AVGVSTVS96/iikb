@@ -47,6 +47,7 @@ The toolchain is the Swift on the server (`swift --version`) and its Swift SDK f
 scripts/android                 # the signed release APK, built on the server
 scripts/android --emulator      # and installed on the Mac's Android emulator
 scripts/android --emulator drive.sh   # then drive.sh run on the Mac, holding the emulator's lock with the install
+scripts/android-shots           # every screen, light and dark, under the names iOS's scripts/parity gives them, with its made-up data, into the parity page beside iOS's (SECTIONS="menu app" narrows it; OUT moves it)
 ```
 
 Gradle builds the Swift library first (`swiftLibrary`, arm64 only, 16 KB pages). The release key lives in `~/.local/share/iikb/android` (`release.properties` beside `release.jks`), never in git; a build without it is unsigned.
