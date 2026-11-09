@@ -123,6 +123,7 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         panel.onFocus = { [unowned self] in raiseKeys() }
         panel.onPick = { [unowned self] in suggestionBar.onChat($0) }
+        panel.onMore = { [unowned self] in suggestionBar.onMore() }
         panel.onOpen = { [unowned self] in open($0) }
         panel.onReplace = { [unowned self] range, text in
             guard let line else { return }
@@ -637,10 +638,11 @@ open class FullKeyboardViewController: UIInputViewController {
         let fresh = line != nil ? seen.update(chats) : []
         chatPanel.fresh = fresh
         chatPanel.tabsRow = (suggestionBar.chatRow.minX - block.minX, suggestionBar.chatRow.maxX - block.minX)
+        chatPanel.moreFrame = suggestionBar.chatMore.offsetBy(dx: -block.minX, dy: 0)
         suggestionBar.update(
             chats: line != nil && !keysUp ? chats.list.map(\.name) : nil,
             open: chats.list.firstIndex { $0 == chats.open }, fresh: fresh, theme: theme)
-        suggestionBar.update(more: true, on: menuOpen || inPlace)
+        suggestionBar.update(more: line == nil || !keysUp, on: menuOpen || inPlace)
         suggestionBar.update(edits: menuOpen && panel == nil ? edits : nil, theme: theme)
         suggestionBar.update(
             mic: mic, recorded: recorded, saved: dictation.writing, waitingFor: dictation.waiting,

@@ -19,7 +19,7 @@ iikb ──► your extension ──► wherever it sends
      ◄── replies show as they come
 ```
 
-Chats is about reading and dictating, so it opens with the keys down and the chat filling a keyboard grown for it. The chats are tabs in the bar; hold them to list every chat. With the keys up the tabs stay put, at the chat's top. The box's mic turns into ↑ once there's something to send, so a message is said and sent without the keys; a dictation, started there or from the bar, leaves the keys up or down as they were and lands in the box as one edit, waiting for ↑. If the keyboard goes away with a chat open, as when the mic opens iikb, the chat comes back as you left it in the same field. Tapping the box brings the keys up under it, with the bar's suggestions on them and the chat still above; tapping the messages puts them away. The keyboard keeps one height from the moment a chat opens, so the app above moves once.
+Chats is about reading and dictating, so it opens with the keys down and the chat filling a keyboard grown for it. The chats are tabs in the bar; hold them to list every chat. With the keys up the tabs and More stay put, at the chat's top. The box's mic turns into ↑ once there's something to send, so a message is said and sent without the keys; a dictation, started there or from the bar, leaves the keys up or down as they were and lands in the box as one edit, waiting for ↑. If the keyboard goes away with a chat open, as when the mic opens iikb, the chat comes back as you left it in the same field. Tapping the box brings the keys up under it, with the bar's suggestions on them and the chat still above; tapping the messages puts them away. The keyboard keeps one height from the moment a chat opens, so the app above moves once.
 
 ## Writing one
 

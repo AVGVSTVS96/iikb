@@ -27,6 +27,12 @@ final class ChatPanel: UIView, PanelContent {
     var fresh: Set<Int> = []
     /// The span the bar's tabs take, in the panel's terms, which the tabs over the messages take too.
     var tabsRow: (minX: CGFloat, maxX: CGFloat)? { didSet { setNeedsLayout() } }
+    /// Where the bar's More sits beside its tabs, in the panel's terms; with the keys up the chat's own More sits there.
+    var moreFrame = CGRect.zero { didSet { setNeedsLayout() } }
+    var onMore: () -> Void = {}
+    /// More beside the tabs with the keys up, where the bar has it with the keys down, so the spot holds More either way.
+    private let more = BarButton("More", draw: Panel.moreGlyph)
+    private var glyph = 0.0
     var field: PanelField { .own(composer) }
     private let composer = MessageField()
     private var line: LineDocument?
@@ -62,6 +68,10 @@ final class ChatPanel: UIView, PanelContent {
         message.accessibilityIdentifier = "iikb.chat.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
         tabs.onPick = { [unowned self] in onPick($0) }
+        more.accessibilityIdentifier = "iikb.chat.more"
+        more.glassy = true
+        more.addAction(UIAction { [unowned self] _ in onMore() }, for: .touchUpInside)
+        addSubview(more)
         [thread, tabs, message].forEach(addSubview)
     }
 
@@ -87,6 +97,8 @@ final class ChatPanel: UIView, PanelContent {
                 theme: theme)
         }
         bar = metrics.toolbar.bar
+        glyph = metrics.toolbar.glyph
+        more.theme = theme
         tabs.show(
             chats.list.map(\.name), open: chats.list.firstIndex { $0 == chats.open }, fresh: fresh, theme: theme)
         let next = Shown(revision: chats.revision, theme: theme)
@@ -118,6 +130,12 @@ final class ChatPanel: UIView, PanelContent {
         super.layoutSubviews()
         tabs.isHidden = !typing || chats.list.isEmpty
         let row = CGFloat(bar)
+        more.isHidden = tabs.isHidden
+        let around = (row - ChatTabs.height) / 2
+        more.place(
+            CGRect(
+                x: moreFrame.minX, y: (row - moreFrame.height) / 2, width: moreFrame.width, height: moreFrame.height),
+            glyph: glyph, reach: UIEdgeInsets(top: -around, left: -4, bottom: -around, right: -4))
         let span = tabsRow ?? (0, bounds.width)
         tabs.frame = CGRect(
             x: span.minX, y: ((row - ChatTabs.height) / 2).rounded(),

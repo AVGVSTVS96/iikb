@@ -71,6 +71,8 @@ public final class SuggestionBar: UIView {
     private var chatNames: [String]?
     /// Where the chats' tabs sit across the bar, so the chat's own tabs, with the keys up, take the same span.
     public private(set) var chatRow: (minX: CGFloat, maxX: CGFloat) = (0, 0)
+    /// Where More sits beside the tabs, so the chat's own More, with the keys up, sits there too.
+    public private(set) var chatMore = CGRect.zero
     private var tools: [(panel: Panel, button: BarButton)] = []
     private let more = BarButton("More", draw: Panel.moreGlyph)
     /// The edits while the menu is out, nil while they're tucked into the More button.
@@ -549,7 +551,13 @@ public final class SuggestionBar: UIView {
         }
         strip.contentSize = CGSize(width: max(total, place.width), height: place.height)
         let row = CGRect(x: layout.minX, y: toolbar.top, width: layout.maxX - layout.minX, height: toolbar.bar)
-        chatRow = (row.minX, row.maxX)
+        let beside =
+            more.isHidden
+            ? BarLayout(
+                toolbar, keys: keys, tools: tools.count, more: true, mic: micInBar, maximumSlot: maximumSlotWidth)
+            : layout
+        chatRow = (CGFloat(beside.minX), CGFloat(beside.maxX))
+        chatMore = beside.more.map { CGRect($0) } ?? .zero
         more.glassy = chatNames != nil
         let room = recording ? max(CGRect(layout.cancel).minX - 8 - row.minX, 0) : row.width
         chatTabs.frame = CGRect(

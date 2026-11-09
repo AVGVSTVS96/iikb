@@ -3,11 +3,11 @@ import UIKit
 
 /// One of the buttons at the bar's left, the More button or a panel's tool: its glyph, in a circle that shows only while
 /// pressed, or while what it opened is out.
-final class BarButton: UIButton {
-    var theme = KeyboardTheme.lightCurrent { didSet { refresh() } }
+public final class BarButton: UIButton {
+    public var theme = KeyboardTheme.lightCurrent { didSet { refresh() } }
     var isOn = false { didSet { if isOn != oldValue { refresh() } } }
     /// Set on a circle of iOS's glass as tall as `ChatTabs`, beside them while a chat is read, in place of the on circle.
-    var glassy = false {
+    public var glassy = false {
         didSet {
             guard glassy != oldValue else { return }
             glass.isHidden = !glassy
@@ -22,7 +22,7 @@ final class BarButton: UIButton {
     private var reach = UIEdgeInsets.zero
 
     /// `draw` makes the glyph to fit a square of a side.
-    init(_ title: String, draw: @escaping @MainActor (CGFloat) -> UIImage?) {
+    public init(_ title: String, draw: @escaping @MainActor (CGFloat) -> UIImage?) {
         self.draw = draw
         super.init(frame: .zero)
         accessibilityLabel = title
@@ -40,12 +40,12 @@ final class BarButton: UIButton {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    override var isHighlighted: Bool {
+    override public var isHighlighted: Bool {
         didSet { if isHighlighted != oldValue { refresh() } }
     }
 
     /// `glyph` is the side of the square its glyph fits; taps out to `reach` around the circle still reach it.
-    func place(_ frame: CGRect, glyph: CGFloat, reach: UIEdgeInsets) {
+    public func place(_ frame: CGRect, glyph: CGFloat, reach: UIEdgeInsets) {
         self.frame = frame
         self.reach = reach
         guard glyph != self.glyph else { return }
@@ -59,11 +59,11 @@ final class BarButton: UIButton {
         icon.alpha = glassy && isHighlighted ? 0.55 : 1
     }
 
-    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+    override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
         bounds.inset(by: reach).contains(point)
     }
 
-    override func layoutSubviews() {
+    override public func layoutSubviews() {
         super.layoutSubviews()
         icon.frame = bounds
         let side = ChatTabs.height
@@ -166,7 +166,7 @@ extension Panel {
 
     /// Raycast's four rounded squares, for the More button, drawn in a `side` square. They span 0.72 of it, so the
     /// circle the button shows while the menu is out has room around them.
-    static func moreGlyph(_ side: CGFloat) -> UIImage {
+    public static func moreGlyph(_ side: CGFloat) -> UIImage {
         let size = CGSize(width: side, height: side)
         let extent = side * 0.72
         let gap = side * 0.11
