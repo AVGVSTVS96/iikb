@@ -864,7 +864,8 @@ open class FullKeyboardViewController: UIInputViewController {
 
     /// Stops a dictation in progress, so what was heard is typed. Otherwise starts one, even while the last is still
     /// being written: in place while the app keeps the microphone on, or by opening the app, since a keyboard can't use
-    /// the microphone and iOS starts a recording only in an app in front. A chat puts its keys down for it, so the thread
+    /// the microphone and iOS starts a recording only in an app in front. It opens the app only from a host it can
+    /// bring you back to, never from one that leaving would close. A chat puts its keys down for it, so the thread
     /// keeps the screen while what you say lands in its box.
     private func toggleVoice() {
         guard hasFullAccess else {
@@ -879,6 +880,10 @@ open class FullKeyboardViewController: UIInputViewController {
         notice = nil
         micIsOn = Dictation.micIsOn
         if micIsOn { return Dictation.send(.start) }
+        guard KeyboardHost.returns(to: hostApp) else {
+            notice = "The mic is off, and opening iikb would close this. Turn it on in iikb first."
+            return render()
+        }
         render()
         open(Dictation.Request(host: hostApp).url)
     }

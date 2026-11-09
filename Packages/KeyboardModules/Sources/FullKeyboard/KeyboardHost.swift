@@ -13,6 +13,7 @@ enum KeyboardHost {
         static func appeared() {}
         static func harvest() {}
         static func app(of keyboard: UIInputViewController) -> String? { nil }
+        static func returns(to app: String?) -> Bool { true }
     #else
         private static var names: [Int: String] = [:]
 
@@ -25,45 +26,46 @@ enum KeyboardHost {
                 client.perform(NSSelectorFromString("startConnection"))
             }
             harvest()
-            probeLaunchServices()
+            if !probed {
+                probed = true
+                DispatchQueue.global(qos: .utility).async { probeExtensions() }
+            }
         }
 
         private static var probed = false
 
-        /// What LaunchServices tells a keyboard about apps and the hosts that aren't apps, logged once per keyboard,
-        /// to learn whether the keyboard can tell them apart before it leaves one to start the microphone.
-        private static func probeLaunchServices() {
-            guard !probed else { return }
-            probed = true
+        /// Whether iOS's extension registry answers a keyboard, logged once per keyboard, to learn whether it can tell
+        /// a third-party app from its share sheet, which LaunchServices hides from a keyboard alike.
+        nonisolated private static func probeExtensions() {
             let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
-            let selector = NSSelectorFromString("applicationProxyForIdentifier:")
-            guard let proxies = NSClassFromString("LSApplicationProxy") as AnyObject?, proxies.responds(to: selector)
-            else {
-                return log.notice("probe: no LSApplicationProxy")
+            func value(_ object: NSObject, _ key: String) -> Any? {
+                object.responds(to: NSSelectorFromString(key)) ? object.value(forKey: key) : nil
             }
-            for id in [
-                "com.shahidy.iikb", "ph.telegra.Telegraph", "net.whatsapp.WhatsApp", "com.apple.MobileSMS",
-                "com.apple.mobilesafari", "ph.telegra.Telegraph.Share",
-                "com.apple.MobileSMS.MessagesNotificationExtension",
-                "com.apple.mobilesms.compose", "com.apple.springboard", "com.apple.ScreenshotServicesService",
-                "com.apple.PaperKit.MarkupPhotoEditingExtension", "com.apple.SafariViewService", "com.example.none",
-            ] {
-                guard let proxy = proxies.perform(selector, with: id)?.takeUnretainedValue() as? NSObject else {
-                    log.notice("probe \(id, privacy: .public): no proxy")
-                    continue
+            let ids = [
+                "ph.telegra.Telegraph.Share", "ph.telegra.Telegraph", "com.shahidy.iikb.keyboard", "com.shahidy.iikb",
+                "me.proton.pass.ios.autofill", "com.apple.MobileSMS.MessagesNotificationExtension", "com.example.none",
+            ]
+            for id in ids {
+                var found = "registry n/a"
+                let lookup = NSSelectorFromString("extensionWithIdentifier:error:")
+                if let type = NSClassFromString("NSExtension") as? NSObject.Type, type.responds(to: lookup) {
+                    typealias Lookup = @convention(c) (AnyObject, Selector, NSString, NSErrorPointer) -> AnyObject?
+                    var error: NSError?
+                    let made = unsafeBitCast(type.method(for: lookup), to: Lookup.self)(
+                        type, lookup, id as NSString, &error)
+                    found =
+                        "registry \(made.map { String(describing: Swift.type(of: $0)) } ?? "none") \(error?.code ?? 0)"
                 }
-                let keys = [
-                    "isInstalled", "appTags", "isLaunchProhibited", "applicationType", "isPlaceholder", "bundleType",
-                ]
-                let found = keys.map { "\($0)=\(String(describing: value(proxy, $0)))" }.joined(separator: " ")
-                let bundle = NSSelectorFromString("bundleProxyForIdentifier:")
-                let kind =
-                    (NSClassFromString("LSBundleProxy") as AnyObject?).flatMap {
-                        $0.responds(to: bundle) ? $0.perform(bundle, with: id)?.takeUnretainedValue() : nil
-                    }.map { String(describing: Swift.type(of: $0)) } ?? "none"
+                let plugin = NSSelectorFromString("pluginKitProxyForIdentifier:")
+                let proxy = (NSClassFromString("LSPlugInKitProxy") as AnyObject?).flatMap {
+                    $0.responds(to: plugin) ? $0.perform(plugin, with: id)?.takeUnretainedValue() as? NSObject : nil
+                }
+                let pluginFound =
+                    proxy.map {
+                        "plugin \(String(describing: value($0, "bundleIdentifier"))) in \(String(describing: value($0, "containingBundle").map { ($0 as? NSObject).flatMap { value($0, "bundleIdentifier") } }))"
+                    } ?? "plugin none"
                 log.notice(
-                    "probe \(id, privacy: .public): \(Swift.type(of: proxy), privacy: .public) bundle \(kind, privacy: .public) \(found, privacy: .public)"
-                )
+                    "probe \(id, privacy: .public): \(found, privacy: .public), \(pluginFound, privacy: .public)")
             }
         }
 
@@ -80,6 +82,31 @@ enum KeyboardHost {
             harvest()
             let id = (value(keyboard, "_hostProcessIdentifier") as? NSNumber)?.intValue ?? 0
             return names[id]
+        }
+
+        /// Whether iikb, opened to start the microphone, can bring you back to `app` as you left it. Only an app
+        /// iOS can open comes back. A share sheet, a notification's reply, Spotlight, the screenshot editor or
+        /// Photos' markup closes once you leave it, taking what you'd written or drawn, and nothing reopens it.
+        /// LaunchServices tells the two apart only for Apple's: a keyboard sees Apple's apps installed and every
+        /// other app, iikb's own included, not (measured on the Duo, Nov 8). None of it is API.
+        static func returns(to app: String?) -> Bool {
+            guard let app, app.hasPrefix("com.apple.") else { return true }
+            if let known = reopenable[app] { return known }
+            let answer = installed(app) ?? true
+            reopenable[app] = answer
+            log.notice("\(app, privacy: .public) \(answer ? "can" : "can't", privacy: .public) be reopened")
+            return answer
+        }
+
+        private static var reopenable: [String: Bool] = [:]
+        private static let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
+
+        private static func installed(_ id: String) -> Bool? {
+            let selector = NSSelectorFromString("applicationProxyForIdentifier:")
+            guard let type = NSClassFromString("LSApplicationProxy") as AnyObject?, type.responds(to: selector),
+                let proxy = type.perform(selector, with: id)?.takeUnretainedValue() as? NSObject
+            else { return nil }
+            return value(proxy, "isInstalled") as? Bool
         }
 
         private static var client: NSObject? {
