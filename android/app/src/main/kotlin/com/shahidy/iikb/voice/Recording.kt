@@ -15,13 +15,20 @@ class Recording(val samples: FloatArray) {
      */
     val deaf get() = seconds >= 1 && samples.none { abs(it) > SILENCE }
 
+    /** The samples as 16-bit little-endian PCM, as the WAV holds them. */
+    fun pcm16(): ByteArray {
+        val bytes = ByteBuffer.allocate(samples.size * 2).order(ByteOrder.LITTLE_ENDIAN)
+        for (sample in samples) bytes.putShort((sample.coerceIn(-1f, 1f) * Short.MAX_VALUE).toInt().toShort())
+        return bytes.array()
+    }
+
     /** Written beside, then moved over, so a recording is either whole or not there. */
     fun write(file: File) {
         val bytes = ByteBuffer.allocate(44 + samples.size * 2).order(ByteOrder.LITTLE_ENDIAN)
         bytes.put("RIFF".toByteArray()).putInt(36 + samples.size * 2).put("WAVEfmt ".toByteArray())
         bytes.putInt(16).putShort(1).putShort(1).putInt(RATE).putInt(RATE * 2).putShort(2).putShort(16)
         bytes.put("data".toByteArray()).putInt(samples.size * 2)
-        for (sample in samples) bytes.putShort((sample.coerceIn(-1f, 1f) * Short.MAX_VALUE).toInt().toShort())
+        bytes.put(pcm16())
         val next = File(file.parentFile, file.name + ".next")
         next.writeBytes(bytes.array())
         next.renameTo(file)

@@ -41,6 +41,12 @@ object Core {
     fun typed(context: Context, said: String, lines: String): String =
         typed(said.encodeToByteArray(), lines.encodeToByteArray(), mapped(context, "en.lexicon")).decodeToString()
 
+    /** What `heard` is written as for a dictation said in `app`, with Settings' `lines`, as a dictation's Writing Style writes it. */
+    fun written(heard: String, lines: String, app: String?): String =
+        written(heard.encodeToByteArray(), lines.encodeToByteArray(), app?.encodeToByteArray()).decodeToString()
+
+    @JvmStatic private external fun written(heard: ByteArray, settings: ByteArray, app: ByteArray?): ByteArray
+
     @Serializable
     data class KeysHere(
         val numberRow: Boolean, val emojiKey: Boolean, val recordKey: Boolean, val keyboardMenu: Boolean,

@@ -3,7 +3,8 @@ import FoundationEssentials
 import KeyboardCore
 
 // What the app's pages ask the engine (Kotlin's `app.Core`): the keyboard preview's own engine, how Writing Style types
-// its examples, which layout settings apply on this phone, and how many taps the keyboard has learned.
+// its examples and Transcribe Again writes, which layout settings apply on this phone, and how many taps the keyboard
+// has learned.
 
 /// The Keyboard pages' preview: a keyboard of its own on `field`, a `PreviewField` with no text, driven through `Native`
 /// like the input method's, with the lexicon and network so its bar suggests as the keyboard's does.
@@ -18,6 +19,14 @@ public func typed(env: Env, _: jclass, said: jbyteArray?, settings: jbyteArray?,
     let lexicon = env.direct(lexicon).flatMap { Lexicon(bytes: Bytes($0, owner: Mapped())) }
     let writing = KeyboardSettings(parsing: env.string(settings) ?? "").dictation(in: nil)
     return env.array(writing.typed(env.string(said) ?? "", lexicon: lexicon))
+}
+
+/// What the voice model heard as a dictation said in `app` writes it, with `settings` (`Settings.lines`), before your
+/// Dictionary and the field's capitals: Transcribe Again's, as the keyboard's `Native.written` is a dictation's.
+@_cdecl("Java_com_shahidy_iikb_app_Core_written")
+public func written(env: Env, _: jclass, heard: jbyteArray?, settings: jbyteArray?, app: jbyteArray?) -> jbyteArray? {
+    let writing = KeyboardSettings(parsing: env.string(settings) ?? "").dictation(in: env.string(app))
+    return env.array(writing.written(env.string(heard) ?? ""))
 }
 
 /// Kotlin holds the mapped lexicon for as long as the app runs.

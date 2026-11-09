@@ -22,8 +22,13 @@ data class Transcript(
     val heard: String? = null,
     /** Written after iikb ended mid-dictation, the next time it started. */
     val recovered: Boolean? = null,
+    /** What it was first written as, kept once Transcribe Again put another writing in its place. */
+    val replaced: Replaced? = null,
 ) {
     val words get() = text.split(' ', '\n', '\t').count { it.isNotEmpty() }
+
+    @Serializable
+    data class Replaced(val model: String? = null, val text: String)
 }
 
 /**
@@ -54,6 +59,8 @@ object Transcripts {
 
     fun recording(id: String) = File(recordings, "$id.wav")
 
+    fun hasRecording(id: String) = recording(id).exists()
+
     /** The recordings no transcript has, oldest first. */
     fun unwritten(): List<File> {
         val written = all.mapTo(HashSet()) { it.id }
@@ -78,6 +85,18 @@ object Transcripts {
     }
 
     fun deleteAll() = delete(all.map { it.id }.toSet())
+
+    /** Puts a new writing of a transcript's recording in its place, keeping the first as `replaced`. */
+    fun replace(id: String, text: String, heard: String, model: String) {
+        if (text.isEmpty()) return
+        all = all.map {
+            if (it.id != id) it else it.copy(
+                text = text, heard = heard.takeIf { heard -> heard != text }, model = model,
+                replaced = it.replaced ?: Transcript.Replaced(it.model, it.text),
+            )
+        }
+        save()
+    }
 
     /** Calls `listener` after each change, until the returned function is called. */
     fun listen(listener: () -> Unit): () -> Unit {

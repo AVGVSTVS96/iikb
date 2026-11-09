@@ -178,7 +178,7 @@ class Dictation(context: Context, private val typist: Typist) {
         }
         writing = true
         writer.execute {
-            val heard = runCatching { model.parakeet().let { it.write(take.recording!!) to it.model.title } }
+            val heard = runCatching { model.write(take.recording!!) }
             main.post {
                 if (closed) return@post
                 writing = false

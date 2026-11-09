@@ -107,6 +107,7 @@ class VoiceModel private constructor(context: Context) {
      * [parakeetModel], loaded once its files are here, letting go of the other first so only one is ever in memory;
      * called on the dictation's own thread, never the main one.
      */
+    @Synchronized
     fun parakeet(): Parakeet {
         val model = parakeetModel
         parakeet?.let { if (it.model == model) return it }
@@ -119,7 +120,15 @@ class VoiceModel private constructor(context: Context) {
         }
     }
 
+    /**
+     * What [parakeetModel] heard in [recording], and its title, written one recording at a time, whether the keyboard's
+     * dictation or the app's Transcribe Again asks; off the main thread, once [prepare] has its files here.
+     */
+    @Synchronized
+    fun write(recording: Recording): Pair<String, String> = parakeet().let { it.write(recording) to it.model.title }
+
     /** Let go once nothing is left to write, since a Parakeet loads again in a moment and holds its 700 MB meanwhile. */
+    @Synchronized
     fun letGo() {
         parakeet?.release()
         parakeet = null

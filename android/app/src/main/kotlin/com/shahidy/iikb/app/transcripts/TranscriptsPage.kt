@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -43,6 +44,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.Transcript
 import com.shahidy.iikb.Transcripts
+import com.shahidy.iikb.Vocabulary
+import com.shahidy.iikb.app.Core
+import com.shahidy.iikb.app.LocalStore
+import com.shahidy.iikb.app.Section
 import com.shahidy.iikb.app.Divider
 import com.shahidy.iikb.app.Line
 import com.shahidy.iikb.app.ListPage
@@ -67,6 +72,10 @@ import com.shahidy.iikb.app.stats.AppNames
 import com.shahidy.iikb.app.stats.ColumnChart
 import com.shahidy.iikb.app.stats.Rule
 import com.shahidy.iikb.app.stats.Tick
+import com.shahidy.iikb.voice.AndroidSpeech
+import com.shahidy.iikb.voice.Recording
+import com.shahidy.iikb.voice.VoiceModel
+import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -75,7 +84,14 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
+import kotlin.coroutines.resume
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
 /** The phone's transcripts, read again each time one is added or deleted. */
 @Composable
@@ -160,6 +176,7 @@ private val clock = DateTimeFormatter.ofPattern("h:mm a")
 private fun TranscriptRow(transcript: Transcript, names: AppNames, open: () -> Unit) {
     val palette = palette()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var menu by remember { mutableStateOf(false) }
     Box {
         Column(
@@ -173,7 +190,7 @@ private fun TranscriptRow(transcript: Transcript, names: AppNames, open: () -> U
             )
             val parts = listOfNotNull(
                 transcript.time().format(clock), length(transcript.seconds),
-                if (transcript.typed) transcript.app?.let(names::of) else "Not typed",
+                if (transcript.typed) transcript.app?.let(names::of) else if (transcript.recovered == true) "Recovered" else "Not typed",
             )
             Text(parts.joinToString(" · "), color = palette.secondary, fontSize = 13.sp, maxLines = 1)
         }
@@ -186,6 +203,18 @@ private fun TranscriptRow(transcript: Transcript, names: AppNames, open: () -> U
                 menu = false
                 share(context, transcript.text)
             })
+            if (Transcripts.hasRecording(transcript.id)) {
+                RecordingShare.messages(context)?.let { (_, app) ->
+                    DropdownMenuItem({ Text("Send in $app", color = palette.label) }, {
+                        menu = false
+                        scope.launch { runCatching { send(context, transcript, toMessages = true) } }
+                    })
+                }
+                DropdownMenuItem({ Text("Share Recording", color = palette.label) }, {
+                    menu = false
+                    scope.launch { runCatching { send(context, transcript, toMessages = false) } }
+                })
+            }
             DropdownMenuItem({ Text("Delete", color = palette.red) }, {
                 menu = false
                 Transcripts.delete(setOf(transcript.id))
@@ -197,6 +226,10 @@ private fun TranscriptRow(transcript: Transcript, names: AppNames, open: () -> U
 fun copy(context: Context, text: String) {
     context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("iikb", text))
 }
+
+/** The recording exported off the main thread, then handed to the texting app or the share sheet. */
+private suspend fun send(context: Context, transcript: Transcript, toMessages: Boolean) =
+    context.startActivity(withContext(Dispatchers.Default) { RecordingShare.intent(context, transcript, toMessages) })
 
 fun share(context: Context, text: String) {
     context.startActivity(
@@ -275,7 +308,10 @@ private fun Fortnight(days: List<Pair<LocalDate, Int>>) {
     )
 }
 
-/** One dictation on its own: when, its text, Copy and Share, its facts, and Delete. */
+/**
+ * One dictation on its own: when, its text, what's done with it, its facts, what it was first written as, its
+ * recording written again, and Delete.
+ */
 @Composable
 private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
     val palette = palette()
@@ -294,13 +330,7 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
                     fontSize = 20.sp, lineHeight = 27.sp, modifier = Modifier.fillMaxWidth().card(palette).padding(20.dp),
                 )
             }
-            if (transcript.text.isNotEmpty()) {
-                Rows {
-                    CopyRow(transcript.text)
-                    Divider()
-                    ActionRow("Share Text", "M12 3v12 M8 7l4-4 4 4 M5 12v8h14v-8", palette.accent) { share(context, transcript.text) }
-                }
-            }
+            TranscriptActions(transcript)
             Rows {
                 Line("Length", value = length(transcript.seconds))
                 Divider()
@@ -310,12 +340,27 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
                     Line("Pace", value = "${(transcript.words / transcript.seconds * 60).roundToInt()} wpm")
                 }
                 Divider()
-                Line("Typed", value = if (transcript.typed) transcript.app?.let { "In ${names.of(it)}" } ?: "Yes" else "No")
+                Line(
+                    "Typed",
+                    value = when {
+                        transcript.typed -> transcript.app?.let { "In ${names.of(it)}" } ?: "Yes"
+                        transcript.recovered == true -> "No, iikb closed during it"
+                        else -> "No"
+                    },
+                )
                 transcript.model?.let {
                     Divider()
                     Line("Written by", value = it)
                 }
             }
+            transcript.replaced?.let { first ->
+                Rows("First Written") {
+                    SelectionContainer {
+                        Line(first.text.ifEmpty { "Nothing heard" }, detail = first.model?.let { "Written by $it" })
+                    }
+                }
+            }
+            RecordingSection(transcript)
             Rows {
                 Line("Delete Transcript", onClick = { confirms = true }, color = palette.red)
             }
@@ -335,6 +380,144 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
             },
             dismissButton = { TextButton({ confirms = false }) { Text("Cancel", color = palette.accent) } },
         )
+    }
+}
+
+private const val SHARE = "M12 3v12 M8 7l4-4 4 4 M5 12v8h14v-8"
+
+/**
+ * What's done with a transcript, right under its text: its words copied or shared, and, where iikb kept its sound, that
+ * sent on in a new message in the phone's texting app or through the share sheet, as iOS's `TranscriptActions`.
+ */
+@Composable
+private fun TranscriptActions(transcript: Transcript) {
+    val palette = palette()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val kept = remember(transcript.id) { Transcripts.hasRecording(transcript.id) }
+    val messages = remember { RecordingShare.messages(context) }
+    var failure by remember(transcript.id) { mutableStateOf<String?>(null) }
+    if (transcript.text.isEmpty() && !kept) return
+    val sending = { toMessages: Boolean ->
+        failure = null
+        scope.launch {
+            runCatching { send(context, transcript, toMessages) }.onFailure { failure = it.message ?: "Couldn’t send the recording" }
+        }
+        Unit
+    }
+    Rows {
+        if (transcript.text.isNotEmpty()) {
+            CopyRow(transcript.text)
+            Divider()
+            ActionRow("Share Text", SHARE, palette.accent) { share(context, transcript.text) }
+        }
+        if (kept) {
+            messages?.let { (_, app) ->
+                if (transcript.text.isNotEmpty()) Divider()
+                ActionRow("Send in $app", "M4 5h16v11H9l-5 4Z", palette.accent) { sending(true) }
+            }
+            if (transcript.text.isNotEmpty() || messages != null) Divider()
+            ActionRow("Share Recording", SHARE, palette.accent) { sending(false) }
+        }
+        failure?.let {
+            Divider()
+            Line(it, color = palette.red)
+        }
+    }
+}
+
+/**
+ * Where iikb kept a transcript's sound: writing it again with the voice model picked now, to keep or not, as iOS's
+ * `RecordingSection`. A Parakeet not yet downloaded is fetched first; Android's recognizer hears the recording piped in.
+ */
+@Composable
+private fun RecordingSection(transcript: Transcript) {
+    val palette = palette()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val model = remember { VoiceModel.of(context) }
+    val store = LocalStore.current
+    var writing by remember(transcript.id) { mutableStateOf<Job?>(null) }
+    var again by remember(transcript.id) { mutableStateOf<Again?>(null) }
+    var failure by remember(transcript.id) { mutableStateOf<String?>(null) }
+    if (!remember(transcript.id) { Transcripts.hasRecording(transcript.id) }) return
+    val picked = model.pickedShown
+    val ready = picked == VoiceModel.Model.ANDROID || model.state == VoiceModel.State.Ready
+    val stalled = (model.state as? VoiceModel.State.Failed)?.takeIf { writing != null && picked != VoiceModel.Model.ANDROID }
+    val write = {
+        writing?.cancel()
+        failure = null
+        again = null
+        writing = scope.launch {
+            runCatching { transcribe(context, model, transcript) }
+                .onSuccess { (heard, title) ->
+                    val text = if (heard.isEmpty()) "" else Vocabulary.corrected(Core.written(heard, store.lines(), transcript.app))
+                    again = Again(text, heard, title)
+                }
+                .onFailure {
+                    if (it is CancellationException) throw it
+                    failure = it.message ?: "Couldn’t write it again"
+                }
+            writing = null
+        }
+    }
+    Section(footer = "iikb keeps the sound of each dictation on this phone, so it can be sent or written again with ${picked.title}.") {
+        val busy = writing != null && stalled == null
+        ActionRow(
+            when {
+                !busy -> "Transcribe Again"
+                ready -> "Transcribing Again…"
+                else -> "Transcribing Again once ${picked.title} is ready…"
+            },
+            "M19 12a7 7 0 1 1-2.05-4.95 M19 4v4h-4", if (busy) palette.secondary else palette.accent,
+        ) { if (!busy) write() }
+        stalled?.let {
+            Divider()
+            Line("${picked.title} couldn’t download: ${it.reason}", color = palette.red)
+        }
+        again?.let { written ->
+            Divider()
+            if (written.text.isEmpty()) {
+                Line("Nothing heard", detail = "Written by ${written.model}")
+            } else {
+                SelectionContainer { Line(written.text, detail = "Written by ${written.model}") }
+                Divider()
+                ActionRow("Use This Transcript", "M6.5 12.5l4 4L18 8", palette.accent) {
+                    Transcripts.replace(transcript.id, written.text, written.heard, written.model)
+                    again = null
+                }
+                Divider()
+                CopyRow(written.text)
+            }
+        }
+        failure?.let {
+            Divider()
+            Line(it, color = palette.red)
+        }
+    }
+}
+
+/** A recording written again: as your style and Dictionary have it, as the model heard it, and by which model. */
+private data class Again(val text: String, val heard: String, val model: String)
+
+/**
+ * What the picked model hears in a transcript's recording, and its title: a Parakeet once its files are here, on a
+ * thread of its own and let go of after, or Android's recognizer on the main thread.
+ */
+private suspend fun transcribe(context: Context, model: VoiceModel, transcript: Transcript): Pair<String, String> {
+    val recording = withContext(Dispatchers.IO) { Recording.read(Transcripts.recording(transcript.id)) }
+        ?: throw IOException("The recording couldn’t be read")
+    if (model.picked == VoiceModel.Model.ANDROID) {
+        val heard = suspendCancellableCoroutine { done -> AndroidSpeech.write(context, recording) { done.resume(it) } }
+        return heard.getOrThrow() to VoiceModel.Model.ANDROID.title
+    }
+    suspendCancellableCoroutine { done -> model.prepare { done.resume(Unit) } }
+    return withContext(Dispatchers.Default) {
+        try {
+            model.write(recording)
+        } finally {
+            model.letGo()
+        }
     }
 }
 
