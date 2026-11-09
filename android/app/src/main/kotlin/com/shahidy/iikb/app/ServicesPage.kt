@@ -1,20 +1,9 @@
 package com.shahidy.iikb.app
 
-import androidx.core.view.WindowCompat
-import androidx.compose.ui.window.DialogWindowProvider
-import androidx.compose.runtime.SideEffect
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.ui.platform.LocalView
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,13 +12,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.shahidy.iikb.Service
 import com.shahidy.iikb.Services
 
@@ -77,7 +63,6 @@ private fun host(url: String) = runCatching { java.net.URI(url).host }.getOrNull
 @Composable
 private fun ServiceForm(kind: Services, service: Service?, saved: List<Service>, close: () -> Unit) {
     val context = LocalContext.current
-    val palette = palette()
     var name by remember { mutableStateOf(service?.name.orEmpty()) }
     var address by remember { mutableStateOf(service?.url ?: "https://") }
     var token by remember { mutableStateOf(service?.token.orEmpty()) }
@@ -90,54 +75,37 @@ private fun ServiceForm(kind: Services, service: Service?, saved: List<Service>,
         else -> null
     }
     val canSave = url != null && trimmed.isNotEmpty() && problem == null
-    Dialog(close, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        BackHandler(onBack = close)
-        val view = LocalView.current
-        val dark = isSystemInDarkTheme()
-        SideEffect {
-            (view.parent as? DialogWindowProvider)?.window?.let {
-                WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = !dark
-            }
-        }
-        Box(Modifier.fillMaxSize()) {
-            Page(
-                if (service == null) "Add ${kind.noun}" else "Edit ${kind.noun}", onBack = close,
-                actions = {
-                    Text(
-                        "Save", color = palette.accent.copy(alpha = if (canSave) 1f else 0.4f), fontSize = Type.body,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.cardPress {
-                            if (!canSave || url == null) return@cardPress
-                            val added = Service(trimmed, url, token.ifEmpty { null })
-                            if (service == null) {
-                                kind.add(context, added)
-                            } else {
-                                kind.save(context, saved.map { if (it == service) added else it })
-                            }
-                            close()
-                        }.padding(horizontal = 12.dp, vertical = 10.dp),
-                    )
-                },
-            ) {
-                Section(footer = problem ?: "iikb sends the token with each request, so the ${kind.noun.lowercase()} can tell it’s you.") {
-                    FormField(name, "Name", KeyboardOptions(capitalization = KeyboardCapitalization.Words)) { name = it }
-                    Divider()
-                    FormField(
-                        address, "https://", KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false),
-                    ) { address = it }
-                    Divider()
-                    FormField(
-                        token, "Token (optional)", KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
-                        PasswordVisualTransformation(),
-                    ) { token = it }
+    Sheet(
+        if (service == null) "Add ${kind.noun}" else "Edit ${kind.noun}", "Save", canSave, close,
+        confirm = {
+            if (url != null) {
+                val added = Service(trimmed, url, token.ifEmpty { null })
+                if (service == null) {
+                    kind.add(context, added)
+                } else {
+                    kind.save(context, saved.map { if (it == service) added else it })
                 }
-                if (service != null) {
-                    Section {
-                        ActionRow("Delete ${kind.noun}", destructive = true) {
-                            kind.remove(context, service.name)
-                            close()
-                        }
-                    }
+                close()
+            }
+        },
+    ) {
+        Section(footer = problem ?: "iikb sends the token with each request, so the ${kind.noun.lowercase()} can tell it’s you.") {
+            FormField(name, "Name", KeyboardOptions(capitalization = KeyboardCapitalization.Words)) { name = it }
+            Divider()
+            FormField(
+                address, "https://", KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false),
+            ) { address = it }
+            Divider()
+            FormField(
+                token, "Token (optional)", KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                PasswordVisualTransformation(),
+            ) { token = it }
+        }
+        if (service != null) {
+            Section {
+                ActionRow("Delete ${kind.noun}", destructive = true) {
+                    kind.remove(context, service.name)
+                    close()
                 }
             }
         }

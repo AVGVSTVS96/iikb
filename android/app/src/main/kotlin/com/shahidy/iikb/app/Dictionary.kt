@@ -1,14 +1,11 @@
 package com.shahidy.iikb.app
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -20,11 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.shahidy.iikb.Vocabulary
 
 /** The words the voice model gets wrong, each with what it writes instead, under Add Word, in alphabetical order. */
@@ -85,48 +79,30 @@ private fun WordRow(term: Vocabulary.Term, open: () -> Unit, delete: () -> Unit)
     }
 }
 
-/** A word and what the voice model writes for it, as a form like Add Source's, with Cancel and Save in its bar. */
+/** A word and what the voice model writes for it, in a sheet like Add Source's, with Cancel and Save. */
 @Composable
 private fun TermEditor(term: Vocabulary.Term?, close: () -> Unit, save: (Vocabulary.Term) -> Unit, delete: () -> Unit) {
     var word by remember { mutableStateOf(term?.term.orEmpty()) }
     var heardAs by remember { mutableStateOf(term?.heardAs.orEmpty().joinToString(", ")) }
-    val palette = palette()
-    val canSave = word.isNotBlank()
-    Dialog(close, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        BackHandler(onBack = close)
-        Box(Modifier.fillMaxSize()) {
-            Page(
-                if (term == null) "Add Word" else "Edit Word", onBack = close,
-                actions = {
-                    Text(
-                        "Save", color = palette.accent.copy(alpha = if (canSave) 1f else 0.4f), fontSize = Type.body,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.cardPress {
-                            if (!canSave) return@cardPress
-                            save(
-                                Vocabulary.Term(
-                                    word.trim(), heardAs.split(",").map { it.trim() }.filter { it.isNotEmpty() },
-                                ),
-                            )
-                            close()
-                        }.padding(horizontal = 12.dp, vertical = 10.dp),
-                    )
-                },
-            ) {
-                Section("Word", "Spelled and capitalized as iikb should type it.") {
-                    FormField(word, "Claude", PLAIN) { word = it }
-                }
-                Section(
-                    "Written Instead",
-                    "What the voice model writes when you say it, separated by commas. Leave it empty to fix only spaces, hyphens and capitals.",
-                ) { FormField(heardAs, "clawed, clod", PLAIN) { heardAs = it } }
-                if (term != null) {
-                    Section {
-                        ActionRow("Delete Word", destructive = true) {
-                            delete()
-                            close()
-                        }
-                    }
+    Sheet(
+        if (term == null) "Add Word" else "Edit Word", "Save", word.isNotBlank(), close,
+        confirm = {
+            save(Vocabulary.Term(word.trim(), heardAs.split(",").map { it.trim() }.filter { it.isNotEmpty() }))
+            close()
+        },
+    ) {
+        Section("Word", "Spelled and capitalized as iikb should type it.") {
+            FormField(word, "Claude", PLAIN) { word = it }
+        }
+        Section(
+            "Written Instead",
+            "What the voice model writes when you say it, separated by commas. Leave it empty to fix only spaces, hyphens and capitals.",
+        ) { FormField(heardAs, "clawed, clod", PLAIN) { heardAs = it } }
+        if (term != null) {
+            Section {
+                ActionRow("Delete Word", destructive = true) {
+                    delete()
+                    close()
                 }
             }
         }
