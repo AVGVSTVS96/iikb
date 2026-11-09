@@ -20,6 +20,7 @@ Each module keeps its own AGENTS.md beside its code, with what it holds and why.
 - `Packages/KeyboardModules/Tools`: the builders of KeyboardEnglish's data (KeyboardEnglish/AGENTS.md).
 - `Packages/KeyboardModules/Tests/KeyboardUITests`: `Evaluation`, the autocorrect scorer (scripts/AGENTS.md, "scripts/eval"), with `TextCheckerSource` (`UITextChecker`) as its baseline keyboard.
 - `UITests/`: types through the real extension in the simulator.
+- `android/`: iikb on Android, KeyboardCore built with the Swift SDK for Android under a Kotlin input method, as a sideloaded APK (`scripts/android`). [android/AGENTS.md](android/AGENTS.md)
 - `web/`: the web demo and iikb's page, on KeyboardCore through `TypingEngine`, deployed to iikb.vercel.app. [web/AGENTS.md](web/AGENTS.md)
 - `sources/record.ts`: the record source (Bun): a log of every message you send and every field you leave with text you typed, with the host bundle ID the keyboard sends (docs/sources.md). `bun test sources/`.
 - `extensions/`: extensions (Bun): `iikb.ts` serves one from `chats({ name, list, read, send })`, and `hex.ts` is the first, your hex sessions as chats (docs/extensions.md). `bun test extensions/`.

@@ -1,0 +1,17 @@
+#!/bin/bash
+# Runs on the Mac: boots the `iikb` Android emulator headless, making it first if there's none, and waits until Android
+# is up. One emulator at a time; `adb emu kill` closes it.
+set -euo pipefail
+sdk=~/Library/Android/sdk
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21 ANDROID_HOME=$sdk
+adb=$sdk/platform-tools/adb
+image="system-images;android-37.0;google_apis_ps16k;arm64-v8a"
+if ! $sdk/emulator/emulator -list-avds | grep -qx iikb; then
+    echo no | $sdk/cmdline-tools/latest/bin/avdmanager create avd -n iikb -k "$image" -d pixel_9 >/dev/null
+fi
+if ! $adb devices | grep -q '^emulator-'; then
+    nohup $sdk/emulator/emulator -avd iikb -no-window -no-audio -no-boot-anim -no-snapshot-save -gpu swiftshader_indirect \
+        >/tmp/iikb-emulator.log 2>&1 &
+fi
+$adb wait-for-device
+until [ "$($adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do sleep 2; done

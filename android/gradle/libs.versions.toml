@@ -1,0 +1,21 @@
+[versions]
+agp = "9.5.1"
+kotlin = "2.4.21"
+compose-bom = "2026.09.00"
+activity = "1.13.0"
+core = "1.19.1"
+serialization = "1.12.0"
+
+[libraries]
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-tooling = { module = "androidx.compose.ui:ui-tooling-preview" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
+core = { module = "androidx.core:core-ktx", version.ref = "core" }
+serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
