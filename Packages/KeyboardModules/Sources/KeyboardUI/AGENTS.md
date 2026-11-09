@@ -22,6 +22,7 @@ UIKit, the parts any keyboard can build on, with no private API. Keyboard behavi
 - `BarButton`: the More button, which opens the menu (FullKeyboard's `MenuView`), and on iPad the emoji tool. The emoji panel opens from the emoji key beside space on iPhone, which Settings can take away.
 - `EditPill`: cut, copy and paste, out of the More button over the suggestions while the menu is out (`SuggestionBar.Edit`).
 - `PanelView`: a panel above the keys or in their place: a `PanelContent`'s results over a back button and the field the keys type into. Each panel names its field (`PanelField`), with no default: `.search` is iOS's one-line search field; a field for anything else is the panel's own view, built for that job as iOS's own field for it is (Chats' `MessageField`, Messages' composer), never search made to look like it. `EmojiPanel` is the emoji one.
+- `ChatThread`: a chat's messages as Messages lays them out, each a `MessageBubble` whose text is a non-editable `UITextView`: holding it selects with iOS's handles and edit menu, markdown and bare web addresses are links, a tap opens one through its owner (a keyboard can't open a link itself) and holding one offers Open Link and Copy Link. With `MessageField` it's a whole chat any keyboard can build on; Chats is iikb's.
 
 ## For the app
 

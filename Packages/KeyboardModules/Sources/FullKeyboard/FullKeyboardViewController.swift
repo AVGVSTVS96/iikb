@@ -117,6 +117,7 @@ open class FullKeyboardViewController: UIInputViewController {
             toggleVoice()
         }
         panel.onFocus = { [unowned self] in raiseKeys() }
+        panel.onOpen = { [unowned self] in open($0) }
         panel.onReplace = { [unowned self] range, text in
             guard let line else { return }
             line.select(range)
