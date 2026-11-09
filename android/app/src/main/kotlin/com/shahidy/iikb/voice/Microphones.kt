@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
+import com.shahidy.iikb.ThisDevice
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -19,6 +20,9 @@ class Microphones private constructor(private val context: Context) {
 
     data class Choice(val kind: Kind, val name: String) {
         val key get() = "$kind:$name"
+
+        /** How Settings › Voice lists it: the phone's own by the phone's name, as iOS lists an iPhone's. */
+        val title get() = if (kind == Kind.PHONE) ThisDevice.NAME else name
     }
 
     private val audio = context.getSystemService(AudioManager::class.java)
@@ -69,7 +73,7 @@ class Microphones private constructor(private val context: Context) {
     companion object {
         private const val KEY = "microphone"
 
-        /** The phone's own microphones, named as iOS names an iPhone's ("iPhone Microphone"), one though they're several. */
+        /** The phone's own microphones as a transcript names them, as iOS's does an iPhone's ("iPhone Microphone"). */
         const val PHONE = "Phone Microphone"
         @Volatile private var shared: Microphones? = null
 

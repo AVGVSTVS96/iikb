@@ -52,6 +52,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.shahidy.iikb.ThisDevice
 import com.shahidy.iikb.Transcript
 import com.shahidy.iikb.Transcripts
 import com.shahidy.iikb.TypingStats
@@ -71,9 +72,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 enum class StatsSection(val title: String) { OVERVIEW("Overview"), TYPING("Typing"), DICTATION("Dictation"), TAPS("Taps") }
-
-/** This phone, as iOS's `ThisDevice` names an iPhone, beside the computers in Stats' device menu. */
-const val PHONE = "Phone"
 
 /**
  * How you type and talk, and where your taps land, on this phone or on a computer you added (docs/computers.md), each
@@ -162,14 +160,14 @@ private fun Devices(
     val symbol = if (computer == null) "iphone" else "laptopcomputer"
     Box {
         if (inRow) {
-            PillMenuLabel(symbol, computer ?: PHONE, Modifier.clip(CircleShape).clickable { open = true })
+            PillMenuLabel(symbol, computer ?: ThisDevice.NAME, Modifier.clip(CircleShape).clickable { open = true })
         } else {
             Box(
                 Modifier.size(44.dp).glass(CircleShape).clip(CircleShape).clickable { open = true },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    Symbols.hierarchical(symbol), computer ?: PHONE, tint = palette.label,
+                    Symbols.hierarchical(symbol), computer ?: ThisDevice.NAME, tint = palette.label,
                     modifier = Modifier.size(if (computer == null) 33.dp else 30.7.dp),
                 )
             }
@@ -193,7 +191,7 @@ private fun Devices(
                     },
                 )
             }
-            item(PHONE, "iphone", palette.label, computer == null) { pick(null) }
+            item(ThisDevice.NAME, "iphone", palette.label, computer == null) { pick(null) }
             for (each in computers.all) item(each.name, "laptopcomputer", palette.label, computer == each.name) { pick(each.name) }
             HorizontalDivider(color = palette.divider)
             item("Add Computer…", "plus", palette.label, false, add)

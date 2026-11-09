@@ -136,7 +136,7 @@ private fun MicrophoneSettings() {
         ChoiceRow("Automatic", picked = picked == null) { microphones.pick(null) }
         for (choice in shown) {
             Divider()
-            ChoiceRow(choice.name, detail(choice, choice !in connected), picked = picked == choice) { microphones.pick(choice) }
+            ChoiceRow(choice.title, detail(choice, choice !in connected), picked = picked == choice) { microphones.pick(choice) }
         }
     }
 }
