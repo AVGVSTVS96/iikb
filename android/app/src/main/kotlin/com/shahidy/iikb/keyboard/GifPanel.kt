@@ -47,6 +47,7 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.gif.AnimatedImageDecoder
 import kotlin.math.floor
+import kotlin.math.roundToInt
 
 /** The GIF feed, where the build has KLIPY's key. */
 val LocalGifs = staticCompositionLocalOf<Gifs?> { null }
@@ -88,11 +89,11 @@ private fun GifRows(gifs: Gifs, rows: Int, height: Dp, query: String) {
     }
     LaunchedEffect(nearEnd, shown.gifs.size) { if (nearEnd) gifs.more() }
     LazyHorizontalStaggeredGrid(
-        StaggeredGridCells.Fixed(rows), Modifier.fillMaxWidth().height(height * rows + 6.dp * (rows - 1)).fadeEnds(grid), grid,
-        horizontalItemSpacing = 6.dp, verticalArrangement = Arrangement.spacedBy(6.dp),
+        StaggeredGridCells.Fixed(rows), Modifier.fillMaxWidth().height(height * rows + GIF_GAP.dp * (rows - 1)).fadeEnds(grid), grid,
+        horizontalItemSpacing = GIF_GAP.dp, verticalArrangement = Arrangement.spacedBy(GIF_GAP.dp),
     ) {
         items(shown.gifs, key = { it.id }) { gif ->
-            val width = height * (gif.preview.width.toFloat() / gif.preview.height.coerceAtLeast(1))
+            val width = (height * (gif.preview.width.toFloat() / gif.preview.height.coerceAtLeast(1)).coerceIn(0.5f, 2.5f)).value.roundToInt().dp
             var bounds by remember { mutableStateOf(Rect.Zero) }
             var held by remember { mutableStateOf(false) }
             AsyncImage(
@@ -134,8 +135,8 @@ fun GifShelf(height: Dp) {
 }
 
 /**
- * The GIF panel: GIFs in rows of 65 over its search row, "Search KLIPY" (KLIPY's terms ask for that placeholder),
- * with the clock for your recent GIFs. Opened from the menu it fills the keys' place with as many rows as fit.
+ * The GIF panel: GIFs in two rows (one where the bar is compact) stretched to the room over its search row, as iOS's
+ * are, "Search KLIPY" (KLIPY's terms ask for that placeholder), with the clock in the field for your recent GIFs.
  */
 @Composable
 fun GifPanel(state: Overlay.State) {
@@ -147,34 +148,21 @@ fun GifPanel(state: Overlay.State) {
             .padding(start = state.minX.dp, end = state.endInset.dp, top = 3.dp, bottom = if (state.keysUp) 0.dp else 11.dp),
     ) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-            val rows = floor((maxHeight.value + 6) / (ROW + 6)).toInt().coerceAtLeast(1)
-            GifRows(gifs, rows, ROW.dp, state.query)
+            val rows = if (state.compact) 1 else 2
+            GifRows(gifs, rows, floor((maxHeight.value - GIF_GAP * (rows - 1)) / rows).dp, state.query)
         }
         Spacer(Modifier.height(6.dp))
         SearchRow(
-            state, { GifMark(look.secondary) }, "Search KLIPY", gifs.notice,
-            trailing = {
-                Box(
-                    Modifier.padding(start = 4.dp).size(36.dp, state.field.dp).clickable {
-                        gifs.recents = !gifs.recents
-                        gifs.notice = null
-                        actions.clearSearch()
-                    },
-                    contentAlignment = Alignment.Center,
-                ) { Glyph("clock", if (gifs.recents) look.accent else look.secondary, 20.dp) }
+            state, { GifBadge(look.secondary, 18.4.dp) }, "Search KLIPY", gifs.notice,
+            accessories = {
+                Accessory("clock", gifs.recents) {
+                    gifs.recents = !gifs.recents
+                    gifs.notice = null
+                    actions.clearSearch()
+                }
             },
         )
     }
 }
 
-private const val ROW = 65f
-
-/** The field's GIF glyph: the word in a rounded frame, as SF Symbols draws it. */
-@Composable
-private fun GifMark(color: androidx.compose.ui.graphics.Color) {
-    Box(
-        Modifier.size(22.dp, 16.dp).clip(RoundedCornerShape(4.dp))
-            .background(color.copy(alpha = 0.18f)),
-        contentAlignment = Alignment.Center,
-    ) { Text("GIF", color = color, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
-}
+private const val GIF_GAP = 6f

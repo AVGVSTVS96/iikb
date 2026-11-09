@@ -34,6 +34,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -121,32 +123,38 @@ fun ShelfHead(title: String, glyph: String, color: Color, onClick: () -> Unit) {
     }
 }
 
-/** GIF has no symbol: the word in a rounded frame, as iOS's `Tools.gifGlyph` draws it. */
+/** GIF has no symbol: the word in a rounded frame, as iOS's `Tools.gifGlyph` draws it, `side` wide. */
 @Composable
-fun GifBadge(color: Color) {
+fun GifBadge(color: Color, side: Dp = 14.dp) {
+    val unit = side / 18.4f
     Box(
-        Modifier.size(16.dp, 12.5.dp).border(1.4.dp, color, RoundedCornerShape(3.dp)),
+        Modifier.size(side, unit * 14.4f).border(unit * 1.7f, color, RoundedCornerShape(unit * 4.45f)),
         contentAlignment = Alignment.Center,
-    ) { Text("GIF", color = color, fontSize = 6.5.sp, fontWeight = FontWeight.Black, lineHeight = 6.5.sp) }
+    ) {
+        Text(
+            "GIF", color = color, fontSize = (8 * unit.value).sp, fontWeight = FontWeight.Black,
+            lineHeight = (8 * unit.value).sp, style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+        )
+    }
 }
 
 /**
- * A capsule or card in the key fill, darker while pressed; a hold, where there is one, shows all of it, given where
- * this sits in the window.
+ * A capsule or card in the key fill, the pressed key fill while pressed, as iOS's cards and badges are; a hold, where
+ * there is one, shows all of it, given where this sits in the window.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Pressable(
     modifier: Modifier, radius: Dp, onClick: () -> Unit, onHold: ((Rect) -> Unit)? = null,
+    fill: Color = LocalColors.current.key, pressedFill: Color = LocalColors.current.keyPressed,
     content: @Composable () -> Unit,
 ) {
-    val look = LocalColors.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     var bounds by remember { mutableStateOf(Rect.Zero) }
     Box(
         modifier.onGloballyPositioned { bounds = it.boundsInWindow() }
-            .background(if (pressed) look.pill else look.key, RoundedCornerShape(radius))
+            .background(if (pressed) pressedFill else fill, RoundedCornerShape(radius))
             .combinedClickable(interaction, indication = null, onClick = onClick, onLongClick = onHold?.let { { it(bounds) } }),
         contentAlignment = Alignment.CenterStart,
     ) { content() }
