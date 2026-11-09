@@ -43,13 +43,16 @@ public struct ChatFile: Hashable, Sendable {
 public protocol ChatBubble: UIView {
     var mine: Bool { get }
     var joined: (above: Bool, below: Bool) { get set }
+    /// Whether it draws what it shows. Off while it's far from the screen: a message's drawn text costs its whole area in
+    /// pixels, and a long chat's added up past the keyboard's memory limit.
+    var drawn: Bool { get set }
     func size(within width: CGFloat) -> CGSize
 }
 
 /// A chat's messages as Messages lays them out: yours on the right, a turn's bubbles 2 apart and turns 10, the newest
 /// at the bottom and kept there as messages come, the ends faded. Each bubble's text is real text (`MessageBubble`):
 /// it selects, copies and opens its links as any text in iOS does.
-public final class ChatThread: UIView, UIGestureRecognizerDelegate {
+public final class ChatThread: UIView, UIGestureRecognizerDelegate, UIScrollViewDelegate {
     /// A link in a message was opened. A keyboard has no public way to open one, so its owner does.
     public var onOpen: (URL) -> Void = { _ in }
     /// The messages were tapped: you're reading. Selecting text in them leaves the keys where they are.
@@ -72,6 +75,7 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
         super.init(frame: frame)
         scroll.accessibilityIdentifier = "iikb.chat.messages"
         scroll.showsVerticalScrollIndicator = false
+        scroll.delegate = self
         [scroll.topEdgeEffect, scroll.bottomEdgeEffect, scroll.leftEdgeEffect, scroll.rightEdgeEffect].forEach {
             $0.isHidden = true
         }
@@ -191,6 +195,17 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
         scroll.contentInset.top = max(scroll.bounds.height - y, 0)
         scroll.contentSize = CGSize(width: width, height: y)
         if wasAtEnd || y <= scroll.bounds.height { scroll.contentOffset.y = y - scroll.bounds.height }
+        drawNear()
+    }
+
+    public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        drawNear()
+    }
+
+    /// Only the bubbles within a screen of what shows draw.
+    private func drawNear() {
+        let near = scroll.bounds.insetBy(dx: 0, dy: -scroll.bounds.height)
+        for bubble in bubbles { bubble.drawn = bubble.frame.intersects(near) }
     }
 }
 
@@ -204,9 +219,21 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
     /// Whether the message above and below is from the same side, whose corners on that side tighten, as Messages'.
     public var joined = (above: false, below: false) { didSet { if joined != oldValue { setNeedsLayout() } } }
 
+    public var drawn = false {
+        didSet { if drawn != oldValue { text.attributedText = drawn ? made : nil } }
+    }
+
     private let shape = CAShapeLayer()
     private let text = UITextView()
     private var shown: (content: Content, theme: KeyboardTheme)?
+    private var made = NSAttributedString()
+    private var sized: (width: CGFloat, size: CGSize)?
+    /// Measures a message's text for one not drawn, laid out as `text` is.
+    private static let sizer = {
+        let sizer = UITextView()
+        MessageBubble.lay(sizer)
+        return sizer
+    }()
 
     private enum Content: Equatable {
         case message(ChatMessage)
@@ -221,12 +248,16 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
         text.delegate = self
         text.isEditable = false
         text.isSelectable = true
-        text.isScrollEnabled = false
         text.backgroundColor = .clear
+        text.dataDetectorTypes = [.link]
+        Self.lay(text)
+        addSubview(text)
+    }
+
+    private static func lay(_ text: UITextView) {
+        text.isScrollEnabled = false
         text.textContainerInset = .zero
         text.textContainer.lineFragmentPadding = 0
-        text.dataDetectorTypes = [.link]
-        addSubview(text)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -260,7 +291,9 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
         let color = mine ? theme.prominentLabel.ui : theme.label.ui
         text.tintColor = mine ? theme.prominentLabel.ui : theme.prominent.ui
         text.linkTextAttributes = [.foregroundColor: color, .underlineStyle: NSUnderlineStyle.single.rawValue]
-        text.attributedText = made(color)
+        self.made = made(color)
+        sized = nil
+        if drawn { text.attributedText = self.made }
         text.accessibilityLabel = mine ? "You" : nil
         setNeedsLayout()
     }
@@ -294,13 +327,17 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
 
     /// Its size hugging its text, its lines at most `width` with the insets.
     public func size(within width: CGFloat) -> CGSize {
+        if let sized, sized.width == width { return sized.size }
         let inset = Self.inset
         let room = width - inset.left - inset.right
-        let used = text.attributedText.boundingRect(
+        let used = made.boundingRect(
             with: CGSize(width: room, height: .greatestFiniteMagnitude), options: .usesLineFragmentOrigin, context: nil)
         let lineWidth = min(ceil(used.width) + 1, room)
-        let height = text.sizeThatFits(CGSize(width: lineWidth, height: .greatestFiniteMagnitude)).height
-        return CGSize(width: lineWidth + inset.left + inset.right, height: ceil(height) + inset.top + inset.bottom)
+        Self.sizer.attributedText = made
+        let height = Self.sizer.sizeThatFits(CGSize(width: lineWidth, height: .greatestFiniteMagnitude)).height
+        let size = CGSize(width: lineWidth + inset.left + inset.right, height: ceil(height) + inset.top + inset.bottom)
+        sized = (width, size)
+        return size
     }
 
     override public func layoutSubviews() {

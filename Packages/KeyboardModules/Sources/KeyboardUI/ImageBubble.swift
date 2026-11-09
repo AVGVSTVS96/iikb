@@ -15,11 +15,22 @@ public final class ImageBubble: UIView, ChatBubble, UIContextMenuInteractionDele
     public var onTap: (ImageBubble) -> Void = { _ in }
     public private(set) var mine = false
     public var joined = (above: false, below: false) { didSet { if joined != oldValue { setNeedsLayout() } } }
+    public var drawn = false {
+        didSet {
+            guard drawn != oldValue else { return }
+            if drawn { return load() }
+            loading?.cancel()
+            loading = nil
+            picture.image = nil
+        }
+    }
 
     private let picture = UIImageView()
     private let shape = CAShapeLayer()
     public private(set) var file: ChatFile?
     public var image: UIImage? { picture.image }
+    /// The photo's size once it came, kept while it isn't drawn.
+    private var came: CGSize?
     private var loading: Task<Void, Never>?
     private static let widest: CGFloat = 240
     private static let tallest: CGFloat = 320
@@ -53,8 +64,19 @@ public final class ImageBubble: UIView, ChatBubble, UIContextMenuInteractionDele
         guard file != self.file else { return }
         self.file = file
         loading?.cancel()
+        loading = nil
+        picture.image = nil
+        came = nil
+        if drawn { load() }
+    }
+
+    private func load() {
+        guard let file, picture.image == nil, loading == nil else { return }
         picture.image = Self.decoded.object(forKey: file.url as NSURL)
-        guard picture.image == nil else { return }
+        if let image = picture.image {
+            came = image.size
+            return
+        }
         loading = Task { [weak self, fetch] in
             guard let data = await fetch(file.url), !Task.isCancelled,
                 let image = await Self.decode(data, side: 480)
@@ -62,7 +84,9 @@ public final class ImageBubble: UIView, ChatBubble, UIContextMenuInteractionDele
             let pixels = image.size.width * image.size.height * image.scale * image.scale
             Self.decoded.setObject(image, forKey: file.url as NSURL, cost: Int(pixels) * 4)
             guard let self, !Task.isCancelled, self.file == file else { return }
+            loading = nil
             picture.image = image
+            came = image.size
             onLoad()
         }
     }
@@ -89,7 +113,7 @@ public final class ImageBubble: UIView, ChatBubble, UIContextMenuInteractionDele
     public func size(within width: CGFloat) -> CGSize {
         let widest = min(width, Self.widest)
         let size =
-            picture.image?.size
+            came
             ?? file.flatMap { file in file.width.flatMap { w in file.height.map { CGSize(width: w, height: $0) } } }
             ?? CGSize(width: 4, height: 3)
         guard size.width > 0, size.height > 0 else { return CGSize(width: widest, height: (widest * 0.75).rounded()) }
