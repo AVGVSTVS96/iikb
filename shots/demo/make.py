@@ -178,6 +178,9 @@ APPS = [
     ("com.apple.reminders", "Reminders", 2), ("", "", 2),
 ]
 HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+# Today runs up to the hour it is now, its day moved earlier when that's before its first six hours have passed, so
+# shots taken early in the morning still have today's typing to show.
+EARLY = min(0, datetime.fromtimestamp(NOW).hour - (HOURS[0] + 6))
 
 
 def typing(rng):
@@ -205,10 +208,11 @@ def typing(rng):
                     "picked": picked,
                     "emoji": rng.randint(0, 3) if app in ("com.apple.MobileSMS", "net.whatsapp.WhatsApp") else 0,
                 }
-                if back in (23, 31) or (back == 0 and hour > datetime.fromtimestamp(NOW).hour):
+                at = hour + EARLY if back == 0 else hour
+                if back in (23, 31) or (back == 0 and not 0 <= at <= datetime.fromtimestamp(NOW).hour):
                     continue
                 lines.append(
-                    {"day": day(date), "hour": hour, "app": app, "tally": tally,
+                    {"day": day(date), "hour": at, "app": app, "tally": tally,
                      "seconds": round(characters / 5 / max(wpm, 18) * 60, 3)}
                 )
     return lines
@@ -324,7 +328,7 @@ def mac(rng):
         typed = {"keystrokes": 0, "chars": 0, "words": 0, "backspaces": 0, "activeMs": 0, "timedChars": 0, "timedMs": 0,
                  "inserts": 0, "hourChars": [0] * 24, "peakWpm": 0}
         voice = {**typed, "hourChars": [0] * 24}
-        for hour in range(9, 24 if back else datetime.fromtimestamp(NOW).hour + 1):
+        for hour in range(9, 24) if back else range(max(0, 9 + EARLY), datetime.fromtimestamp(NOW).hour + 1):
             if rng.random() < (0.35 if weekend else 0.75):
                 chars = int(rng.lognormvariate(7.1, 0.5))
                 wpm = rng.gauss(68, 9)
