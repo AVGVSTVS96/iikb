@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -82,6 +83,14 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
     ) {
         /** The space from the keys block's right edge to the keyboard's, which a panel keeps clear as on the left. */
         val endInset get() = width - maxX
+
+        /**
+         * Around a panel's results and search row: iOS's `PanelView.inset` above and below in the keys' place, or the
+         * toolbar's top over results in the bar's.
+         */
+        val panelPadding get() = PaddingValues(
+            start = minX.dp, end = endInset.dp, top = if (keysUp) 3.dp else 8.dp, bottom = if (keysUp) 0.dp else 8.dp,
+        )
     }
 
     var state by mutableStateOf<State?>(null)

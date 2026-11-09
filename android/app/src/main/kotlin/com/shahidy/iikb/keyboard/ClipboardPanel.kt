@@ -279,7 +279,7 @@ fun ClipboardPanel(state: Overlay.State) {
     val clips = if (linksOnly) emptyList() else rows.filter { it.kind != "link" }
     Column(
         Modifier.fillMaxSize().background(look.card)
-            .padding(start = state.minX.dp, end = state.endInset.dp, top = 3.dp, bottom = if (state.keysUp) 0.dp else 11.dp),
+            .padding(state.panelPadding),
     ) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {

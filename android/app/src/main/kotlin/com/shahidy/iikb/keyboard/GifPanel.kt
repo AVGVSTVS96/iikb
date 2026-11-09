@@ -145,7 +145,7 @@ fun GifPanel(state: Overlay.State) {
     val gifs = LocalGifs.current ?: return
     Column(
         Modifier.fillMaxSize().background(look.card)
-            .padding(start = state.minX.dp, end = state.endInset.dp, top = 3.dp, bottom = if (state.keysUp) 0.dp else 11.dp),
+            .padding(state.panelPadding),
     ) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val rows = if (state.compact) 1 else 2
