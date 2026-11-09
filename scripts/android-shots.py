@@ -431,7 +431,7 @@ def panel(name, search):
         item = next(b for _, description, b in nodes()
                     if description not in ("", "Back", "Switch input method") and b[1] > keys.height * 0.4)
     elif name == "clipboard":
-        item = find("wikipedia")
+        item = find(lambda text: "wikipedia ·" in text)
     else:
         item = find(lambda text: text.startswith("On my way, grabbing coffee"))
     x, y = center(item)

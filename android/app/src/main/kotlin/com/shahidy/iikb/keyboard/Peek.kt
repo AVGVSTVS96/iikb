@@ -105,7 +105,7 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
         val menu = if (held.actions.isEmpty()) 0f else MENU_PAD * 2 + MENU_ROW * held.actions.size
         Box(
             Modifier.fillMaxWidth().height(height.dp).graphicsLayer { alpha = appear.value }
-                .background(Color.Black.copy(alpha = if (look.dark) 0.47f else 0.2f))
+                .background(Color.Black.copy(alpha = if (look.dark) 0.5f else 0.24f))
                 .clickable(remember { MutableInteractionSource() }, indication = null, onClick = close),
         )
         Layout(
@@ -130,12 +130,21 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
             val floor = if (menu > 0) height - MENU_FLOOR else height - BOTTOM
             val room = Rect(SIDE, top, width - SIDE, floor)
             val cardRoom = maxOf(CARD_FLOOR, room.height - if (menu > 0) gap + menu else 0f)
-            val card = measurables[0].measure(Constraints(maxWidth = px(sides), maxHeight = px(min(cardRoom, MAX_TEXT))))
+            val card = when (val shows = held.shows) {
+                is Held.Shows.Image -> {
+                    val tall = if (menu == 0f) height - IMAGE_MARGIN * 2 else cardRoom
+                    val fits = min(min(IMAGE_WIDTH, sides), tall * shows.width / shows.height)
+                    measurables[0].measure(Constraints.fixedWidth(px(fits)))
+                }
+                is Held.Shows.Text -> measurables[0].measure(Constraints(maxWidth = px(sides), maxHeight = px(min(cardRoom, MAX_TEXT))))
+            }
             val cardHeight = card.height / density
             val cardWidth = card.width / density
             val wanted = cardHeight + if (menu > 0) gap + menu else 0f
-            val cardTop = source.top.coerceAtMost(room.bottom - wanted).coerceAtLeast(room.top)
-            val left = (source.center.x - cardWidth / 2).coerceIn(room.left, room.right - cardWidth)
+            // A preview alone (a GIF) is centered in the keyboard, as UIKit centers one it shrinks to fit.
+            val alone = menu == 0f && held.shows is Held.Shows.Image
+            val cardTop = if (alone) (height - cardHeight) / 2 else source.top.coerceAtMost(room.bottom - wanted).coerceAtLeast(room.top)
+            val left = if (alone) (width - cardWidth) / 2 else (source.center.x - cardWidth / 2).coerceIn(room.left, room.right - cardWidth)
             val menuTop = cardTop + cardHeight + gap
             val placed = measurables.getOrNull(1)?.measure(
                 Constraints.fixed(px(MENU_WIDTH), px(min(menu, room.bottom - menuTop).coerceAtLeast(0f))),
@@ -171,16 +180,15 @@ private fun Card(held: Held, close: () -> Unit) {
             if (link != null) {
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.size(19.dp).clip(RoundedCornerShape(4.dp)).background(Color.White)
-                                .border(0.5.dp, Color(0x22000000), RoundedCornerShape(4.dp)),
-                            contentAlignment = Alignment.Center,
-                        ) { SiteIcon(link.site) }
-                        Spacer(Modifier.width(8.dp))
+                        Box(Modifier.size(19.dp)) { SiteIcon(link.site, look.previewSecondary) }
+                        Spacer(Modifier.width(8.5.dp))
                         Text(link.site ?: "", color = look.label, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
                     Spacer(Modifier.height(6.dp))
-                    Text(shows.text.trim(), color = look.secondary, fontSize = 15.sp, lineHeight = 20.sp)
+                    Text(
+                        shows.text.trim().replace("/", "/\u200B"), color = look.previewSecondary, fontSize = 15.sp,
+                        lineHeight = 20.sp,
+                    )
                 }
             } else {
                 Text(shows.text, color = look.label, fontSize = 17.sp, lineHeight = 22.sp)
@@ -188,7 +196,7 @@ private fun Card(held: Held, close: () -> Unit) {
         }
         is Held.Shows.Image -> AsyncImage(
             shows.model, "Image", imageLoader(), contentScale = ContentScale.Fit,
-            modifier = Modifier.widthIn(max = IMAGE_WIDTH.dp).aspectRatio(shows.width.toFloat() / shows.height).clip(shape)
+            modifier = Modifier.fillMaxWidth().aspectRatio(shows.width.toFloat() / shows.height).clip(shape)
                 .background(Color.Black).then(tap),
         )
     }
@@ -227,6 +235,8 @@ private fun Menu(actions: List<Held.Action>, close: () -> Unit) {
     }
 }
 
+/** iOS's `secondaryLabel`, a held link's address. */
+private val Colors.previewSecondary get() = if (dark) Color(0x99EBEBF5) else Color(0x993C3C43)
 /** iOS's preview card: secondarySystemBackground. */
 private val Colors.preview get() = if (dark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
 /**
@@ -248,6 +258,8 @@ private const val CORNER = 22f
 private const val TEXT_WIDTH = 340f
 private const val MAX_TEXT = 480f
 private const val IMAGE_WIDTH = 300f
+/** Above and below a GIF's preview, which grows to the keyboard's height less these. */
+private const val IMAGE_MARGIN = 15f
 /** Where the card and its menu don't fit: the top margin and gap tighten, and the card keeps at least this. */
 private const val TIGHT_TOP = 12f
 private const val TIGHT_GAP = 10f

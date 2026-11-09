@@ -87,7 +87,7 @@ fun TranscriptsPanel(state: Overlay.State) {
             }
         }
         Spacer(Modifier.height(6.dp))
-        SearchRow(state, { Glyph("text.bubble", look.secondary, 18.dp) }, "Search transcripts")
+        SearchRow(state, { Glyph("text.bubble", look.secondary, LEADING) }, "Search transcripts")
     }
 }
 

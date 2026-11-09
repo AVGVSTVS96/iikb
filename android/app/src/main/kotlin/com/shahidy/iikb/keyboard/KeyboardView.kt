@@ -223,6 +223,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             notice != null && !mic.covers -> drawNotice(canvas, frame, notice)
             hint != null && showsHint(frame) -> drawNotice(canvas, frame, hint!!)
             frame.showsSuggestions && frame.panel == null && !mic.covers -> drawSuggestions(canvas, frame)
+            frame.panel != null && !mic.covers -> drawDividers(canvas, frame)
         }
         if (under < 1) canvas.restore()
         mic.draw(canvas, frame, pressedBar)
@@ -254,17 +255,23 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             val capHeight = text.textSize * 0.7f
             canvas.drawText(label, (box.midX - width / 2).toFloat(), (box.midY + capHeight / 2).toFloat(), text)
         }
-        fill.color = theme.candidateDivider
+        drawDividers(canvas, frame)
+        if (showsEmoji) drawEmoji(canvas, frame)
+    }
+
+    /** A divider shows between two slots shown without a pill, empty ones too, as iOS's bar has it over a panel. */
+    private fun drawDividers(canvas: Canvas, frame: Frame) {
+        val bar = frame.toolbar
+        val showsEmoji = frame.panel == null && frame.emoji.isNotEmpty()
+        fill.color = frame.theme.candidateDivider
         for (index in 0 until 2) {
             val box = bar.slots[index]
-            val next = frame.chips.getOrNull(index + 1)
-            val here = frame.chips.getOrNull(index)
-            if (here == null || next == null || here.kind == "correction" || next.kind == "correction") continue
+            val pill = { at: Int -> frame.panel == null && (frame.chips.getOrNull(at)?.kind == "correction" || pressedBar == "slot$at") }
+            if (pill(index) || pill(index + 1)) continue
             if (index + 1 == 2 && showsEmoji && !bar.emojiBeside) continue
             val x = (box.x + box.width).toFloat()
             canvas.drawRect(x - 0.5f, box.midY.toFloat() - 14, x + 0.5f, box.midY.toFloat() + 14, fill)
         }
-        if (showsEmoji) drawEmoji(canvas, frame)
     }
 
     private fun showsHint(frame: Frame) = frame.showsSuggestions && frame.panel == null && !mic.covers && edits == null && chats == null
