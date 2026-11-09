@@ -174,6 +174,13 @@ open class FullKeyboardViewController: UIInputViewController {
         inputView = KeyboardInputView(frame: .zero, inputViewStyle: .default)
     }
 
+    /// iOS keeps each keyboard's input view after its controller goes (the `_UIInputViewContent` it hangs on the view
+    /// points back at it), so everything in it comes out here. Left in, every keyboard shown kept its whole tree,
+    /// 2.7 MB each in the iOS 27.1 simulator, in a process iOS ends at 177 MB on the Duo (Nov 9).
+    isolated deinit {
+        viewIfLoaded?.subviews.forEach { $0.removeFromSuperview() }
+    }
+
     override open func viewDidLoad() {
         super.viewDidLoad()
         [toolbarView, keyboardView, menuView].forEach {
