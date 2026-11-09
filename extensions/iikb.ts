@@ -11,6 +11,8 @@ export interface File {
   readonly name: string;
   readonly url: string;
   readonly type?: string;
+  readonly width?: number;
+  readonly height?: number;
 }
 
 export interface Message {

@@ -39,7 +39,7 @@ export default chats({
 
 - `list()`: the chats, `{ id, name, line?, pinned? }`. Pinned ones come first.
 - `read(chat, after)`: the chat's messages, `{ from, text, pending?, files? }`, oldest first, with a `version` that changes when they do. `from` is `me` for yours. With `after`, hold the answer until the messages are no longer at that version, or about 25 seconds, so a reply reaches the keyboard the moment it's written.
-- `files`, in a message: `{ name, url, type? }`, `type` its MIME type. iikb fetches `url` with the extension's token. `chats()` answers every GET as a chat, so give a full address, or route file paths before calling `answer`. A photo (`image/…`) shows as one; holding it shows it larger, with Copy. Any other file shows as its name. A message that is only a file has `text: ""`; a photo's caption is its text.
+- `files`, in a message: `{ name, url, type?, width?, height? }`, `type` its MIME type and a photo's `width` and `height` its pixels, so it takes its shape before it loads. iikb fetches `url` with the extension's token. `chats()` answers every GET as a chat, so give a full address, or route file paths before calling `answer`. A photo (`image/…`) shows as one; a tap opens it large, and holding it offers Copy. Any other file shows as its name. A message that is only a file has `text: ""`; a photo's caption is its text.
 - `send(chat, text, id)`: your words. `id` names the message, so a retry after a lost answer can send it once.
 
 ```sh

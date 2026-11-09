@@ -95,7 +95,10 @@ final class ChatPanel: UIView, PanelContent {
                 ChatMessage(
                     text: message.text, mine: message.mine, pending: message.pending == true,
                     files: (message.files ?? []).compactMap { file in
-                        chats.url(of: file).map { ChatFile(name: file.name, url: $0, type: file.type) }
+                        chats.url(of: file).map {
+                            ChatFile(
+                                name: file.name, url: $0, type: file.type, width: file.width, height: file.height)
+                        }
                     })
             },
             footnote: empty ? nil : chats.problem, theme: theme)

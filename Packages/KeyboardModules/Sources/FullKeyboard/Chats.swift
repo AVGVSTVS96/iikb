@@ -29,6 +29,8 @@ final class Chats {
             let name: String
             let url: String
             var type: String?
+            var width: Double?
+            var height: Double?
         }
     }
 

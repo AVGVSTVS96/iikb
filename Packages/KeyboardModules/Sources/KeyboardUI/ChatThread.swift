@@ -24,11 +24,16 @@ public struct ChatFile: Hashable, Sendable {
     public var url: URL
     /// Its MIME type, when it's known.
     public var type: String?
+    /// A photo's size in pixels, when it's known, so its bubble takes its shape before it comes.
+    public var width: Double?
+    public var height: Double?
 
-    public init(name: String, url: URL, type: String? = nil) {
+    public init(name: String, url: URL, type: String? = nil, width: Double? = nil, height: Double? = nil) {
         self.name = name
         self.url = url
         self.type = type
+        self.width = width
+        self.height = height
     }
 
     public var isImage: Bool { type?.hasPrefix("image/") == true }
@@ -55,6 +60,8 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
     private let scroll = UIScrollView()
     private let fade = CAGradientLayer()
     private var bubbles: [any ChatBubble] = []
+    private var photo: PhotoView?
+    private var theme = KeyboardTheme.lightCurrent
     /// A line under the messages, like what went wrong.
     private let footnote = UILabel()
 
@@ -81,6 +88,7 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
 
     /// Each message as Messages splits one: its photos, then its other files, then its text, each a bubble.
     public func show(_ messages: [ChatMessage], footnote note: String?, theme: KeyboardTheme) {
+        self.theme = theme
         var index = 0
         func next<Bubble: ChatBubble>(_ make: () -> Bubble) -> Bubble {
             defer { index += 1 }
@@ -121,7 +129,20 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
         let bubble = ImageBubble()
         bubble.fetch = { [unowned self] in await fetch($0) }
         bubble.onLoad = { [unowned self] in setNeedsLayout() }
+        bubble.onTap = { [unowned self] in open($0) }
         return bubble
+    }
+
+    private func open(_ bubble: ImageBubble) {
+        photo?.removeFromSuperview()
+        let view = PhotoView(bubble, fetch: { [unowned self] in await fetch($0) }, theme: theme)
+        view.onClose = { [unowned self, unowned view] in
+            view.removeFromSuperview()
+            if photo === view { photo = nil }
+        }
+        view.frame = bounds
+        addSubview(view)
+        photo = view
     }
 
     @objc private func tapped() {
@@ -137,6 +158,7 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate {
         super.layoutSubviews()
         let wasAtEnd = scroll.contentOffset.y >= scroll.contentSize.height - scroll.bounds.height - 1
         scroll.frame = bounds
+        photo?.frame = bounds
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         fade.frame = bounds
