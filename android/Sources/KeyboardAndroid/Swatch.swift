@@ -20,5 +20,7 @@ public func swatch(env: Env, _: jclass, name: jbyteArray?, appearance: jbyteArra
     }
     var metrics = KeyboardMetrics.phone(width: 390, style: .ios27)
     if let shape = themes[0].keyShape { metrics.cornerRadius = shape.cornerRadius(letterWidth: 44) }
-    return env.array(Json.encode(Swatch(themes: themes.map(Theme.init), look: Look(metrics, shape: themes[0].keyShape, style: .ios27))))
+    return env.array(
+        Json.encode(
+            Swatch(themes: themes.map(Theme.init), look: Look(metrics, shape: themes[0].keyShape, style: .ios27))))
 }

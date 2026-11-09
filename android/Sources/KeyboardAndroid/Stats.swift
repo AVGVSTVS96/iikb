@@ -107,18 +107,21 @@ struct TapsBoard: Encodable {
     let aims: [Learned]
 
     init(_ touches: TouchModel, settings: KeyboardSettings, device: DeviceClass, screen: Size, signature: String?) {
-        let current = LayoutContext(device: device, layer: .letters, isLandscape: screen.width > screen.height).signature
+        let current = LayoutContext(device: device, layer: .letters, isLandscape: screen.width > screen.height)
+            .signature
         let kept = touches.signatures.filter { LayoutContext(signature: $0.signature)?.device == device }
         screens = kept.map { Screen(signature: $0.signature, title: Self.title(of: $0.signature), taps: $0.taps) }
         let names = Set(kept.map(\.signature))
-        let picked = signature.flatMap { names.contains($0) ? $0 : nil } ?? (names.contains(current) ? current : nil)
+        let picked =
+            signature.flatMap { names.contains($0) ? $0 : nil } ?? (names.contains(current) ? current : nil)
             ?? kept.first?.signature
         self.signature = picked
         guard let picked, let kept = LayoutContext(signature: picked) else {
             (width, height, keys, aims) = (0, 0, [], [])
             return
         }
-        var context = LayoutContext(device: device, layer: kept.layer, screen: kept.screen(on: screen), settings: settings)
+        var context = LayoutContext(
+            device: device, layer: kept.layer, screen: kept.screen(on: screen), settings: settings)
         context.oneHanded = kept.oneHanded
         context.isSplit = kept.isSplit
         let geometry = KeyboardGeometry(context, screen: kept.screen(on: screen), style: .ios27)
@@ -144,7 +147,9 @@ struct TapsBoard: Encodable {
                     spread: [aim.spread.xx, aim.spread.xy, aim.spread.yy],
                     recent: aim.recent.map { Tap(x: $0.x, y: $0.y, landed: index($0.landed)) },
                     memories: aim.memories.map { Memory(x: $0.center.x, y: $0.center.y, weight: $0.weight) },
-                    landing: aim.landing.compactMap { landing in index(landing.key).map { Share(key: $0, share: landing.share) } })
+                    landing: aim.landing.compactMap { landing in
+                        index(landing.key).map { Share(key: $0, share: landing.share) }
+                    })
             }
         }
     }

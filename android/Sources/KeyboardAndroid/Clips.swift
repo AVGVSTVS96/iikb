@@ -75,7 +75,8 @@ public func clipsRows(env: Env, _: jclass, handle: jlong, search: jbyteArray?, w
     -> jbyteArray?
 {
     env.array(
-        Json.encode(clips(handle).rows(matching: env.string(search) ?? "", in: words != 0 ? .words : .characters, now: now)))
+        Json.encode(
+            clips(handle).rows(matching: env.string(search) ?? "", in: words != 0 ? .words : .characters, now: now)))
 }
 
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_clipsPin")
