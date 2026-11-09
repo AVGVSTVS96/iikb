@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "VoiceBench",
     platforms: [.macOS(.v26)],
-    dependencies: [.package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.0")],
+    dependencies: [.package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.3")],
     targets: [
         .target(name: "KeyboardStore"),
         .target(name: "VoiceCapture"),

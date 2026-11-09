@@ -49,7 +49,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         /// Loads the Parakeet, downloading it first if it isn't on the iPhone yet; nil for Apple's. iOS sometimes kills its
         /// Neural Engine compiler for memory while it compiles the encoder, and Core ML then runs the
         /// encoder on the CPU, ten times slower, until it's loaded again: so it's loaded again, up to three times.
-        var loader: (@Sendable (@escaping ProgressHandler) async throws -> any Parakeet)? {
+        var loader: (@Sendable (@escaping ProgressHandler) async throws -> Dictation)? {
             guard let version else { return nil }
             let title = title
             return { progress in
@@ -57,10 +57,10 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
                     to: version.folder, version: version, progressHandler: progress)
                 var load = 1
                 while true {
-                    let parakeet = AsrManager(config: .default)
+                    let parakeet = AsrManager(config: .dictation)
                     try await parakeet.loadModels(try await AsrModels.load(from: folder, version: version))
                     guard VoiceModel.hasNeuralEngine, load < 3, try await !parakeet.onNeuralEngine() else {
-                        return parakeet
+                        return await Dictation(parakeet)
                     }
                     log.error("\(title, privacy: .public)'s encoder ran on the CPU after load \(load)")
                     load += 1
@@ -81,7 +81,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     public private(set) var model = UserDefaults.standard.string(forKey: modelKey).flatMap(Model.init) ?? .v3
     public private(set) var state = State.loading { didSet { if state != oldValue { onState?() } } }
     @ObservationIgnored public var onState: (() -> Void)?
-    @ObservationIgnored private var parakeet: Task<any Parakeet, any Error>?
+    @ObservationIgnored private var parakeet: Task<Dictation, any Error>?
     @ObservationIgnored private var writes = 0
     /// Whether iikb has its microphone on, which gets the Parakeet ready and keeps it for the next dictation.
     @ObservationIgnored public var micIsOn = false { didSet { if micIsOn { prepare() } else { letGoIfIdle() } } }
@@ -188,7 +188,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
             let model = model
             do {
                 if let parakeet {
-                    return (try await parakeet.value.dictate(recording), model.title)
+                    return (try await parakeet.value.write(recording), model.title)
                 }
                 return (try await AppleSpeech.write(recording), model.title)
             } catch {
@@ -229,7 +229,7 @@ extension AsrManager {
     /// its 15-second window: on the iPhone Duo about 0.1 s there, and 1.5 s on the CPU.
     func onNeuralEngine() async throws -> Bool {
         let began = ContinuousClock.now
-        _ = try await write([Float](repeating: 0, count: ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)))
+        _ = try await hear([Float](repeating: 0, count: ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)))
         return ContinuousClock.now - began < .seconds(0.5)
     }
 }

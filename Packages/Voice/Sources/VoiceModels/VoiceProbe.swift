@@ -5,7 +5,7 @@ import UIKit
 
 /// `-iikbVoiceProbe <ultra|v3|unified|unified-fp16|clean> [-iikbVoiceProbeUnits ane|cpu|gpu]` (`scripts/voiceprobe`):
 /// times each of a Parakeet's parts loading on this iPhone (Unified's as a whole, twice), then writes
-/// `Documents/probe.wav` three times, as it is and as dictation does (`Parakeet.dictate`), logging to
+/// `Documents/probe.wav` three times, as it is and as dictation does (`Dictation.write`), logging to
 /// `Documents/probe.log`.
 public nonisolated enum VoiceProbe {
     public static var asked: Bool { UserDefaults.standard.string(forKey: "iikbVoiceProbe") != nil }
@@ -86,7 +86,7 @@ public nonisolated enum VoiceProbe {
         config.computeUnits = .cpuAndNeuralEngine
         let models = try AsrModels.loadLocal(
             from: folder, version: version, configuration: config, encoderComputeUnits: units)
-        let manager = AsrManager(config: .default)
+        let manager = AsrManager(config: .dictation)
         try await manager.loadModels(models)
         say("all loaded again in \(seconds(since: began))")
         try await write(samples, with: manager, name: name)
@@ -119,12 +119,13 @@ public nonisolated enum VoiceProbe {
     }
 
     private static func write(_ samples: [Float], with parakeet: any Parakeet, name: String) async throws {
+        let dictation = await Dictation(parakeet)
         for _ in 0..<3 {
             var began = Date.now
-            let text = try await parakeet.write(samples)
+            let text = try await parakeet.hear(samples).text
             say("wrote \(Double(samples.count) / 16_000)s as is in \(seconds(since: began)): \(text)")
             began = .now
-            let written = try await parakeet.dictate(samples)
+            let written = try await dictation.write(samples)
             say("wrote it as dictation does in \(seconds(since: began)): \(written)")
         }
     }
@@ -135,7 +136,7 @@ public nonisolated enum VoiceProbe {
 }
 
 extension UnifiedAsrManager: Parakeet {
-    func write(_ samples: [Float]) async throws -> String {
-        try await transcribe(samples)
+    func hear(_ samples: [Float]) async throws -> ASRResult {
+        try await transcribeDetailed(samples)
     }
 }

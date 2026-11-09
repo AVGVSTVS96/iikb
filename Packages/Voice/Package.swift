@@ -17,9 +17,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../KeyboardModules"),
-        // 0.18.3 wrote more words wrong on his dictations (scripts/voiceloop, Nov 8: 3.39% → 3.45%), mostly filler he
-        // never said ("Mm", "Thank you.") put before the first word.
-        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.0", traits: []),
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.3", traits: []),
     ],
     targets: [
         .target(

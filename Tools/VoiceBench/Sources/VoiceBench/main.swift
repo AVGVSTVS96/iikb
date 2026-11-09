@@ -5,7 +5,7 @@ import VoiceCapture
 /// `VoiceBench <corpus> <way> [percent loudness]`: writes every clip in `<corpus>/clips.jsonl` at the given loudness
 /// into `<corpus>/outputs/<way>-<percent>.jsonl`, with the milliseconds each took, in one way:
 /// - `asis`: Parakeet v3 as FluidAudio does by itself;
-/// - `dictation`: as iikb's dictation does (`Parakeet.dictate`, the app's own file);
+/// - `dictation`: as iikb's dictation does (`Dictation.write`, the app's own file);
 /// - `vocab`: dictation, then FluidAudio's CTC keyword spotter boosting the Dictionary (`<corpus>/vocabulary.json`) with
 ///   the thresholds 0.18.2 gives dictation (#967: no added boost, 0.7 similarity), since 0.18.0's session boosts every
 ///   term by 4.5 and so wrote one common word as a term 164 times in Bassim's dictations;
@@ -39,9 +39,10 @@ let way = arguments[2]
 let loudness = arguments.count > 3 ? Float(arguments[3])! : 100
 let clips = try String(contentsOf: corpus.appending(path: "clips.jsonl"), encoding: .utf8)
     .split(separator: "\n").map { try JSONDecoder().decode(Clip.self, from: Data($0.utf8)) }
-let manager = AsrManager(config: .default)
+let manager = AsrManager(config: way == "asis" ? .default : .dictation)
 try await manager.loadModels(
     try await AsrModels.downloadAndLoad(version: way == "phonon2" ? .phonon2 : way == "bark3" ? .bark3 : .v3))
+let dictation = await Dictation(manager)
 let vqe = way == "vqe" ? try await LocalVqeManager() : nil
 var boost: (spotter: CtcKeywordSpotter, rescorer: VocabularyRescorer, vocabulary: CustomVocabularyContext)?
 if way == "vocab" {
@@ -93,9 +94,9 @@ for clip in clips {
             frameDuration: spotted.frameDuration, cbw: 0, minSimilarity: 0.7)
         text = (boosted.wasModified ? boosted.text : result.text).trimmingCharacters(in: .whitespacesAndNewlines)
     case "vqe":
-        text = try await manager.dictate(try await vqe!.process(mic: samples))
+        text = try await dictation.write(try await vqe!.process(mic: samples))
     default:
-        text = try await manager.dictate(samples)
+        text = try await dictation.write(samples)
     }
     let ms = Int((ContinuousClock.now - start) / .milliseconds(1))
     lines.append(String(decoding: try JSONEncoder().encode(Row(id: clip.id, text: text, ms: ms)), as: UTF8.self))
