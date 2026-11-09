@@ -89,7 +89,7 @@ private fun Speed(kind: Kind, activity: Activity, computer: String?) {
     if (kind == Kind.SAID && all.speed != null && typed != null && typed > 0) {
         lines += "%.1f× as fast as you type.".format(all.speed!! / typed)
     }
-    fastest?.let { lines += "Fastest day: ${it.second.roundToInt()} wpm, ${Format.day(it.first)}." }
+    fastest?.let { lines += "Fastest day: ${it.second.roundToInt()}\u00A0wpm, ${Format.day(it.first)}." }
     val noun = if (kind == Kind.TYPED) "typed" else "said"
     StatCard(
         if (kind == Kind.TYPED) "speedometer" else "waveform", kind.color(palette),

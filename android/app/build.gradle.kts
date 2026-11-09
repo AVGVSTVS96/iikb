@@ -101,11 +101,13 @@ val keys = tasks.register<Keys>("keys") {
 /**
  * Settings › Changelog's `changelog.json`: each change with its build and day, newest first, from the `Changelog:`
  * trailers of commits to android/, as scripts/phone writes iOS's `IIKBChangelog`. The Core it shares with iOS came
- * whole in its first build, so iOS's older lines aren't Android's changes.
+ * whole in its first build, so iOS's older lines aren't Android's changes. `android/changelog.tsv` rewords a commit's
+ * line (its hash, a tab, the line) where the trailer spoke of iOS, which someone on Android has never seen.
  */
 abstract class Changelog : DefaultTask() {
     @get:Input abstract val head: Property<String>
     @get:Internal abstract val repo: DirectoryProperty
+    @get:InputFile abstract val reworded: RegularFileProperty
     @get:OutputDirectory abstract val output: DirectoryProperty
 
     private fun git(vararg args: String): String {
@@ -115,12 +117,16 @@ abstract class Changelog : DefaultTask() {
 
     @TaskAction
     fun write() {
-        val entries = git("log", "--format=%h%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)", "--", "android")
+        val rewording = reworded.get().asFile.readLines().filter { it.isNotBlank() }
+            .associate { line -> line.substringBefore('\t') to line.substringAfter('\t') }
+        val entries = git("log", "--format=%H%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)", "--", "android")
             .lines()
             .filter { it.isNotBlank() }
             .flatMap { line ->
                 val (sha, day, trailers) = line.split("\u001f")
-                trailers.split("\u001e").filter { it.isNotBlank() }.map { Triple(sha, day, it.trim()) }
+                val changes = rewording.entries.firstOrNull { sha.startsWith(it.key) }?.let { listOf(it.value) }
+                    ?: trailers.split("\u001e").filter { it.isNotBlank() }.map { it.trim() }
+                changes.map { Triple(sha, day, it) }
             }
         val rows = entries.map { (sha, day, change) ->
             mapOf("build" to git("rev-list", "--count", sha).trim().toInt(), "date" to day, "change" to change)
@@ -135,6 +141,7 @@ val checkout = layout.dir(provider { repo })
 val changelog = tasks.register<Changelog>("changelog") {
     head = commit
     this.repo = checkout
+    reworded.set(rootProject.file("changelog.tsv"))
     output = layout.buildDirectory.dir("generated/changelog")
 }
 

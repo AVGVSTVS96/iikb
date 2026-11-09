@@ -198,8 +198,8 @@ private fun shareImage(context: Context, clips: Clips, image: String) {
     context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
-private val clock = DateTimeFormatter.ofPattern("h:mm a")
-private val dated = DateTimeFormatter.ofPattern("MMM d 'at' h:mm a")
+private val clock = DateTimeFormatter.ofPattern("h:mm\u202Fa")
+private val dated = DateTimeFormatter.ofPattern("MMM d 'at' h:mm\u202Fa")
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

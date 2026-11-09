@@ -1,0 +1,25 @@
+ce96d95	The keyboard's panels and menu draw their icons at truer sizes, and a held item's menu is frosted
+f6ba4b6	The tab bar, Back and the mic switch are glass
+9b5f6fd	Holding 123 shows a better sized layout menu
+7adac8e	The recording bar's icons are sized to match the bar
+a38796e	The keyboard's icons are redrawn, sharper and evenly weighted
+835f33c	Tiles and charts take brighter colors, light and dark
+7589557	The key click is on to start
+b84467b	Clipboard, Transcripts and GIFs have a cleaner layout: rows without cards, links in one line, buttons in the search field
+bee81e9	The dark menu's cards are grey, and the Default theme tile shows its keycaps
+3c7665f	The app's text, rows and spacing are evened out
+2f83c9f	The app's icons are redrawn
+598ce06	Settings › Voice shows a Parakeet getting ready under its size
+645f0f1	Stats and Transcripts write numbers and times more compactly, like 136.7k and 2m 45s
+a0e8d93	Holding a clip, transcript or GIF shows all of it, with its actions in a menu
+d9b2867	Home's Done is a blue checkmark
+02ee03d	Pinned clips and transcripts show their date, like Nov 7 at 7:49 AM
+9bd348e	Long dictations use less memory
+8f8bfa0	Pick which microphone voice typing uses
+0778a51	Home's mic switch turns voice typing off
+9142423	Parakeet Ultra, and no more Cyrillic in English dictations
+5c530d3	Voice typing spells the words in your Dictionary
+b64f548	The tab bar floats as a capsule
+7df0faa	Settings has new switches, sharper icons and a truer keyboard preview
+0ee0a12	Stats and Transcripts line up neatly
+5b61cad	Voice typing uses Parakeet v3, on your phone

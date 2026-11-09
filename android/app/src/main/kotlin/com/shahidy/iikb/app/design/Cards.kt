@@ -502,7 +502,7 @@ object Format {
     fun moment(time: Instant): String {
         val local = time.atZone(ZoneId.systemDefault())
         val today = local.toLocalDate() == LocalDate.now()
-        return local.format(DateTimeFormatter.ofPattern(if (today) "h:mm a" else "MMM d, h:mm a"))
+        return local.format(DateTimeFormatter.ofPattern(if (today) "h:mm\u202Fa" else "MMM d, h:mm\u202Fa"))
     }
 
     /** How long ago, as iOS's named relative dates say it: "now", "8 minutes ago", "yesterday". */
@@ -512,7 +512,7 @@ object Format {
         return if (now - then < 60_000) "now" else DateUtils.getRelativeTimeSpanString(then, now, DateUtils.MINUTE_IN_MILLIS).toString()
     }
 
-    fun hour(hour: Int): String = LocalTime.of(hour, 0).format(DateTimeFormatter.ofPattern("h a"))
+    fun hour(hour: Int): String = LocalTime.of(hour, 0).format(DateTimeFormatter.ofPattern("h\u202Fa"))
 
     /** <1% for a share under one percent, else a whole percent. */
     fun percent(share: Double) = if (share > 0 && share < 0.01) "<1%" else "${(share * 100).roundToInt()}%"

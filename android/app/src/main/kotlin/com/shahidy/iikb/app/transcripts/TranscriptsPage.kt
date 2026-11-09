@@ -171,7 +171,7 @@ fun title(day: LocalDate): String {
     }
 }
 
-private val clock = DateTimeFormatter.ofPattern("h:mm a")
+private val clock = DateTimeFormatter.ofPattern("h:mm\u202Fa")
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -330,7 +330,7 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
     var confirms by remember { mutableStateOf(false) }
     Page("Transcript", back, actions = { MicSwitch() }) {
         Text(
-            transcript.time().format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a")), color = palette.secondary,
+            transcript.time().format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm\u202Fa")), color = palette.secondary,
             fontSize = 15.sp, fontWeight = FontWeight.Medium,
             modifier = Modifier.fillMaxWidth().heightIn(min = 34.dp).wrapContentHeight().padding(horizontal = 4.dp),
         )
