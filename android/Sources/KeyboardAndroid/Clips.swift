@@ -34,7 +34,8 @@ final class Clips {
     func rows(matching search: String, in unit: ClipboardLength, now: Double) -> [Row] {
         history.matching(search).map { item in
             var row = Row(
-                text: item.content.preview ?? "", kind: "text", length: ClipboardHistory.length(of: item.content, in: unit),
+                text: item.content.preview ?? "", kind: "text",
+                length: ClipboardHistory.length(of: item.content, in: unit),
                 age: ClipboardHistory.age(of: item.found, now: now), pinned: item.pinned, found: item.found)
             switch item.content.kind {
             case .link(let link):
