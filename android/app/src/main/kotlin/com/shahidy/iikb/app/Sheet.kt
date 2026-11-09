@@ -1,6 +1,20 @@
 package com.shahidy.iikb.app
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,9 +48,10 @@ import androidx.compose.ui.unit.dp
 import com.shahidy.iikb.app.design.isDark
 
 /**
- * iOS's form sheet at its medium height: floating 8 off the screen's edges over the page dimmed behind it, a grabber
- * at its top, its title between Cancel and what it's for, which turns accent once it can, over sections that scroll.
- * It rides up on the keyboard.
+ * iOS's form sheet at its medium and large heights: floating 8 off the screen's edges over the page dimmed behind it,
+ * a grabber at its top, its title between Cancel and what it's for, which turns accent once it can, over sections that
+ * scroll. Dragged up, or its sections scrolled, it grows to the large height and settles at the nearer one; dragged
+ * down from the medium height it closes. It rides up on the keyboard.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +60,35 @@ fun Sheet(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val palette = palette()
-    val screen = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val density = LocalDensity.current
+    val screen = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    // iOS's medium detent, measured on an iPhone 17 Pro: its top 415 of 874 pt down the screen; its large 10 under the status bar.
+    val detents = with(density) { (screen * (1 - 415f / 874) - 8.dp).toPx() to (screen - top - 10.dp - 8.dp).toPx() }
+    var height by remember { mutableFloatStateOf(detents.first) }
+    val grow = rememberScrollableState { delta ->
+        val next = (height - delta).coerceIn(detents.first, detents.second)
+        val used = height - next
+        height = next
+        -used
+    }
+    val settle = remember(detents) {
+        object : FlingBehavior {
+            override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+                val (medium, large) = detents
+                if (height <= medium && initialVelocity > 0) return initialVelocity
+                val target = when {
+                    initialVelocity < -600 -> large
+                    initialVelocity > 600 -> medium
+                    else -> if (height - medium > (large - medium) / 2) large else medium
+                }
+                animate(height, target, initialVelocity = -initialVelocity, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { value, _ ->
+                    height = value
+                }
+                return 0f
+            }
+        }
+    }
     ModalBottomSheet(
         close, Modifier.imePadding().padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -53,8 +96,10 @@ fun Sheet(
         scrimColor = Color.Black.copy(alpha = if (palette.isDark) 0.48f else 0.2f),
         dragHandle = null, contentWindowInsets = { WindowInsets(0) },
     ) {
-        // iOS's medium detent, measured on an iPhone 17 Pro: its top 415 of 874 pt down the screen.
-        Box(Modifier.fillMaxWidth().height(screen * (1 - 415f / 874) - 8.dp)) {
+        Box(
+            Modifier.fillMaxWidth().height(with(density) { height.toDp() })
+                .scrollable(grow, Orientation.Vertical, flingBehavior = settle),
+        ) {
             Column {
                 Row(Modifier.fillMaxWidth().padding(start = 14.5.dp, end = 14.5.dp, top = 15.5.dp), verticalAlignment = Alignment.CenterVertically) {
                     SheetButton("Cancel", enabled = true, prominent = false, onClick = close)
