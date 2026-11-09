@@ -48,6 +48,7 @@ class Settings(context: Context) {
             "keyboardMenu" to "both",
             "clipboardLength" to "characters",
             "globe" to "spacer",
+            "split" to "false",
             "oneHanded" to "off",
             "skinTone" to "",
             "writingStyle" to "casual",

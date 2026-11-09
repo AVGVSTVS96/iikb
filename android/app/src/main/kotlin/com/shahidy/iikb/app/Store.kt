@@ -1,5 +1,6 @@
 package com.shahidy.iikb.app
 
+import android.content.SharedPreferences
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
@@ -8,9 +9,17 @@ import com.shahidy.iikb.Settings
 
 val LocalStore = staticCompositionLocalOf<Store> { error("no store") }
 
-/** The settings as Compose reads them: each change redraws the pages that show it. */
-class Store(private val settings: Settings) {
+/**
+ * The settings as Compose reads them: each change redraws the pages that show it, whether the app made it or the
+ * keyboard's menu did, as the open iPhone Duo shows the menu's picks beside the keys.
+ */
+class Store(val settings: Settings) {
     private var revision by mutableIntStateOf(0)
+    private val changed = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> revision++ }
+
+    init {
+        settings.preferences.registerOnSharedPreferenceChangeListener(changed)
+    }
 
     fun bool(name: String): Boolean {
         revision
@@ -28,12 +37,17 @@ class Store(private val settings: Settings) {
         }
     }
 
+    /** Every setting as the engine reads them, read again after each change. */
+    fun lines(): String {
+        revision
+        return settings.lines()
+    }
+
     fun set(name: String, value: Boolean) {
         when (name) {
             "haptics.on" -> settings.set("hapticFeedback", if (value) string("haptics.strength") else "off")
             else -> settings.set(name, value)
         }
-        revision++
     }
 
     /** Haptic Feedback keeps its strength while it's off, as iOS's Strength slider does. */
@@ -45,10 +59,10 @@ class Store(private val settings: Settings) {
             }
             else -> settings.set(name, value)
         }
-        revision++
     }
 
-    fun themeTitle() = THEMES.firstOrNull { it.first == string("theme") }?.second ?: "Default"
+    fun title(name: String, choices: List<Pair<String, String>>) =
+        choices.firstOrNull { it.first == string(name) }?.second ?: choices.first().second
 
     /** The keyboard reads the token and starts over from nothing. */
     fun resetMemory() {

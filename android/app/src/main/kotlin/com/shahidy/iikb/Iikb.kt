@@ -8,5 +8,6 @@ class Iikb : Application() {
         super.onCreate()
         Transcripts.load(this)
         TypingStats.load(this)
+        Vocabulary.load(this)
     }
 }

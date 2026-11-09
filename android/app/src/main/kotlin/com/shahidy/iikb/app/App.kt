@@ -55,7 +55,8 @@ fun App(
         lightColorScheme(background = palette.page, surface = palette.page, primary = palette.accent)
     }
     val store = remember { Store(settings) }
-    CompositionLocalProvider(LocalPalette provides palette, LocalStore provides store) {
+    val access = Access(setup, onEnable, onPick, onMicrophone)
+    CompositionLocalProvider(LocalPalette provides palette, LocalStore provides store, LocalAccess provides access) {
         MaterialTheme(colorScheme = colors) {
             var tab by rememberSaveable { mutableIntStateOf(0) }
             var page by rememberSaveable { mutableStateOf(startPage?.takeIf { it != MainActivity.VOICE }) }
@@ -88,7 +89,10 @@ fun App(
                     when {
                         page != null -> SettingsPage(page!!) { page = null }
                         else -> when (Tab.entries[tab]) {
-                            Tab.HOME -> Home(setup, onEnable, onPick, onMicrophone) { page = it }
+                            Tab.HOME -> Home(open = { page = it }) { to, section ->
+                                section?.let { stats = it }
+                                tab = to.ordinal
+                            }
                             Tab.TRANSCRIPTS -> TranscriptsPage {
                                 stats = StatsSection.DICTATION
                                 tab = Tab.STATS.ordinal

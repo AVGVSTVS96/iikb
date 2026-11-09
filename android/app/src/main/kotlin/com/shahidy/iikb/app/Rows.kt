@@ -2,64 +2,100 @@ package com.shahidy.iikb.app
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
+/** iOS's Dynamic Type sizes at Large, which the iOS app's text takes. */
+object Type {
+    val body = 17.sp
+    val subheadline = 15.sp
+    val footnote = 13.sp
+    val title3 = 20.sp
+}
+
+/** Rounded rectangles as iOS's continuous corners come closest to on Android. */
+val CardShape = RoundedCornerShape(22.dp)
+
+/**
+ * A page: its title and buttons in a bar pinned at the top, as iOS's navigation bar holds them, over a column of
+ * sections 28 apart that scrolls under it. A tab's page has a large title; one opened from another (`onBack`) a small
+ * one beside Back.
+ */
 @Composable
 fun Page(
     title: String, onBack: (() -> Unit)? = null, pinned: (@Composable () -> Unit)? = null,
-    content: @Composable () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {}, content: @Composable ColumnScope.() -> Unit,
 ) {
-    Frame(title, onBack, pinned) { padding ->
+    Frame(title, onBack, pinned, actions) {
         Column(
-            Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-        ) {
-            content()
-            Spacer(Modifier.height(32.dp))
-        }
+            Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(28.dp),
+            content = content,
+        )
     }
 }
 
@@ -67,68 +103,92 @@ fun Page(
 @Composable
 fun ListPage(
     title: String, onBack: (() -> Unit)? = null, pinned: (@Composable () -> Unit)? = null,
-    content: LazyListScope.() -> Unit,
+    actions: @Composable RowScope.() -> Unit = {}, content: LazyListScope.() -> Unit,
 ) {
-    Frame(title, onBack, pinned) { padding ->
+    Frame(title, onBack, pinned, actions) {
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding).imePadding(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
+            Modifier.fillMaxSize().imePadding(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp),
         ) { content() }
     }
 }
 
-/** A page's large title, collapsing as it scrolls, with its Back and what's pinned under it. */
-@OptIn(ExperimentalMaterial3Api::class)
+/** A page's bar, its title, Back and buttons, with what's pinned under it, over what scrolls. */
 @Composable
 private fun Frame(
-    title: String, onBack: (() -> Unit)?, pinned: (@Composable () -> Unit)?,
-    content: @Composable (PaddingValues) -> Unit,
+    title: String, onBack: (() -> Unit)?, pinned: (@Composable () -> Unit)?, actions: @Composable RowScope.() -> Unit,
+    content: @Composable () -> Unit,
 ) {
     val palette = palette()
-    val behavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
-    Scaffold(
-        modifier = Modifier.nestedScroll(behavior.nestedScrollConnection),
-        containerColor = palette.page,
-        topBar = {
-            Column(Modifier.background(palette.page)) {
-                LargeTopAppBar(
-                    title = { Text(title, fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        if (onBack != null) {
-                            IconButton(onClick = onBack) { Icon(glyph("M15 4.5 7.5 12l7.5 7.5"), "Back") }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = palette.page, scrolledContainerColor = palette.page,
-                        titleContentColor = palette.label, navigationIconContentColor = palette.label,
-                    ),
-                    expandedHeight = 104.dp,
-                    scrollBehavior = behavior,
+    Column(Modifier.fillMaxSize().background(palette.page).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (onBack != null) {
+                Box(
+                    Modifier.size(44.dp).clip(CircleShape).background(palette.card)
+                        .border(BorderStroke(1.dp, palette.edge), CircleShape).clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Symbols["chevron.left"], "Back", tint = palette.label, modifier = Modifier.size(20.dp)) }
+                Text(
+                    title, color = palette.label, fontSize = Type.body, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 14.dp).weight(1f), maxLines = 1,
                 )
-                pinned?.let { Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) { it() } }
+            } else {
+                Text(
+                    title, color = palette.label, fontSize = 34.sp, fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.02).em, modifier = Modifier.padding(start = 4.dp).weight(1f), maxLines = 1,
+                )
             }
-        },
-        content = content,
-    )
+            actions()
+        }
+        pinned?.let { Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) { it() } }
+        content()
+    }
 }
 
+/** A card of rows under a gray header and over a gray footer (iOS's `Box`). */
 @Composable
-fun Section(header: String? = null, footer: String? = null, content: @Composable () -> Unit) {
+fun Section(header: String? = null, footer: String? = null, content: @Composable ColumnScope.() -> Unit) {
     val palette = palette()
-    Column(Modifier.padding(top = 20.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (header != null) {
-            Text(header, color = palette.secondary, fontSize = 13.sp, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
+            Text(
+                header, color = palette.secondary, fontSize = Type.subheadline, fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
         }
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(palette.card)
-                .border(BorderStroke(1.dp, palette.edge), RoundedCornerShape(22.dp)),
-        ) { content() }
+            Modifier.fillMaxWidth().clip(CardShape).background(palette.card).border(BorderStroke(1.dp, palette.edge), CardShape),
+            content = content,
+        )
         if (footer != null) {
-            Text(footer, color = palette.secondary, fontSize = 13.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp))
+            Text(
+                footer, color = palette.secondary, fontSize = Type.footnote, lineHeight = 18.sp,
+                modifier = Modifier.padding(horizontal = 20.dp).widthIn(max = 560.dp),
+            )
         }
     }
 }
 
+/** The hairline between two rows of a card, inset from its leading edge. */
+@Composable
+fun Divider() = Box(Modifier.padding(start = 20.dp, end = 1.dp).fillMaxWidth().height(1.dp).background(palette().divider))
+
+/** A row's title and, under it, a line on what it does. */
+@Composable
+fun RowText(title: String, detail: String? = null, modifier: Modifier = Modifier, color: Color = palette().label) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(title, color = color, fontSize = Type.body)
+        if (detail != null) Text(detail, color = palette().secondary, fontSize = Type.subheadline, lineHeight = 20.sp)
+    }
+}
+
+/** A row's padding and height, the same for every kind of row. */
+fun Modifier.row() = fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 20.dp, vertical = 14.dp)
+
+/** A row: its text, then whatever sits at its right. */
 @Composable
 fun Line(
     title: String, detail: String? = null, value: String? = null, onClick: (() -> Unit)? = null,
@@ -136,70 +196,93 @@ fun Line(
 ) {
     val palette = palette()
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 56.dp).let { if (onClick != null) it.clickable(onClick = onClick) else it }
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        Modifier.let { if (onClick != null) it.clickable(onClick = onClick) else it }.row(),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, color = color ?: palette.label, fontSize = 17.sp)
-            if (detail != null) Text(detail, color = palette.secondary, fontSize = 13.sp)
-        }
-        if (value != null) Text(value, color = palette.secondary, fontSize = 17.sp)
+        RowText(title, detail, Modifier.weight(1f), color ?: palette.label)
+        if (value != null) Text(value, color = palette.secondary, fontSize = Type.body, maxLines = 1)
         trailing?.invoke()
     }
 }
 
-/** A row that opens a page, with its value and a chevron. */
+/** A small gray symbol at a row's right: a chevron for a page, an arrow for what leaves the app. */
 @Composable
-fun Link(title: String, value: String? = null, onClick: () -> Unit) {
+fun Trailing(symbol: String, tint: Color = palette().secondary) =
+    Icon(Symbols[symbol], null, tint = tint, modifier = Modifier.size(15.dp))
+
+/** A white symbol on a colored rounded square, as Raycast's More page draws its commands (iOS's `Glyph`). */
+@Composable
+fun Glyph(symbol: String, color: Color, size: Dp = 30.dp) {
+    Box(
+        Modifier.size(size).clip(RoundedCornerShape(size * 0.26f))
+            .background(Brush.verticalGradient(listOf(color.lighten(), color))),
+        contentAlignment = Alignment.Center,
+    ) { Icon(Symbols[symbol], null, tint = Color.White, modifier = Modifier.size(size * 0.56f)) }
+}
+
+/** SwiftUI's `Color.gradient`: the color, a little lighter at the top. */
+private fun Color.lighten() = Color(red + (1 - red) * 0.18f, green + (1 - green) * 0.18f, blue + (1 - blue) * 0.18f, alpha)
+
+/** A row that opens a page, with what it's set to and a chevron. */
+@Composable
+fun Link(title: String, value: String? = null, detail: String? = null, onClick: () -> Unit) {
+    Line(title, detail, value, onClick) { Trailing("chevron.right") }
+}
+
+/** A row that does something, in the accent or, for what can't be undone, red; dimmed while it can't. */
+@Composable
+fun ActionRow(
+    title: String, symbol: String? = null, destructive: Boolean = false, enabled: Boolean = true, onClick: () -> Unit,
+) {
     val palette = palette()
-    Line(title, value = value, onClick = onClick) {
-        Icon(
-            glyph("M9 4.5l7.5 7.5L9 19.5"), null, tint = palette.secondary,
-            modifier = Modifier.padding(start = 8.dp).size(16.dp),
-        )
+    val color = if (destructive) palette.red else palette.accent
+    Row(
+        Modifier.clickable(enabled = enabled, onClick = onClick).row().alpha(if (enabled) 1f else 0.4f),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, color = color, fontSize = Type.body, modifier = Modifier.weight(1f))
+        if (symbol != null) Icon(Symbols[symbol], null, tint = color, modifier = Modifier.size(17.dp))
     }
 }
 
-@Composable
-fun Divider() = HorizontalDivider(Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = palette().edge)
-
+/** Raycast's radio mark: a gray ring, or a filled circle with a check when picked. */
 @Composable
 fun Radio(on: Boolean) {
     val palette = palette()
+    val fill by animateFloatAsState(if (on) 1f else 0f, label = "radio")
     Box(
-        Modifier.size(22.dp).clip(CircleShape)
-            .background(if (on) palette.selected else Color.Transparent)
-            .border(BorderStroke(1.5.dp, if (on) palette.selected else palette.secondary), CircleShape),
+        Modifier.size(26.dp).clip(CircleShape)
+            .border(BorderStroke(1.5.dp, palette.secondary.copy(alpha = 0.9f * (1 - fill))), CircleShape)
+            .background(palette.selected.copy(alpha = fill)),
         contentAlignment = Alignment.Center,
     ) {
-        if (on) Icon(glyph("M6 12.5l4 4L18 8"), null, tint = palette.selectedLabel, modifier = Modifier.size(16.dp))
+        if (on) Icon(Symbols["checkmark"], null, tint = palette.selectedLabel, modifier = Modifier.size(15.dp))
     }
 }
 
+/** One of a setting's values, with the radio mark at its right. */
+@Composable
+fun ChoiceRow(title: String, detail: String? = null, picked: Boolean, onClick: () -> Unit) {
+    Line(title, detail, onClick = onClick) { Radio(picked) }
+}
+
+/** A switch row for a setting kept by `name`. */
 @Composable
 fun Toggle(title: String, name: String, detail: String? = null) {
     val store = LocalStore.current
     val on = store.bool(name)
-    val palette = palette()
-    Line(title, detail, onClick = { store.set(name, !on) }) {
-        Switch(on, palette) { store.set(name, it) }
-    }
+    Line(title, detail, onClick = { store.set(name, !on) }) { Switch(on) { store.set(name, it) } }
 }
 
-/** A switch as the iOS app's: a round knob the same size on and off, sliding over a gray or accent track. */
+/** A switch as iOS's: a round knob the same size on and off, sliding over a gray or accent track. */
 @Composable
-private fun Switch(on: Boolean, palette: Palette, onChange: (Boolean) -> Unit) {
+fun Switch(on: Boolean, onChange: (Boolean) -> Unit) {
+    val palette = palette()
     val knob by animateDpAsState(if (on) 22.dp else 2.dp, label = "knob")
     val track by animateColorAsState(if (on) palette.accent else palette.track, label = "track")
-    Box(
-        Modifier.padding(start = 12.dp).size(51.dp, 31.dp).clip(CircleShape).background(track)
-            .clickable { onChange(!on) },
-    ) {
-        Box(
-            Modifier.padding(start = knob, top = 2.dp).size(27.dp)
-                .shadow(2.dp, CircleShape).background(Color.White, CircleShape),
-        )
+    Box(Modifier.size(51.dp, 31.dp).clip(CircleShape).background(track).clickable { onChange(!on) }) {
+        Box(Modifier.padding(start = knob, top = 2.dp).size(27.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
     }
 }
 
@@ -210,30 +293,123 @@ fun Choices(name: String, options: List<Pair<String, String>>, details: Map<Stri
     val picked = store.string(name)
     options.forEachIndexed { index, (value, title) ->
         if (index > 0) Divider()
-        Line(title, details[value], onClick = { store.set(name, value) }) { Radio(picked == value) }
+        ChoiceRow(title, details[value], picked == value) { store.set(name, value) }
     }
 }
 
-/** Stops on a slider, the middle one Standard, named at its ends. */
+/** A row whose value opens a menu of the others, as Raycast's pop-up rows do (iOS's `MenuRow`). */
 @Composable
-fun Stops(title: String, name: String, stops: List<String>, low: String, high: String) {
+fun MenuRow(title: String, name: String, choices: List<Pair<String, String>>) {
     val store = LocalStore.current
     val palette = palette()
-    val index = stops.indexOf(store.string(name)).coerceAtLeast(0)
-    Column(Modifier.padding(16.dp)) {
-        Text(title, color = palette.label, fontSize = 17.sp)
-        Slider(
-            value = index.toFloat(), onValueChange = { store.set(name, stops[it.toInt().coerceIn(stops.indices)]) },
-            valueRange = 0f..(stops.size - 1).toFloat(), steps = stops.size - 2,
-            colors = SliderDefaults.colors(
-                activeTrackColor = palette.accent, inactiveTrackColor = palette.edge, thumbColor = palette.accent,
-                activeTickColor = Color.White, inactiveTickColor = palette.secondary,
-            ),
-        )
+    var open by remember { mutableStateOf(false) }
+    val picked = store.string(name)
+    Box {
+        Line(title, value = choices.firstOrNull { it.first == picked }?.second, onClick = { open = true }) {
+            Trailing("chevron.up.chevron.down")
+        }
+        DropdownMenu(
+            open, { open = false }, Modifier.background(palette.card), shape = RoundedCornerShape(14.dp),
+            containerColor = palette.card,
+        ) {
+            choices.forEach { (value, label) ->
+                DropdownMenuItem(
+                    text = { Text(label, color = palette.label, fontSize = Type.body) },
+                    leadingIcon = {
+                        Box(Modifier.width(18.dp)) {
+                            if (value == picked) Icon(Symbols["checkmark"], null, tint = palette.label, modifier = Modifier.size(15.dp))
+                        }
+                    },
+                    onClick = {
+                        store.set(name, value)
+                        open = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Stops on one track, Standard in the middle, named at its ends, the picked one's name beside the title (iOS's `StopSlider`). */
+@Composable
+fun Stops(title: String, name: String, stops: List<Pair<String, String>>, low: String, high: String, picked: (String) -> Unit = {}) {
+    val store = LocalStore.current
+    val palette = palette()
+    val index = stops.indexOfFirst { it.first == store.string(name) }.takeIf { it >= 0 } ?: (stops.size / 2)
+    val pick = { stop: Int ->
+        val next = stops[stop.coerceIn(stops.indices)].first
+        if (next != stops[index].first) {
+            store.set(name, next)
+            picked(next)
+        }
+    }
+    Column(Modifier.row(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row {
-            Text(low, color = palette.secondary, fontSize = 13.sp)
-            Spacer(Modifier.weight(1f))
-            Text(high, color = palette.secondary, fontSize = 13.sp)
+            Text(title, color = palette.label, fontSize = Type.body, modifier = Modifier.weight(1f))
+            Text(stops[index].second, color = palette.secondary, fontSize = Type.body)
+        }
+        val position by animateFloatAsState(index.toFloat(), label = "stop")
+        Canvas(
+            Modifier.fillMaxWidth().height(28.dp)
+                .pointerInput(stops) {
+                    detectTapGestures { pick(((it.x - 14.dp.toPx()) / ((size.width - 28.dp.toPx()) / (stops.size - 1))).let(Math::round)) }
+                }
+                .pointerInput(stops, index) {
+                    detectHorizontalDragGestures { change, _ ->
+                        pick(((change.position.x - 14.dp.toPx()) / ((size.width - 28.dp.toPx()) / (stops.size - 1))).let(Math::round))
+                    }
+                },
+        ) {
+            val thumb = 28.dp.toPx()
+            val step = (size.width - thumb) / (stops.size - 1)
+            val y = size.height / 2
+            val x = thumb / 2 + position * step
+            drawLine(palette.divider, Offset(thumb / 2, y), Offset(size.width - thumb / 2, y), 4.dp.toPx(), StrokeCap.Round)
+            drawLine(palette.accent, Offset(thumb / 2, y), Offset(x, y), 4.dp.toPx(), StrokeCap.Round)
+            for (stop in stops.indices) {
+                val color = if (stop <= index) palette.accent else palette.secondary.copy(alpha = 0.45f)
+                drawCircle(color, 4.dp.toPx(), Offset(thumb / 2 + stop * step, y))
+            }
+            drawCircle(Color.Black.copy(alpha = 0.12f), thumb / 2 + 1.dp.toPx(), Offset(x, y + 1.dp.toPx()))
+            drawCircle(Color.White, thumb / 2, Offset(x, y))
+        }
+        Box(Modifier.fillMaxWidth()) {
+            val style = TextStyle(color = palette.secondary, fontSize = Type.footnote)
+            Text(low, style = style, modifier = Modifier.align(Alignment.CenterStart))
+            Text("Standard", style = style, textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.Center))
+            Text(high, style = style, modifier = Modifier.align(Alignment.CenterEnd))
+        }
+    }
+}
+
+/** A press that dims a card the way Raycast's do. */
+@Composable
+fun Modifier.cardPress(onClick: () -> Unit): Modifier {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.98f else 1f, label = "press")
+    return scale(scale).alpha(if (pressed) 0.7f else 1f).clickable(interaction, indication = null, onClick = onClick)
+}
+
+/** A card in the app's look: its edge, fill and corner (iOS's `.background(Color.appCard, in: …)` with its edge). */
+@Composable
+fun Modifier.card() = clip(CardShape).background(palette().card).border(BorderStroke(1.dp, palette().edge), CardShape)
+
+/**
+ * A Raycast tile: a glyph at its top left and a title and a line in gray at its bottom left, as a widget sets them
+ * out when it's taller than they need.
+ */
+@Composable
+fun Tile(symbol: String, color: Color, title: String, detail: String?, modifier: Modifier = Modifier) {
+    val palette = palette()
+    Column(
+        modifier.card().heightIn(min = 128.dp).padding(18.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Glyph(symbol, color, 34.dp)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, color = palette.label, fontSize = Type.body, fontWeight = FontWeight.Medium, maxLines = 2)
+            if (detail != null) Text(detail, color = palette.secondary, fontSize = Type.footnote, maxLines = 2)
         }
     }
 }
