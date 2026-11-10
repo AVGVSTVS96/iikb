@@ -2,7 +2,8 @@ import Foundation
 import SwiftUI
 
 /// What changed in each build, a box per day, newest first. scripts/phone writes the list into the app's Info.plist as
-/// `IIKBChangelog`, from each commit's `Changelog:` trailer and App/Settings/changelog.tsv.
+/// `IIKBChangelog`, from the `Changelog:` trailer of each commit that changed what the iPhone's iikb is built from
+/// (scripts/iphone-paths.txt), and App/Settings/changelog.tsv.
 struct ChangelogPage: View {
     private struct Change: Hashable {
         let build: Int

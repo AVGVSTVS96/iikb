@@ -3,6 +3,10 @@ const COMMIT = "\u001D";
 const TRAILER = "\u001E";
 const NEWEST_CHANGES = 24;
 
+const IPHONE = (await Bun.file(new URL("../scripts/iphone-paths.txt", import.meta.url)).text())
+  .split("\n")
+  .filter((line) => line !== "" && !line.startsWith("#"));
+
 const log = Bun.spawnSync(
   ["git", "log", "--format=%h%x1f%cI%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)%x1d"],
   { stderr: "inherit" },
@@ -11,6 +15,16 @@ const log = Bun.spawnSync(
 if (!log.success) {
   throw new Error(`git log failed with ${log.exitCode}`);
 }
+
+const shipped = Bun.spawnSync(["git", "log", "--format=%h", "--", ...IPHONE], {
+  stderr: "inherit",
+});
+
+if (!shipped.success) {
+  throw new Error(`git log failed with ${shipped.exitCode}`);
+}
+
+const onIphone = new Set(shipped.stdout.toString().split("\n"));
 
 const commits = log.stdout
   .toString()
@@ -30,6 +44,7 @@ if (!head || !first) {
 }
 
 const changes = commits
+  .filter(({ sha }) => onIphone.has(sha))
   .flatMap(({ sha, at, trailers }) =>
     trailers.split(TRAILER).map((text) => ({
       sha,

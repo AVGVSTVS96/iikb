@@ -90,5 +90,5 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | Restore only after `scripts/phone`: an old build can't read a memory restored without its token | judgment: nothing enforces it |
 | No comments unless they record a non-obvious fact | judgment: nothing enforces it |
 | Every AGENTS.md names only code that exists, and no file keeps a conflict marker | `ArchitectureTests` |
-| A change you'd notice in the app or keyboard carries a `Changelog:` trailer, one short line (App/Settings/ChangelogPage.swift) | judgment: nothing enforces it |
+| A change you'd notice in the app or keyboard carries a `Changelog:` trailer, one short line (App/Settings/ChangelogPage.swift). It shows on each platform whose files the commit changes: iPhone's Changelog and iikb.vercel.app for `scripts/iphone-paths.txt`, Android's for `android/`; a change worded differently for each is two commits | `scripts/phone`, `web/changes.ts`, android/app/build.gradle.kts |
 | What the public sees (`TestFlight/`, the README, docs/, the site, Changelog lines, the app's words) passes a reviewer before it goes out | `scripts/hooks/pre-push` runs `scripts/public-review.ts` on every push to main (`git config core.hooksPath scripts/hooks`) |

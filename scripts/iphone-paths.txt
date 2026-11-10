@@ -1,0 +1,13 @@
+# What the iPhone's iikb is built from, as git pathspecs: scripts/phone installs main only once one of these changed,
+# and a commit's Changelog: trailer shows on the iPhone's Changelog page and iikb.vercel.app only when it changed one.
+App
+Keyboard
+Controls
+Config/xtool
+xtool.yml
+Package.swift
+Package.resolved
+Packages/KeyboardModules/Package.swift
+Packages/KeyboardModules/Sources
+Packages/Voice
+:(exclude)**/AGENTS.md

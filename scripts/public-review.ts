@@ -29,7 +29,23 @@ const WORDS = /"[^"\n]*[A-Za-z][^"\n]* [^"\n]*"/u;
 const NO_COMMIT = "0000000000000000000000000000000000000000";
 const TRAILERS = "--format=%(trailers:key=Changelog,valueonly)";
 const MESSAGES = "--format=%B%n---";
-const CHANGELOG = "Changelog lines: the app's Changelog page and the changelog on iikb.vercel.app";
+
+const IPHONE = (await Bun.file(new URL("iphone-paths.txt", import.meta.url)).text())
+  .split("\n")
+  .filter((line) => line !== "" && !line.startsWith("#"));
+
+const CHANGELOGS = [
+  {
+    where:
+      "Changelog lines for iPhone: the iOS app's Changelog page and the changelog on iikb.vercel.app",
+    paths: IPHONE,
+  },
+  {
+    where:
+      "Changelog lines for Android: the Android app's Changelog page, read by people on Android",
+    paths: ["android"],
+  },
+] as const;
 
 const Verdict = z.object({
   ok: z.boolean(),
@@ -38,7 +54,7 @@ const Verdict = z.object({
 
 const Output = z.object({ structured_output: Verdict });
 
-const PROMPT = `iikb is an open-source iOS keyboard and app, built in public at github.com/AVGVSTVS96/iikb by Bassim Shahidy. What follows is about to go out where the public reads it: testers who joined TestFlight from a public link, people visiting iikb.vercel.app, developers reading the repo on GitHub. Each piece says where it shows up.
+const PROMPT = `iikb is an open-source iOS keyboard and app, with an Android port, built in public at github.com/AVGVSTVS96/iikb by Bassim Shahidy. What follows is about to go out where the public reads it: testers who joined TestFlight from a public link, people visiting iikb.vercel.app, developers reading the repo on GitHub. Each piece says where it shows up.
 
 Review it as the people who will read it there. Bassim's bar for iikb's public words: they speak for iikb to strangers, never to or about him personally; nothing private (people, accounts, phone numbers, addresses, health, legal or money matters); no frustration or anger; and few words ("so many words on pages" annoys him). copy/MESSAGING.md is the project's guide to its public words, and the repo in your working directory is there to check any claim against.
 
@@ -94,11 +110,14 @@ const changed = async (base: string, head: string): Promise<Piece[]> => {
   const found = await Promise.all(files.map(async (path) => await pieceOf(base, head, path)));
   const pieces = found.filter((piece) => piece !== null);
 
-  const trailers = (await $`git log ${TRAILERS} ${base}..${head}`.text()).trim();
+  const changelogs = await Promise.all(
+    CHANGELOGS.map(async ({ where, paths }) => ({
+      where,
+      text: (await $`git log ${TRAILERS} ${base}..${head} -- ${paths}`.text()).trim(),
+    })),
+  );
 
-  if (trailers !== "") {
-    pieces.push({ where: CHANGELOG, text: trailers });
-  }
+  pieces.push(...changelogs.filter(({ text }) => text !== ""));
 
   if (pieces.length === 0) {
     return [];
@@ -125,9 +144,14 @@ const everything = async (): Promise<Piece[]> => {
     })),
   );
 
-  const trailers = await $`git log -n 200 ${TRAILERS}`.text();
+  const changelogs = await Promise.all(
+    CHANGELOGS.map(async ({ where, paths }) => ({
+      where: `${where}, newest first`,
+      text: await $`git log -n 200 ${TRAILERS} -- ${paths}`.text(),
+    })),
+  );
 
-  return [...pieces, { where: `${CHANGELOG}, newest first`, text: trailers }];
+  return [...pieces, ...changelogs];
 };
 
 const review = async (pieces: readonly Piece[]) => {
