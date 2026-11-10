@@ -120,7 +120,8 @@ final class Keyboard {
         let tools: [Panel] = engine.settings.emojiKey && context.device != .phone ? [.emoji] : []
         let keys = topRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
         let bar = BarLayout(
-            toolbar, keys: keys, tools: tools.count, more: barMore, mic: !(keyed && keysShown), maximumSlot: toolbar.slot)
+            toolbar, keys: keys, tools: tools.count, more: barMore, mic: !(keyed && keysShown),
+            maximumSlot: toolbar.slot)
         let menuKeys = context.menuKeys(in: geometry.layout)
         let items = context.menu
         return Frame(
