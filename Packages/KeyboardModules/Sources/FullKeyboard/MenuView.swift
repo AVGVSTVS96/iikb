@@ -18,6 +18,8 @@ final class MenuView: UIView {
     private var shelves: [(panel: Panel, shelf: Shelf, content: PanelResults)] = []
     private var block = (minX: CGFloat(0), maxX: CGFloat(0))
     private let scroll = ButtonScrollView()
+    /// Fades the shelves out under the bar as they scroll up, rather than cutting them off.
+    private let fade = CAGradientLayer()
     private let themes = LookStrip(ThemeName.allCases, width: 84) { theme in
         LookTile(theme.title, id: "theme.\(theme)", art: KeycapSwatchView())
     }
@@ -40,6 +42,8 @@ final class MenuView: UIView {
         themes.onPick = { [unowned self] in onTheme($0) }
         stops.onPick = { [unowned self] in onStop($0) }
         scroll.alwaysBounceVertical = true
+        layer.mask = fade
+        fade.colors = [UIColor.clear, .black].map(\.cgColor)
         addSubview(scroll)
         [themeShelf, stopShelf].forEach(scroll.addSubview)
     }
@@ -120,6 +124,11 @@ final class MenuView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         scroll.frame = bounds
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        fade.frame = bounds
+        fade.locations = [0, NSNumber(value: Self.gap / max(bounds.height, 1))]
+        CATransaction.commit()
         let width = block.maxX - block.minX
         var y = Self.gap
         let rows = shelves.map { _ in CGFloat(rowHeight) } + [Self.themeRow, Self.stopRow]
@@ -169,6 +178,9 @@ private final class Shelf: UIView {
         glass.cornerConfiguration = .uniformCorners(radius: .fixed(Self.radius))
         glass.clipsToBounds = true
         addSubview(glass)
+        body.layer.cornerRadius = Self.inner
+        body.layer.cornerCurve = .continuous
+        body.clipsToBounds = true
         glass.contentView.addSubview(head)
         glass.contentView.addSubview(body)
     }
