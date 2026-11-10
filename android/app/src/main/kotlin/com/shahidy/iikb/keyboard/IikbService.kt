@@ -14,6 +14,7 @@ import android.os.SystemClock
 import android.provider.UserDictionary
 import android.text.InputType
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
@@ -25,6 +26,7 @@ import android.widget.FrameLayout
 import android.view.inputmethod.EditorInfo
 import androidx.compose.ui.geometry.Rect
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.inputmethod.EditorInfoCompat
 import androidx.core.view.inputmethod.InputConnectionCompat
@@ -138,7 +140,8 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     /**
      * The keyboard's window background, as iOS's keyboard glass: the app behind it frosted under the theme's tint,
      * where Android blurs across windows (12 on, unless Battery Saver or the developer option turns it off), and
-     * the theme's card, opaque, where it doesn't. The window clips the blur to this shape.
+     * the theme's card, opaque, where it doesn't. The window clips the blur to this shape. Android's own row under
+     * the keys, hide and switch keyboards, takes dark buttons on light glass.
      */
     private val glass = GradientDrawable()
     private var glassTheme: Theme? = null
@@ -157,6 +160,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         val window = window.window ?: return
         window.setFormat(PixelFormat.TRANSLUCENT)
         window.setBackgroundDrawable(glass)
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightNavigationBars = Color.red(theme.card) >= 128
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             window.setBackgroundBlurRadius(if (blurs) (GLASS_BLUR * density).toInt() else 0)
         }
