@@ -20,7 +20,7 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
     var field: PanelField {
         .search(.init("Search KLIPY", glyph: Self.fieldGlyph, accessories: [clock], notice: notice))
     }
-    private static let fieldGlyph = Panel.gifGlyph(18.4)
+    private static let fieldGlyph = Panel.gifGlyph(18.4 / 0.88)
     private(set) var notice: String?
 
     private let klipy: Klipy

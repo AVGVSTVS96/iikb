@@ -1,12 +1,13 @@
 import KeyboardCore
 import UIKit
 
-/// One of the buttons at the bar's left, the More button or a panel's tool: its glyph, in a circle that shows only while
-/// pressed, or while what it opened is out.
+/// One of the buttons at the bar's left, the More button or a panel's tool: its glyph, with its title beside it where
+/// the bar has room, in a circle that shows only while pressed, or while what it opened is out.
 public final class BarButton: UIButton {
     public var theme = KeyboardTheme.lightCurrent { didSet { refresh() } }
     var isOn = false { didSet { if isOn != oldValue { refresh() } } }
-    /// Set on a circle of iOS's glass as tall as `ChatTabs`, beside them while a chat is read, in place of the on circle.
+    /// Set on a circle of iOS's glass `glassSide` tall, in place of the on circle: beside the chats' tabs, or the tools'
+    /// capsule.
     public var glassy = false {
         didSet {
             guard glassy != oldValue else { return }
@@ -15,11 +16,24 @@ public final class BarButton: UIButton {
             setNeedsLayout()
         }
     }
+    var glassSide = ChatTabs.height { didSet { if glassSide != oldValue { setNeedsLayout() } } }
+    /// The title beside the glyph.
+    var titled = false {
+        didSet {
+            guard titled != oldValue else { return }
+            label.alpha = titled ? 1 : 0
+            setNeedsLayout()
+        }
+    }
     private let glass = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
     private let draw: @MainActor (CGFloat) -> UIImage?
     private let icon = UIImageView()
+    private let label = UILabel()
     private var glyph: CGFloat = 0
     private var reach = UIEdgeInsets.zero
+
+    static let titleFont = UIFont.systemFont(ofSize: 15, weight: .medium)
+    static let titleGap: CGFloat = 6
 
     /// `draw` makes the glyph to fit a square of a side.
     public init(_ title: String, draw: @escaping @MainActor (CGFloat) -> UIImage?) {
@@ -28,6 +42,10 @@ public final class BarButton: UIButton {
         accessibilityLabel = title
         icon.isUserInteractionEnabled = false
         icon.contentMode = .center
+        label.text = title
+        label.font = Self.titleFont
+        label.alpha = 0
+        label.isUserInteractionEnabled = false
         layer.cornerCurve = .continuous
         glass.isUserInteractionEnabled = false
         glass.isHidden = true
@@ -35,10 +53,17 @@ public final class BarButton: UIButton {
         glass.clipsToBounds = true
         addSubview(glass)
         addSubview(icon)
+        addSubview(label)
         refresh()
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    /// How wide it is with its title: the glyph's cell `side` wide, then the title a gap after the glyph, then as much
+    /// room as the glyph has before it.
+    func titledWidth(_ side: CGFloat) -> CGFloat {
+        side + Self.titleGap + label.intrinsicContentSize.width.rounded(.up)
+    }
 
     override public var isHighlighted: Bool {
         didSet { if isHighlighted != oldValue { refresh() } }
@@ -55,6 +80,7 @@ public final class BarButton: UIButton {
 
     private func refresh() {
         icon.tintColor = theme.label.ui
+        label.textColor = theme.label.ui
         backgroundColor = !glassy && (isHighlighted || isOn) ? theme.candidatePill.ui : .clear
         icon.alpha = glassy && isHighlighted ? 0.55 : 1
     }
@@ -65,9 +91,12 @@ public final class BarButton: UIButton {
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        icon.frame = bounds
-        let side = ChatTabs.height
-        glass.frame = CGRect(x: bounds.midX - side / 2, y: bounds.midY - side / 2, width: side, height: side)
+        let side = bounds.height
+        icon.frame = CGRect(x: 0, y: 0, width: titled ? side : bounds.width, height: side)
+        let start = (side + glyph) / 2 + Self.titleGap
+        label.frame = CGRect(x: start, y: 0, width: max(bounds.width - start - (side - glyph) / 2, 0), height: side)
+        glass.frame = CGRect(
+            x: bounds.midX - glassSide / 2, y: bounds.midY - glassSide / 2, width: glassSide, height: glassSide)
         layer.cornerRadius = min(bounds.width, bounds.height) / 2
     }
 }
@@ -134,19 +163,19 @@ extension Panel {
         }
     }
 
-    /// The tool's glyph, its longer side `side` long, so every tool and the More button read as one size.
+    /// The tool's glyph, filled as the More button's squares are, at one size with every tool's (`symbol`).
     package func icon(_ side: CGFloat) -> UIImage? {
         switch self {
-        case .emoji: Self.symbol("face.smiling", side)
-        case .gif: Self.gifGlyph(side)
-        case .clipboard: Self.symbol("list.clipboard", side)
-        case .transcripts: Self.symbol("text.bubble", side)
-        case .chats: Self.symbol("bubble.left.and.bubble.right", side)
+        case .emoji: Self.symbol("face.smiling.inverse", side)
+        case .gif: Self.gifGlyph(side, filled: true)
+        case .clipboard: Self.symbol("list.clipboard.fill", side)
+        case .transcripts: Self.symbol("text.bubble.fill", side)
+        case .chats: Self.symbol("bubble.left.and.bubble.right.fill", side)
         }
     }
 
-    /// A symbol scaled so its glyph, without the margins a symbol image carries, covers as much as a square 0.85 of
-    /// `side` and stands no taller than 0.9 of it, so a tall one (the clipboard) and a wide one (the bubble) read as one
+    /// A symbol scaled so its glyph, without the margins a symbol image carries, covers as much as a square 0.8 of
+    /// `side` and stands no taller than that square, so a tall one (the clipboard) and a wide one (the bubble) read as one
     /// size beside each other; in its light appearance's shape, since iOS draws some filled in dark (`face.smiling`).
     static func symbol(_ name: String, _ side: CGFloat) -> UIImage? {
         let light = UITraitCollection(userInterfaceStyle: .light)
@@ -154,7 +183,7 @@ extension Panel {
         guard let image = UIImage(systemName: name, withConfiguration: configuration) else { return nil }
         let ink = CGRect(origin: .zero, size: image.size).inset(by: image.alignmentRectInsets)
         let scale = min(
-            0.85 * side / (ink.width * ink.height).squareRoot(), 0.9 * side / ink.height, side / ink.width)
+            0.8 * side / (ink.width * ink.height).squareRoot(), 0.8 * side / ink.height, side / ink.width)
         let size = CGSize(width: ink.width * scale, height: ink.height * scale)
         return UIGraphicsImageRenderer(size: size).image { _ in
             light.performAsCurrent {
@@ -187,18 +216,23 @@ extension Panel {
         }.withRenderingMode(.alwaysTemplate)
     }
 
-    /// GIF has no SF Symbol: a rounded rect with "GIF" in it, 0.88 of `side` wide, its line as thick as the regular
-    /// symbols' beside it (docs/design.md).
-    package static func gifGlyph(_ side: CGFloat) -> UIImage {
+    /// GIF has no SF Symbol: a rounded rect with "GIF" in it, 0.88 of `side` wide, outlined as thin as the regular
+    /// symbols' line or, `filled`, solid with the letters cut out of it (docs/design.md).
+    package static func gifGlyph(_ side: CGFloat, filled: Bool = false) -> UIImage {
         let unit = 0.88 * side / 18.4
-        let size = CGSize(width: side, height: 14.4 * unit)
-        return UIGraphicsImageRenderer(size: size).image { _ in
+        let size = CGSize(width: 18.4 * unit, height: 14.4 * unit)
+        return UIGraphicsImageRenderer(size: size).image { context in
             let box = CGRect(origin: .zero, size: size)
-            let path = UIBezierPath(
-                roundedRect: box.insetBy(dx: 0.85 * unit, dy: 0.85 * unit), cornerRadius: 3.6 * unit)
-            path.lineWidth = 1.3 * unit
-            UIColor.black.setStroke()
-            path.stroke()
+            UIColor.black.set()
+            if filled {
+                UIBezierPath(roundedRect: box, cornerRadius: 3.6 * unit).fill()
+                context.cgContext.setBlendMode(.destinationOut)
+            } else {
+                let path = UIBezierPath(
+                    roundedRect: box.insetBy(dx: 0.65 * unit, dy: 0.65 * unit), cornerRadius: 3.6 * unit)
+                path.lineWidth = 1.3 * unit
+                path.stroke()
+            }
             let text = NSAttributedString(
                 string: "GIF",
                 attributes: [

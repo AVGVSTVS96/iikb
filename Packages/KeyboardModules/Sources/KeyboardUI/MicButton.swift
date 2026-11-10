@@ -203,7 +203,7 @@ public final class MicButton: UIControl {
         if corner == nil, color != tint {
             tint = color
             let tinted = UIGlassEffect(style: .regular)
-            tinted.tintColor = color
+            tinted.tintColor = color.withAlphaComponent(listening ? 1 : 0.85)
             glass.effect = tinted
         }
         face.backgroundColor = corner == nil ? .clear : color
