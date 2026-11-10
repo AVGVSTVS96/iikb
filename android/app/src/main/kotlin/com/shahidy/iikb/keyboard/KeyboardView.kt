@@ -159,7 +159,6 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
 
     override fun onDraw(canvas: Canvas) {
         val frame = frame ?: return
-        canvas.drawColor(frame.theme.card)
         canvas.save()
         canvas.scale(density, density)
         when {

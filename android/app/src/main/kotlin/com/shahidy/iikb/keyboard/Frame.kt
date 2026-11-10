@@ -141,6 +141,8 @@ data class Theme(
     val prominent: Int,
     val prominentLabel: Int,
     val shadow: Int,
+    val glass: Int,
+    val rim: Int,
     val candidate: Int,
     val candidateHighlighted: Int,
     val candidatePill: Int,

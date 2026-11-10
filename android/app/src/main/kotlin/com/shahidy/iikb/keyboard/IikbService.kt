@@ -14,6 +14,10 @@ import android.os.SystemClock
 import android.provider.UserDictionary
 import android.text.InputType
 import android.graphics.BitmapFactory
+import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
+import android.os.Build
+import android.view.WindowManager
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -121,10 +125,40 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         dictation.onChange = ::showDictation
         dictation.onLevel = { view?.mic?.hear(it, dictation.recorded) }
         sources = Sources(this, handle, ::render)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            getSystemService(WindowManager::class.java).addCrossWindowBlurEnabledListener(mainExecutor, blurChanged)
+        }
         configure()
     }
 
     private val copied = ClipboardManager.OnPrimaryClipChangedListener { catchUp() }
+
+    /**
+     * The keyboard's window background, as iOS's keyboard glass: the app behind it frosted under the theme's tint,
+     * where Android blurs across windows (12 on, unless Battery Saver or the developer option turns it off), and
+     * the theme's card, opaque, where it doesn't. The window clips the blur to this shape.
+     */
+    private val glass = GradientDrawable()
+    private var glassTheme: Theme? = null
+    private var blurs = false
+    private val blurChanged = java.util.function.Consumer<Boolean> {
+        blurs = it
+        glassTheme?.let(::frost)
+    }
+
+    private fun frost(theme: Theme) {
+        glassTheme = theme
+        val density = resources.displayMetrics.density
+        glass.cornerRadius = GLASS_CORNER * density
+        glass.setColor(if (blurs) theme.glass else theme.card)
+        glass.setStroke(maxOf(1, (density * 2 / 3).toInt()), theme.rim)
+        val window = window.window ?: return
+        window.setFormat(PixelFormat.TRANSLUCENT)
+        window.setBackgroundDrawable(glass)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            window.setBackgroundBlurRadius(if (blurs) (GLASS_BLUR * density).toInt() else 0)
+        }
+    }
 
     /**
      * Keeps what's on the clipboard if the history hasn't seen it, by the time Android says it was copied: the keyboard
@@ -146,6 +180,9 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     override fun onDestroy() {
         settings.preferences.unregisterOnSharedPreferenceChangeListener(changed)
         clipboard.removePrimaryClipChangedListener(copied)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            getSystemService(WindowManager::class.java).removeCrossWindowBlurEnabledListener(blurChanged)
+        }
         overlay?.destroy()
         gifs?.close()
         chats.close()
@@ -182,6 +219,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
 
     override fun onCreateInputView(): View {
         val view = KeyboardView(this, this)
+        glassTheme = null
         view.handle = handle
         this.view = view
         view.mic.stopAnimation = settings.string("stopAnimation")
@@ -422,6 +460,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         view.chatTabs = chat && !keysUp
         view.hint = hint
         view.frame = frame
+        if (frame.theme != glassTheme) frost(frame.theme)
         follow(frame, menuShown)
         listChats(menuShown && hasChats(frame))
         place(frame, menuShown, fromMenu, inPlace, hasChats(frame))
@@ -918,6 +957,9 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     companion object {
         /** The menu fills a keyboard grown to all of the screen but this, in dp, for the app (docs/design.md). */
         const val ROOM_FOR_APP = 140f
+        /** iOS's keyboard glass's corner and its blur, in dp, as its shots measure them (Nov 9). */
+        const val GLASS_CORNER = 24f
+        const val GLASS_BLUR = 12f
         const val SEEN_CLIP = "clipboard.seen"
     }
 }

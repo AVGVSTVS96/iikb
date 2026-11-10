@@ -132,7 +132,7 @@ fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
     val row = bar.height.toFloat()
     Box(Modifier.fillMaxSize()) {
         Column(
-            Modifier.fillMaxSize().padding(top = if (keysUp) 0.dp else row.dp).background(look.card)
+            Modifier.fillMaxSize().padding(top = if (keysUp) 0.dp else row.dp)
                 .padding(
                     start = state.minX.dp, end = state.endInset.dp, top = if (keysUp) (row - 6).dp else 0.dp,
                     bottom = if (keysUp) 0.dp else 8.dp,

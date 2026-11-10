@@ -140,6 +140,9 @@ struct Theme: Encodable {
     /// The plain key fill and its pressed fill, which iOS's cards, badges and tiles take, whatever the keys' own paint.
     var key, keyPressed: Int32
     var card, label, secondaryLabel, prominent, prominentLabel, shadow: Int32
+    /// iOS's keyboard glass as its shots measure it over the app's page (Nov 9): the tint over the frosted app, and
+    /// the hairline round its edge. Where nothing frosts, `card` stands in, the glass as it reads over the page.
+    var glass, rim: Int32
     var candidate, candidateHighlighted, candidatePill, candidateDivider, expander: Int32
     var mic, micGlyph, record, searchField, bubble, bubbleLabel, selection, selectionLabel: Int32
     var continuous: Bool
@@ -149,6 +152,10 @@ struct Theme: Encodable {
         key = t.key.argb
         keyPressed = t.keyPressed.argb
         card = t.card.argb
+        let dark = t.card.red < 0.5
+        glass = (dark ? RGBA(red: 39 / 255, green: 39 / 255, blue: 40 / 255, alpha: 0.87)
+            : RGBA(red: 224 / 255, green: 225 / 255, blue: 230 / 255, alpha: 0.87)).argb
+        rim = RGBA(white: dark ? 1 : 0, alpha: 0.12).argb
         label = t.label.argb
         secondaryLabel = t.secondaryLabel.argb
         prominent = t.prominent.argb

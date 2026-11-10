@@ -104,6 +104,17 @@ class Screen:
         header = struct.pack(">IIBBBBB", self.width, self.height, 8, 6, 0, 0, 0)
         return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(rows, 6)) + chunk(b"IEND", b"")
 
+    @staticmethod
+    def solid():
+        """The screen with window blur off, so the keyboard is its opaque card: its glass frosts the app behind it,
+        which can match the keys' own color."""
+        sh("settings put global disable_window_blurs 1")
+        time.sleep(0.6)
+        screen = Screen()
+        sh("settings put global disable_window_blurs 0")
+        time.sleep(0.6)
+        return screen
+
     def pixel(self, x, y):
         at = 16 + (y * self.width + x) * 4
         return self.data[at:at + 3]
@@ -127,14 +138,14 @@ class Screen:
 
 
 class Keys:
-    """Where each key is, read off the screen: the rows from runs of key down two columns at the keys' left, then each
-    row's keys from runs across it, near its top, above the glyphs. Nothing is measured once and kept, so a change to
-    the keys' geometry moves the taps with it."""
+    """Where each key is, read off the screen with the keyboard solid (`Screen.solid`): the rows from runs of key down
+    two columns at the keys' left, then each row's keys from runs across it, near its top, above the glyphs. Nothing is
+    measured once and kept, so a change to the keys' geometry moves the taps with it."""
 
     LETTERS = ["qwertyuiop", "asdfghjkl"]
 
     def __init__(self):
-        screen = Screen()
+        screen = Screen.solid()
         self.width, self.height = screen.width, screen.height
         edge = 3
         rows = []

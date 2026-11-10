@@ -74,7 +74,7 @@ fun TranscriptsPanel(state: Overlay.State) {
     val hold = rememberTranscriptHold()
     val rows = rememberTranscripts(state.query)
     Column(
-        Modifier.fillMaxSize().background(look.card)
+        Modifier.fillMaxSize()
             .padding(state.panelPadding),
     ) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {

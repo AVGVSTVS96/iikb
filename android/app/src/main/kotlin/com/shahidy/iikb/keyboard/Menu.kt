@@ -53,7 +53,7 @@ fun Menu(state: Overlay.State) {
     val actions = LocalActions.current
     val gifs = LocalGifs.current
     val shelves = Shelf.entries.filter { (it != Shelf.GIFS || gifs != null) && (it != Shelf.CHATS || state.chats) }
-    BoxWithConstraints(Modifier.fillMaxSize().background(look.card)) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
         val count = shelves.size
         val room = maxHeight.value - HEAD - GAP * (count + 1) - (HEAD + HEAD_GAP) * count
         val row = floor((room / count).coerceIn(COMPACT_ROW, 96f)).dp
