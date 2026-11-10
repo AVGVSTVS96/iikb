@@ -235,8 +235,8 @@ fun History(activity: Activity, kinds: List<Kind>) {
         }
         val ticks = when (span) {
             7 -> dates.mapIndexed { index, date -> Tick(index, date.dayOfWeek.getDisplayName(DayStyle.NARROW, Locale.getDefault()), true) }
-            30 -> dates.indices.filter { (dates.lastIndex - it) % 7 == 0 }.map { Tick(it, Format.day(dates[it])) }
-            else -> dates.indices.filter { (dates.lastIndex - it) % 30 == 0 }.map { Tick(it, Format.day(dates[it])) }
+            30 -> dates.indices.filter { it % 7 == 0 }.map { Tick(it, Format.day(dates[it])) }
+            else -> dates.indices.filter { it % 30 == 0 }.map { Tick(it, Format.day(dates[it])) }
         }
         ColumnChart(
             values, kinds.map { Tints.gradient(it.color(palette)) }, top, 170.dp, ticks,
@@ -359,7 +359,7 @@ fun Rhythm(activity: Activity, kinds: List<Kind>) {
     StatCard("clock.fill", Hues.teal.on(palette), "Daily rhythm", "Most active around ${Format.hour(busiest)}") {
         ColumnChart(
             hours, kinds.map { Tints.gradient(it.color(palette)) }, Format.roundUp(sums[busiest]), 140.dp,
-            listOf(0, 6, 12, 18).map { Tick(it, Format.hour(it)) }, ratio = 0.72f, radius = 2.dp,
+            listOf(0, 6, 12, 18).map { Tick(it, Format.hour(it), centered = true) }, ratio = 0.72f, radius = 2.dp,
         )
         if (kinds.size > 1) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) { kinds.forEach { LegendDot(it.color(palette), it.title) } }
