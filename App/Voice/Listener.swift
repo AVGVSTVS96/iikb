@@ -32,6 +32,10 @@ import VoiceModels
     /// Another app took the microphone while it was on (an answered call): it comes back on by itself once iOS says
     /// that app is done, held by Home's switch if it was then. Nil when it doesn't come back.
     private var heldWhenTaken: Bool?
+    /// iOS's own screen recording fails to save ("asset writer being in the wrong state") while another app holds the
+    /// microphone, as Keep Mic On has it held: while the screen is recorded, the microphone is on only for a dictation,
+    /// and comes back on as it was once the recording ends, as after a call.
+    private var screenRecorded = false
     /// The last recording held no sound at all, so the microphone's input is taken to be dead: it goes off once nothing
     /// is being recorded or written, and the next dictation opens it fresh.
     private var deaf = false
@@ -82,6 +86,19 @@ import VoiceModels
             Dictation.observe(.cancel) { Listener.shared.cancel() },
             Dictation.observe(.micOff) { Task { await Listener.shared.turnMicOff() } },
         ]
+        screenRecorded = Self.isScreenRecorded
+        NotificationCenter.default.addObserver(
+            forName: UIScreen.capturedDidChangeNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                Listener.shared.screenRecorded = Self.isScreenRecorded
+                if Listener.shared.screenRecorded { Listener.shared.keepMicOn() } else { Listener.shared.comeBack() }
+            }
+        }
+    }
+
+    private static var isScreenRecorded: Bool {
+        UIApplication.shared.connectedScenes.contains { ($0 as? UIWindowScene)?.screen.isCaptured == true }
     }
 
     /// Returns once the microphone is recording, the one step iOS allows only in the foreground.
@@ -197,15 +214,21 @@ import VoiceModels
 
     /// Starts Keep Mic On's countdown over, or turns the microphone off now when it's Off, once nothing is being
     /// recorded or written, unless Home's switch holds it on and it isn't deaf. Until then the microphone stays on: that
-    /// keeps iikb running in the background to write, and its lock tells the keyboard iikb is still there.
+    /// keeps iikb running in the background to write, and its lock tells the keyboard iikb is still there. While the
+    /// screen is recorded it goes off at once, to come back on once the recording ends.
     func keepMicOn() {
         micOff?.cancel()
         guard microphone.isOn, recording == nil, writing.isEmpty else { return }
         guard !deaf else { return closeMic() }
-        guard !held else { return }
         let seconds = SettingsStore.keepMicOn
-        guard seconds > 0, !micOffOnceWritten else { return closeMic() }
-        guard seconds != Dictation.micForever else { return }
+        guard held || (seconds > 0 && !micOffOnceWritten) else { return closeMic() }
+        if screenRecorded {
+            let wasHeld = held || heldWhenTaken == true
+            closeMic()
+            heldWhenTaken = wasHeld
+            return
+        }
+        guard !held, seconds != Dictation.micForever else { return }
         micOff = Task {
             try? await Task.sleep(for: .seconds(seconds))  // timer: Keep Mic On
             guard !Task.isCancelled, recording == nil, writing.isEmpty else { return }
@@ -254,10 +277,11 @@ import VoiceModels
         if comingBack { heldWhenTaken = wasHeld }
     }
 
-    /// The app that took the microphone is done with it: on again as it was, from the background, where iOS lets an
-    /// interrupted recording go on. If it doesn't, the next dictation opens the app as when the microphone is off.
+    /// The app that took the microphone, or the screen recording, is done with it: on again as it was, from the
+    /// background, where iOS lets an interrupted recording go on. If it doesn't, the next dictation opens the app as
+    /// when the microphone is off.
     private func comeBack() {
-        guard let wasHeld = heldWhenTaken, !microphone.isOn else { return }
+        guard let wasHeld = heldWhenTaken, !microphone.isOn, !screenRecorded else { return }
         heldWhenTaken = nil
         do {
             try microphone.open()
