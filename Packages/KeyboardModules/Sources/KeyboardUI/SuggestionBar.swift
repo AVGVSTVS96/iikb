@@ -41,6 +41,8 @@ public final class SuggestionBar: UIView {
     public var onEdit: (Edit) -> Void = { _ in }
     /// A chat's pill was tapped, by its index.
     public var onChat: (Int) -> Void = { _ in }
+    /// A writing style was picked in the bar, by its index.
+    public var onStyle: (Int) -> Void = { _ in }
     /// How the recording goes back into the mic when you stop (Settings › Appearance).
     public var stopAnimation = StopAnimation.squeeze { didSet { mic.stopAnimation = stopAnimation } }
     public var maximumSlotWidth = CGFloat.infinity { didSet { setNeedsLayout() } }
@@ -68,6 +70,9 @@ public final class SuggestionBar: UIView {
     private let strip = ButtonScrollView()
     /// While a chat is read with the keys down, the chats as tabs in the suggestions' place.
     private let chatTabs = ChatTabs()
+    /// The writing style, where the bar has room for it beside the suggestions (`BarLayout.style`).
+    private let stylePicker = StylePicker()
+    private var styleNames: [String]?
     private var chatNames: [String]?
     /// Where the chats' tabs sit across the bar, so the chat's own tabs, with the keys up, take the same span.
     public private(set) var chatRow: (minX: CGFloat, maxX: CGFloat) = (0, 0)
@@ -95,6 +100,8 @@ public final class SuggestionBar: UIView {
     private let stack = PendingStack()
     private let notice = UILabel()
     private var emojiBeside = false
+    /// Whether the bar has the writing style's room (`BarLayout.style`).
+    private var styleRoom = false
     /// The recording just cancelled, gone to dust, so the mic comes back in its place instead of shrinking out of it.
     private var dissolving = false
     /// How long the recording ran, for Card's card.
@@ -136,6 +143,13 @@ public final class SuggestionBar: UIView {
         addSubview(strip)
         chatTabs.onPick = { [unowned self] in onChat($0) }
         addSubview(chatTabs)
+        stylePicker.onPick = { [unowned self] in onStyle($0) }
+        stylePicker.onOpen = { [unowned self] open in
+            setNeedsLayout()
+            guard window != nil else { return }
+            morph(growing: open) { self.layoutIfNeeded() }
+        }
+        addSubview(stylePicker)
         mic.addAction(UIAction { [unowned self] _ in onMic() }, for: .touchUpInside)
         cancel.addAction(
             UIAction { [unowned self] _ in
@@ -162,6 +176,8 @@ public final class SuggestionBar: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     public func update(_ suggestions: [Suggestion], emoji: [String], enabled: Bool, theme: KeyboardTheme) {
+        let shown = slots.indices.map { suggestions.indices.contains($0) ? suggestions[$0] : nil }
+        if slots.map(\.suggestion) != shown { stylePicker.fold() }
         self.enabled = enabled
         self.theme = theme
         for (index, slot) in slots.enumerated() {
@@ -202,6 +218,7 @@ public final class SuggestionBar: UIView {
             x: self.mic.center.x - self.mic.bounds.width / 2, y: self.mic.center.y - self.mic.bounds.height / 2,
             width: self.mic.bounds.width, height: self.mic.bounds.height)
         if mic == .listening { heard = recorded }
+        if mic == .listening || mic == .writing { stylePicker.fold() }
         if mic == .listening { cancel.isHidden = false }
         self.mic.show(mic, theme: theme)
         cancel.paint(theme)
@@ -261,6 +278,15 @@ public final class SuggestionBar: UIView {
         }
     }
 
+    /// The writing styles' names, `picked` the one a dictation here is written in, or nil where the bar has none.
+    public func update(styles names: [String]?, picked: Int, theme: KeyboardTheme) {
+        if (names == nil) != (styleNames == nil) { setNeedsLayout() }
+        styleNames = names
+        if names == nil { stylePicker.fold() }
+        stylePicker.show(names ?? [], picked: picked, title: "Writing Style", theme: theme)
+        refresh()
+    }
+
     /// The chats as tabs in the suggestions' place, `open` the one shown, or the suggestions back with nil.
     public func update(chats names: [String]?, open: Int?, fresh: Set<Int> = [], theme: KeyboardTheme) {
         if names != chatNames {
@@ -279,6 +305,10 @@ public final class SuggestionBar: UIView {
         for (edit, button) in editButtons {
             button.theme = theme
             button.isEnabled = edits?.allows(edit) ?? false
+        }
+        if moves {
+            stylePicker.fold()
+            refresh()
         }
         guard moves, window != nil else { return }
         morph(growing: edits != nil) { self.layoutIfNeeded() }
@@ -511,6 +541,19 @@ public final class SuggestionBar: UIView {
             .insetBy(dx: -pad, dy: 0)
     }
 
+    /// Folded, the writing style fills its place; open, it runs back from there over the suggestions, which fade under
+    /// it as they do under the edits.
+    private func placeStyle(_ layout: BarLayout) {
+        let open = stylePicker.isOpen && !stylePicker.isHidden
+        (slots + dividers + [strip] as [UIView]).forEach { $0.isUserInteractionEnabled = !open }
+        if open { (slots + dividers + [strip] as [UIView]).forEach { $0.alpha = 0 } }
+        guard let place = layout.style.map({ CGRect($0) }) else { return }
+        let side = StylePicker.height
+        let y = (place.midY - side / 2).rounded(scale: traitCollection.displayScale)
+        let width = open ? min(stylePicker.openWidth, place.maxX - CGFloat(layout.minX)) : place.width
+        stylePicker.frame = CGRect(x: place.maxX - width, y: y, width: width, height: side)
+    }
+
     @objc private func tapNotice() {
         onNotice()
     }
@@ -523,6 +566,7 @@ public final class SuggestionBar: UIView {
         cancel.shows = mic.phase == .listening
         let chatting = chatNames != nil
         chatTabs.isHidden = !chatting
+        stylePicker.isHidden = quiet || chatting || edits != nil || styleNames == nil || !styleRoom
         slots.forEach { $0.isHidden = quiet || chatting }
         strip.isHidden = quiet || chatting || emoji.isEmpty
         emoji.forEach { $0.isHidden = quiet }
@@ -548,7 +592,8 @@ public final class SuggestionBar: UIView {
         let scale = traitCollection.displayScale
         guard !keys.isEmpty else { return }
         let layout = BarLayout(
-            toolbar, keys: keys, tools: tools.count, more: !more.isHidden, mic: micInBar, maximumSlot: maximumSlotWidth)
+            toolbar, keys: keys, tools: tools.count, more: !more.isHidden, mic: micInBar, style: styleNames != nil,
+            maximumSlot: maximumSlotWidth)
         let micPlace = CGRect(mic.phase == .listening ? layout.recording : layout.mic ?? layout.recording)
         mic.bounds.size = micPlace.size
         mic.center = CGPoint(x: micPlace.midX, y: micPlace.midY)
@@ -567,10 +612,12 @@ public final class SuggestionBar: UIView {
             let maxX = CGFloat(frame.x + frame.width).rounded(scale: scale)
             slot.frame = CGRect(x: minX, y: frame.y, width: maxX - minX, height: frame.height)
         }
-        if layout.emojiBeside != emojiBeside {
+        if layout.emojiBeside != emojiBeside || (layout.style != nil) != styleRoom {
             emojiBeside = layout.emojiBeside
+            styleRoom = layout.style != nil
             refresh()
         }
+        placeStyle(layout)
         let place = CGRect(layout.emoji)
         strip.frame = place
         let pitch = BarLayout.emojiPitch

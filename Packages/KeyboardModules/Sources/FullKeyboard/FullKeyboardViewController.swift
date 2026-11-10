@@ -229,6 +229,7 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         suggestionBar.onTool = { [unowned self] in tool($0) }
         suggestionBar.onEdit = { [unowned self] in edit($0) }
+        suggestionBar.onStyle = { [unowned self] in pickStyle(DictationStyle.allCases[$0]) }
         suggestionBar.onChat = { [unowned self] index in
             guard chats.list.indices.contains(index) else { return }
             feedback(.other)
@@ -411,6 +412,15 @@ open class FullKeyboardViewController: UIInputViewController {
         UIView.transition(with: view, duration: 0.25, options: [.transitionCrossDissolve, .allowUserInteraction]) {
             self.render()
         }
+    }
+
+    /// A writing style picked in the bar, for the app the keyboard is in, so its next dictation is written so. Only with
+    /// Full Access, since the app writes the dictation and reads the pick from the shared settings.
+    private func pickStyle(_ style: DictationStyle) {
+        feedback(.other)
+        SettingsStore.set(style, in: hostApp, sharing: hasFullAccess)
+        loadSettings()
+        renderSuggestions()
     }
 
     /// The app kept new settings while the keyboard is up, as beside it on the open iPhone Duo.
@@ -817,6 +827,10 @@ open class FullKeyboardViewController: UIInputViewController {
 
     private func renderSuggestions() {
         guard isShown else { return }
+        let style = engine.settings.dictationStyle(in: hostApp)
+        suggestionBar.update(
+            styles: hasFullAccess ? DictationStyle.allCases.map(\.title) : nil,
+            picked: DictationStyle.allCases.firstIndex(of: style) ?? 0, theme: theme)
         guard engine.suggestionsAreStale else {
             return suggestionBar.update(
                 engine.suggestions, emoji: engine.emojiSuggestions, enabled: engine.showsSuggestions, theme: theme)

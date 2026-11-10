@@ -111,6 +111,17 @@ public enum SettingsStore {
         notify_post(changed)
     }
 
+    /// Keeps the writing style picked in the keyboard's bar for `app`, the app it's in: the default where the app isn't
+    /// known, and none of its own where it's the default. Tells the app and every keyboard that's up, as `save` does.
+    public static func set(_ style: DictationStyle, in app: String?, sharing: Bool) {
+        guard let app else { return set(style, for: \.dictationStyle, sharing: sharing) }
+        let settings = load(sharing: sharing)
+        var styles = settings.appDictationStyles
+        styles[app] = style == settings.dictationStyle ? nil : style
+        set(styles.mapValues(\.rawValue), forKey: appWritingStylesKey, sharing: sharing)
+        notify_post(changed)
+    }
+
     public static func set(_ oneHanded: OneHanded, sharing: Bool = true) {
         set(oneHanded.rawValue, forKey: oneHandedKey, sharing: sharing)
     }

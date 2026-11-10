@@ -6,7 +6,7 @@ How a dictation is typed (`DictationWriting`, KeyboardCore). Style, Wispr Flow's
 
 ## How to get to it (user POV)
 
-iikb app › Settings › Voice Typing › Writing Style, or the iikb tab's Writing Style card.
+iikb app › Settings › Voice Typing › Writing Style, or the iikb tab's Writing Style card. Where the bar has room (the open Duo, an iPhone in landscape) and with Full Access, the style for the app you're in is picked in the bar, at the suggestions' right end before the mic.
 
 ## Driving it
 
