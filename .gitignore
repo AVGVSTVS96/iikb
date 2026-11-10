@@ -15,6 +15,7 @@ xcuserdata/
 .progress-note.txt
 /Config/Team.xcconfig
 /Config/link
+/Config/notify
 /xtool/
 /Packages/KeyboardModules/Sources/*/Resources/Keys/*.key
 /.scratch/
