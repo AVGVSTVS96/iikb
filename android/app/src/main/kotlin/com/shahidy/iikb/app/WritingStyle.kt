@@ -68,7 +68,7 @@ fun WritingStyle() {
         }
         Core.styles.forEachIndexed { index, style ->
             if (index > 0) Divider()
-            ChoiceRow(style.title, quoted(STYLED, "writingStyle" to style.value), picked == style.value) { pick(style.value) }
+            ChoiceRow(style.title, quoted(Sample.STYLE.said, "writingStyle" to style.value), picked == style.value) { pick(style.value) }
         }
     }
     Section("Cleanup", "Clean also takes back what you cancel with “scratch that”. Cleanup is the same in every app.") {
@@ -129,7 +129,6 @@ private fun WritingPreview(said: String, typed: String) {
     }
 }
 
-private const val STYLED = "Hey, by the way, are you free tonight. Let’s grab dinner and then see the show."
 private const val RAMBLED = "Um, I think the the plan is, like, two, I mean three."
 
 private val EDITING = listOf("asSaid" to "As Said", "light" to "No Um or Uh", "clean" to "Clean")
