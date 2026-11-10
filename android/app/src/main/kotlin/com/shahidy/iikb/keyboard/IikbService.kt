@@ -1000,7 +1000,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
          * background's outline radius), so this is the circle closest to it.
          */
         const val GLASS_CORNER = 28f
-        const val GLASS_BLUR = 12f
+        const val GLASS_BLUR = 8f
         const val SEEN_CLIP = "clipboard.seen"
     }
 }

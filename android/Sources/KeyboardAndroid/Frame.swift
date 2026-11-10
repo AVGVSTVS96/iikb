@@ -172,8 +172,8 @@ struct Theme: Encodable {
         let dark = t.card.red < 0.5
         glass =
             (dark
-            ? RGBA(red: 34 / 255, green: 34 / 255, blue: 35 / 255, alpha: 0.92)
-            : RGBA(red: 224 / 255, green: 225 / 255, blue: 230 / 255, alpha: 0.87)).argb
+            ? RGBA(red: 39 / 255, green: 39 / 255, blue: 40 / 255, alpha: 0.8)
+            : RGBA(red: 221 / 255, green: 222 / 255, blue: 228 / 255, alpha: 0.76)).argb
         rim = RGBA(white: dark ? 1 : 0, alpha: 0.12).argb
         label = t.label.argb
         secondaryLabel = t.secondaryLabel.argb
