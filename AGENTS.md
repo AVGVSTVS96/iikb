@@ -1,6 +1,6 @@
 # iikb
 
-An iOS custom keyboard (UIKit, Swift 6, iOS 26+) that types like Apple's and looks like Raycast's (docs/design.md). MIT. Its name is iikb, lowercase always, in what people see and in code names and IDs alike (`brand/BRAND.md`, `copy/MESSAGING.md`).
+An iOS custom keyboard (UIKit, Swift 6, iOS 26+) that types like Apple's and has its own look, with Raycast's keyboard as one reference (docs/design.md). MIT. Its name is iikb, lowercase always, in what people see and in code names and IDs alike (`brand/BRAND.md`, `copy/MESSAGING.md`).
 
 ## Modules
 
@@ -33,7 +33,7 @@ Each module keeps its own AGENTS.md beside its code, with what it holds and why.
 Development happens on a Linux box. Simulator builds, tests and screenshots run on a Mac over ssh (`ssh mac`); the iPhone build is made here and installed through the Mac with `scripts/phone`.
 - `scripts/mac <command>` syncs the tree to one of the Mac's three slots and runs the command there inside one of the Mac's turns (`turn`, two heavy runs at once across projects). Each slot has its own folder and its own simulators, so up to two runs go at once and the rest wait, and the Mac never runs more than three simulators, counting other projects'.
 - A change is checked here first: `scripts/coretest` for KeyboardCore, `scripts/check` for whether everything builds for the iPhone. Then it goes to main and onto the phone with `scripts/phone` as soon as it's ready, since the phone is where changes are tried.
-- The simulator is for what only it shows (a layout, a screen, typing through the real extension), one run at a time, and one to three agents test what landed together with `scripts/verify`, which always tests main's last commit.
+- The simulator is only for reproducing an issue being chased, in what only it shows (a layout, a screen, typing through the real extension), one run at a time (`SIM_REPRO=1`); otherwise a change is checked on the iPhone.
 - Device builds take the team from `Config/Team.xcconfig` (`DEVELOPMENT_TEAM = …`, not committed), which syncing leaves in place.
 - To prove a change works, follow the `verify` skill (`.claude/skills/verify`).
 
@@ -52,7 +52,7 @@ bun run fix                                     # oxlint's fixes, then oxfmt
 scripts/phone [iPad]                            # main's last commit built, signed and installed on the iPhone, or the iPad (--reinstall renews the signing)
 scripts/backup <udid>                           # the iPhone's iikb data copied to ~/.local/share/iikb/backup here, never deleted, replaced files kept in versions/ (scripts/phone runs it first)
 scripts/restore <udid> [--at <time>|now] [name…]  # the backup put back on the iPhone, all of it or the files named, as it is or as it was at a time; leaves out a copy much smaller than one replaced in the day after an install left iikb a new, empty container (docs/backup.md)
-scripts/mac scripts/verify                      # what landed, at once, on one iPhone Duo simulator: package and UI tests, light and dark, shots in shots/raw/verify/
+scripts/mac scripts/verify                      # main's last commit on one iPhone Duo simulator: package and UI tests, light and dark, shots in shots/raw/verify/ (only with SIM_REPRO=1, while reproducing an issue)
 scripts/mac scripts/test                        # KeyboardCore and KeyboardUI package tests on an iOS simulator
 scripts/mac scripts/uitest                      # type through the real extension (the iPhone Duo by default)
 ```

@@ -9,8 +9,7 @@ description: Prove a change to iikb works the way a user meets it, with the chea
 
 1. Here, on Linux: `scripts/coretest` for anything in `KeyboardCore` (and `scripts/eval` when it changes what gets typed), and `scripts/check` for anything that builds into the app or the keyboard (the iPhone build, unsigned, a few minutes). Both must pass before a change lands.
 2. Land on main and run `scripts/phone`, the moment the change is ready: the iPhone is where changes are tried. It prints `build <N> (main <commit>) is on the iPhone`; quote that line, and the same number shows in the app at Settings › About.
-3. The simulator only for what only it shows: one row below, on the iPhone Duo.
-4. What landed together goes through `scripts/mac scripts/verify`, run by the one to three agents verifying, never by every builder.
+3. The simulator only while reproducing an issue you're chasing (`SIM_REPRO=1`), for what only it shows: one row below, on the iPhone Duo. Otherwise the check is on the iPhone.
 
 ## The Mac
 
