@@ -88,6 +88,9 @@ object Glyphs {
     /** `pin`'s cap and waist over its dome, and its needle, tapering to a point. */
     private const val PIN = "M9.73 10.4V4.3L5.95 .85h12.1L14.27 4.3v6.1 M4.62 15.5C4.62 12 8 10.3 12 10.3s7.38 1.7 7.38 5.2Z"
     private const val NEEDLE = "M11.25 15.9h1.5l-.4 7.5q-.35.7-.7 0Z"
+    /** `text.bubble`'s outline: a rounded box with its tail down from the left. */
+    private const val BUBBLE =
+        "M4.91 2.35h14.18a3.22 3.22 0 0 1 3.22 3.22v8.95a3.22 3.22 0 0 1-3.22 3.22h-7.92l-4.34 3.91v-3.91H4.91a3.22 3.22 0 0 1-3.22-3.22V5.57a3.22 3.22 0 0 1 3.22-3.22Z"
     private const val KEYBOARD = "M1.9 4.7h20.2a1.9 1.9 0 0 1 1.9 1.9v10.85a1.9 1.9 0 0 1-1.9 1.9H1.9A1.9 1.9 0 0 1 0 17.45V6.6a1.9 1.9 0 0 1 1.9-1.9Z"
 
     private val glyphs: Map<String, Glyph> = mapOf(
@@ -168,18 +171,13 @@ object Glyphs {
                 "M9.65 2.71a2.3 2.3 0 0 1 4.6 0Z",
             gap = 0.9f,
         ),
-        "text.bubble.fill" to carved(
-            "M5.05 2.25h13.8a3.5 3.5 0 0 1 3.5 3.5v8.65a3.5 3.5 0 0 1-3.5 3.5H10.6l-3.95 3.95V17.9h-1.6a3.5 3.5 0 0 1-3.5-3.5V5.75a3.5 3.5 0 0 1 3.5-3.5Z",
-            lines = "M6.6 6.62h10.5M6.6 9.99h10.5M6.6 13.33h6", weight = 0.8f,
-        ),
+        "text.bubble.fill" to carved(BUBBLE, lines = "M6.78 7.83H17.04M6.78 12.26H13.74", weight = 0.75f),
         "face.smiling.inverse" to carved(
             "M21.33 12.1a9.43 9.43 0 1 1-18.86 0a9.43 9.43 0 1 1 18.86 0Z",
             lines = "M8.6 14.75c.7 1.45 1.7 1.71 3.3 1.71s2.6-.26 3.3-1.71",
             holes = "M7.92 9.8a1 1.38 0 1 0 2 0a1 1.38 0 1 0-2 0Z M13.9 9.8a1 1.38 0 1 0 2 0a1 1.38 0 1 0-2 0Z",
         ),
-        "text.bubble" to lines(
-            "M5.05 2.25h13.8a3.5 3.5 0 0 1 3.5 3.5v8.65a3.5 3.5 0 0 1-3.5 3.5H10.6l-3.95 3.95V17.9h-1.6a3.5 3.5 0 0 1-3.5-3.5V5.75a3.5 3.5 0 0 1 3.5-3.5Z",
-        ) + lines("M6.6 6.62h10.5M6.6 9.99h10.5M6.6 13.33h6", 0.66f),
+        "text.bubble" to lines(BUBBLE, 0.94f) + lines("M7.04 7.91H16.78M7.04 12.26H13.57", 0.75f),
         "bubble.left.and.bubble.right.fill" to shape(
             "M4.17 2.73H14.34A3.6 3.6 0 0 1 17.94 6.33V6.15H12.09A3.87 3.87 0 0 0 8.22 10.02V17.67H8.31C7.59 18.66 6.51 19.56 5.25 19.92C4.8 20.01 4.44 19.83 4.44 19.47V17.67H4.08A4.05 4.05 0 0 1 .03 13.62V6.78A4.05 4.05 0 0 1 4.17 2.73Z " +
                 "M12.09 7.05H21A2.97 2.97 0 0 1 23.97 10.02V14.88C23.97 16.41 22.44 17.85 20.37 17.85V20.64C20.37 21.09 19.92 21.27 19.56 21L14.97 17.85H12.09A2.97 2.97 0 0 1 9.12 14.88V10.02A2.97 2.97 0 0 1 12.09 7.05Z",
@@ -201,8 +199,10 @@ object Glyphs {
                 "M10.37 7.75a2.1 2.1 0 1 0-4.2 0a2.1 2.1 0 1 0 4.2 0Z M15.63 6.5a1.75 1.75 0 1 0-3.5 0a1.75 1.75 0 1 0 3.5 0Z M20.28 7.67a1.42 1.42 0 1 0-2.84 0a1.42 1.42 0 1 0 2.84 0Z M5.93 11.85a1.7 1.7 0 1 0-3.4 0a1.7 1.7 0 1 0 3.4 0Z M15.6 15.7a2.9 2.9 0 1 0-5.8 0a2.9 2.9 0 1 0 5.8 0Z",
         ),
         "trash" to lines(
-            "M4 6.5h16 M9.5 6.5V4.8A1.3 1.3 0 0 1 10.8 3.5h2.4a1.3 1.3 0 0 1 1.3 1.3v1.7 M6 6.5l1 12.6a1.8 1.8 0 0 0 1.8 1.6h6.4a1.8 1.8 0 0 0 1.8-1.6L18 6.5 M10 10.5v6.5M14 10.5v6.5",
-        ),
+            "M2.96 5.35H21.04 M8.35 5.35V2.87a1.39 1.39 0 0 1 1.39-1.39h4.52a1.39 1.39 0 0 1 1.39 1.39V5.35 " +
+                "M4.87 5.35l.76 15.26a1.91 1.91 0 0 0 1.91 1.96h8.89a1.91 1.91 0 0 0 1.91-1.96L19.13 5.35",
+            0.9f,
+        ) + lines("M8.7 8.43V19.3M12 8.43V19.3M15.22 8.43V19.3", 0.7f),
         "photo" to lines(
             "M5 4.5h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z M3 16l5-5 4 4 3-3 6 6 M16.5 9a1.5 1.5 0 1 1-3 0a1.5 1.5 0 1 1 3 0Z",
         ),
@@ -211,13 +211,16 @@ object Glyphs {
                 "M6.5 8.9 10.6 11.4 M6.5 15.1 22.4 6.9",
         ) + shape("M10.6 10.3 22.6 16.6q.6.5-.1.7L9.9 13.9Q9.2 13.5 9.6 12.1Q10 10.6 10.6 10.3Z M11.4 12.3a.65.65 0 1 0-1.3 0a.65.65 0 1 0 1.3 0Z"),
         "square.on.square" to lines(
-            "M10 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z M16 5V4.8A1.8 1.8 0 0 0 14.2 3H5a2 2 0 0 0-2 2v9.2A1.8 1.8 0 0 0 4.8 16H5",
+            "M9.52 6.83h9.91a2.52 2.52 0 0 1 2.52 2.52v10a2.52 2.52 0 0 1-2.52 2.52H9.52A2.52 2.52 0 0 1 7 19.35v-10a2.52 2.52 0 0 1 2.52-2.52Z " +
+                "M17 6.83V4.65a2.52 2.52 0 0 0-2.52-2.52H4.57a2.52 2.52 0 0 0-2.52 2.52v10a2.52 2.52 0 0 0 2.52 2.52H7",
+            0.92f,
         ),
         "doc" to lines("M7 2.5h7.2L19 7.3V19.5a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2Z M14 2.7V6a1.3 1.3 0 0 0 1.3 1.3h3.5"),
         "doc.on.doc" to lines(
-            "M6 7.5h4.6l3.9 3.9v8.1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9.5a2 2 0 0 1 2-2Z M10.3 7.7v2.6a1.2 1.2 0 0 0 1.2 1.2h2.8 " +
-                "M8.2 4.6v-.1a2 2 0 0 1 2-2h4.6l3.9 3.9v8.1a2 2 0 0 1-2 2h-.9 M14.5 2.7v2.6a1.2 1.2 0 0 0 1.2 1.2h2.8",
-        ),
+            "M5 5.48h5l6.65 6.65v9.26A2.61 2.61 0 0 1 14.04 24H5a2.61 2.61 0 0 1-2.61-2.61V8.09A2.61 2.61 0 0 1 5 5.48Z " +
+                "M7.35 5.48V2.61A2.61 2.61 0 0 1 9.96 0h5.08l6.57 6.57v9.73A2.61 2.61 0 0 1 19 18.91h-2.35",
+            0.9f,
+        ) + lines("M8.91 5.48v6.26a1.22 1.22 0 0 0 1.22 1.22h6.52 M15 0v5.83a1.22 1.22 0 0 0 1.22 1.22h5.39", 0.83f),
         "safari" to lines("M21.5 12a9.5 9.5 0 1 1-19 0a9.5 9.5 0 1 1 19 0Z") + shape(
             "M16.6 7.4 13.4 13.4 7.4 16.6 10.6 10.6Z M12 13.1a1.1 1.1 0 1 0 0-2.2a1.1 1.1 0 1 0 0 2.2Z",
         ),
@@ -291,14 +294,26 @@ object Glyphs {
     fun drawGif(canvas: Canvas, x: Float, y: Float, side: Float, paint: Paint, labels: Typeface) {
         val unit = GIF_FILLED * side / 18.4f
         val box = RectF(x - 9.2f * unit, y - 7.2f * unit, x + 9.2f * unit, y + 7.2f * unit)
+        val size = 8 * unit
         gifText.typeface = Typeface.create(labels, 700, false)
-        gifText.textSize = 8 * unit
+        gifText.textSize = GIF_LAYOUT
+        gifText.letterSpacing = 0f
+        gifText.letterSpacing = (sfGifWidth(size) - gifText.measureText("GIF") / GIF_LAYOUT) / 3
+        gifText.getTextPath("GIF", 0, 3, -gifText.measureText("GIF") / 2, GIF_LAYOUT * 0.35f, gifLetters)
+        matrix.setScale(size / GIF_LAYOUT, size / GIF_LAYOUT)
+        matrix.postTranslate(x, y)
+        gifLetters.transform(matrix)
         gif.reset()
         gif.addRoundRect(box, 3.6f * unit, 3.6f * unit, Path.Direction.CW)
-        gifText.getTextPath("GIF", 0, 3, x - gifText.measureText("GIF") / 2, y + gifText.textSize * 0.35f, gifLetters)
         gif.op(gifLetters, Path.Op.DIFFERENCE)
         canvas.drawPath(gif, paint)
     }
+
+    /** The letters are laid out this large and scaled down, since a few-pixel text size snaps its letters together. */
+    private const val GIF_LAYOUT = 100f
+
+    /** How wide SF Bold sets "GIF" at `size` points, in ems: its tracking opens up as it shrinks, to 6 points. */
+    private fun sfGifWidth(size: Float) = 1.796f - 0.0213f * (size - 6).coerceAtLeast(0f)
 
     private val matrix = Matrix()
     private val scaled = Path()
