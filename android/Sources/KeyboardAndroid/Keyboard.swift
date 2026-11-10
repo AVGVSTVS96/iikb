@@ -249,6 +249,8 @@ extension KeyboardSettings {
             "compactPanels": \.compactPanels,
         ]
         self = .initial
+        var words: DictationTextMode?
+        defer { if let words { dictationStyle = dictationStyle.with(words) } }
         for line in text.split(separator: "\n") {
             let parts = line.split(separator: "=", maxSplits: 1).map(String.init)
             guard parts.count == 2 else { continue }
@@ -273,7 +275,7 @@ extension KeyboardSettings {
             case "writingStyle": dictationStyle = DictationStyle(rawValue: value) ?? dictationStyle
             case "dictationEditing": dictationEditing = DictationEditing(rawValue: value) ?? dictationEditing
             case "spokenLists": dictationLists = DictationLists(rawValue: value) ?? dictationLists
-            case "textMode": dictationTextMode = DictationTextMode(rawValue: value) ?? dictationTextMode
+            case "textMode": words = DictationTextMode(rawValue: value)
             case "appWritingStyles": appDictationStyles = Self.appStyles(value)
             default: continue
             }

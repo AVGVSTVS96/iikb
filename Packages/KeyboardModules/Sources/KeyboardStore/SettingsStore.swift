@@ -41,7 +41,6 @@ public enum SettingsStore {
         key: "dictationEditing", path: \.dictationEditing, switchKey: "keepsUmAndUh", on: .asSaid, off: .light)
     private static let dictationLists = Choice(
         key: "spokenLists", path: \.dictationLists, switchKey: "dictationLists", on: .numbered, off: .off)
-    private static let dictationTextMode = Choice(key: "textMode", path: \.dictationTextMode)
     private static let keyboardMenu = Choice(key: "keyboardMenu", path: \.keyboardMenu)
     private static let clipboardLength = Choice(key: "clipboardLength", path: \.clipboardLength)
     /// Globe Key was a switch, turned off to stop taps landing on the globe, which Spacer now does with the globe kept.
@@ -49,10 +48,12 @@ public enum SettingsStore {
         key: "globe", path: \.globeKey, switchKey: "globeKey", on: .switches, off: .spacer)
     private static let choices: [any Picked] = [
         theme, themeAppearance, stopAnimation, characterPreview, haptics, keySpacing, keyRoundness, dictationStyle,
-        dictationEditing, dictationLists, dictationTextMode, keyboardMenu, clipboardLength, globeKey,
+        dictationEditing, dictationLists, keyboardMenu, clipboardLength, globeKey,
     ]
     private static let skinToneKey = "skinTone"
     private static let appWritingStylesKey = "appWritingStyles"
+    /// Text Mode, a setting of its own until the style took its words (`DictationStyle.with`).
+    private static let textModeKey = "textMode"
 
     private static let oneHandedKey = "oneHanded"
     private static let keepMicOnKey = "keepMicOn"
@@ -71,6 +72,11 @@ public enum SettingsStore {
         settings.skinTone = (value(forKey: skinToneKey, sharing: sharing) as? String).flatMap(SkinTone.init)
         settings.appDictationStyles = (value(forKey: appWritingStylesKey, sharing: sharing) as? [String: String] ?? [:])
             .compactMapValues(DictationStyle.init)
+        if let words = (value(forKey: textModeKey, sharing: sharing) as? String).flatMap(DictationTextMode.init) {
+            settings.dictationStyle = settings.dictationStyle.with(words)
+            set(settings.dictationStyle.rawValue, forKey: dictationStyle.key, sharing: sharing)
+            forget(textModeKey, sharing: sharing)
+        }
         return settings
     }
 
@@ -111,13 +117,11 @@ public enum SettingsStore {
         notify_post(changed)
     }
 
-    /// Keeps the writing style picked in the keyboard's bar for `app`, the app it's in: the default where the app isn't
-    /// known, and none of its own where it's the default. Tells the app and every keyboard that's up, as `save` does.
-    public static func set(_ style: DictationStyle, in app: String?, sharing: Bool) {
-        guard let app else { return set(style, for: \.dictationStyle, sharing: sharing) }
-        let settings = load(sharing: sharing)
-        var styles = settings.appDictationStyles
-        styles[app] = style == settings.dictationStyle ? nil : style
+    /// Keeps the writing style picked in the keyboard's bar for `app`, the app it's in, or nil to have it follow the
+    /// default again. Tells the app and every keyboard that's up, as `save` does.
+    public static func set(_ style: DictationStyle?, in app: String, sharing: Bool) {
+        var styles = load(sharing: sharing).appDictationStyles
+        styles[app] = style
         set(styles.mapValues(\.rawValue), forKey: appWritingStylesKey, sharing: sharing)
         notify_post(changed)
     }
@@ -156,6 +160,12 @@ public enum SettingsStore {
             own.set(mine, forKey: seen)
         }
         return own.object(forKey: key)
+    }
+
+    private static func forget(_ key: String, sharing: Bool) {
+        own.removeObject(forKey: key)
+        own.removeObject(forKey: "seen." + key)
+        if sharing { group.removeObject(forKey: key) }
     }
 
     package static func set(_ value: Any, forKey key: String, sharing: Bool = true) {

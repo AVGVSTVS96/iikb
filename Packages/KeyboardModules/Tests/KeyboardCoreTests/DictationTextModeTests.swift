@@ -14,7 +14,7 @@ struct DictationTextModeTests {
     @Test func spelledOutKeepsEveryWord() {
         let heard = "By the way, are you free tonight?"
         #expect(write(heard, .spelledOut) == heard)
-        #expect(KeyboardSettings.initial.dictation(in: nil).textMode == .spelledOut)
+        #expect(KeyboardSettings.initial.dictation(in: nil).words == .spelledOut)
     }
 
     @Test func abbreviatedWritesPhrasesAsLettersAndKeepsSingleWords() {

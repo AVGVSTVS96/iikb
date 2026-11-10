@@ -1,14 +1,19 @@
-/// How a dictation reads, in Wispr Flow's four styles: its capitals and all of its punctuation, never its words, which
-/// are `DictationEditing`'s. Every style gives a question the model ended with a period its question mark. Formal
+/// How a dictation reads: its capitals, its punctuation and how far its words go toward texting, one choice from Formal
+/// to slang, so a style never says one thing while another setting types something else. Wispr Flow's four set only
+/// the marks; very casual, texting and slang each take the one before's and add their words (`words`). What you said is
+/// `DictationEditing`'s. Every style gives a question the model ended with a period its question mark. Formal
 /// keeps every comma, ends every sentence, adds the comma after an opening "However" or "Actually" and lets one ! or ?
 /// do. Casual keeps the capitals with less punctuation: no last period, no comma after an opening "So", "Hey" or
 /// "Thanks", and a comma for a semicolon. Very casual is Casual in lowercase without the comma before "and", "but" or
-/// "so". Excited is Formal with an exclamation mark ending the last sentence, every short one and every cheer.
+/// "so". Excited is Formal with an exclamation mark ending the last sentence, every short one and every cheer. Texting
+/// and slang are punctuated as very casual is.
 public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
     case formal
+    case excited
     case casual
     case veryCasual
-    case excited
+    case texting
+    case slang
 
     public static let standard = DictationStyle.casual
 
@@ -19,7 +24,36 @@ public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
         case .casual: "Casual"
         case .veryCasual: "very casual"
         case .excited: "Excited!"
+        case .texting: "texting"
+        case .slang: "slang"
         }
+    }
+
+    /// Its words: very casual writes the phrases people type as letters ("btw", "idk"), texting also shortens single
+    /// words ("u", "tn"), and slang also trades words for slang ("fr", "fire").
+    public var words: DictationTextMode {
+        switch self {
+        case .formal, .excited, .casual: .spelledOut
+        case .veryCasual: .abbreviated
+        case .texting: .texting
+        case .slang: .genZ
+        }
+    }
+
+    /// Typed in lowercase, whatever Auto-Capitalization says.
+    public var lowercases: Bool { self == .veryCasual || words.lowercases }
+
+    /// The style that types what an older iikb typed for `self` with Text Mode at `words`, from when they were two
+    /// settings: the more casual of the two.
+    public func with(_ words: DictationTextMode) -> DictationStyle {
+        let fromWords: DictationStyle =
+            switch words {
+            case .spelledOut: self
+            case .abbreviated: .veryCasual
+            case .texting: .texting
+            case .genZ: .slang
+            }
+        return fromWords.words.rank > self.words.rank ? fromWords : self
     }
 
     /// `text`'s sentence marks in this style, before a list it may end on is written as one.
@@ -29,7 +63,7 @@ public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
         case .formal:
             text = Self.marksSingled(text)
             if let last = text.last, last.isLetter || last.isNumber { text.append(".") }
-        case .casual, .veryCasual:
+        case .casual, .veryCasual, .texting, .slang:
             if text.last == ".", text.dropLast().last != ".", !Words.closesAbbreviation(text, at: text.count - 1) {
                 text.removeLast()
             }
@@ -44,7 +78,8 @@ public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
         switch self {
         case .formal, .excited: Self.transitionsSetOff(text)
         case .casual: Self.openersLoosened(Self.semicolonsLoosened(text))
-        case .veryCasual: Self.conjunctionsLoosened(Self.openersLoosened(Self.semicolonsLoosened(text)))
+        case .veryCasual, .texting, .slang:
+            Self.conjunctionsLoosened(Self.openersLoosened(Self.semicolonsLoosened(text)))
         }
     }
 
@@ -615,13 +650,16 @@ public struct DictationWriting: Hashable, Sendable {
     public var editing = DictationEditing.standard
     /// "one, eggs, two, milk" written as a list (`SpokenList`).
     public var lists = DictationLists.standard
-    public var textMode = DictationTextMode.standard
+    /// Words set apart from the style's, as a bench sets them; nil for the style's own.
+    public var textMode: DictationTextMode?
+    /// Its words: `textMode`, else the style's.
+    public var words: DictationTextMode { textMode ?? style.words }
     /// Auto-Capitalization, which a dictation follows as typing does.
     public var capitalizes = true
 
     public init(
         style: DictationStyle = .standard, editing: DictationEditing = .standard, lists: DictationLists = .standard,
-        textMode: DictationTextMode = .standard, capitalizes: Bool = true
+        textMode: DictationTextMode? = nil, capitalizes: Bool = true
     ) {
         self.style = style
         self.editing = editing
@@ -633,13 +671,13 @@ public struct DictationWriting: Hashable, Sendable {
     /// The capitals a dictation gets in a field that asks for `field`'s: none with Auto-Capitalization off, in very
     /// casual, or in a text mode typed in lowercase (`TypingEngine.fitted`).
     public func capitals(in field: Autocapitalization) -> Autocapitalization {
-        capitalizes && style != .veryCasual && !textMode.lowercases ? field : .none
+        capitalizes && !style.lowercases && !words.lowercases ? field : .none
     }
 
     public func written(_ heard: String) -> String {
         var text = style.punctuated(Self.withoutDoubledPeriods(editing.edited(Array(heard))))
         if lists != .off { text = SpokenList.written(text, bulleted: lists == .bulleted) }
-        return String(textMode.swapped(style.commas(text)))
+        return String(words.swapped(style.commas(text)))
     }
 
     /// `heard` as iikb types it at the start of a field that capitalizes sentences, as a message's does.
@@ -666,7 +704,7 @@ extension KeyboardSettings {
     public func dictation(in app: String?) -> DictationWriting {
         DictationWriting(
             style: dictationStyle(in: app), editing: dictationEditing, lists: dictationLists,
-            textMode: dictationTextMode, capitalizes: autoCapitalization)
+            capitalizes: autoCapitalization)
     }
 
     public func dictationStyle(in app: String?) -> DictationStyle {

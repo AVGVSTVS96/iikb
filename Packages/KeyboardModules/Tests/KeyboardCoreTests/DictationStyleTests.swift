@@ -7,7 +7,28 @@ struct DictationStyleTests {
         _ heard: String, _ style: DictationStyle = .formal, _ editing: DictationEditing = .asSaid,
         lists: DictationLists = .numbered
     ) -> String {
-        DictationWriting(style: style, editing: editing, lists: lists).written(heard)
+        DictationWriting(style: style, editing: editing, lists: lists, textMode: .spelledOut).written(heard)
+    }
+
+    /// Each style past very casual takes the one before's words and adds its own, so the casual end is one ladder.
+    @Test func theCasualStylesAddWordsAStepAtATime() {
+        let typed = {
+            DictationWriting(style: $0).typed(
+                "By the way, are you free tonight? That's amazing, for real.", lexicon: nil)
+        }
+        #expect(typed(.casual) == "By the way, are you free tonight? That's amazing, for real")
+        #expect(typed(.veryCasual).hasPrefix("btw, are you free tonight?"))
+        #expect(typed(.texting).hasPrefix("btw, r u free tn?"))
+        #expect(typed(.slang) != typed(.texting))
+    }
+
+    /// Text Mode, once its own setting, becomes the style that types what it did: the more casual of the two.
+    @Test func anOlderTextModeBecomesItsStyle() {
+        #expect(DictationStyle.formal.with(.spelledOut) == .formal)
+        #expect(DictationStyle.formal.with(.abbreviated) == .veryCasual)
+        #expect(DictationStyle.casual.with(.texting) == .texting)
+        #expect(DictationStyle.excited.with(.genZ) == .slang)
+        #expect(DictationStyle.slang.with(.abbreviated) == .slang)
     }
 
     @Test func asSaidKeepsEveryWordUmAndUhIncluded() {

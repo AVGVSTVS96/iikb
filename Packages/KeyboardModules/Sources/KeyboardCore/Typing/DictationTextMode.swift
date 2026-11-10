@@ -16,6 +16,9 @@ public enum DictationTextMode: String, CaseIterable, Hashable, Sendable {
     /// Texting and Gen Z are typed in lowercase, whatever the style.
     var lowercases: Bool { self == .texting || self == .genZ }
 
+    /// How far along the scale it is.
+    var rank: Int { Self.allCases.firstIndex(of: self) ?? 0 }
+
     func swapped(_ text: [Character]) -> [Character] {
         let table: [(String, String)] =
             switch self {
