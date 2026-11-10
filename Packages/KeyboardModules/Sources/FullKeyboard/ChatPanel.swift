@@ -213,10 +213,10 @@ private final class ChatCard: UIControl {
         accessibilityLabel = chat.name
         accessibilityTraits = .button
         isAccessibilityElement = true
-        layer.cornerRadius = 10
+        layer.cornerRadius = MenuView.cardRadius
         layer.cornerCurve = .continuous
         name.text = chat.name
-        name.font = .systemFont(ofSize: 14)
+        name.font = .systemFont(ofSize: 14, weight: .semibold)
         line.text = chat.line.map { line in
             (try? AttributedString(markdown: line, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
                 .map { String($0.characters) } ?? line
@@ -234,17 +234,24 @@ private final class ChatCard: UIControl {
         self.theme = theme
         name.textColor = theme.label.ui
         line.textColor = theme.candidate.ui
-        backgroundColor = isHighlighted ? theme.keyPressed.ui : theme.key.ui
+        backgroundColor = isHighlighted ? theme.keyPressed.ui : theme.shelfCard
     }
 
     override var isHighlighted: Bool { didSet { show(theme) } }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let inset = bounds.insetBy(dx: 10, dy: 6)
+        let inset = bounds.insetBy(dx: 10, dy: 8)
         let both = line.text != nil && inset.height >= 30
         line.isHidden = !both
-        name.frame = both ? CGRect(x: inset.minX, y: inset.minY, width: inset.width, height: inset.height - 15) : inset
-        line.frame = CGRect(x: inset.minX, y: inset.maxY - 15, width: inset.width, height: 15)
+        guard both else {
+            name.frame = inset
+            return
+        }
+        name.frame = CGRect(x: inset.minX, y: inset.minY, width: inset.width, height: 18)
+        line.numberOfLines = max(Int((inset.height - 20) / 15), 1)
+        let fits = line.sizeThatFits(CGSize(width: inset.width, height: inset.height - 20)).height
+        line.frame = CGRect(
+            x: inset.minX, y: name.frame.maxY + 2, width: inset.width, height: min(fits, inset.height - 20))
     }
 }

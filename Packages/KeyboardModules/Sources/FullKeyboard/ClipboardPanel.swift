@@ -447,7 +447,7 @@ final class LinkBadge: UICollectionViewCell {
     static func font(compact: Bool) -> UIFont { .systemFont(ofSize: compact ? 13 : 14) }
 
     func show(_ title: NSAttributedString?, theme: KeyboardTheme) {
-        fill = theme.key.ui
+        fill = theme.shelfCard
         pressedFill = theme.keyPressed.ui
         text.attributedText = title
         setNeedsLayout()
@@ -486,7 +486,6 @@ final class ClipRow: UICollectionViewCell {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backdrop.layer.cornerRadius = 10
         backdrop.layer.cornerCurve = .continuous
         pin.image = UIImage(systemName: "pin.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13))
         pin.contentMode = .center
@@ -513,7 +512,7 @@ final class ClipRow: UICollectionViewCell {
     ) {
         self.pinned = pinned
         self.compact = compact
-        fill = compact ? theme.key.ui : .clear
+        fill = compact ? theme.shelfCard : .clear
         pressedFill = compact ? theme.keyPressed.ui : theme.label.ui.withAlphaComponent(0.12)
         pin.tintColor = compact ? theme.onKeySecondary : theme.candidate.ui
         pin.isHidden = !pinned
@@ -548,6 +547,7 @@ final class ClipRow: UICollectionViewCell {
         super.layoutSubviews()
         let bounds = contentView.bounds
         backdrop.frame = bounds
+        backdrop.layer.cornerRadius = compact ? MenuView.cardRadius : 10
         backdrop.backgroundColor = isHighlighted ? pressedFill : fill
         if compact {
             let inset = bounds.insetBy(dx: 10, dy: 6)
@@ -570,6 +570,9 @@ final class ClipRow: UICollectionViewCell {
 extension KeyboardTheme {
     /// Secondary text on the key fill, a card's or a badge's, 4.5:1 or more against it in light and dark.
     var onKeySecondary: UIColor { label.ui.withAlphaComponent(0.62) }
+    var dark: Bool { label.red > 0.5 }
+    /// A card's fill on a menu shelf's glass (and on iOS's backdrop, in a panel), letting the glass's tint show through.
+    var shelfCard: UIColor { dark ? UIColor(white: 1, alpha: 0.1) : UIColor(white: 1, alpha: 0.7) }
 }
 
 extension ClipboardHistory.Item.Content {

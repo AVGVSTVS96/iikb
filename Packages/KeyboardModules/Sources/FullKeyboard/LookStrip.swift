@@ -80,7 +80,7 @@ final class LookTile: UIControl {
         self.picked = picked
         self.theme = theme
         accessibilityTraits = picked ? [.button, .selected] : .button
-        card.backgroundColor = theme.key.ui
+        card.backgroundColor = theme.shelfCard
         name.textColor = picked ? theme.label.ui : theme.candidate.ui
         name.font = .systemFont(ofSize: 12, weight: picked ? .semibold : .medium)
         art.tintColor = picked ? theme.record.ui : theme.label.ui
@@ -114,9 +114,9 @@ final class LookTile: UIControl {
         let inset: CGFloat = 3
         card.transform = .identity
         card.frame = bounds.insetBy(dx: inset, dy: inset)
-        card.layer.cornerRadius = 12
+        card.layer.cornerRadius = MenuView.cardRadius - inset
         ring.frame = bounds
-        ring.layer.cornerRadius = 12 + inset
+        ring.layer.cornerRadius = MenuView.cardRadius
         let label: CGFloat = 16
         name.frame = CGRect(x: inset + 4, y: card.frame.maxY - label - 5, width: card.frame.width - 8, height: label)
         art.frame = CGRect(

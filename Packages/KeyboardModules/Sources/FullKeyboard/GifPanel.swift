@@ -78,7 +78,7 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
         if theme != self.theme || rows != self.rows {
             self.theme = theme
             self.rows = rows
-            tiles.forEach { $0.backgroundColor = theme.key.ui }
+            tiles.forEach { $0.backgroundColor = theme.shelfCard }
             refresh()
             setNeedsLayout()
         }
@@ -128,7 +128,7 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
             scroll.contentOffset = .zero
         }
         tiles += gifs.dropFirst(tiles.count).map { gif in
-            let tile = GifTile(gif: gif, fill: theme.key.ui)
+            let tile = GifTile(gif: gif, fill: theme.shelfCard)
             tile.addAction(UIAction { [unowned self, unowned tile] _ in copy(tile) }, for: .touchUpInside)
             tile.copy = { [unowned self, unowned tile] in copy(tile) }
             tile.dropped = { [weak self] in self?.sent(gif) }
@@ -174,6 +174,7 @@ final class GifPanel: UIView, PanelContent, UIScrollViewDelegate {
             let ratio = Double(tile.gif.preview.width) / Double(max(tile.gif.preview.height, 1))
             let width = (height * min(max(ratio, 0.5), 2.5)).rounded()
             tile.frame = CGRect(x: ends[row], y: Double(row) * (height + gap), width: width, height: height)
+            tile.layer.cornerRadius = rows == 1 ? MenuView.cardRadius : 8
             ends[row] += width + gap
         }
         scroll.contentSize = CGSize(width: max((ends.max() ?? gap) - gap, 0), height: bounds.height)
@@ -229,7 +230,6 @@ private final class GifTile: UIControl, UIDragInteractionDelegate {
         self.gif = gif
         super.init(frame: .zero)
         backgroundColor = fill
-        layer.cornerRadius = 8
         layer.cornerCurve = .continuous
         clipsToBounds = true
         image.contentMode = .scaleAspectFill
