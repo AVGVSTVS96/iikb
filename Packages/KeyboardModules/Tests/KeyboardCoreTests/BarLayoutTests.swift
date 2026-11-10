@@ -175,4 +175,24 @@ struct BarLayoutTests {
         let open = layouts(Self.screens[3]).first { $0.label.hasSuffix("2 tools") }!.layout
         #expect(open.emoji.width >= 4 * BarLayout.emojiPitch, "held open in landscape, four emoji show beside")
     }
+
+    /// Where the bar has room for the suggestions, two emoji and the writing style, the style sits before the mic with
+    /// the emoji between it and the suggestions: on the open Duo, not folded in portrait, and never unasked.
+    @Test func wideBarsHoldTheWritingStyle() {
+        func layout(_ index: Int, style: Bool = true) -> BarLayout {
+            let (metrics, _, keys, _) = layouts(Self.screens[index]).first { $0.label.hasSuffix("0 tools and More") }!
+            return BarLayout(metrics.toolbar, keys: keys, tools: 0, more: true, style: style)
+        }
+        #expect(layout(0).style == nil && layout(2, style: false).style == nil)
+        for index in [2, 3, 7] {
+            let bar = layout(index)
+            guard let style = bar.style else {
+                Issue.record("\(Self.screens[index].name): the style has room")
+                continue
+            }
+            #expect(near(style.x + style.width, bar.maxX) && near(style.width, BarLayout.styleWidth))
+            #expect(bar.emoji.x + bar.emoji.width <= style.x - BarLayout.gap + 0.001)
+            #expect(bar.emoji.width >= 2 * BarLayout.emojiPitch, "\(Self.screens[index].name): two emoji still show")
+        }
+    }
 }

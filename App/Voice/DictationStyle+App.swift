@@ -39,18 +39,6 @@ extension DictationWriting {
     }
 }
 
-extension DictationStyle {
-    /// Wispr Flow's names, each written in its style.
-    var title: String {
-        switch self {
-        case .formal: "Formal."
-        case .casual: "Casual"
-        case .veryCasual: "very casual"
-        case .excited: "Excited!"
-        }
-    }
-}
-
 extension DictationEditing {
     var title: String {
         switch self {

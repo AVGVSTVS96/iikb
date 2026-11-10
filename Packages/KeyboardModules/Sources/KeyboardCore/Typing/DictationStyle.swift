@@ -12,6 +12,16 @@ public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
 
     public static let standard = DictationStyle.casual
 
+    /// Wispr Flow's names, each written in its style.
+    public var title: String {
+        switch self {
+        case .formal: "Formal."
+        case .casual: "Casual"
+        case .veryCasual: "very casual"
+        case .excited: "Excited!"
+        }
+    }
+
     /// `text`'s sentence marks in this style, before a list it may end on is written as one.
     func punctuated(_ text: [Character]) -> [Character] {
         var text = Self.questionsMarked(text)
