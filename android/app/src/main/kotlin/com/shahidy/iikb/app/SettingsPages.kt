@@ -75,7 +75,7 @@ enum class SettingsPage(val title: String, val symbol: String, val hue: Hue) {
             TYPING -> if (store.bool("autoCorrection")) "Auto-Correction On" else "Auto-Correction Off"
             FEEDBACK -> if (store.bool("haptics.on")) store.title("haptics.strength", HAPTICS) else "Off"
             VOICE -> VoiceModel.of(LocalContext.current).pickedShown.title
-            WRITING -> store.title("writingStyle", STYLES)
+            WRITING -> store.title("writingStyle", Core.styles.map { it.value to it.title })
             DICTIONARY -> Vocabulary.terms().size.let { if (it == 1) "1 word" else "$it words" }
             EXTENSIONS, SOURCES -> LocalContext.current.let { context -> store.watch { services.list(context).size } }
                 .let { if (it == 0) "None" else "$it" }

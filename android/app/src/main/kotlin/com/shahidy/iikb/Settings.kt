@@ -2,6 +2,7 @@ package com.shahidy.iikb
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.shahidy.iikb.app.Core
 
 /**
  * iikb's settings, kept under the names iOS's `SettingsStore` uses, with iikb's defaults where nothing is kept
@@ -9,6 +10,14 @@ import android.content.SharedPreferences
  */
 class Settings(context: Context) {
     val preferences: SharedPreferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+
+    init {
+        // Text Mode, a setting of its own until the style took its words, becomes the style it typed as.
+        preferences.getString(TEXT_MODE, null)?.let { words ->
+            val style = Core.style(lines() + "\n$TEXT_MODE=$words")
+            preferences.edit().putString("writingStyle", style).remove(TEXT_MODE).apply()
+        }
+    }
 
     fun bool(name: String) = preferences.getBoolean(name, DEFAULTS[name] == "true")
 
@@ -18,6 +27,18 @@ class Settings(context: Context) {
 
     fun set(name: String, value: String) = preferences.edit().putString(name, value).apply()
 
+    /** The style each app has of its own, by package, kept as `package:style,…`; one not listed follows the default. */
+    fun appStyles(): Map<String, String> = string(APP_STYLES).split(',').mapNotNull { pair ->
+        pair.split(':', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] }
+    }.toMap()
+
+    /** `style` for `app`, or null to have it follow the default again. */
+    fun setAppStyle(app: String, style: String?) {
+        val styles = appStyles().toMutableMap()
+        if (style == null) styles.remove(app) else styles[app] = style
+        set(APP_STYLES, styles.entries.joinToString(",") { "${it.key}:${it.value}" })
+    }
+
     /** Every setting as `name=value` lines, as the engine reads them. */
     fun lines(): String = DEFAULTS.keys.joinToString("\n") { name ->
         val value = preferences.all[name]?.toString() ?: DEFAULTS.getValue(name)
@@ -25,6 +46,8 @@ class Settings(context: Context) {
     }
 
     companion object {
+        private const val TEXT_MODE = "textMode"
+        private const val APP_STYLES = "appWritingStyles"
         val DEFAULTS = mapOf(
             "autoCapitalization" to "false",
             "autoCorrection" to "false",
@@ -54,8 +77,7 @@ class Settings(context: Context) {
             "writingStyle" to "casual",
             "dictationEditing" to "asSaid",
             "spokenLists" to "numbered",
-            "textMode" to "spelledOut",
-            "appWritingStyles" to "",
+            APP_STYLES to "",
             "micOn" to "true",
         )
     }

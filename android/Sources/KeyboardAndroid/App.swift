@@ -2,9 +2,9 @@ import CJNI
 import FoundationEssentials
 import KeyboardCore
 
-// What the app's pages ask the engine (Kotlin's `app.Core`): the keyboard preview's own engine, how Writing Style types
-// its examples and Transcribe Again writes, which layout settings apply on this phone, and how many taps the keyboard
-// has learned.
+// What the app's pages ask the engine (Kotlin's `app.Core`): the keyboard preview's own engine, the writing styles, how
+// Writing Style types its examples and Transcribe Again writes, which layout settings apply on this phone, and how many
+// taps the keyboard has learned.
 
 /// The Keyboard pages' preview: a keyboard of its own on `field`, a `PreviewField` with no text, driven through `Native`
 /// like the input method's, with the lexicon and network so its bar suggests as the keyboard's does.
@@ -29,6 +29,19 @@ public func typed(env: Env, _: jclass, said: jbyteArray?, settings: jbyteArray?,
 public func written(env: Env, _: jclass, heard: jbyteArray?, settings: jbyteArray?, app: jbyteArray?) -> jbyteArray? {
     let writing = KeyboardSettings(parsing: env.string(settings) ?? "").dictation(in: env.string(app))
     return env.array(writing.written(env.string(heard) ?? ""))
+}
+
+/// The writing styles in order, each as it's kept and as it's titled, for Writing Style's Style card.
+@_cdecl("Java_com_shahidy_iikb_app_Core_styles")
+public func styles(env: Env, _: jclass) -> jbyteArray? {
+    env.array(Json.encode(DictationStyle.allCases.map { Writing.Style(value: $0.rawValue, title: $0.title) }))
+}
+
+/// The style `settings` (`Settings.lines`) write in, a Text Mode kept from before folded into it as iOS's
+/// `SettingsStore` folds it (`DictationStyle.with`), so Kotlin can keep it and forget the Text Mode.
+@_cdecl("Java_com_shahidy_iikb_app_Core_style")
+public func style(env: Env, _: jclass, settings: jbyteArray?) -> jbyteArray? {
+    env.array(KeyboardSettings(parsing: env.string(settings) ?? "").dictationStyle.rawValue)
 }
 
 /// Kotlin holds the mapped lexicon for as long as the app runs.

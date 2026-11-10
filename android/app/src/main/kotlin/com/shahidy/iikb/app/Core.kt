@@ -49,6 +49,19 @@ object Core {
     @JvmStatic private external fun written(heard: ByteArray, settings: ByteArray, app: ByteArray?): ByteArray
 
     @Serializable
+    data class Style(val value: String, val title: String)
+
+    /** The writing styles in order, as they're kept and titled. */
+    val styles: List<Style> by lazy { Json.decodeFromString(styles().decodeToString()) }
+
+    @JvmStatic private external fun styles(): ByteArray
+
+    /** The style the settings `lines` write in, a Text Mode among them folded into it. */
+    fun style(lines: String): String = style(lines.encodeToByteArray()).decodeToString()
+
+    @JvmStatic private external fun style(settings: ByteArray): ByteArray
+
+    @Serializable
     data class KeysHere(
         val numberRow: Boolean, val emojiKey: Boolean, val recordKey: Boolean, val keyboardMenu: Boolean,
         val split: Boolean, val oneHanded: Boolean, val largePanels: Boolean, val characterPreview: Boolean,
