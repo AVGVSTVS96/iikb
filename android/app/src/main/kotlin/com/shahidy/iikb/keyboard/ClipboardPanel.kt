@@ -129,8 +129,8 @@ fun ClipShelf(height: Dp) {
 }
 
 /**
- * A clip as iOS's compact row draws it, a card: its text in two lines at most, centered in the room over its length
- * and age, or a square of its image; its pin in the corner.
+ * A clip as iOS's compact row draws it, a card: its text in two lines at most across the card, centered in the room
+ * over its length and age, or a square of its image; its pin at the end of that line.
  */
 @Composable
 fun Card(row: Clips.Row) {
@@ -138,10 +138,7 @@ fun Card(row: Clips.Row) {
     val secondary = look.onKeySecondary
     Box(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp)) {
         Column(Modifier.fillMaxSize()) {
-            Box(
-                Modifier.weight(1f).fillMaxWidth().padding(end = if (row.pinned) 16.dp else 0.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                 if (row.image != null) {
                     ClipImage(row.image, Modifier.align(Alignment.TopStart).fillMaxHeight().aspectRatio(1f), 6.dp)
                 } else {
@@ -152,13 +149,15 @@ fun Card(row: Clips.Row) {
                     )
                 }
             }
-            Text(
-                detail(row), color = secondary, fontSize = 11.sp, lineHeight = 13.sp, maxLines = 1, style = DIGITS,
-                modifier = Modifier.height(13.dp),
-            )
-        }
-        if (row.pinned) Box(Modifier.align(Alignment.TopEnd).size(14.dp), contentAlignment = Alignment.Center) {
-            Glyph("pin.fill", secondary, Glyphs.square(13f).dp)
+            Row(Modifier.height(13.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    detail(row), color = secondary, fontSize = 11.sp, lineHeight = 13.sp, maxLines = 1, style = DIGITS,
+                    modifier = Modifier.weight(1f),
+                )
+                if (row.pinned) Box(Modifier.size(14.dp, 13.dp), contentAlignment = Alignment.Center) {
+                    Glyph("pin.fill", secondary, Glyphs.square(10f).dp)
+                }
+            }
         }
     }
 }
@@ -199,7 +198,7 @@ private fun clipTitle(row: Clips.Row, size: Float, label: Color, secondary: Colo
     if (glyph == null && row.color == null) return AnnotatedString(text.replace('\n', ' ')) to emptyMap()
     val title = buildAnnotatedString {
         appendInlineContent("mark")
-        append(" ⁠")
+        append("\u2060\u2002\u2060")
         when {
             row.kind == "email" -> append(text.replace("@", "@​"))
             row.color != null -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) { append(text.uppercase()) }
@@ -231,7 +230,7 @@ private fun Badge(row: Clips.Row, compact: Boolean, modifier: Modifier, onHold: 
     val secondary = look.onKeySecondary
     val title = buildAnnotatedString {
         appendInlineContent("icon")
-        append(" ⁠")
+        append("\u2060\u2002\u2060")
         withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append(row.name ?: row.site ?: "") }
         withStyle(SpanStyle(color = secondary, fontFeatureSettings = "tnum")) { append(" · ${row.age}") }
         if (row.pinned) {
