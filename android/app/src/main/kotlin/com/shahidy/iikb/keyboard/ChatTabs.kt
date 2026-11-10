@@ -120,12 +120,12 @@ fun ChatTabs(
             .drawWithContent {
                 drawn.record { this@drawWithContent.drawContent() }
                 drawLayer(drawn)
-            }
-            .glass(CircleShape, backdrop, look.dark).clip(CircleShape)
-            .fadeCutEnds(scroll.value > 0, scroll.value < scroll.maxValue),
+            },
     ) {
+        Box(Modifier.matchParentSize().glass(CircleShape, backdrop, look.dark))
         Box(
-            Modifier.fillMaxHeight().horizontalScroll(scroll).width(content.dp)
+            Modifier.matchParentSize().clip(CircleShape).fadeCutEnds(scroll.value > 0, scroll.value < scroll.maxValue)
+                .horizontalScroll(scroll).width(content.dp)
                 .pointerInput(names, starts) {
                     val at = { x: Float -> starts.indices.lastOrNull { starts[it] <= x / density }?.takeIf { it in names.indices } }
                     detectTapGestures(
