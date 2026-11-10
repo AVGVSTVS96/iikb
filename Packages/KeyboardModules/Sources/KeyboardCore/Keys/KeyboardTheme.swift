@@ -49,6 +49,8 @@ public struct KeyboardTheme: Hashable, Sendable {
     /// The keyboard's card as iOS draws it behind a keyboard, opaque, for what must hide the app that shows through
     /// iOS's glass, as a photo opened in a chat does.
     public var card = RGBA.rgb(224, 225, 232)
+    /// A chat's bubbles from the other side, Messages' gray rather than a key's face, so they never read as keys.
+    public var chatBubble = RGBA.rgb(233, 233, 235)
 
     /// How each kind of key is painted; the plain themes paint every key with `key`, `keyPressed` and `label`.
     public var letterKey = KeyPaint.flat(.white, pressed: .white, label: .black)
@@ -105,6 +107,7 @@ public struct KeyboardTheme: Hashable, Sendable {
             searchField: .rgb(51, 51, 53)
         )
         theme.card = .rgb(34, 34, 35)
+        theme.chatBubble = .rgb(54, 54, 57)
         return theme
     }
 
