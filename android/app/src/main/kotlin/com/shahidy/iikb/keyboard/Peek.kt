@@ -376,7 +376,7 @@ private fun Modifier.frosted(behind: Behind?, shape: Shape): Modifier {
         drawRect(look.glass)
         if (behind != null) {
             frost.renderEffect = BlurEffect(FROST.dp.toPx(), FROST.dp.toPx(), TileMode.Clamp)
-            frost.alpha = if (look.dark) 0.45f else 0.55f
+            frost.alpha = if (look.dark) 0.45f else 0.3f
             frost.record {
                 withTransform({
                     translate(behind.origin.x - at.x, behind.origin.y - at.y)
@@ -399,7 +399,7 @@ private val Colors.previewSecondary get() = if (dark) Color(0x99EBEBF5) else Col
 /** iOS's preview card: secondarySystemBackground. */
 private val Colors.preview get() = if (dark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
 /** iOS's menu glass as it reads over the dimmed keyboard, measured on its shots: the tint `frosted` lays over the frost. */
-private val Colors.glass get() = if (dark) Color(0xFF323233) else Color(0xFFDCDDE1)
+private val Colors.glass get() = if (dark) Color(0xFF323233) else Color(0xFFE8E8EB)
 private val Colors.glassEdge get() = if (dark) Color(0xED000000) else Color(0x80000000)
 /** How much of the hairline shows where the rim is lit. */
 private val Colors.litEdge get() = if (dark) 0f else 0.4f
