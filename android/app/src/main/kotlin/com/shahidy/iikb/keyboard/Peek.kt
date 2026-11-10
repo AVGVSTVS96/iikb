@@ -373,7 +373,7 @@ private fun Modifier.frosted(behind: Behind?, shape: Shape): Modifier {
         val edge = Brush.verticalGradient(0f to faint, litFade() to look.glassEdge, 1 - litFade() to look.glassEdge, 1f to faint)
         drawOutline(shape.createOutline(size, layoutDirection, this), edge, style = Stroke(EDGE.dp.toPx() * 2))
     }.clip(shape).drawWithContent {
-        drawRect(look.glass)
+        drawRect(if (behind == null) look.glass else look.tint)
         if (behind != null) {
             frost.renderEffect = BlurEffect(FROST.dp.toPx(), FROST.dp.toPx(), TileMode.Clamp)
             frost.alpha = if (look.dark) 0.45f else 0.3f
@@ -385,7 +385,7 @@ private fun Modifier.frosted(behind: Behind?, shape: Shape): Modifier {
                 drawRect(Color.Black.copy(alpha = if (look.dark) 0.47f else 0.2f))
             }
             drawLayer(frost)
-            drawRect(look.glass.copy(alpha = 0.35f))
+            drawRect(look.tint.copy(alpha = 0.35f))
         }
         drawContent()
         val outline = shape.createOutline(size, layoutDirection, this)
@@ -398,8 +398,10 @@ private fun Modifier.frosted(behind: Behind?, shape: Shape): Modifier {
 private val Colors.previewSecondary get() = if (dark) Color(0x99EBEBF5) else Color(0x993C3C43)
 /** iOS's preview card: secondarySystemBackground. */
 private val Colors.preview get() = if (dark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
-/** iOS's menu glass as it reads over the dimmed keyboard, measured on its shots: the tint `frosted` lays over the frost. */
-private val Colors.glass get() = if (dark) Color(0xFF323233) else Color(0xFFE8E8EB)
+/** iOS's menu glass as it reads over the dimmed keyboard, measured on its shots (clipboard-hold, transcripts-hold). */
+private val Colors.glass get() = if (dark) Color(0xFF353535) else Color(0xFFD6D7DB)
+/** The tint `frosted` lays under and over the frost, so that with the frost it reads as `glass`. */
+private val Colors.tint get() = if (dark) Color(0xFF444443) else Color(0xFFDEDEE3)
 private val Colors.glassEdge get() = if (dark) Color(0xED000000) else Color(0x80000000)
 /** How much of the hairline shows where the rim is lit. */
 private val Colors.litEdge get() = if (dark) 0f else 0.4f
@@ -415,7 +417,7 @@ private const val BOTTOM = 16f
 /** The menu runs nearer the bottom than a card alone. */
 private const val MENU_FLOOR = 2f
 private const val GAP = 16.5f
-private const val CORNER = 22f
+private const val CORNER = 32f
 private const val PHOTO_CORNER = 35f
 private const val TEXT_WIDTH = 340f
 private const val MAX_TEXT = 480f
