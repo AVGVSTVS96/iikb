@@ -2,9 +2,10 @@ import XCTest
 
 /// Every screen of the keyboard on one phone, light or dark, for the parity page beside the Android port
 /// (scripts/parity): the layers, typing with its bar, held keys, swipe, the menu and each of its shelves, and every
-/// panel opened, searched and held. `IIKB_SHOTS` is the file prefix; `IIKB_STATES` names the sections to shoot
-/// (`layers typing held swipe menu emoji gif clipboard transcripts`), and any other name shoots the keyboard as it
-/// opens under that name, as for dictation's states, which scripts/voiceapp.py holds.
+/// panel opened, searched and held, and Chats from `IIKB_EXTENSION` (scripts/chats.ts). `IIKB_SHOTS` is the file
+/// prefix; `IIKB_STATES` names the sections to shoot (`layers typing held swipe menu emoji gif clipboard transcripts
+/// chats`), and any other name shoots the keyboard as it opens under that name, as for dictation's states, which
+/// scripts/voiceapp.py holds.
 /// A held key's pop-up lasts only as long as the hold, so for those the test leaves `<prefix>-<name>.hold`, holding
 /// how many seconds into the hold to shoot, and scripts/parity takes the screenshot.
 final class ParityShots: XCTestCase {
@@ -25,6 +26,7 @@ final class ParityShots: XCTestCase {
             case "gif": try panel("gif", search: "cat")
             case "clipboard": try panel("clipboard", search: "sight")
             case "transcripts": try panel("transcripts", search: "the")
+            case "chats": try chats(at: try XCTUnwrap(environment["IIKB_EXTENSION"]))
             default:
                 _ = launch()
                 try shot(String(section), settle: 3)
@@ -149,6 +151,113 @@ final class ParityShots: XCTestCase {
         app.terminate()
     }
 
+    /// The extension added through its link, then its chats, named as the Android port's shots are: the menu's Chats
+    /// shelf, Notes open with the keys down, the keys up under its box, "ok" typed, sent and answered with the keys
+    /// down, Trip's file and photo, every chat in the tabs' hold menu, the photo opened large and held for Copy, and a
+    /// message's text selected.
+    private func chats(at url: String) throws {
+        let linked = XCUIApplication()
+        var link = URLComponents(string: "iikb://extension")!
+        link.queryItems = [URLQueryItem(name: "name", value: "Notes"), URLQueryItem(name: "url", value: url)]
+        linked.open(link.url!)
+        let add = linked.alerts.buttons["Add"]
+        XCTAssertTrue(add.waitForExistence(timeout: 10), "the link asks before adding the extension")
+        add.tap()
+        linked.terminate()
+
+        var app = launch()
+        let more = element("iikb.more", in: app)
+        let field = element("iikb.chat.field", in: app)
+        if field.exists {
+            more.tap()
+            XCTAssertTrue(wait(5) { !field.exists }, "More leaves the chat the keyboard came back with")
+        }
+        more.tap()
+        let card = element("iikb.chats.shelf.0", in: app)
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
+        try shot("panel-chat-shelf", settle: 2)
+        card.tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the chat opens with its message box")
+        XCTAssertTrue(element("iikb.chat.0", in: app).waitForExistence(timeout: 20), "the chats are tabs")
+        try shot("panel-chat", settle: 2)
+        for _ in 0..<3 where !key("space", in: app).isHittable {
+            field.tap()
+            _ = wait(10) { self.key("space", in: app).isHittable }
+        }
+        XCTAssertTrue(key("space", in: app).isHittable, "tapping the box brings the keys up")
+        try shot("panel-chat-keys")
+        type("ok", in: app)
+        try shot("panel-chat-typing")
+        element("iikb.chat.send", in: app).tap()
+        let reply = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Got it'")).firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 20), "the reply shows")
+        keysAway(in: app)
+        XCTAssertTrue(wait(5) { !self.key("space", in: app).isHittable }, "tapping the messages puts the keys away")
+        try shot("panel-chat-answered", settle: 1.5)
+        let trip = tab("Trip", in: app)
+        trip.tap()
+        let photo = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Photo'")).firstMatch
+        XCTAssertTrue(photo.waitForExistence(timeout: 10), "Trip has its photo")
+        try shot("panel-chat-photo", settle: 3)
+        trip.press(forDuration: 1.2)
+        try shot("panel-chat-tabs-menu", settle: 1.5)
+        app.terminate()
+
+        app = openChat("Trip")
+        XCTAssertTrue(photo.waitForExistence(timeout: 10))
+        photo.tap()
+        XCTAssertTrue(element("iikb.chat.photo", in: app).waitForExistence(timeout: 5), "a tap opens the photo large")
+        try shot("panel-chat-photo-open", settle: 1.5)
+        app.terminate()
+
+        app = openChat("Trip")
+        XCTAssertTrue(photo.waitForExistence(timeout: 10))
+        photo.press(forDuration: 1.2)
+        try shot("panel-chat-photo-hold", settle: 1.5)
+        app.terminate()
+
+        app = openChat("Notes")
+        let message = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Booked for 11'"))
+            .firstMatch
+        XCTAssertTrue(message.waitForExistence(timeout: 10), "Notes has its messages")
+        message.press(forDuration: 1.2)
+        try shot("panel-chat-select", settle: 1.5)
+        app.terminate()
+    }
+
+    /// A tap on the messages beside the last one, not on a bubble's text, which keeps the keys up to select, once the
+    /// chat has scrolled to it.
+    private func keysAway(in app: XCUIApplication) {
+        let space = key("space", in: app)
+        for _ in 0..<3 where space.isHittable {
+            Thread.sleep(forTimeInterval: 1.5)
+            element("iikb.chat.messages", in: app).coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.97)).tap()
+            _ = wait(3) { !space.isHittable }
+        }
+    }
+
+    private func tab(_ name: String, in app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'iikb.chat.' AND label == %@", name)).firstMatch
+    }
+
+    /// The chat named, open with its keys down, whether the keyboard comes back with a chat open or not.
+    private func openChat(_ name: String) -> XCUIApplication {
+        let app = launch()
+        let field = element("iikb.chat.field", in: app)
+        if !field.exists {
+            element("iikb.more", in: app).tap()
+            element("iikb.chats.shelf.0", in: app).tap()
+        }
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "a chat opens")
+        if key("space", in: app).isHittable { keysAway(in: app) }
+        tab(name, in: app).tap()
+        return app
+    }
+
+    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+    }
+
     /// The menu's shelf for `panel`, or the emoji key for emoji.
     private func open(_ panel: String) -> XCUIApplication {
         let app = launch(text: "Coffee at ")
@@ -178,12 +287,13 @@ final class ParityShots: XCTestCase {
                 "NO",
                 "-iikbAutoCorrection", autoCorrection ? "YES" : "NO",
             ] + (text.map { ["-iikbText", $0] } ?? [])
+        let up = { app.keys["iikb.space"].exists || app.descendants(matching: .any)["iikb.chat.field"].exists }
         for _ in 0..<4 {
             app.launch()
-            if app.keys["iikb.space"].waitForExistence(timeout: 30) { break }
+            if wait(30, up) { break }
             app.terminate()
         }
-        XCTAssertTrue(app.keys["iikb.space"].exists, "iikb is not the active keyboard")
+        XCTAssertTrue(up(), "iikb is not the active keyboard")
         return app
     }
 

@@ -1,114 +1,131 @@
 #!/usr/bin/env bun
+import { deflateSync } from "node:zlib";
+
 import { chats } from "../extensions/iikb.ts";
 import type { Chat, Message } from "../extensions/iikb.ts";
 
+const port = process.env.PORT ?? "2593";
+const file = (name: string) => `http://localhost:${port}/files/${name}`;
+
+const chunk = (kind: string, body: Uint8Array) => {
+  const data = Buffer.concat([Buffer.from(kind), body]);
+  const size = Buffer.alloc(4);
+  const crc = Buffer.alloc(4);
+
+  size.writeUInt32BE(body.length);
+  crc.writeUInt32BE(Bun.hash.crc32(data));
+
+  return Buffer.concat([size, data, crc]);
+};
+
+const png = (width: number, height: number, row: (y: number) => readonly number[]) => {
+  const header = Buffer.alloc(13);
+
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.set([8, 2, 0, 0, 0], 8);
+
+  const rows = Array.from({ length: height }, (_, y) =>
+    Buffer.from([0, ...Array.from({ length: width }, () => row(y)).flat()]),
+  );
+
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", header),
+    chunk("IDAT", deflateSync(Buffer.concat(rows), { level: 6 })),
+    chunk("IEND", new Uint8Array()),
+  ]);
+};
+
+const SEA = 0.62;
+
+const view = png(1200, 900, (y) => {
+  const t = y / 900;
+
+  if (t < SEA) {
+    return [Math.trunc(70 + 160 * t), Math.trunc(90 + 90 * t), Math.trunc(170 - 40 * t)];
+  }
+
+  const u = (t - SEA) / (1 - SEA);
+
+  return [Math.trunc(30 + 20 * u), Math.trunc(70 + 10 * u), Math.trunc(110 - 30 * u)];
+});
+
+const files = new Map([
+  ["/files/view.png", new Response(view, { headers: { "Content-Type": "image/png" } })],
+  [
+    "/files/boarding-pass.pdf",
+    new Response("%PDF-1.4\n%%EOF\n", { headers: { "Content-Type": "application/pdf" } }),
+  ],
+]);
+
 interface Thread {
   readonly name: string;
+  readonly line: string;
   readonly pinned: boolean;
   readonly messages: Message[];
 }
 
 const threads = new Map<string, Thread>([
   [
-    "dm",
+    "notes",
     {
-      name: "DM",
+      name: "Notes",
+      line: "Pick up the **film** at 5",
       pinned: true,
       messages: [
-        { from: "me", text: "is the new build on my phone?" },
+        { from: "me", text: "Remind me what's left for Saturday" },
         {
-          from: "hex",
-          text: "Yes, build **611** is on your iPad and the Duo has `598`. Open iikb once and it picks up the rest.",
+          from: "notes",
+          text: "Two things: pick up the **film** at 5, and send the photos to the group.",
         },
+        { from: "me", text: "And the café?" },
+        { from: "notes", text: "Booked for 11. It's the one on `Valencia`." },
+        { from: "notes", text: "Want me to set a reminder?" },
       ],
-    },
-  ],
-  [
-    "general",
-    {
-      name: "General",
-      pinned: true,
-      messages: [{ from: "hex", text: "Nothing failed overnight. Three topics picked back up." }],
-    },
-  ],
-  [
-    "site",
-    {
-      name: "iikb site",
-      pinned: false,
-      messages: [{ from: "hex", text: "The site's hero folds on its hinge now." }],
     },
   ],
   [
     "design",
     {
       name: "Design",
+      line: "The new bar looks right",
       pinned: false,
-      messages: [{ from: "hex", text: "The new icons are in. Light and dark both checked." }],
+      messages: [
+        { from: "design", text: "The new bar looks right in dark mode." },
+        { from: "me", text: "Nice, ship it" },
+      ],
     },
   ],
   [
-    "android",
+    "trip",
     {
-      name: "Android",
+      name: "Trip",
+      line: "Flights are booked",
       pinned: false,
-      messages: [{ from: "hex", text: "The APK builds on every push now." }],
-    },
-  ],
-  [
-    "voice",
-    {
-      name: "Voice",
-      pinned: false,
-      messages: [{ from: "hex", text: "Calls ring through again." }],
-    },
-  ],
-  [
-    "builds",
-    {
-      name: "Builds",
-      pinned: false,
-      messages: [{ from: "hex", text: "Build 880 is on the phone." }],
-    },
-  ],
-  [
-    "research",
-    {
-      name: "Research",
-      pinned: false,
-      messages: [{ from: "hex", text: "Three papers on swipe typing, summarized." }],
-    },
-  ],
-  [
-    "releases",
-    {
-      name: "Releases",
-      pinned: false,
-      messages: [{ from: "hex", text: "Release notes for 0.3 are drafted." }],
-    },
-  ],
-  [
-    "ideas",
-    {
-      name: "Ideas",
-      pinned: false,
-      messages: [{ from: "hex", text: "Saved: a widget for the clipboard." }],
-    },
-  ],
-  [
-    "reading",
-    {
-      name: "Reading",
-      pinned: false,
-      messages: [{ from: "hex", text: "Two long reads for the flight." }],
-    },
-  ],
-  [
-    "travel",
-    {
-      name: "Travel",
-      pinned: false,
-      messages: [{ from: "hex", text: "Boarding passes are in your email." }],
+      messages: [
+        { from: "trip", text: "Flights are booked. *Window seats* both ways." },
+        {
+          from: "me",
+          text: "",
+          files: [
+            { name: "boarding-pass.pdf", url: file("boarding-pass.pdf"), type: "application/pdf" },
+          ],
+        },
+        {
+          from: "trip",
+          text: "The view from the room",
+          files: [
+            {
+              name: "view.png",
+              url: file("view.png"),
+              type: "image/png",
+              width: 1200,
+              height: 900,
+            },
+          ],
+        },
+      ],
     },
   ],
 ]);
@@ -133,14 +150,10 @@ const nextChange = async () => {
   await promise;
 };
 
-const chatOf = (id: string, { name, pinned, messages }: Thread): Chat => {
-  const latest = messages.at(-1);
+const chatOf = (id: string, { name, line, pinned }: Thread): Chat => ({ id, name, line, pinned });
 
-  return { id, name, pinned, ...(latest && { line: latest.text }) };
-};
-
-export default chats({
-  name: "hex",
+const extension = chats({
+  name: "Notes",
   list: async () => [...threads].map(([id, thread]) => chatOf(id, thread)),
   read: async (chat, after) => {
     if (after === String(version)) {
@@ -150,11 +163,20 @@ export default chats({
     return { version: String(version), messages: threads.get(chat)?.messages ?? [] };
   },
   send: async (chat, text) => {
-    threads.get(chat)?.messages.push({ from: "me", text });
+    const thread = threads.get(chat);
+
+    thread?.messages.push({ from: "me", text });
     changed();
-    threads
-      .get(chat)
-      ?.messages.push({ from: "hex", text: "On it. I'll post here when it's done." });
-    changed();
+
+    setTimeout(() => {
+      thread?.messages.push({ from: chat, text: `Got it: “${text}”.` });
+      changed();
+    }, 1200);
   },
 });
+
+export default {
+  ...extension,
+  fetch: async (request: Request) =>
+    files.get(new URL(request.url).pathname)?.clone() ?? (await extension.fetch(request)),
+};

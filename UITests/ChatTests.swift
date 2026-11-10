@@ -9,7 +9,7 @@ final class ChatTests: XCTestCase {
             throw XCTSkip("Run through scripts/chattest")
         }
         let message = environment["IIKB_MESSAGE"] ?? "can you check the build"
-        let reply = environment["IIKB_REPLY"] ?? "On it"
+        let reply = environment["IIKB_REPLY"] ?? "Got it"
         continueAfterFailure = false
 
         let linked = XCUIApplication()

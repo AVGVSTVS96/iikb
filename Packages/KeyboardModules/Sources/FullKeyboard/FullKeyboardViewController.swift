@@ -178,6 +178,7 @@ open class FullKeyboardViewController: UIInputViewController {
     /// points back at it), so everything in it comes out here. Left in, every keyboard shown kept its whole tree,
     /// 2.7 MB each in the iOS 27.1 simulator, in a process iOS ends at 177 MB on the Duo (Nov 9).
     isolated deinit {
+        chats.stop()
         viewIfLoaded?.subviews.forEach { $0.removeFromSuperview() }
     }
 
@@ -252,7 +253,7 @@ open class FullKeyboardViewController: UIInputViewController {
             render()
         }
         sources.onHint = { [unowned self] in render() }
-        chats.changed = { [unowned self] in render() }
+        chats.changed = { [weak self] in self?.render() }
         suggestionBar.onCancel = { [unowned self] in
             feedback(.other)
             Dictation.send(.cancel)

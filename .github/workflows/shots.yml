@@ -9,6 +9,10 @@ jobs:
       - uses: actions/checkout@v5
       - run: sudo xcode-select -s /Applications/Xcode_27.1.app
       - run: brew install --quiet xcodegen
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
       - run: printf %s "$KLIPY_KEY" > Packages/KeyboardModules/Sources/FullKeyboard/Resources/Keys/klipy.key
         env:
           KLIPY_KEY: ${{ secrets.KLIPY_KEY }}
