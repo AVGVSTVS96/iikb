@@ -24,8 +24,9 @@ public final class ChatTabs: UIView, UIContextMenuInteractionDelegate, UIScrollV
     private var names: [String] = []
     private var open: Int?
     private var theme = KeyboardTheme.lightCurrent
-    /// The platter's tab as last laid out, so a new one slides there and the first is set in place.
-    private var placed: Int?
+    /// The platter's tab and the row's width as last laid out, so a new tab slides there and the row scrolls to it only
+    /// when the pick or the width changes, never under a finger scrolling it.
+    private var placed: (tab: Int, width: CGFloat)?
 
     public static let height = 32.0
     private static let inset = 2.0
@@ -46,6 +47,9 @@ public final class ChatTabs: UIView, UIContextMenuInteractionDelegate, UIScrollV
         track.contentView.addSubview(strip)
         platter.isUserInteractionEnabled = false
         platter.layer.cornerCurve = .continuous
+        platter.layer.shadowColor = UIColor.black.cgColor
+        platter.layer.shadowOffset = CGSize(width: 0, height: 1)
+        platter.layer.shadowRadius = 3
         scroll.addSubview(platter)
         addInteraction(UIContextMenuInteraction(delegate: self))
     }
@@ -83,7 +87,8 @@ public final class ChatTabs: UIView, UIContextMenuInteractionDelegate, UIScrollV
         self.open = open
         self.theme = theme
         let dark = traitCollection.userInterfaceStyle == .dark
-        platter.backgroundColor = UIColor(white: dark ? 1 : 0, alpha: dark ? 0.14 : 0.08)
+        platter.backgroundColor = UIColor(white: 1, alpha: dark ? 0.14 : 1)
+        platter.layer.shadowOpacity = dark ? 0 : 0.12
         for (index, tab) in tabs.enumerated() {
             var look = UIButton.Configuration.plain()
             look.attributedTitle = AttributedString(
@@ -158,15 +163,15 @@ public final class ChatTabs: UIView, UIContextMenuInteractionDelegate, UIScrollV
         }
         platter.isHidden = false
         let target = tabs[open].frame
-        let slides = placed != nil && placed != open && window != nil
-        placed = open
-        let visible = target.insetBy(dx: -40, dy: 0)
-        let offset = min(
-            max(scroll.contentOffset.x, visible.maxX - scroll.bounds.width), visible.minX,
-            max(scroll.contentSize.width - scroll.bounds.width, 0))
+        let width = scroll.bounds.width
+        let moves = placed.map { $0 != (open, width) } ?? true
+        let slides = placed != nil && placed?.tab != open && window != nil
+        placed = (open, width)
+        let farthest = max(scroll.contentSize.width - width, 0)
+        let centered = min(max(target.midX - width / 2, 0), farthest)
         let settle = {
             self.platter.frame = target
-            self.scroll.contentOffset.x = max(offset, 0)
+            if moves { self.scroll.contentOffset.x = centered }
         }
         if slides {
             UIView.animate(

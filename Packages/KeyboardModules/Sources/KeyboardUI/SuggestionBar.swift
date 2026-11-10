@@ -556,12 +556,19 @@ public final class SuggestionBar: UIView {
             ? BarLayout(
                 toolbar, keys: keys, tools: tools.count, more: true, mic: micInBar, maximumSlot: maximumSlotWidth)
             : layout
-        chatRow = (CGFloat(beside.minX), CGFloat(beside.maxX))
-        chatMore = beside.more.map { CGRect($0) } ?? .zero
+        // Beside the tabs, More's glass starts where the keys and the chat's messages do, and the tabs a key's gap after it.
+        let side = CGFloat(ChatTabs.height)
+        let glass = CGRect(
+            x: CGFloat(keys[0].minX), y: (row.midY - side / 2).rounded(scale: scale), width: side, height: side)
+        let besideMore = beside.more.map { CGRect($0) } ?? .zero
+        chatMore = besideMore.offsetBy(dx: glass.midX - besideMore.midX, dy: 0)
+        chatRow = (glass.maxX + 6, CGFloat(beside.maxX))
         more.glassy = chatNames != nil
-        let room = recording ? max(CGRect(layout.cancel).minX - 8 - row.minX, 0) : row.width
+        if chatNames != nil, !more.isHidden { more.center.x = chatMore.midX }
+        let room =
+            recording ? max(CGRect(layout.cancel).minX - 8 - chatRow.minX, 0) : chatRow.maxX - chatRow.minX
         chatTabs.frame = CGRect(
-            x: row.minX, y: (row.midY - ChatTabs.height / 2).rounded(scale: scale),
+            x: chatRow.minX, y: (row.midY - ChatTabs.height / 2).rounded(scale: scale),
             width: chatTabs.width(within: room), height: ChatTabs.height)
         for (index, divider) in dividers.enumerated() {
             divider.frame = CGRect(x: slots[index].frame.maxX - 0.5, y: row.midY - 14, width: 1, height: 28)
