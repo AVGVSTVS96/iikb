@@ -1,7 +1,7 @@
 import KeyboardCore
 import UIKit
 
-/// The bar's mic: a round button of iOS's Liquid Glass, tinted white on dark and black on light, with a green dot while
+/// The bar's mic: a round button of the bar's Liquid Glass, as More is, its glyph in the label's color, with a green dot while
 /// the app keeps the microphone on. While it listens it turns record red and grows into a capsule over the suggestions, which holds the
 /// recording, with a white stop where the mic was and a soft red halo that swells as you talk; while the
 /// app writes a dictation down a spinner, or what its `stopAnimation` shows, takes the glyph's place, and a tap still starts the next one. Tap to start or
@@ -25,10 +25,10 @@ public final class MicButton: UIControl {
     private(set) var phase = Phase.off
     private let halo = UIView()
     private let face = UIView()
-    /// The bar's mic is glass tinted the mic's color, red while it listens, so it sits with the glass around it; the
-    /// Record Key keeps a key's solid face.
+    /// The bar's mic is the bar's glass, as More and the tools are, and glass tinted red while it listens; the Record
+    /// Key keeps a key's solid face.
     private let glass = UIVisualEffectView()
-    private var tint: UIColor?
+    private var tint: String?
     private let glyph = UIImageView()
     private let stop = UIImageView()
     private let dot = UIView()
@@ -199,27 +199,34 @@ public final class MicButton: UIControl {
         let listening = phase == .listening
         let idle = phase == .off || phase == .on
         let color = listening ? theme.record.ui : theme.mic.ui
+        let plain = corner == nil && !listening
         glass.isHidden = corner != nil
-        if corner == nil, color != tint {
-            tint = color
-            let tinted = UIGlassEffect(style: .regular)
-            tinted.tintColor = color.withAlphaComponent(listening ? 1 : 0.85)
-            glass.effect = tinted
+        let look = plain ? (theme.dark ? "glass dark" : "glass light") : "\(color)"
+        if corner == nil, look != tint {
+            tint = look
+            if plain {
+                glass.effect = UIGlassEffect.bar(theme)
+            } else {
+                let tinted = UIGlassEffect(style: .regular)
+                tinted.tintColor = color
+                glass.effect = tinted
+            }
         }
         face.backgroundColor = corner == nil ? .clear : color
+        let ink = plain ? theme.label.ui : theme.micGlyph.ui
         halo.backgroundColor = theme.record.ui
         halo.alpha = listening && breathes ? 0.2 : 0
-        glyph.tintColor = theme.micGlyph.ui
+        glyph.tintColor = ink
         glyph.alpha = idle && !checking ? 1 : 0
         glyph.transform = idle ? .identity : CGAffineTransform(scaleX: 0.5, y: 0.5)
         stop.alpha = listening ? 1 : 0
         stop.transform = listening ? .identity : CGAffineTransform(scaleX: 0.5, y: 0.5)
         dot.alpha = phase == .on ? 1 : 0
         dot.transform = phase == .on ? .identity : CGAffineTransform(scaleX: 0.5, y: 0.5)
-        spinner.color = theme.micGlyph.ui
+        spinner.color = ink
         spinner.alpha = phase == .writing && stopAnimation != .squeeze ? 1 : 0
-        arc.strokeColor = theme.micGlyph.ui.cgColor
-        check.tintColor = theme.micGlyph.ui
+        arc.strokeColor = ink.cgColor
+        check.tintColor = ink
         ring.alpha = phase == .writing && stopAnimation == .squeeze ? 1 : 0
         spinner.transform = CGAffineTransform(scaleX: phase == .writing ? 0.75 : 0.5, y: phase == .writing ? 0.75 : 0.5)
         layoutHalo()

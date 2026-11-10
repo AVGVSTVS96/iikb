@@ -4,10 +4,14 @@ import UIKit
 /// One of the buttons at the bar's left, the More button or a panel's tool: its glyph, with its title beside it where
 /// the bar has room, in a circle that shows only while pressed, or while what it opened is out.
 public final class BarButton: UIButton {
-    public var theme = KeyboardTheme.lightCurrent { didSet { refresh() } }
+    public var theme = KeyboardTheme.lightCurrent {
+        didSet {
+            if theme.dark != oldValue.dark { glass.effect = UIGlassEffect.bar(theme) }
+            refresh()
+        }
+    }
     var isOn = false { didSet { if isOn != oldValue { refresh() } } }
-    /// Set on a circle of iOS's glass `glassSide` tall, in place of the on circle: beside the chats' tabs, or the tools'
-    /// capsule.
+    /// Set on a circle of the bar's glass `glassSide` tall, in place of the on circle.
     public var glassy = false {
         didSet {
             guard glassy != oldValue else { return }
@@ -25,14 +29,13 @@ public final class BarButton: UIButton {
             setNeedsLayout()
         }
     }
-    private let glass = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
+    private let glass = UIVisualEffectView(effect: UIGlassEffect.bar(.lightCurrent))
     private let draw: @MainActor (CGFloat) -> UIImage?
     private let icon = UIImageView()
     private let label = UILabel()
     private var glyph: CGFloat = 0
     private var reach = UIEdgeInsets.zero
 
-    static let titleFont = UIFont.systemFont(ofSize: 15, weight: .medium)
     static let titleGap: CGFloat = 6
 
     /// `draw` makes the glyph to fit a square of a side.
@@ -43,7 +46,6 @@ public final class BarButton: UIButton {
         icon.isUserInteractionEnabled = false
         icon.contentMode = .center
         label.text = title
-        label.font = Self.titleFont
         label.alpha = 0
         label.isUserInteractionEnabled = false
         layer.cornerCurve = .continuous
@@ -59,10 +61,10 @@ public final class BarButton: UIButton {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    /// How wide it is with its title: the glyph's cell `side` wide, then the title a gap after the glyph, then as much
-    /// room as the glyph has before it.
+    /// How wide its glyph and title are side by side, a gap apart, with a glyph's room before and after them.
     func titledWidth(_ side: CGFloat) -> CGFloat {
-        side + Self.titleGap + label.intrinsicContentSize.width.rounded(.up)
+        let ink = icon.image?.size.width ?? 0
+        return ink + Self.titleGap + label.intrinsicContentSize.width.rounded(.up) + (side - ink)
     }
 
     override public var isHighlighted: Bool {
@@ -73,9 +75,15 @@ public final class BarButton: UIButton {
     public func place(_ frame: CGRect, glyph: CGFloat, reach: UIEdgeInsets) {
         self.frame = frame
         self.reach = reach
+        use(glyph: glyph)
+    }
+
+    /// Its glyph drawn to fit a `glyph` square, and its title in proportion with it.
+    func use(glyph: CGFloat) {
         guard glyph != self.glyph else { return }
         self.glyph = glyph
         icon.image = draw(glyph)
+        label.font = .systemFont(ofSize: (glyph * 0.7).rounded(), weight: .medium)
     }
 
     private func refresh() {
@@ -91,13 +99,33 @@ public final class BarButton: UIButton {
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        let side = bounds.height
-        icon.frame = CGRect(x: 0, y: 0, width: titled ? side : bounds.width, height: side)
-        let start = (side + glyph) / 2 + Self.titleGap
-        label.frame = CGRect(x: start, y: 0, width: max(bounds.width - start - (side - glyph) / 2, 0), height: side)
+        if titled {
+            let ink = icon.image?.size.width ?? 0
+            let text = label.intrinsicContentSize.width.rounded(.up)
+            let start = ((bounds.width - ink - Self.titleGap - text) / 2).rounded()
+            icon.frame = CGRect(x: start, y: 0, width: ink, height: bounds.height)
+            label.frame = CGRect(x: start + ink + Self.titleGap, y: 0, width: text, height: bounds.height)
+        } else {
+            icon.frame = bounds
+        }
         glass.frame = CGRect(
             x: bounds.midX - glassSide / 2, y: bounds.midY - glassSide / 2, width: glassSide, height: glassSide)
         layer.cornerRadius = min(bounds.width, bounds.height) / 2
+    }
+}
+
+extension KeyboardTheme {
+    /// Drawn for dark, its label light.
+    package var dark: Bool { label.red > 0.5 }
+}
+
+extension UIGlassEffect {
+    /// The bar's glass: iOS's, tinted toward the label 8% in light and 12% in dark, as the menu's shelves are toward their
+    /// color, so it stands off the keyboard's own glass.
+    static func bar(_ theme: KeyboardTheme) -> UIGlassEffect {
+        let effect = UIGlassEffect(style: .regular)
+        effect.tintColor = theme.label.ui.withAlphaComponent(theme.dark ? 0.12 : 0.08)
+        return effect
     }
 }
 
@@ -217,9 +245,10 @@ extension Panel {
     }
 
     /// GIF has no SF Symbol: a rounded rect with "GIF" in it, 0.88 of `side` wide, outlined as thin as the regular
-    /// symbols' line or, `filled`, solid with the letters cut out of it (docs/design.md).
+    /// symbols' line or, `filled`, 0.76 wide, so its solid block weighs what a filled symbol does, with the letters cut
+    /// out of it (docs/design.md).
     package static func gifGlyph(_ side: CGFloat, filled: Bool = false) -> UIImage {
-        let unit = 0.88 * side / 18.4
+        let unit = (filled ? 0.76 : 0.88) * side / 18.4
         let size = CGSize(width: 18.4 * unit, height: 14.4 * unit)
         return UIGraphicsImageRenderer(size: size).image { context in
             let box = CGRect(origin: .zero, size: size)

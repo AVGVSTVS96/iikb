@@ -75,8 +75,9 @@ public final class SuggestionBar: UIView {
     public private(set) var chatMore = CGRect.zero
     private var tools: [(panel: Panel, button: BarButton)] = []
     private let more = BarButton("More", draw: Panel.moreGlyph)
-    /// The tools' capsule of iOS's glass, as the chats' tabs have, after More's own glass circle.
-    private let toolGlass = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
+    /// The tools' capsule of the bar's glass, after More's own glass circle, as the chats' tabs are.
+    private let toolGlass = UIVisualEffectView(effect: UIGlassEffect.bar(.lightCurrent))
+    private var glassDark: Bool?
     /// The edits while the menu is out, nil while they're tucked into the More button.
     private var edits: Edits?
     /// Something the More button opened is out in the keys' place, the menu or a panel from it.
@@ -181,6 +182,10 @@ public final class SuggestionBar: UIView {
         self.emoji.forEach { $0.theme = theme }
         dividers.forEach { $0.backgroundColor = theme.candidateDivider.ui }
         more.theme = theme
+        if theme.dark != glassDark {
+            glassDark = theme.dark
+            toolGlass.effect = UIGlassEffect.bar(theme)
+        }
         refresh()
     }
 
@@ -479,26 +484,28 @@ public final class SuggestionBar: UIView {
         (slots + dividers + [strip, notice, stack] as [UIView]).forEach { $0.alpha = under }
     }
 
-    /// The tools in their glass capsule, which reaches a fifth of a button past them on each side: on BarLayout's places, or, where no suggestions show and the bar has room up to
-    /// the mic, each with its title, one after the other, so a wide bar says what each is rather than standing empty.
+    /// The tools in their glass capsule, which reaches a fifth of a button past them: on BarLayout's places, or, where no
+    /// suggestions show and their titles fit, each titled in an equal share of a capsule that runs on to the mic, as far
+    /// from it as from More, so the bar has no empty stretch at any width.
     private func placeTools(_ layout: BarLayout, reach: UIEdgeInsets) {
         toolGlass.isHidden = tools.isEmpty
         guard let first = layout.tools.first.map({ CGRect($0) }) else { return }
         let side = CGFloat(toolbar.button)
-        let between = CGFloat(layout.pitch) - side
         let pad = (side * 0.2).rounded()
-        let end = (layout.mic.map { CGRect($0).minX } ?? CGFloat(layout.maxX)) - between - pad
-        let widths = tools.map { $0.button.titledWidth(side) }
+        let gap = CGFloat(layout.pitch) - side - pad
+        let end = (layout.mic.map { CGRect($0).minX } ?? CGFloat(layout.maxX)) - gap - pad
+        tools.forEach { $0.button.use(glyph: CGFloat(toolbar.glyph)) }
+        let share = (end - first.minX) / CGFloat(tools.count)
         let titled =
             !enabled && !recording && edits == nil && !noticed
-            && first.minX + widths.reduce(0, +) + between * CGFloat(widths.count - 1) <= end
-        var x = first.minX
+            && tools.allSatisfy { $0.button.titledWidth(side) <= share }
         for (index, (tool, frame)) in zip(tools, layout.tools).enumerated() {
             tool.button.titled = titled
             let place =
-                titled ? CGRect(x: x, y: first.minY, width: widths[index], height: side).integral : CGRect(frame)
-            tool.button.place(place, glyph: toolbar.glyph, reach: reach)
-            x = place.maxX + between
+                titled
+                ? CGRect(x: first.minX + CGFloat(index) * share, y: first.minY, width: share, height: side)
+                : CGRect(frame)
+            tool.button.place(place, glyph: CGFloat(toolbar.glyph), reach: reach)
         }
         let last = tools.last?.button.frame ?? first
         toolGlass.frame = CGRect(x: first.minX, y: first.minY, width: last.maxX - first.minX, height: side)
@@ -594,7 +601,7 @@ public final class SuggestionBar: UIView {
         let besideMore = beside.more.map { CGRect($0) } ?? .zero
         chatMore = besideMore.offsetBy(dx: glass.midX - besideMore.midX, dy: 0)
         chatRow = (glass.maxX + 6, CGFloat(beside.maxX))
-        more.glassy = chatNames != nil || !tools.isEmpty
+        more.glassy = true
         more.glassSide = chatNames != nil ? CGFloat(ChatTabs.height) : CGFloat(toolbar.button)
         if chatNames != nil, !more.isHidden { more.center.x = chatMore.midX }
         let room =
