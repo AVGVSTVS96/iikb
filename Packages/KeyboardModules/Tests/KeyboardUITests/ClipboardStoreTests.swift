@@ -45,6 +45,33 @@ struct ClipboardStoreTests {
             "the keyboard in Messages read the history before Notes kept a copy, and pinning there kept it")
     }
 
+    @Test func oneCopyIOSCantHandOverNeverHidesTheHistoryBehindTheAllowNotice() async {
+        let store = ClipboardStore(folder: folder)
+        pasteboard.string = "Meet at 7"
+        await keep(store)
+        pasteboard.setData(Data("not an image".utf8), forPasteboardType: UTType.tiff.identifier)
+        await keep(store)
+        await keep(store)
+        #expect(!store.refused, "a copy iOS gives nothing for, looked at again, is one copy, not Paste set to Ask")
+        pasteboard.setData(Data("still not".utf8), forPasteboardType: UTType.tiff.identifier)
+        await keep(store)
+        #expect(store.refused, "two different copies in a row given nothing is Paste from Other Apps at Ask")
+        pasteboard.string = "Allowed again"
+        await keep(store)
+        #expect(!store.refused)
+        #expect(store.history.items.map(\.content) == [.text("Allowed again"), .text("Meet at 7")])
+    }
+
+    @Test func aFirstCopyGivenNothingAsksForPasteWhenThereIsNoHistory() async {
+        let store = ClipboardStore(folder: folder)
+        pasteboard.setData(Data("not an image".utf8), forPasteboardType: UTType.tiff.identifier)
+        await keep(store)
+        #expect(store.refused)
+        store.allowed()
+        await store.settled()
+        #expect(!store.refused, "the app, which can read the setting, says it's Allow")
+    }
+
     @Test func passwordsAreNeverKept() async {
         let store = ClipboardStore(folder: folder)
         pasteboard.setItems([[UTType.utf8PlainText.identifier: "hunter2", "org.nspasteboard.ConcealedType": "hunter2"]])
