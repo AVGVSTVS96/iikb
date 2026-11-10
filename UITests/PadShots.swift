@@ -20,11 +20,11 @@ final class PadShots: XCTestCase {
             "-iikbFocus", "YES", "-iikbOrientation",
             ProcessInfo.processInfo.environment["IIKB_ORIENTATION"] ?? "portrait", "-iikbOneHanded", "off",
         ]
-        app.launch()
+        app.launchWithIikb()
         XCUIDevice.shared.orientation =
             ProcessInfo.processInfo.environment["IIKB_ORIENTATION"] == "landscape" ? .landscapeLeft : .portrait
         let space = key("space", in: app)
-        XCTAssertTrue(space.waitForExistence(timeout: 30), "iikb is not the active keyboard")
+        XCTAssertTrue(space.waitForExistence(timeout: 30), "iikb's keys stay up once turned")
         try shot("empty")
         try app.debugDescription.write(toFile: "\(prefix)-empty.txt", atomically: true, encoding: .utf8)
         for letter in "coffee at" { key(letter == " " ? "space" : String(letter), in: app).tap() }
@@ -55,8 +55,10 @@ final class PadShots: XCTestCase {
             app.buttons["iikb.panel.back"].tap()
         }
         if wanted("clipboard"), app.buttons["iikb.more"].exists {
-            app.buttons["iikb.more"].tap()
-            app.buttons["iikb.shelf.clipboard"].tap()
+            let shelf = app.buttons["iikb.shelf.clipboard"]
+            if !shelf.exists { app.buttons["iikb.more"].tap() }
+            XCTAssertTrue(shelf.waitForExistence(timeout: 3), "the menu has the clipboard's shelf")
+            shelf.tap()
             try shot("clipboard")
             app.buttons["iikb.panel.back"].tap()
         }

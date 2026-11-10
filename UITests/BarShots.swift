@@ -17,8 +17,7 @@ final class BarShots: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES", "-iikbPredictiveText", "NO"]
         XCUIDevice.shared.orientation = .portrait
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 15), "iikb is not the active keyboard")
+        app.launchWithIikb()
         for name in ["t", "h", "e"] { key(name, in: app).tap() }
         XCTAssertTrue(element("iikb.tool.clipboard", in: app).waitForExistence(timeout: 5), "the panels are in the bar")
         XCTAssertFalse(element("iikb.suggestion.1", in: app).isHittable, "no suggestions show")

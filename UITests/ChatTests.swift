@@ -24,8 +24,7 @@ final class ChatTests: XCTestCase {
 
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", "portrait"]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
         element("iikb.more", in: app).tap()
         let card = element("iikb.chats.shelf.0", in: app)
         XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")

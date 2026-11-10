@@ -7,8 +7,7 @@ final class TypingTests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES", "-iikbAutoCapitalization", "YES"]
-        app.launch()
-        XCTAssertTrue(key("space").waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
     }
 
     private var field: XCUIElement { app.textViews.firstMatch }
@@ -103,8 +102,7 @@ final class TypingTests: XCTestCase {
     private func relaunch(with text: String) {
         app.terminate()
         app.launchArguments += ["-iikbText", text]
-        app.launch()
-        XCTAssertTrue(key("space").waitForExistence(timeout: 10))
+        app.launchWithIikb()
     }
 
     /// Holds the space bar and moves the finger up (negative) or down that many rows of keys, half a row past them.

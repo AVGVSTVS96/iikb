@@ -11,8 +11,7 @@ final class PanelTests: XCTestCase {
             "-iikbFocus", "YES", "-iikbOrientation", orientation, "-iikbOneHanded", "off", "-iikbCompactPanels",
             compactSetting ? "YES" : "NO",
         ]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 30), "iikb is not the active keyboard")
+        app.launchWithIikb()
         for letter in "coffee at" { key(letter == " " ? "space" : String(letter), in: app).tap() }
         try shot(shots, "main")
 
@@ -83,21 +82,22 @@ final class PanelTests: XCTestCase {
             "-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off", "-iikbTheme", "standard",
             "-iikbStopAnimation", "squeeze",
         ]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 30), "iikb is not the active keyboard")
+        app.launchWithIikb()
         app.buttons["iikb.more"].tap()
         let mechanical = app.buttons["iikb.look.theme.mechanical"]
         let drain = app.buttons["iikb.look.stop.drain"]
         XCTAssertTrue(app.buttons["iikb.shelf.theme"].waitForExistence(timeout: 3), "the menu has the themes")
         try shot(shots, "menu-top")
         let stop = app.buttons["iikb.shelf.stop"]
-        let theme = app.buttons["iikb.shelf.theme"].frame
+        // The Theme shelf only peeks above the screen's bottom edge, where a drag up is iOS's own, so the drag starts
+        // on the shelf above it.
+        let start = app.buttons["iikb.shelf.theme"].frame.minY - 40
         let window = app.windows.firstMatch
         let origin = window.coordinate(withNormalizedOffset: .zero)
-        origin.withOffset(CGVector(dx: window.frame.width * 0.8, dy: theme.midY))
+        origin.withOffset(CGVector(dx: window.frame.width * 0.8, dy: start))
             .press(
                 forDuration: 0.1,
-                thenDragTo: origin.withOffset(CGVector(dx: window.frame.width * 0.8, dy: theme.midY - 400)))
+                thenDragTo: origin.withOffset(CGVector(dx: window.frame.width * 0.8, dy: start - 300)))
         try shot(shots, "menu-scrolled")
         XCTAssertTrue(
             wait { stop.frame.maxY < app.windows.firstMatch.frame.maxY },
@@ -131,8 +131,7 @@ final class PanelTests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off"]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 30), "iikb is not the active keyboard")
+        app.launchWithIikb()
         for letter in text { key(letter == " " ? "space" : String(letter), in: app).tap() }
         return app
     }

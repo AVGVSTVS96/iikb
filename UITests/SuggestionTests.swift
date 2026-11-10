@@ -10,8 +10,7 @@ final class SuggestionTests: XCTestCase {
     }
 
     private func launch() {
-        app.launch()
-        XCTAssertTrue(key("space").waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
     }
 
     private var field: XCUIElement { app.textViews.firstMatch }
@@ -61,8 +60,7 @@ final class SuggestionTests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "0")
         app.terminate()
         app.launchArguments = ["-iikbFocus", "YES"]
-        app.launch()
-        XCTAssertTrue(key("space").waitForExistence(timeout: 10))
+        app.launchWithIikb()
         type("helo ")
         XCTAssertEqual(text, "Helo ")
     }

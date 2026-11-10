@@ -8,9 +8,8 @@ final class HomeTests: XCTestCase {
             XCUIDevice.shared.orientation = orientation
             let app = XCUIApplication()
             app.launchArguments = ["-iikbFocus", "YES"]
-            app.launch()
+            app.launchWithIikb()
             let space = app.keys.matching(identifier: "iikb.space").firstMatch
-            XCTAssertTrue(space.waitForExistence(timeout: 15), "iikb is not the active keyboard")
             let card = app.buttons["home-dictionary"]
             XCTAssertTrue(card.exists, "\(orientation.rawValue): Home's cards went while typing")
             let field = app.textViews["Try iikb"]
@@ -20,7 +19,7 @@ final class HomeTests: XCTestCase {
                 "\(orientation.rawValue): a tap beside the field left the keys up")
             field.tap()
             XCTAssertTrue(
-                space.waitForExistence(timeout: 5), "\(orientation.rawValue): the field didn't take the keys back")
+                app.showsIikb(relaunching: false), "\(orientation.rawValue): the field didn't take the keys back")
             app.buttons["home-done"].tap()
             XCTAssertTrue(space.waitForNonExistence(timeout: 5), "\(orientation.rawValue): Done left the keys up")
             XCTAssertTrue(

@@ -22,8 +22,7 @@ final class SourceTests: XCTestCase {
 
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", "portrait"]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
         type("i hate", in: app)
         let hint = app.descendants(matching: .any).matching(identifier: "iikb.notice").firstMatch
         XCTAssertTrue(

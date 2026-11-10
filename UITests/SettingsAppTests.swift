@@ -42,11 +42,11 @@ final class SettingsAppTests: XCTestCase {
         iikb.launch()
         let picked = iikb.buttons["5 Minutes"]
         XCTAssertTrue(picked.waitForExistence(timeout: 5))
-        for _ in 0..<6 where !picked.isHittable { iikb.swipeUp() }
+        reveal(picked, in: iikb)
         XCTAssertTrue(picked.isSelected)
         try shot(iikb, "keep-mic-on-choices")
         let minute = iikb.buttons["1 Minute"]
-        while !minute.isHittable { iikb.swipeUp() }
+        reveal(minute, in: iikb)
         minute.tap()
         XCTAssertTrue(minute.isSelected)
         XCTAssertFalse(picked.isSelected)
@@ -70,6 +70,17 @@ final class SettingsAppTests: XCTestCase {
             ).firstMatch.exists)
         try shot(settings, "keep-mic-on-settings")
         settings.terminate()
+    }
+
+    /// Scrolls a short way at a time until the row sits clear of the page's title, where a tap reaches it: a swipe can
+    /// fling it up under the title, which takes the tap.
+    private func reveal(_ row: XCUIElement, in app: XCUIApplication) {
+        let middle = app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let title = app.navigationBars.firstMatch.frame.maxY
+        for _ in 0..<10 where !row.isHittable || row.frame.minY < title {
+            let up = row.frame.minY >= title
+            middle.press(forDuration: 0.05, thenDragTo: middle.withOffset(CGVector(dx: 0, dy: up ? -150 : 150)))
+        }
     }
 
     /// Opens one of iikb's pages in Settings › Apps › iikb.

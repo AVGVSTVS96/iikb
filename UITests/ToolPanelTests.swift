@@ -358,12 +358,7 @@ final class ToolPanelTests: XCTestCase {
             "-iikbFocus", "YES", "-iikbOrientation", orientation, "-iikbOneHanded", "off", "-iikbCompactPanels",
             compactSetting ? "YES" : "NO",
         ]
-        app.launch()
-        if !key("space", in: app).waitForExistence(timeout: 20) {
-            app.terminate()
-            app.launch()
-        }
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 30), "iikb is not the active keyboard")
+        app.launchWithIikb()
         return app
     }
 

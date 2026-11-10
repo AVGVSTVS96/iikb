@@ -16,8 +16,7 @@ final class FastTypingTests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES", "-iikbResetSettings", "YES"]
-        app.launch()
-        XCTAssertTrue(app.keys["iikb.space"].waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
     }
 
     func test200WordsPerMinuteSustained() throws {

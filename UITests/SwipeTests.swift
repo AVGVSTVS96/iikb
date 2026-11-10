@@ -9,12 +9,7 @@ final class SwipeTests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES", "-iikbResetSettings", "YES"]
-        app.launch()
-        if !app.keys["iikb.space"].waitForExistence(timeout: 15) {
-            app.terminate()
-            app.launch()
-        }
-        XCTAssertTrue(app.keys["iikb.space"].waitForExistence(timeout: 15), "iikb is not the active keyboard")
+        app.launchWithIikb()
     }
 
     func testASwipeTypesItsWordAndTheBarOffersOthers() throws {

@@ -8,8 +8,7 @@ final class ChatBoxDeviceTests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES"]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
         element("iikb.more", in: app).tap()
         let card = element("iikb.chats.shelf.0", in: app)
         XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
@@ -57,8 +56,7 @@ final class ChatBoxDeviceTests: XCTestCase {
                 XCUIDevice.shared.orientation = orientation
                 let app = XCUIApplication()
                 app.launchArguments = ["-iikbFocus", "YES", "-iikbAppearance", appearance]
-                app.launch()
-                XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+                app.launchWithIikb()
                 element("iikb.more", in: app).tap()
                 let card = element("iikb.chats.shelf.0", in: app)
                 XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
@@ -85,8 +83,7 @@ final class ChatBoxDeviceTests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES"]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
         element("iikb.more", in: app).tap()
         let card = element("iikb.chats.shelf.0", in: app)
         XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
@@ -130,8 +127,7 @@ final class ChatBoxDeviceTests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES"]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
         element("iikb.more", in: app).tap()
         let shelf = element("iikb.shelf.clipboard", in: app)
         XCTAssertTrue(shelf.waitForExistence(timeout: 10), "the menu has a Clipboard shelf")
@@ -158,8 +154,7 @@ final class ChatBoxDeviceTests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES"]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
         element("iikb.more", in: app).tap()
         let card = element("iikb.chats.shelf.0", in: app)
         XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
@@ -211,8 +206,7 @@ final class ChatBoxDeviceTests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES"]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
         element("iikb.more", in: app).tap()
         let card = element("iikb.chats.shelf.0", in: app)
         XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
@@ -254,8 +248,7 @@ final class ChatBoxDeviceTests: XCTestCase {
         addTeardownBlock { XCUIDevice.shared.appearance = was }
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES"]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
         element("iikb.more", in: app).tap()
         let card = element("iikb.chats.shelf.0", in: app)
         XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")

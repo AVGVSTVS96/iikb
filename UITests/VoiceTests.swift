@@ -13,12 +13,7 @@ final class VoiceTests: XCTestCase {
         app.launchArguments = [
             "-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off", "-iikbMicKey", "NO",
         ]
-        app.launch()
-        if !key("space", in: app).waitForExistence(timeout: 10) {
-            app.terminate()
-            app.launch()
-        }
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
         for letter in "pizza" { key(String(letter), in: app).tap() }
 
         let mic = app.buttons["iikb.mic"]
@@ -101,8 +96,7 @@ final class VoiceTests: XCTestCase {
         app.launchArguments = [
             "-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off", "-iikbMicKey", "NO",
         ]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
         for letter in "hello" { key(String(letter), in: app).tap() }
         let field = app.textViews.firstMatch
         let typed = field.value as? String ?? ""
@@ -133,12 +127,7 @@ final class VoiceTests: XCTestCase {
         app.launchArguments = [
             "-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off", "-iikbMicKey", "YES",
         ]
-        app.launch()
-        if !key("space", in: app).waitForExistence(timeout: 10) {
-            app.terminate()
-            app.launch()
-        }
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        app.launchWithIikb()
         let mic = app.buttons["iikb.mic"]
         XCTAssertTrue(mic.waitForExistence(timeout: 5))
         let numbers = key("numbers", in: app)
@@ -178,8 +167,7 @@ final class VoiceTests: XCTestCase {
                     "-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off", "-iikbMicKey",
                     place == "key" ? "YES" : "NO", "-iikbStopAnimation", animation,
                 ]
-                app.launch()
-                XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+                app.launchWithIikb()
                 let mic = app.buttons["iikb.mic"].firstMatch
                 XCTAssertTrue(wait { mic.exists && mic.label == "Dictate" })
                 Thread.sleep(forTimeInterval: 1)

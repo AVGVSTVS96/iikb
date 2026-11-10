@@ -6,8 +6,7 @@ final class SuggestionShots: XCTestCase {
         guard let prefix = environment["IIKB_SHOTS"] else { throw XCTSkip("Run through scripts/shots") }
         let app = XCUIApplication()
         app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", "portrait"]
-        app.launch()
-        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10))
+        app.launchWithIikb()
 
         let steps =
             (environment["IIKB_STEPS"].flatMap { $0.isEmpty ? nil : $0 }
