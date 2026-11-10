@@ -400,7 +400,7 @@ private fun Modifier.held(loaded: Boolean, bounds: () -> Rect, photo: () -> Open
                 val shown = photo()
                 hold(
                     Held(
-                        bounds(), Held.Shows.Image(shown.request, shown.width, shown.height),
+                        bounds(), Held.Shows.Image(shown.request, shown.width, shown.height, photo = true), listed = true,
                         actions = listOf(Held.Action("doc.on.doc", "Copy") { actions.copyPhoto(shown.url, shown.file.type) }),
                     ),
                 )

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import com.shahidy.iikb.Text
@@ -41,6 +42,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -75,11 +80,17 @@ class Held(
         /** Nothing but the menu, under what was held, as UIKit's menu for a view held without a preview. */
         data object Menu : Shows
 
+        /** What was held itself, as `layer` drew it, lifted a little larger with the menu under it, as UIKit lifts a view held without a preview. */
+        data class Lifted(val layer: GraphicsLayer) : Shows
+
         /** Text in full; a link's `row` heads it with its site, as the clip's badge names it. */
         data class Text(val text: String, val link: Clips.Row? = null) : Shows
 
-        /** An image at its own aspect ratio, `width` by `height`: a file, or a GIF's address. */
-        data class Image(val model: Any, val width: Int, val height: Int) : Shows {
+        /**
+         * An image at its own aspect ratio, `width` by `height`: a file, or a GIF's address. A `photo` grows to the
+         * keyboard's width less its sides and half its height, as iOS's chat photo preview.
+         */
+        data class Image(val model: Any, val width: Int, val height: Int, val photo: Boolean = false) : Shows {
             companion object {
                 fun of(file: File): Image {
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -147,11 +158,12 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
             val card = when (val shows = held.shows) {
                 is Held.Shows.Image -> {
                     val tall = if (menu == 0f) height - IMAGE_MARGIN * 2 else cardRoom
-                    val fits = min(min(IMAGE_WIDTH, sides), tall * shows.width / shows.height)
+                    val fits = min(min(if (shows.photo) width - PHOTO_SIDE * 2 else IMAGE_WIDTH, sides), tall * shows.width / shows.height)
                     measurables[0].measure(Constraints.fixedWidth(px(fits)))
                 }
                 is Held.Shows.Text -> measurables[0].measure(Constraints(maxWidth = px(sides), maxHeight = px(min(cardRoom, MAX_TEXT))))
                 Held.Shows.Menu -> measurables[0].measure(Constraints.fixed(0, 0))
+                is Held.Shows.Lifted -> measurables[0].measure(Constraints.fixed(px(source.width * LIFT), px(source.height * LIFT)))
             }
             val cardHeight = card.height / density
             val cardWidth = card.width / density
@@ -159,14 +171,17 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
             // A preview alone (a GIF) is centered in the keyboard, as UIKit centers one it shrinks to fit.
             val alone = menu == 0f && held.shows is Held.Shows.Image
             val under = held.shows == Held.Shows.Menu
+            val lifted = held.shows is Held.Shows.Lifted
             val cardTop = when {
                 alone -> (height - cardHeight) / 2
                 under -> source.bottom + MENU_UNDER - gap
+                lifted -> (source.center.y - cardHeight / 2).coerceAtLeast(LIFTED_TOP)
                 else -> (source.center.y - cardHeight / 2).coerceAtMost(room.bottom - wanted).coerceAtLeast(room.top)
             }
             val left = when {
                 alone -> (width - cardWidth) / 2
                 under -> source.left.coerceIn(room.left, room.right - MENU_WIDTH)
+                lifted -> source.center.x - cardWidth / 2
                 else -> (source.center.x - cardWidth / 2).coerceIn(room.left, room.right - cardWidth)
             }
             val menuTop = cardTop + cardHeight + gap
@@ -174,7 +189,7 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
                 Constraints.fixed(px(MENU_WIDTH), px(min(menu, room.bottom - menuTop).coerceAtLeast(0f))),
             )
             val menuLeft = when {
-                under -> left
+                under || lifted -> left.coerceIn(room.left, room.right - MENU_WIDTH)
                 left <= room.left -> room.left
                 left + cardWidth >= room.right -> room.right - MENU_WIDTH
                 else -> (left + cardWidth / 2 - MENU_WIDTH / 2).coerceIn(room.left, room.right - MENU_WIDTH)
@@ -228,6 +243,9 @@ private fun Card(held: Held, close: () -> Unit) {
             }
         }
         Held.Shows.Menu -> Box(Modifier)
+        is Held.Shows.Lifted -> Canvas(
+            Modifier.shadow(24.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f)),
+        ) { scale(LIFT, LIFT, Offset.Zero) { drawLayer(shows.layer) } }
         is Held.Shows.Image -> AsyncImage(
             shows.model, "Image", imageLoader(), contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxWidth().aspectRatio(shows.width.toFloat() / shows.height).clip(shape)
@@ -271,11 +289,15 @@ private fun Menu(actions: List<Held.Action>, close: () -> Unit) {
     }
 }
 
-/** The held item's actions as UIKit lists a menu's: a glyph and a title a row. */
+/**
+ * The held item's actions as UIKit lists a menu's: a glyph and a title a row, or, where the only glyph is a pick's
+ * checkmark, the titles in nearer with the checkmark small before the one picked (measured on iOS's held chat tabs).
+ */
 @Composable
 private fun ListMenu(actions: List<Held.Action>, close: () -> Unit) {
     val look = LocalColors.current
     val shape = RoundedCornerShape(LIST_CORNER.dp)
+    val checks = actions.all { it.glyph == "" || it.glyph == "checkmark" }
     Column(
         Modifier.shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
             .background(look.glass, shape).border(0.5.dp, look.glassEdge, shape).clip(shape).padding(vertical = LIST_PAD.dp),
@@ -293,10 +315,17 @@ private fun ListMenu(actions: List<Held.Action>, close: () -> Unit) {
                     },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.padding(start = 26.dp).width(26.dp), contentAlignment = Alignment.Center) {
-                    Glyph(action.glyph, tint, Glyphs.square(17f).dp)
+                if (checks) {
+                    Box(Modifier.padding(start = 20.dp).width(16.dp), contentAlignment = Alignment.Center) {
+                        Glyph(action.glyph, tint, Glyphs.square(13f).dp, weight = Glyphs.SEMIBOLD)
+                    }
+                    Spacer(Modifier.width(7.dp))
+                } else {
+                    Box(Modifier.padding(start = 26.dp).width(26.dp), contentAlignment = Alignment.Center) {
+                        Glyph(action.glyph, tint, Glyphs.square(17f).dp)
+                    }
+                    Spacer(Modifier.width(11.dp))
                 }
-                Spacer(Modifier.width(11.dp))
                 Text(action.title, color = tint, fontSize = 17.sp)
             }
         }
@@ -326,6 +355,7 @@ private const val CORNER = 22f
 private const val TEXT_WIDTH = 340f
 private const val MAX_TEXT = 480f
 private const val IMAGE_WIDTH = 300f
+private const val PHOTO_SIDE = 16f
 /** Above and below a GIF's preview, which grows to the keyboard's height less these. */
 private const val IMAGE_MARGIN = 15f
 /** Where the card and its menu don't fit, the top margin and gap tighten down to these, and the card keeps at least this. */
@@ -341,6 +371,9 @@ private const val MENU_TITLE = 12f
 private const val MENU_TITLE_GAP = 5f
 private const val MENU_CORNER = 37f
 private const val LIST_ROW = 42f
+/** A view held without a preview lifts this much larger, its top at least this far down the keyboard (iOS's held chat tabs). */
+private const val LIFT = 1.14f
+private const val LIFTED_TOP = 32f
 /** A menu alone sits this far under what was held. */
 private const val MENU_UNDER = 8f
 private const val LIST_PAD = 10f

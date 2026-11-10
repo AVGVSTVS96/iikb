@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -57,8 +59,8 @@ import kotlin.math.PI
 /**
  * The chats as tabs in one capsule, as iOS's `ChatTabs` holds them: each chat's name, the open one on a platter that
  * slides to the tab you pick on a spring, raised white in light mode as iOS's segmented control's, the capsule hugging
- * the tabs, or scrolling with its cut ends faded when they don't fit, the open tab centered. The capsule is iOS's Liquid Glass (`glass`) over `backdrop`, what's under it. Holding it lists every chat in
- * a menu, the open one checked. A chat with something you haven't seen has a dot after its name, in its padding, so
+ * the tabs, or scrolling with its cut ends faded when they don't fit, the open tab centered. The capsule is iOS's Liquid Glass (`glass`) over `backdrop`, what's under it. Holding it lifts it over the dimmed
+ * keyboard, as UIKit lifts a view held without a preview, and lists every chat in a menu under it, the open one checked. A chat with something you haven't seen has a dot after its name, in its padding, so
  * marking it moves nothing.
  */
 @Composable
@@ -80,6 +82,7 @@ fun ChatTabs(
     LaunchedEffect(open) { shown = open }
     var pressed by remember { mutableStateOf<Int?>(null) }
     var bounds by remember { mutableStateOf(Rect.Zero) }
+    val drawn = rememberGraphicsLayer()
     val scroll = rememberScrollState()
     val platter = remember { Animatable(0f) }
     val platterWidth = remember { Animatable(0f) }
@@ -113,6 +116,11 @@ fun ChatTabs(
     }
     Box(
         modifier.width(width.dp).height(HEIGHT.dp).onGloballyPositioned { bounds = it.boundsInWindow() }
+            .heldAway(bounds)
+            .drawWithContent {
+                drawn.record { this@drawWithContent.drawContent() }
+                drawLayer(drawn)
+            }
             .glass(CircleShape, backdrop, look.dark).clip(CircleShape)
             .fadeCutEnds(scroll.value > 0, scroll.value < scroll.maxValue),
     ) {
@@ -131,7 +139,7 @@ fun ChatTabs(
                             if (names.size < 2) return@detectTapGestures
                             hold(
                                 Held(
-                                    bounds, Held.Shows.Menu, listed = true,
+                                    bounds, Held.Shows.Lifted(drawn), listed = true,
                                     actions = names.mapIndexed { index, name ->
                                         Held.Action(if (index == shown) "checkmark" else "", name) { pick(index) }
                                     },
