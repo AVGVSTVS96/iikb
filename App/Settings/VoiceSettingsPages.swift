@@ -84,7 +84,6 @@ struct WritingSettings: View {
         }
     }
 
-    private static let styled = "Hey, by the way, are you free tonight. Let’s grab dinner and then see the show."
     private static let rambled = "Um, I think the the plan is, like, two, I mean three."
     private let model = SettingsModel.shared
     @State private var sample = Sample.style
@@ -151,7 +150,7 @@ struct WritingSettings: View {
             }
             ForEach(DictationStyle.allCases, id: \.self) { style in
                 ChoiceRow(
-                    title: style.title, detail: quoted(Self.styled) { $0.style = style }, picked: picked == style
+                    title: style.title, detail: quoted(Sample.style.said) { $0.style = style }, picked: picked == style
                 ) { pick(style) }
             }
         }
