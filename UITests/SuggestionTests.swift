@@ -42,6 +42,17 @@ final class SuggestionTests: XCTestCase {
         XCTAssertEqual(text, choice + " ")
     }
 
+    func testTheBarDrawsAgainAfterTheAppComesBackFromTheBackground() {
+        launch()
+        type("hel")
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 2)
+        app.activate()
+        type("p")
+        XCTAssertEqual(text, "Help")
+        XCTAssertEqual(suggestion(0).label, "Help")
+    }
+
     func testExpandsTextReplacements() throws {
         try addTextReplacement(shortcut: "omw", phrase: "On my way!")
         launch()
