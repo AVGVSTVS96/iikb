@@ -38,6 +38,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -110,7 +117,7 @@ class Held(
  * keyboard is too short for both, at the top, shortened so the whole menu shows. A tap anywhere else puts it away.
  */
 @Composable
-fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
+fun Peek(held: Held, bottom: Dp, behind: Behind?, close: () -> Unit) {
     val look = LocalColors.current
     val appear = remember(held) { Animatable(0f) }
     LaunchedEffect(held) { appear.animateTo(1f, tween(220)) }
@@ -135,7 +142,7 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
         Layout(
             content = {
                 Card(held, close)
-                if (menu > 0) if (held.listed) ListMenu(held.actions, close) else Menu(held.actions, close)
+                if (menu > 0) if (held.listed) ListMenu(held.actions, behind, close) else Menu(held.actions, behind, close)
             },
             modifier = Modifier.fillMaxSize().graphicsLayer {
                 alpha = appear.value
@@ -239,18 +246,23 @@ private fun Card(held: Held, close: () -> Unit) {
                     )
                 }
             } else {
-                Text(shows.text, color = look.label, fontSize = 17.sp, lineHeight = 22.sp, pushOut = false)
+                Text(shows.text, color = look.label, fontSize = 17.sp, lineHeight = 20.sp, pushOut = false)
             }
         }
         Held.Shows.Menu -> Box(Modifier)
         is Held.Shows.Lifted -> Canvas(
             Modifier.shadow(24.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f)),
         ) { scale(LIFT, LIFT, Offset.Zero) { drawLayer(shows.layer) } }
-        is Held.Shows.Image -> AsyncImage(
-            shows.model, "Image", imageLoader(), contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxWidth().aspectRatio(shows.width.toFloat() / shows.height).clip(shape)
-                .background(Color.Black).then(tap),
-        )
+        is Held.Shows.Image -> {
+            // UIKit previews a photo with rounder corners on a soft shadow.
+            val corners = if (shows.photo) RoundedCornerShape(PHOTO_CORNER.dp) else shape
+            AsyncImage(
+                shows.model, "Image", imageLoader(), contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxWidth().aspectRatio(shows.width.toFloat() / shows.height)
+                    .then(if (shows.photo) Modifier.shadow(24.dp, corners, ambientColor = Color.Black.copy(alpha = 0.2f), spotColor = Color.Black.copy(alpha = 0.2f)) else Modifier)
+                    .clip(corners).background(Color.Black).then(tap),
+            )
+        }
     }
 }
 
@@ -259,13 +271,12 @@ private fun Card(held: Held, close: () -> Unit) {
  * Delete in red, on glass over the dimmed keys.
  */
 @Composable
-private fun Menu(actions: List<Held.Action>, close: () -> Unit) {
+private fun Menu(actions: List<Held.Action>, behind: Behind?, close: () -> Unit) {
     val look = LocalColors.current
     val shape = RoundedCornerShape(MENU_CORNER.dp)
     Row(
         Modifier.shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
-            .background(look.glass, shape).border(0.5.dp, look.glassEdge, shape).clip(shape)
-            .padding(MENU_PAD.dp),
+            .frosted(behind, shape).padding(MENU_PAD.dp),
     ) {
         for (action in actions) {
             val interaction = remember { MutableInteractionSource() }
@@ -294,13 +305,14 @@ private fun Menu(actions: List<Held.Action>, close: () -> Unit) {
  * checkmark, the titles in nearer with the checkmark small before the one picked (measured on iOS's held chat tabs).
  */
 @Composable
-private fun ListMenu(actions: List<Held.Action>, close: () -> Unit) {
+private fun ListMenu(actions: List<Held.Action>, behind: Behind?, close: () -> Unit) {
     val look = LocalColors.current
-    val shape = RoundedCornerShape(LIST_CORNER.dp)
+    // UIKit rounds a one-row menu into a capsule.
+    val shape = if (actions.size == 1) CircleShape else RoundedCornerShape(LIST_CORNER.dp)
     val checks = actions.all { it.glyph == "" || it.glyph == "checkmark" }
     Column(
         Modifier.shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
-            .background(look.glass, shape).border(0.5.dp, look.glassEdge, shape).clip(shape).padding(vertical = LIST_PAD.dp),
+            .frosted(behind, shape).padding(vertical = LIST_PAD.dp),
     ) {
         for (action in actions) {
             val interaction = remember { MutableInteractionSource() }
@@ -332,16 +344,50 @@ private fun ListMenu(actions: List<Held.Action>, close: () -> Unit) {
     }
 }
 
+/**
+ * The keyboard as it showed when something was held (`Overlay.capture`): `image` is `scale` times smaller than the window,
+ * its top left at `origin` in the window.
+ */
+class Behind(val image: ImageBitmap, val origin: Offset, val scale: Float)
+
+/**
+ * iOS's menu glass in `shape`: the dimmed keyboard under it blurred to a frost, which the glass's tint lets through
+ * faintly, a lit rim on a hairline edge. Until the keyboard's still comes (or where Android can't blur, before 12), the
+ * tint alone, opaque, so the rows under it never show sharp through its titles.
+ */
+@Composable
+private fun Modifier.frosted(behind: Behind?, shape: Shape): Modifier {
+    val look = LocalColors.current
+    var at by remember { mutableStateOf(Offset.Zero) }
+    val frost = rememberGraphicsLayer()
+    return onGloballyPositioned { at = it.positionInWindow() }.clip(shape).drawWithContent {
+        drawRect(look.glass)
+        if (behind != null) {
+            frost.renderEffect = BlurEffect(FROST.dp.toPx(), FROST.dp.toPx(), TileMode.Clamp)
+            frost.alpha = if (look.dark) 0.45f else 0.55f
+            frost.record {
+                withTransform({
+                    translate(behind.origin.x - at.x, behind.origin.y - at.y)
+                    scale(behind.scale, behind.scale, Offset.Zero)
+                }) { drawImage(behind.image) }
+                drawRect(Color.Black.copy(alpha = if (look.dark) 0.47f else 0.2f))
+            }
+            drawLayer(frost)
+            drawRect(look.glass.copy(alpha = 0.35f))
+        }
+        drawContent()
+    }.border(0.5.dp, look.glassEdge, shape).border(1.dp, look.glassRim, shape)
+}
+
 /** iOS's `secondaryLabel`, a held link's address. */
 private val Colors.previewSecondary get() = if (dark) Color(0x99EBEBF5) else Color(0x993C3C43)
 /** iOS's preview card: secondarySystemBackground. */
 private val Colors.preview get() = if (dark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
-/**
- * iOS's menu glass as it reads over the dimmed keyboard, measured on its shots: opaque, since iOS blurs what's under its
- * glass to a frost and nothing blurs it here, where the rows behind would show through its titles.
- */
+/** iOS's menu glass as it reads over the dimmed keyboard, measured on its shots: the tint `frosted` lays over the frost. */
 private val Colors.glass get() = if (dark) Color(0xFF323233) else Color(0xFFDCDDE1)
 private val Colors.glassEdge get() = if (dark) Color(0x1FFFFFFF) else Color(0x14000000)
+/** The lit rim inside its edge. */
+private val Colors.glassRim get() = if (dark) Color(0x2EFFFFFF) else Color(0xD9FFFFFF)
 private val Colors.destructive get() = if (dark) Color(0xFFFF453A) else Color(0xFFFF3B30)
 
 /** Measured on iOS's shots of a held clip, transcript and GIF (iPhone 17), in points. */
@@ -352,6 +398,7 @@ private const val BOTTOM = 16f
 private const val MENU_FLOOR = 2f
 private const val GAP = 16.5f
 private const val CORNER = 22f
+private const val PHOTO_CORNER = 35f
 private const val TEXT_WIDTH = 340f
 private const val MAX_TEXT = 480f
 private const val IMAGE_WIDTH = 300f
@@ -373,8 +420,10 @@ private const val MENU_CORNER = 37f
 private const val LIST_ROW = 42f
 /** A view held without a preview lifts this much larger, its top at least this far down the keyboard (iOS's held chat tabs). */
 private const val LIFT = 1.14f
-private const val LIFTED_TOP = 32f
+private const val LIFTED_TOP = 13f
 /** A menu alone sits this far under what was held. */
 private const val MENU_UNDER = 8f
 private const val LIST_PAD = 10f
 private const val LIST_CORNER = 26f
+/** How far the menu's glass blurs what's under it. */
+private const val FROST = 4f

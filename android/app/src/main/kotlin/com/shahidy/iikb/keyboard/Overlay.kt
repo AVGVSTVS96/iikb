@@ -16,7 +16,9 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
@@ -111,11 +113,36 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
     var held: Held?
         get() = holding
         set(value) {
+            if (value != null && holding == null) capture()
+            if (value == null) behind = null
             holding = value
-            (peek.parent as? View)?.let { root -> peek.layoutParams = peek.layoutParams.apply { height = root.height } }
+            (peek.parent as? View)?.let { root -> peek.layoutParams = peek.layoutParams.apply { height = root.height - root.paddingTop } }
             peek.visibility = if (value == null) View.GONE else View.VISIBLE
         }
     private var holding by mutableStateOf<Held?>(null)
+
+    /** The keyboard's window, which a held item's menu frosts what it shows of. */
+    var window: android.view.Window? = null
+    private var behind by mutableStateOf<Behind?>(null)
+
+    /**
+     * The keyboard as it shows the moment something is held, before the peek covers it, at half its size: what
+     * the held item's menu blurs, as iOS's menu glass blurs the dimmed keyboard under it. Android's views can't blur
+     * what's under them, so the menu frosts this still of it, which holds while the peek is up.
+     */
+    private fun capture() {
+        val window = window ?: return
+        val root = peek.parent as? View ?: return
+        if (root.width < 4 || root.height < 4) return
+        val at = IntArray(2).also(root::getLocationInWindow)
+        val bitmap = android.graphics.Bitmap.createBitmap(root.width / 2, root.height / 2, android.graphics.Bitmap.Config.ARGB_8888)
+        val area = android.graphics.Rect(at[0], at[1], at[0] + root.width, at[1] + root.height)
+        android.view.PixelCopy.request(window, area, bitmap, { result ->
+            if (result == android.view.PixelCopy.SUCCESS && holding != null) {
+                behind = Behind(bitmap.asImageBitmap(), Offset(at[0].toFloat(), at[1].toFloat()), 2f)
+            }
+        }, android.os.Handler(android.os.Looper.getMainLooper()))
+    }
 
     val view = ComposeView(context).apply {
         setContent {
@@ -149,7 +176,7 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
             CompositionLocalProvider(
                 LocalDensity provides Density(resources.displayMetrics.density, 1f),
                 LocalColors provides state.colors,
-            ) { Peek(held, state.bottom.dp) { this@Overlay.held = null } }
+            ) { Peek(held, state.bottom.dp, behind) { this@Overlay.held = null } }
         }
     }
 

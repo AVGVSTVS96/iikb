@@ -236,8 +236,10 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         }
         val overlay = Overlay(this, this, gifs, chats)
         this.overlay = overlay
+        overlay.window = window.window
         overlay.view.visibility = View.GONE
         val root = FrameLayout(this)
+        root.setPadding(0, (HEADROOM * resources.displayMetrics.density).toInt(), 0, 0)
         root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         root.addView(overlay.view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))
         root.addView(overlay.peek, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))
@@ -957,8 +959,17 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     companion object {
         /** The menu fills a keyboard grown to all of the screen but this, in dp, for the app (docs/design.md). */
         const val ROOM_FOR_APP = 140f
-        /** iOS's keyboard glass's corner and its blur, in dp, as its shots measure them (Nov 9). */
-        const val GLASS_CORNER = 24f
+        /**
+         * iOS draws its keyboard glass this far above the keyboard's own view on an iPhone 17 (on the Duo, 4:
+         * `Toolbar.backdropAbove`), so the keys and panels sit this far under the glass's edge.
+         */
+        const val HEADROOM = 17f
+        /**
+         * iOS's keyboard glass's corner and its blur, in dp, as its shots measure them (Nov 9). iOS's corner is a
+         * continuous curve bending over 32; Android clips the blur to a circle's corner only (`DecorView` reads the
+         * background's outline radius), so this is the circle closest to it.
+         */
+        const val GLASS_CORNER = 28f
         const val GLASS_BLUR = 12f
         const val SEEN_CLIP = "clipboard.seen"
     }
