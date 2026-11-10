@@ -50,7 +50,7 @@ Dark is the app's dark: a black page, near-black cards. It follows the system th
 
 - 4pt base. Scale: 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96 · 128.
 - Site: 12 columns, max 1200px, gutter 24px, margin `clamp(20px, 5vw, 64px)`. Everything starts on a column edge; text is flush left, ragged right, never centered.
-- Corners: the app's continuous corners (cards 22pt) for anything that's the app or the keyboard; the page itself is square: no rounded section boxes, no shadows, no gradients, no glass.
+- Corners: the app's continuous corners (cards 22pt) for anything that's the app or the keyboard; the page itself is square: no rounded section boxes and no gradients. Glass only where the app has it (the keyboard drawn on the page) and in the header over scrolling content; shadows only under things that stand off the page, like a phone or a card, and light.
 - Rules are 1px in `--rule`, used to separate, never to decorate.
 
 ## Motifs
@@ -75,4 +75,4 @@ Dark is the app's dark: a black page, near-black cards. It follows the system th
 
 ## Credits
 
-The keyboard's look follows Raycast's keyboard; the voice model is NVIDIA's Parakeet run by FluidAudio. The site and README say so by name.
+Raycast's keyboard is one reference for the look, credited in the site's thanks; the voice model is NVIDIA's Parakeet run by FluidAudio, credited by name on the site and in the README.

@@ -7,15 +7,15 @@
 
 **The best iOS keyboard. In the world.**
 
-That's what we're building. iikb learns your thumbs, writes what you say, and puts your clipboard, emoji, GIFs and tools beside the words you're typing. Apple and Raycast set a high bar. We want to raise it.
+That's what we're building. iikb learns your thumbs, writes what you say, and puts your clipboard, emoji, GIFs, chats and tools beside the words you're typing. Apple's keyboard sets a high bar. We want to raise it.
 
-Open source under MIT, for iPhone and iPad on iOS 26 and later, including the Duo, folded or open. [See it live](https://iikb.vercel.app).
+Open source under MIT, for iPhone and iPad on iOS 26 and later, including the Duo, folded or open, with a beta for Android. [See it live](https://iikb.vercel.app).
 
-| iPhone | iPad |
-| --- | --- |
-| ![iikb's iPhone keyboard layout](web/site/shots/iphone-light.webp) | ![iikb's iPad keyboard layout with a number row and flick characters](web/site/shots/ipad-light.webp) |
+| Typing | Menu | Chats |
+| --- | --- | --- |
+| ![iikb's keyboard with suggestions, the menu button and the mic in the bar](web/site/public/shots/kb-typing-light.webp) | ![iikb's menu: cut, copy and paste, then shelves of clipboard, transcripts, GIFs and themes](web/site/public/shots/phone-menu-light.webp) | ![A chat open in iikb, with tabs for each chat and a message box](web/site/public/shots/phone-chat-light.webp) |
 
-Keyboard layout crops from simulator captures. The app continues to evolve.
+Simulator captures of the current app, with made-up content.
 
 ## Familiar under your thumbs
 
@@ -23,15 +23,11 @@ Layouts, pop-ups, accents, the space bar cursor and the suggestion bar work as A
 
 ## Make it yours
 
-Five themes inspired by Raycast (Default, Clear, Physical, Mechanical and iOS 5), with controls for key spacing, roundness and haptic strength. A menu button sits beside the suggestions, with dictation at the bar's right edge.
-
-![The Default theme](web/site/shots/theme-default.webp)
+Five themes (Default, Clear, Physical, Mechanical and iOS 5), with controls for key spacing, roundness and haptic strength. The menu button sits at the bar's left edge and the mic at its right, both on glass; pick the theme from the menu too.
 
 ## Every screen gets its space
 
 iPhone gets familiar key positions. iPad gets a number row and flick-down secondary characters. iikb also fits each of the Duo's screens: the cover upright and on its side, open and held wide or tall, and half folded. Open and held wide, hold 123 to split the keys for two thumbs. The app lays out every page for the screen it's on, in two panes beside the hinge when there's room.
-
-![The expanded Duo keyboard layout](web/site/shots/duo-dark.webp)
 
 ## It learns where you tap
 
@@ -52,7 +48,11 @@ The app's Stats › Taps shows what it learned: a heat map of where your thumbs 
 
 Tap the mic beside the suggestions. iOS doesn't let keyboards use the microphone, so the first time, iikb opens its app to start listening; swipe back to your app and keep talking (a build from source takes you back itself). The app can keep the mic on for as long as you pick, and while it's on, the mic starts and stops dictation right there, in any app; use the microphone switch in the app to turn it off. Cancel discards a recording without inserting it; its transcript is still kept for review.
 
-What you say becomes text on the iPhone, written by the voice model you pick in the app's Settings › Voice Model: NVIDIA's [Parakeet v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) (the default) or moondream's [Parakeet Ultra](https://huggingface.co/moondream/parakeet-ultra), run on the Neural Engine by [FluidAudio](https://github.com/FluidInference/FluidAudio), or Apple's own. Parakeet v3 downloads once, about 500 MB; a dictation made while it gets ready is saved and written once it is. After that it writes 8.2 s of talking in 0.05 s on an iPhone (PROGRESS.md), and dictation is free, with no word limit and no account. Pick a dictation style, punctuation, editing level and list formatting. The Transcripts tab keeps every transcript with its model, the original words when editing changes them, and available recordings for playback and sharing.
+What you say becomes text on the iPhone, written by the voice model you pick in the app's Settings › Voice Model: NVIDIA's [Parakeet v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) (the default) or moondream's [Parakeet Ultra](https://huggingface.co/moondream/parakeet-ultra), run on the Neural Engine by [FluidAudio](https://github.com/FluidInference/FluidAudio), or Apple's own. Parakeet v3 downloads once, about 500 MB; a dictation made while it gets ready is saved and written once it is. After that it writes 8.2 s of talking in 0.05 s on an iPhone (PROGRESS.md), and dictation is free, with no word limit and no account. Pick one of six writing styles, from formal to slang, for every app or one app at a time, in Settings or right in the bar where there's room. Dictation types the punctuation you say ("comma", "new line"), and Clean takes out what you take back ("sorry", "never mind", a word said over). The Transcripts tab keeps every transcript with its model, the original words when editing changes them, and available recordings for playback and sharing.
+
+## Chats
+
+Plug in a chat service and its chats open from the menu, in any app: read them, dictate a reply and send it without leaving the app you're in. A service is one TypeScript file with three functions, in [docs/extensions.md](docs/extensions.md).
 
 ## Emoji
 
@@ -64,8 +64,8 @@ A source is a web service you plug into the keyboard. iikb sends it the text of 
 
 ## Also
 
-- A menu in the keys' place: cut, copy and paste in the bar, then your clipboard history, transcripts and GIFs, the newest a tap away, and held, any of them shown in full. The app's Clipboard tab shows the same history, pinned items first.
-- A number row, Character Preview and skin tones, as Raycast's keyboard has.
+- A menu in the keys' place: cut, copy and paste in the bar, then your clipboard history, transcripts, GIFs, chats and themes, the newest a tap away, and held, any of them shown in full. The app's Clipboard tab shows the same history, pinned items first.
+- A number row, Character Preview and skin tones.
 - One-handed keyboard: hold 123 and slide left or right.
 - Hold the space bar and slide to move the cursor, hold delete to erase whole words, flick down on iPad keys for their second character.
 - Return, email, URL and search fields get the keys Apple gives them.
@@ -77,7 +77,9 @@ Swipe typing: slide across the letters and lift. On 400 real swipes replayed int
 
 Join the beta on TestFlight: [testflight.apple.com/join/xSQ2sdYZ](https://testflight.apple.com/join/xSQ2sdYZ). Open the link on your iPhone, install TestFlight if asked, then install iikb.
 
-Then on the phone: Settings › General › Keyboard › Keyboards › Add New Keyboard… › iikb, and turn on Allow Full Access. iikb needs it for haptics, voice, GIFs, the clipboard, Stats and sources. The clipboard also needs Settings › Apps › iikb › Paste from Other Apps set to Allow.
+On Android, download the beta from [iikb-android.vercel.app](https://iikb-android.vercel.app).
+
+Then on the iPhone: Settings › General › Keyboard › Keyboards › Add New Keyboard… › iikb, and turn on Allow Full Access. iikb needs it for haptics, voice, GIFs, the clipboard, Stats, sources and chats. The clipboard also needs Settings › Apps › iikb › Paste from Other Apps set to Allow.
 
 ### Build it yourself
 
@@ -102,7 +104,8 @@ Put your team in `Config/Team.xcconfig` (`DEVELOPMENT_TEAM = <your team ID>`) an
 | `Packages/KeyboardModules/Examples/` | A keyboard of its own built on `KeyboardCore`'s public API, for [docs/build-a-keyboard.md](docs/build-a-keyboard.md). |
 | `Keyboard/` | The keyboard extension. |
 | `App/` | The app: setup and settings, voice typing, Transcripts, Clipboard and Stats. |
-| `web/site/` | The product site and keyboard layout showcase. `scripts/site` builds it into `web/dist`. |
+| `web/site/` | iikb's site: Next.js and shadcn/ui, with the keyboard drawn live. `scripts/site` builds it into `web/dist`. |
+| `android/` | iikb on Android: the same typing engine under a Kotlin input method. |
 | `web/Sources/` | The WebAssembly typing-engine tooling. `scripts/web` compiles the engine alongside the site. |
 | `UITests/` | Types through the real keyboard in the simulator. |
 | `brand/`, `copy/` | The logo, README header and site images, and the words they use. `bun copy/facts.ts` counts every number the copy cites. |
