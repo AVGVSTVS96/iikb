@@ -775,13 +775,19 @@ servers = []
 
 
 def chats():
+    """As iOS's ParityShots: the menu's Chats shelf, Notes open with the keys down, the keys up under its box, "ok"
+    typed, sent and answered with the keys down, Trip's file and photo, every chat in the tabs' hold menu, the photo
+    opened large and held for Copy, and a message's text selected, each of the last three from a fresh keyboard."""
     seed(extensions=json.dumps([{"name": "Notes", "url": serve(Extension.fresh())}]))
     keys = keyboard()
     tap(*keys.more)
+    find(lambda text: text.startswith("Pick up the"), 20)
+    shot("panel-chat-shelf", 1.5)
     tap_text(lambda text: text.startswith("Pick up the"), 3)
     shot("panel-chat", 1)
     tap_text("Message Notes", 1.5)
     keys = Keys()
+    shot("panel-chat-keys", 0.5)
     keys.type("ok")
     shot("panel-chat-typing", 0.5)
     tap(*keys["return"], 3.5)
@@ -790,10 +796,37 @@ def chats():
     tap_text("Trip", 3, top=True)
     shot("panel-chat-photo", 0.5)
     x, y = center(find("Trip", top=True))
-    touch("DOWN", x, y)
-    time.sleep(1.2)
-    touch("UP", x, y)
+    hold(x, y)
     shot("panel-chat-tabs-menu", 0.8)
+
+    tap(*center(open_chat("Trip")), 1.5)
+    shot("panel-chat-photo-open", 0.8)
+
+    hold(*center(open_chat("Trip")))
+    shot("panel-chat-photo-hold", 0.8)
+
+    open_chat("Notes")
+    x0, y0, x1, _ = find(lambda text: text.startswith("Booked for 11"))
+    # The text node is as wide as a bubble may be, and "It's" sits at 0.41 of it on the first line, "Booked for 11. It's the one on".
+    hold(x0 + (x1 - x0) * 0.41, y0 + 30)
+    shot("panel-chat-select", 0.8)
+
+
+def hold(x, y, seconds=1.2):
+    touch("DOWN", x, y)
+    time.sleep(seconds)
+    touch("UP", x, y)
+
+
+def open_chat(name):
+    """The chat named, open with its keys down from a fresh keyboard, and its photo's bounds when it has one."""
+    keys = keyboard()
+    tap(*keys.more)
+    tap_text(lambda text: text.startswith("Pick up the"), 3)
+    if name != "Notes":
+        tap_text(name, 3, top=True)
+    photos = [bounds for _, description, bounds in nodes() if description == "view.png"]
+    return photos[0] if photos else None
 
 
 def hint():
