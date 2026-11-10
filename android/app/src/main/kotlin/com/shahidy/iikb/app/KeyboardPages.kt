@@ -328,7 +328,7 @@ private fun LayoutSettings(here: Core.KeysHere) {
         Section(
             "Split and One-Handed",
             if (here.split) {
-                "Split puts half the keys under each thumb on an open foldable in landscape. One-Handed moves them toward one thumb in portrait. The keyboard’s menu has both too."
+                "Split puts half the keys under each thumb on an open foldable in landscape. One-Handed moves them toward one thumb in portrait, on a foldable only folded. The keyboard’s menu has both too."
             } else {
                 "One-Handed moves the keys toward one thumb in portrait. The keyboard’s menu has it too."
             },

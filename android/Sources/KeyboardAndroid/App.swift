@@ -35,8 +35,8 @@ public func written(env: Env, _: jclass, heard: jbyteArray?, settings: jbyteArra
 private final class Mapped {}
 
 /// Which of Appearance's layout settings change iikb's keys on a screen this size (iOS's `KeysHere`). Android draws its
-/// own keyboard switcher, so there's never a globe. Split shows on a phone that folds, open or folded, as iOS shows it on
-/// the folded Duo, since opening it splits the keys; never on one that can't open, where it would do nothing.
+/// own keyboard switcher, so there's never a globe. Split shows on every phone, as iOS lists it on every iPhone, its
+/// footer saying it splits an open foldable, and never on a tablet.
 struct KeysHere: Encodable {
     var numberRow, emojiKey, recordKey, keyboardMenu, split, oneHanded, largePanels, characterPreview: Bool
 }
@@ -52,8 +52,7 @@ public func keysHere(env: Env, _: jclass, width: jdouble, height: jdouble, folds
         numberRow: all.showsNumberRow, emojiKey: all.showsEmoji,
         recordKey: LayoutContext(device: device, layer: .letters, showsMicKey: true).showsMicKey,
         keyboardMenu: all.keyboardMenu == .hold,
-        split: LayoutContext(device: device, layer: .letters, isLandscape: true, isOpen: folds != 0)
-            .allowsSplit,
+        split: LayoutContext(device: device, layer: .letters, isLandscape: true, isOpen: true).allowsSplit,
         oneHanded: LayoutContext(device: device, layer: .letters).allowsOneHanded,
         largePanels: !KeyboardGeometry(LayoutContext(device: device, layer: .letters), screen: upright, style: .ios27)
             .metrics.toolbar.isCompact,
