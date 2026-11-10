@@ -103,6 +103,7 @@ import coil3.request.ImageRequest
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.shahidy.iikb.Text
+import com.shahidy.iikb.Tracking
 import com.shahidy.iikb.app.glass
 import kotlin.math.PI
 import kotlin.math.ceil
@@ -616,9 +617,12 @@ fun ChatShelf() {
     }
 }
 
-/** Messages' 17 on 22 lines, each its full 22 as UIKit sets them, where Compose trims the first's top and last's bottom. */
+/**
+ * Messages' 17 on 22 lines, each its full 22 as UIKit sets them, where Compose trims the first's top and last's bottom,
+ * tracked as wide as SF Pro runs there.
+ */
 private val LINES = TextStyle(
-    fontSize = 17.sp, lineHeight = 22.sp,
+    fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = Tracking.at(17f),
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
 )
 /** How far the last bubble of a run's tail reaches past it, kept clear at both edges, as iOS's `ChatThread.tail`. */
