@@ -2,9 +2,11 @@ package com.shahidy.iikb.keyboard
 
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.Shader
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.core.graphics.ColorUtils
@@ -15,7 +17,7 @@ import com.shahidy.iikb.app.lift
  * so it stands off the keyboard's own glass, under More, the tools and the mic. Drawn on the keys' canvas as `app/Glass`
  * draws glass over a plain page, since the keyboard's glass under it has nothing to bend: its tint (in dark, `app/Glass`'s
  * lift of the keyboard's color), a lit rim on a hairline edge, and a soft shadow. `red` tints it toward record red, as
- * the mic's glass while it listens, its rim and edge fading as they do on iOS's red glass.
+ * the mic's glass while it listens, its rim fading at the sides and its edge darkening as they do on iOS's red glass.
  */
 class BarGlass {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -42,10 +44,18 @@ class BarGlass {
         canvas.drawPath(shape, fill)
 
         rim.strokeWidth = LIT
-        rim.color = faded(Color.argb(lerp(if (dark) 40 else 230, RED_LIT, red), 255, 255, 255), opacity)
+        val lit = faded(Color.argb(lerp(if (dark) 40 else 230, RED_LIT, red), 255, 255, 255), opacity)
+        rim.color = lit
+        if (red > 0f) {
+            val sides = ColorUtils.setAlphaComponent(lit, lerp(Color.alpha(lit), 0, red))
+            rim.shader = LinearGradient(
+                0f, box.top, 0f, box.bottom, intArrayOf(lit, sides, sides, lit), floatArrayOf(0f, RED_FADE, 1 - RED_FADE, 1f), Shader.TileMode.CLAMP,
+            )
+        }
         inner.set(box)
         inner.inset(LIT / 2 + EDGE, LIT / 2 + EDGE)
         canvas.drawRoundRect(inner, radius - LIT / 2 - EDGE, radius - LIT / 2 - EDGE, rim)
+        rim.shader = null
         rim.strokeWidth = EDGE
         rim.color = faded(if (dark) Color.argb(lerp(20, 0, red), 255, 255, 255) else Color.argb(lerp(41, RED_EDGE, red), 0, 0, 0), opacity)
         inner.set(box)
@@ -64,8 +74,12 @@ class BarGlass {
         const val SHADOW_Y = 4f
         const val LIT = 0.75f
         const val EDGE = 0.5f
-        /** The lit rim's and light edge's alpha on red glass, measured on iOS's recording capsule. */
+        /**
+         * The lit rim's and light edge's alpha on red glass, measured on iOS's recording capsule, whose rim is lit only
+         * along its top and bottom, fading out this far down and up its height, and whose edge is a darker red.
+         */
         const val RED_LIT = 46
-        const val RED_EDGE = 12
+        const val RED_EDGE = 34
+        const val RED_FADE = 0.3f
     }
 }
