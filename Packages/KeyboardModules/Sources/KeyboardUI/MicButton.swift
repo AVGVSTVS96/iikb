@@ -271,14 +271,15 @@ public final class MicButton: UIControl {
         bounds.insetBy(dx: -6, dy: -6).contains(point)
     }
 
-    /// The glyphs, spinner and dot sit in the square at the right end of the capsule, or in the middle of a circle or key.
+    /// The glyphs, spinner and dot sit in the square at the right end of the capsule, or in the middle of a circle or key,
+    /// however wide the key is.
     override public func layoutSubviews() {
         super.layoutSubviews()
         face.frame = bounds
         face.layer.cornerRadius = corner ?? bounds.height / 2
         let side = min(bounds.width, bounds.height)
         let end = CGRect(
-            x: bounds.width > bounds.height * 1.5 ? bounds.width - side : (bounds.width - side) / 2,
+            x: corner == nil && bounds.width > bounds.height * 1.5 ? bounds.width - side : (bounds.width - side) / 2,
             y: (bounds.height - side) / 2, width: side, height: side)
         if glyphSide != side, side > 0 {
             glyphSide = side

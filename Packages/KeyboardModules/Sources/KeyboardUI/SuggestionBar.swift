@@ -538,7 +538,7 @@ public final class SuggestionBar: UIView {
         strip.frame = place
         let pitch = BarLayout.emojiPitch
         let total = pitch * CGFloat(emoji.count)
-        let left = max((place.width - total) / 2, 0)
+        let left = max(emojiBeside ? place.width - total : (place.width - total) / 2, 0)
         for (index, pick) in emoji.enumerated() {
             let minX = (left + CGFloat(index) * pitch).rounded(scale: scale)
             let glyph = CGRect(
