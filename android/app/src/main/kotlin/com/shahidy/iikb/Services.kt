@@ -23,9 +23,10 @@ data class Service(val name: String, val url: String, val token: String? = null)
  * as it hears they changed: extensions, whose chats open from the menu (docs/extensions.md), and sources, told the field
  * you type in (docs/sources.md).
  */
-enum class Services(val key: String, val noun: String) {
-    EXTENSIONS("extensions", "Extension"),
-    SOURCES("sources", "Source");
+enum class Services(val key: String, val noun: String, private val onePerAddress: Boolean) {
+    /** One address serves one list of chats, so a second extension there would list them twice. */
+    EXTENSIONS("extensions", "Extension", onePerAddress = true),
+    SOURCES("sources", "Source", onePerAddress = false);
 
     private fun preferences(context: Context) = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
@@ -36,8 +37,12 @@ enum class Services(val key: String, val noun: String) {
     fun save(context: Context, services: List<Service>) =
         preferences(context).edit().putString(key, json.encodeToString(services)).apply()
 
-    /** Adds one, or replaces the one with its name. */
-    fun add(context: Context, service: Service) = save(context, list(context).filter { it.name != service.name } + service)
+    /** Adds one, in place of the one with its name, or for an extension the one at its address. */
+    fun add(context: Context, service: Service) =
+        save(
+            context,
+            list(context).filter { it.name != service.name && !(onePerAddress && it.url == service.url) } + service,
+        )
 
     fun remove(context: Context, name: String) = save(context, list(context).filter { it.name != name })
 
