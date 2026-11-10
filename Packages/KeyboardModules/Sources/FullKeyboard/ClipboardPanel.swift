@@ -487,7 +487,7 @@ final class ClipRow: UICollectionViewCell {
     override init(frame: CGRect) {
         super.init(frame: frame)
         backdrop.layer.cornerCurve = .continuous
-        pin.image = UIImage(systemName: "pin.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13))
+        pin.image = UIImage(systemName: "pin.fill")
         pin.contentMode = .center
         image.layer.cornerRadius = 6
         image.clipsToBounds = true
