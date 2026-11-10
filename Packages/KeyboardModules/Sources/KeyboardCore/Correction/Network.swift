@@ -10,6 +10,8 @@
 ///   recurrent (4H × H) weights of the gates in PyTorch's order (input, forget, cell, output), the projection (E × H).
 public final class Network: Sendable {
     public let bytes: Bytes
+    /// Fine-tuned on your own typing (`PersonalNetwork`), so it already knows how common each word is for you.
+    public let personal: Bool
 
     static let header: [UInt8] = Array("HXN1".utf8)
     static let start = 0, unknown = 1, number = 2, comma = 3
@@ -25,13 +27,14 @@ public final class Network: Sendable {
     private let biases: Int
     private let matrices: Int
 
-    public convenience init?(bytes: [UInt8]) {
-        self.init(bytes: Bytes(bytes))
+    public convenience init?(bytes: [UInt8], personal: Bool = false) {
+        self.init(bytes: Bytes(bytes), personal: personal)
     }
 
-    public init?(bytes: Bytes) {
+    public init?(bytes: Bytes, personal: Bool = false) {
         guard bytes.count >= 20, Array(bytes[0..<4]) == Self.header else { return nil }
         self.bytes = bytes
+        self.personal = personal
         words = Self.u32(bytes, 4)
         width = Self.u32(bytes, 8)
         hidden = Self.u32(bytes, 12)

@@ -27,7 +27,8 @@ struct GateTests {
         let lexicon = Lexicon(bytes: Bytes(Self.bytes(Self.resources.appending(path: "en.lexicon").path)))!
         let network = Network(
             bytes: Self.bytes(
-                phone ? Self.environment["GATE_NETWORK"]! : Self.resources.appending(path: "en.network").path))!
+                phone ? Self.environment["GATE_NETWORK"]! : Self.resources.appending(path: "en.network").path),
+            personal: phone)!
         let emoji = try EmojiCatalog(
             text: String(contentsOf: Self.resources.appending(path: "emoji.txt"), encoding: .utf8))
         let corrector = Corrector(source: lexicon, network: network)

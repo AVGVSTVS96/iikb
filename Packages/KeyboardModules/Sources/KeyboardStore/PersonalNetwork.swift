@@ -24,7 +24,7 @@ nonisolated public enum PersonalNetwork {
     /// The fetched network, read in place, or nil when there is none or it isn't one.
     public static func load() -> Network? {
         guard let url, let bytes = Bytes.mapped(url) else { return nil }
-        return Network(bytes: bytes)
+        return Network(bytes: bytes, personal: true)
     }
 
     /// Fetches the server's network when it's another than the one here and made after the last reset.
