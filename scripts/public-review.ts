@@ -43,7 +43,11 @@ const CHANGELOGS = [
   {
     where:
       "Changelog lines for Android: the Android app's Changelog page, read by people on Android",
-    paths: ["android"],
+    paths: [
+      "android",
+      "Packages/KeyboardModules/Sources/KeyboardCore",
+      "Packages/KeyboardModules/Sources/KeyboardEnglish",
+    ],
   },
 ] as const;
 
