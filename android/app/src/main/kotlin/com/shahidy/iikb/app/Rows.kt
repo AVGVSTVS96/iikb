@@ -176,7 +176,8 @@ fun ListPage(
  * A page's bar, its title, Back and buttons, with what's pinned under it, over what scrolls, which starts `top` down
  * and runs under the bar and the status bar. Once it's under them they blur and wash it out to a hard edge at the
  * bar's foot, as iOS 26's navigation bar does with its own background hidden; what's pinned keeps the page's color
- * behind it, as iOS's inset rows do, so there nothing shows through.
+ * behind it, as iOS's inset rows do, so there nothing shows through. The page's color is in what blurs, so text on the
+ * bare page, like a section's footer, blurs as a card's does rather than showing through the wash.
  */
 @Composable
 private fun Frame(
@@ -199,7 +200,7 @@ private fun Frame(
         }.map { it.measure(loose) }
         val height = header.maxOfOrNull { it.height } ?: 0
         val body = subcompose("content") {
-            Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) { content(height.toDp()) }
+            Box(Modifier.fillMaxSize().layerBackdrop(backdrop).background(palette.page)) { content(height.toDp()) }
         }.map { it.measure(constraints) }
         val edge = subcompose("edge") {
             Box(Modifier.fillMaxSize().scrollEdge(backdrop, under))
