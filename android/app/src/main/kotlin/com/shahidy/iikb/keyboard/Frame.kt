@@ -22,6 +22,8 @@ data class Frame(
     val panel: String? = null,
     val query: String,
     val uppercase: Boolean,
+    /** The bar's writing style for the app the keyboard is in, where that app is known. */
+    val writing: Writing? = null,
     /** The chevron in a one-handed keyboard's margin that brings both hands back, in the keys' dp. */
     val expander: Expander? = null,
 ) {
@@ -99,8 +101,16 @@ data class Bar(
     val emojiBeside: Boolean,
     val cancel: Box,
     val recording: Box,
+    /** The writing style's place, where the bar has room for it (`BarLayout.style`). */
+    val style: Box? = null,
 ) {
     val height get() = top + bar
+}
+
+/** Every writing style, `picked` the one a dictation in this app is written in, `reset` naming going back to the default where the app has its own. */
+@Serializable
+data class Writing(val styles: List<Style>, val picked: Int, val reset: String? = null) {
+    @Serializable data class Style(val value: String, val title: String)
 }
 
 @Serializable data class MenuItem(val symbol: String, val title: String)

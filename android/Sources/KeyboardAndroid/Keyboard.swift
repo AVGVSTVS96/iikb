@@ -128,7 +128,7 @@ final class Keyboard {
         let keys = topRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
         let bar = BarLayout(
             toolbar, keys: keys, tools: tools.count, more: barMore, mic: !(keyed && keysShown),
-            maximumSlot: toolbar.slot)
+            style: engine.app != nil, maximumSlot: toolbar.slot)
         let menuKeys = context.menuKeys(in: geometry.layout)
         let items = context.menu
         return Frame(
@@ -144,7 +144,7 @@ final class Keyboard {
                 more: bar.more.map(Box.init), keysMinX: keys.first?.minX ?? 0, mic: bar.mic.map(Box.init),
                 tools: zip(tools, bar.tools).map { Tool(panel: "\($0)", box: Box($1)) },
                 slots: bar.slots.map(Box.init), emoji: Box(bar.emoji), emojiBeside: bar.emojiBeside,
-                cancel: Box(bar.cancel), recording: Box(bar.recording)),
+                cancel: Box(bar.cancel), recording: Box(bar.recording), style: bar.style.map(Box.init)),
             caps: caps,
             showsSuggestions: engine.showsSuggestions,
             chips: engine.suggestions.map { Chip(text: $0.title, kind: $0.kind.name) },
@@ -157,12 +157,25 @@ final class Keyboard {
             panel: engine.panel.map { "\($0)" },
             query: engine.query,
             uppercase: uppercase,
+            writing: writing,
             expander: grid.expander.map {
                 Expander(
                     x: $0.frame.x, y: $0.frame.y, width: $0.frame.width, height: $0.frame.height,
                     pointsRight: $0.pointsRight)
             }
         )
+    }
+
+    /// The writing style the bar picks for the app the keyboard is in, as iOS's `renderSuggestions` gives its
+    /// `StylePicker`; none where the app isn't known, so a pick is never the default's by mistake.
+    private var writing: Writing? {
+        guard let app = engine.app else { return nil }
+        let settings = engine.settings
+        let picked = settings.dictationStyle(in: app)
+        return Writing(
+            styles: DictationStyle.allCases.map { Writing.Style(value: $0.rawValue, title: $0.title) },
+            picked: DictationStyle.allCases.firstIndex(of: picked) ?? 0,
+            reset: settings.appDictationStyles[app] == nil ? nil : "Use Default (\(settings.dictationStyle.title))")
     }
 
     /// The bar's tools, as iOS's `barTools`: on a tablet the emoji's, where the emoji key is on, and with Predictive Text
@@ -282,7 +295,7 @@ extension KeyboardSettings {
         }
     }
 
-    /// Style in Each App as `package:style` pairs split by commas, which a package name can't hold.
+    /// Each app's own style as `package:style` pairs split by commas, which a package name can't hold.
     private static func appStyles(_ value: String) -> [String: DictationStyle] {
         var styles: [String: DictationStyle] = [:]
         for pair in value.split(separator: ",") {

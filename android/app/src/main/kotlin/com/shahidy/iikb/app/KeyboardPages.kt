@@ -180,6 +180,8 @@ private object Still : KeyboardView.Actions {
     override fun edit(name: String) {}
     override fun emojiResults() = emptyList<String>()
     override fun tones(emoji: String) = emptyList<String>()
+    override fun pickStyle(style: String?) {}
+    override fun holdStyle(source: android.graphics.RectF, reset: String) {}
 }
 
 /** Everything about how the keyboard looks, on one page: its theme, what a pressed key shows, and how its keys are laid out. */

@@ -58,6 +58,10 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         fun expand()
         fun emojiResults(): List<String>
         fun tones(emoji: String): List<String>
+        /** A writing style picked in the bar for the app the keyboard is in, or null to follow the default again. */
+        fun pickStyle(style: String?)
+        /** The bar's writing style was held, where it is in the window's pixels, to offer going back to the default. */
+        fun holdStyle(source: RectF, reset: String)
     }
 
     data class SwipePoint(val x: Float, val y: Float, val time: Float)
@@ -81,6 +85,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             field = value
             if (value != null && old?.layout != value.layout) touches.values.forEach { it.index = -1 }
             if (value?.emoji != old?.emoji) emojiScroll = 0f
+            if (value?.chips != old?.chips) style.fold()
+            style.update(value?.writing)
             if (value?.panel == "emoji" && (old?.panel != "emoji" || old.query != value.query)) {
                 emoji.query = value.query
                 emoji.results = actions.emojiResults()
@@ -140,6 +146,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     }
     private val trail = Trail(this)
     private val glass = BarGlass()
+    private val style = StylePicker(this, painter.labels)
+    private var styleHold: Runnable? = null
     private var deleteRepeat: Runnable? = null
 
     private class Accents(
@@ -234,7 +242,9 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         drawTools(canvas, frame)
         val edits = edits
         val notice = notice
-        val under = mic.suggestions
+        val styled = showsStyle(frame)
+        if (!styled) style.hide()
+        val under = mic.suggestions * (1 - if (styled) style.openness() else 0f)
         if (under < 1) canvas.saveLayerAlpha(0f, 0f, width / density, bar.height.toFloat(), (255 * under).toInt())
         when {
             edits != null -> drawEdits(canvas, frame, edits)
@@ -245,8 +255,17 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             frame.panel != null && !mic.covers -> drawDividers(canvas, frame)
         }
         if (under < 1) canvas.restore()
+        if (styled) style.draw(canvas, bar, frame.writing!!, theme, glass)
         mic.draw(canvas, frame, pressedBar)
     }
+
+    /**
+     * Whether the writing style shows, as iOS's `refresh` has it: where the bar has its room and the app is known, over
+     * the suggestions with nothing in their place, never while you dictate.
+     */
+    private fun showsStyle(frame: Frame) =
+        frame.writing != null && frame.toolbar.style != null && frame.showsSuggestions && frame.panel == null &&
+            edits == null && notice == null && !(hint != null && showsHint(frame)) && !chatTabs && mic.phase == Dictation.Phase.OFF
 
     /** A glass button's glyph: the label, faded while pressed, as iOS's glassy `BarButton`. */
     private fun pressedInk(theme: Theme, pressed: Boolean) =
@@ -518,6 +537,11 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             return editPills(frame).firstOrNull { (name, box) -> enabled(edits, name) && x >= box.left && x <= box.right }?.first
         }
         if (chatTabs) return null
+        if (showsStyle(frame) && y < bar.height) {
+            val track = style.track(bar, frame.writing!!)
+            if (x >= track.left && x <= track.right) return "style"
+            if (style.isOpen) return null
+        }
         if (hint != null && !clearedNotice && showsHint(frame) && y < bar.height) return "hint"
         if (!frame.showsSuggestions || frame.panel != null || mic.covers) return null
         val showsEmoji = frame.emoji.isNotEmpty()
@@ -531,8 +555,11 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         return if (index >= 0 && frame.chips.getOrNull(index) != null) "slot$index" else null
     }
 
-    private fun barTap(frame: Frame, target: String) {
+    private fun barTap(frame: Frame, target: String, x: Float) {
         when {
+            target == "style" -> frame.writing?.let { writing ->
+                style.tap(frame.toolbar, writing, x)?.let { actions.pickStyle(writing.styles[it].value) }
+            }
             target == "more" -> actions.more()
             target == "mic" -> actions.mic()
             target.startsWith("tool:") -> actions.open(target.removePrefix("tool:"))
@@ -603,10 +630,12 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                 }
                 if (id == barPointer) {
                     barPointer = null
+                    cancelStyleHold()
                     val target = pressedBar
                     pressedBar = null
-                    if (target != null && target == barTarget(frame, event.getX(pointer) / density, event.getY(pointer) / density - barTop)) {
-                        barTap(frame, target)
+                    val x = event.getX(pointer) / density
+                    if (target != null && target == barTarget(frame, x, event.getY(pointer) / density - barTop)) {
+                        barTap(frame, target, x)
                     }
                     invalidate()
                 }
@@ -623,6 +652,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                 accents = null
                 barPointer = null
                 pressedBar = null
+                cancelStyleHold()
                 for (touch in touches.values.toList()) finish(frame, touch, commit = false)
                 touches.clear()
             }
@@ -645,6 +675,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             barPointer = id
             pressedBar = target
             emojiDrag = if (target.startsWith("emoji")) x to emojiScroll else null
+            if (target == "style") holdStyle(frame)
             actions.feedback(Feedback.Kind.OTHER)
             return
         }
@@ -663,6 +694,34 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         scheduleHold(touch)
         actions.down(index, taps)
         if (cap.action == "delete") startDeleteRepeat()
+    }
+
+    /**
+     * Holding the writing style, where the app has one of its own, offers going back to the default, as iOS's context
+     * menu on its `StylePicker` does.
+     */
+    private fun holdStyle(frame: Frame) {
+        val writing = frame.writing ?: return
+        val reset = writing.reset ?: return
+        styleHold = Runnable {
+            styleHold = null
+            if (pressedBar != "style") return@Runnable
+            pressedBar = null
+            barPointer = null
+            val track = style.track(frame.toolbar, writing)
+            style.fold()
+            val at = IntArray(2).also(::getLocationInWindow)
+            actions.holdStyle(
+                RectF(at[0] + track.left * density, at[1] + (track.top + barTop) * density, at[0] + track.right * density, at[1] + (track.bottom + barTop) * density),
+                reset,
+            )
+            invalidate()
+        }.also { handler.postDelayed(it, MENU_HOLD) }
+    }
+
+    private fun cancelStyleHold() {
+        styleHold?.let(handler::removeCallbacks)
+        styleHold = null
     }
 
     /** Set by the service: the engine's handle, so hit testing asks the key map made for the text as it is. */

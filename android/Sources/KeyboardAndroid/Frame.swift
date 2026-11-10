@@ -21,6 +21,7 @@ struct Frame: Encodable {
     var panel: String?
     var query: String
     var uppercase: Bool
+    var writing: Writing?
     /// The chevron in a one-handed keyboard's margin that brings both hands back, in the keys' points.
     var expander: Expander?
 }
@@ -76,6 +77,20 @@ struct Bar: Encodable {
     var emojiBeside: Bool
     var cancel: Box
     var recording: Box
+    /// The writing style's place, where the bar has room for it (`BarLayout.style`).
+    var style: Box?
+}
+
+/// The bar's writing style for the app the keyboard is in: every style, `picked` the one a dictation there is written
+/// in, and `reset` naming going back to the default where the app has one of its own.
+struct Writing: Encodable {
+    struct Style: Encodable {
+        var value, title: String
+    }
+
+    var styles: [Style]
+    var picked: Int
+    var reset: String?
 }
 
 struct Box: Encodable {

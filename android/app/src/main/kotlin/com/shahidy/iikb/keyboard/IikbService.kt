@@ -15,6 +15,7 @@ import android.provider.UserDictionary
 import android.text.InputType
 import android.graphics.BitmapFactory
 import android.graphics.PixelFormat
+import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.view.WindowManager
@@ -22,6 +23,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.view.inputmethod.EditorInfo
+import androidx.compose.ui.geometry.Rect
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.inputmethod.EditorInfoCompat
@@ -495,7 +497,12 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             params.topMargin = margin
             overlay.view.layoutParams = params
         }
-        overlay.state = Overlay.State(
+        overlay.state = overlayState(frame, panel, hasChats)
+    }
+
+    private fun overlayState(frame: Frame, panel: String?, hasChats: Boolean): Overlay.State {
+        val bar = frame.toolbar
+        return Overlay.State(
             Colors.of(frame.theme), bar.blockMinX.toFloat(), bar.blockMaxX.toFloat(),
             panel, frame.query, keysUp, bar.field.toFloat(), frame.width.toFloat(),
             Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }, hasChats,
@@ -922,6 +929,22 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
 
     override fun tones(emoji: String) =
         Native.tones(handle, emoji.encodeToByteArray()).decodeToString().split("\n").filter { it.isNotEmpty() }
+
+    override fun pickStyle(style: String?) {
+        val app = app ?: return
+        settings.setAppStyle(app, style)
+    }
+
+    /** Use Default under the held style, on the layer over the whole keyboard, as UIKit's menu for a view held. */
+    override fun holdStyle(source: RectF, reset: String) {
+        val overlay = overlay ?: return
+        val frame = view?.frame ?: return
+        if (overlay.view.visibility != View.VISIBLE) overlay.state = overlayState(frame, null, hasChats(frame))
+        overlay.held = Held(
+            Rect(source.left, source.top, source.right, source.bottom), Held.Shows.Menu,
+            listOf(Held.Action("arrow.uturn.backward", reset) { pickStyle(null) }), listed = true,
+        )
+    }
 
     override fun feedback(kind: Feedback.Kind) {
         feedback?.play(kind)
