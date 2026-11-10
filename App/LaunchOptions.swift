@@ -69,6 +69,14 @@ enum LaunchOptions {
     }
     static var tapsScroll: String? { defaults.string(forKey: "iikbTapsScroll") }
     static var tapsKey: String? { defaults.string(forKey: "iikbTapsKey") }
+    /// `-iikbAppearance light` or `dark` draws the app, and the keyboard on its field, that way whatever the phone's set to.
+    static var appearance: UIUserInterfaceStyle? {
+        switch defaults.string(forKey: "iikbAppearance") {
+        case "light": .light
+        case "dark": .dark
+        default: nil
+        }
+    }
     static var orientation: UIInterfaceOrientationMask? {
         switch defaults.string(forKey: "iikbOrientation") {
         case "landscape": .landscapeRight

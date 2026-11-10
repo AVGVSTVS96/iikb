@@ -27,9 +27,6 @@ open class FullKeyboardViewController: UIInputViewController {
     /// menu, a panel in their place) the mic is the bar's, so there's always the one mic to tap.
     private var keyed = false
     private let panelView = PanelView()
-    /// An open chat's card behind the whole keyboard, tabs, chat and keys, opaque where iOS's glass would show the app
-    /// through. Its top corners round inside iOS's own card, whose edge starts 4 above the keyboard (on the Duo, Nov 9).
-    private let chatCard = UIView()
     private let menuView = MenuView()
     private let toolbarView = UIView()
     private var toolbar = KeyboardMetrics.phone(width: 390).toolbar
@@ -188,11 +185,6 @@ open class FullKeyboardViewController: UIInputViewController {
             view.addSubview($0)
         }
         toolbarView.addSubview(suggestionBar)
-        chatCard.isUserInteractionEnabled = false
-        chatCard.layer.cornerRadius = 18
-        chatCard.layer.cornerCurve = .continuous
-        chatCard.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        view.insertSubview(chatCard, at: 0)
         view.addSubview(panelView)
         keysMinimumConstraint.priority = .required - 1
         toolbarHeightConstraint.priority = .required - 2
@@ -313,7 +305,6 @@ open class FullKeyboardViewController: UIInputViewController {
             : line != nil
                 ? CGRect(x: 0, y: 0, width: width, height: max(room - toolbar.height, 0))
                 : CGRect(x: 0, y: max(room - bar - toolbar.panelHeight, 0), width: width, height: toolbar.panelHeight)
-        chatCard.frame = view.bounds
         TouchTrace.shared.layout(view)
     }
 
@@ -622,8 +613,6 @@ open class FullKeyboardViewController: UIInputViewController {
             view.setNeedsLayout()
         }
         panelView.showsBack = line == nil
-        chatCard.isHidden = line == nil
-        chatCard.backgroundColor = theme.card.ui
         panelView.bottomInset = line == nil ? PanelView.inset : CGFloat(metrics.bottomInset)
         suggestionBar.isHidden = engine.panel != nil && !inPlace
         panelView.block = block

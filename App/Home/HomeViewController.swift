@@ -60,6 +60,10 @@ final class HomeViewController: UIHostingController<AnyView>, UIGestureRecognize
         if let orientation = LaunchOptions.orientation {
             view.window?.windowScene?.requestGeometryUpdate(.iOS(interfaceOrientations: orientation))
         }
+        if let style = LaunchOptions.appearance {
+            view.window?.overrideUserInterfaceStyle = style
+            field.keyboardAppearance = style == .dark ? .dark : .light
+        }
         if LaunchOptions.focus { field.becomeFirstResponder() }
     }
 

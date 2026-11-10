@@ -48,6 +48,37 @@ final class ChatBoxDeviceTests: XCTestCase {
         element("iikb.more", in: app).tap()
     }
 
+    /// How Chats looks on the phone, light and dark, upright and on its side, reading and typing: the shots behind a
+    /// change to its look. Nothing is typed or sent.
+    func testChatsLookOnThePhone() throws {
+        continueAfterFailure = false
+        for appearance in ["dark", "light"] {
+            for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
+                XCUIDevice.shared.orientation = orientation
+                let app = XCUIApplication()
+                app.launchArguments = ["-iikbFocus", "YES", "-iikbAppearance", appearance]
+                app.launch()
+                XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+                element("iikb.more", in: app).tap()
+                let card = element("iikb.chats.shelf.0", in: app)
+                XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
+                card.tap()
+                let field = element("iikb.chat.field", in: app)
+                XCTAssertTrue(field.waitForExistence(timeout: 10), "the chat opens with its message box")
+                Thread.sleep(forTimeInterval: 2)
+                let name = "\(appearance)-\(orientation == .portrait ? "upright" : "side")"
+                shot("\(name)-reading")
+                field.tap()
+                XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 5), "tapping the box brings the keys up")
+                Thread.sleep(forTimeInterval: 1)
+                shot("\(name)-typing")
+                element("iikb.more", in: app).tap()
+                app.terminate()
+            }
+        }
+        XCUIDevice.shared.orientation = .portrait
+    }
+
     /// The keyboard goes away and comes back in the same field, as it does when the mic goes through iikb: the chat
     /// opens again with its line and its keys up. More then leaves it, keys up and all.
     func testAChatComesBackAsYouLeftItOnThePhone() throws {
