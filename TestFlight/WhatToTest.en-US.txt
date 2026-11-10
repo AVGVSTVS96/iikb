@@ -1,4 +1,4 @@
-- Copied links show their site's icon and name, and a new Links filter in the clipboard shows only links.
-- Email addresses, phone numbers and colors you copy get their own icons.
-- The mic switch on Home stays put when you start typing.
-- Transcripts: Delete is easier to reach, and the chart's dates sit under their days.
+- Chats: with Full Access on, add an extension in the iikb app's Settings › Extensions, then open its chats from the menu's Chats shelf. Dictate and send without the keys. To write one: github.com/AVGVSTVS96/iikb/blob/main/docs/extensions.md
+- Messages in a chat are real text: hold to select and copy, tap links, tap a photo to see it large.
+- The menu now picks your theme and stop animation in place.
+- Fixes: lower memory use, smoother Drain and Card stop animations, and a clipboard crash when the keyboard resized.
