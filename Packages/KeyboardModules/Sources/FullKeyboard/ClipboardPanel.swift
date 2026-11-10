@@ -516,6 +516,7 @@ final class ClipRow: UICollectionViewCell {
         pressedFill = compact ? theme.keyPressed.ui : theme.label.ui.withAlphaComponent(0.12)
         pin.tintColor = compact ? theme.onKeySecondary : theme.candidate.ui
         pin.isHidden = !pinned
+        pin.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: compact ? 10 : 13)
         text.textColor = theme.label.ui
         text.font = Self.font(compact: compact)
         text.numberOfLines = compact ? 2 : 1
@@ -551,11 +552,11 @@ final class ClipRow: UICollectionViewCell {
         backdrop.backgroundColor = isHighlighted ? pressedFill : fill
         if compact {
             let inset = bounds.insetBy(dx: 10, dy: 6)
-            pin.frame = CGRect(x: inset.maxX - 14, y: inset.minY, width: 14, height: 14)
-            text.frame = CGRect(
-                x: inset.minX, y: inset.minY, width: inset.width - (pinned ? 16 : 0), height: inset.height - 13)
+            pin.frame = CGRect(x: inset.maxX - 14, y: inset.maxY - 13, width: 14, height: 13)
+            text.frame = CGRect(x: inset.minX, y: inset.minY, width: inset.width, height: inset.height - 13)
             image.frame = CGRect(x: inset.minX, y: inset.minY, width: inset.height - 13, height: inset.height - 13)
-            age.frame = CGRect(x: inset.minX, y: inset.maxY - 13, width: inset.width, height: 13)
+            age.frame = CGRect(
+                x: inset.minX, y: inset.maxY - 13, width: inset.width - (pinned ? 16 : 0), height: 13)
             return
         }
         pin.frame = CGRect(x: 0, y: 0, width: 16, height: bounds.height)

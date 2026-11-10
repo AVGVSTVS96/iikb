@@ -258,7 +258,7 @@ Emoji opens from its key, Clipboard, Transcripts (`text.bubble`; the waveform st
 - Kinds: an email address shows after `envelope`, a phone number after `phone`, a `#rrggbb` color after a swatch of it in monospaced capitals; everything else is text as before. What's pasted is always the whole clip. iOS never tells a keyboard which app copied something (`UIPasteboard` has no such property), so a row can't say where it came from.
 - Field: leading clipboard glyph, placeholder "Search clipboard"; typing filters by substring.
 - Tap: inserts the text at the cursor (an image is copied back to the clipboard, as GIFs are). Hold: all of it, with Paste, Pin or Unpin, and Delete (section "The menu").
-- Compact: one row of up to three cards, the key fill, radius 10, the text in 14 over its length and age in 11, secondary there and on the badges the label at 62%, 4.5:1 on the key fill. A glyph keeps to its text's first line, and an address wraps after its `@`.
+- Compact: one row of up to three cards, the key fill, radius 10, the text in 14 across the whole card over its length and age in 11, a pinned card's `pin.fill` (10) at that line's end, secondary there and on the badges the label at 62%, 4.5:1 on the key fill. A glyph keeps to its text's first line, and an address wraps after its `@`.
 - Empty: "Things you copy show up here." in secondary 15.
 
 ### Transcripts
