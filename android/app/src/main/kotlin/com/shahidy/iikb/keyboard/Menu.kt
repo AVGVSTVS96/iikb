@@ -206,7 +206,7 @@ private fun Platter(
     val tint = hue.of(dark).copy(alpha = if (dark) 0.12f else 0.08f)
     Row(
         Modifier.fillMaxWidth().height(row + CHROME.dp)
-            .glass(RoundedCornerShape(RADIUS.dp), dark = dark, color = tint)
+            .glass(RoundedCornerShape(RADIUS.dp), dark = dark, color = tint, under = look.card)
             .padding(INSET.dp),
     ) {
         val tile = Vibrant.of(hue).on(glassSurface(look.card, dark, tint), dark)

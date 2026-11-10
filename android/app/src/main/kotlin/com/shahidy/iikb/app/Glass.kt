@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -33,12 +34,15 @@ import com.shahidy.iikb.app.design.isDark
  * toward white inside a gray hairline; in dark it lifts what's behind by a gray of 32 rather than covering it, so it
  * reads 0x20 on a black page and lighter on the keyboard's glass, as iOS's shots measure it. Over a plain page, with
  * nothing behind to bend, it's the rim, the tint and the shadow. Android draws the blur from 12 and the bend from 13;
- * before, the tint alone stands in. The keyboard, outside the app's palette, says if it's `dark`; `color` tints it
- * further, as `UIGlassEffect.tintColor` does.
+ * before, the tint alone stands in. The keyboard, outside the app's palette, says if it's `dark` and gives the color
+ * `under` it: what's behind there is another window's (its own glass), which a layer here can't add to, so in dark it
+ * lifts by a white that brings `under` up by the same gray (`lift`). `color` tints it further, as
+ * `UIGlassEffect.tintColor` does.
  */
 @Composable
 fun Modifier.glass(
     shape: Shape, backdrop: Backdrop = emptyBackdrop(), dark: Boolean = palette().isDark, color: Color = Color.Transparent,
+    under: Color = Color.Unspecified,
 ): Modifier {
     val hairline = this.drawWithContent {
         drawContent()
@@ -62,7 +66,11 @@ fun Modifier.glass(
             Shadow(radius = 16.dp, offset = DpOffset(0.dp, 4.dp), color = Color.Black.copy(alpha = if (dark) 0.3f else 0.03f))
         },
         onDrawSurface = {
-            if (dark) drawRect(LIFT, blendMode = BlendMode.Plus) else drawRect(WASH)
+            when {
+                !dark -> drawRect(WASH)
+                under.isSpecified -> drawRect(lift(under))
+                else -> drawRect(LIFT, blendMode = BlendMode.Plus)
+            }
             drawRect(color)
         },
     )
@@ -77,6 +85,9 @@ fun glassSurface(under: Color, dark: Boolean, color: Color = Color.Transparent):
     }
     return color.compositeOver(tinted)
 }
+
+/** The white that, laid over an opaque `under`, reads as `under` lifted by `LIFT`, as dark glass does. */
+fun lift(under: Color): Color = Color.White.copy(alpha = (LIFT.red / (1 - maxOf(under.red, under.green, under.blue))).coerceIn(0f, 1f))
 
 private val LIFT = Color(0xFF202020)
 private val WASH = Color.White.copy(alpha = 0.4f)

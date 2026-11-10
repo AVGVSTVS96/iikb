@@ -183,7 +183,7 @@ private fun GlassMore(x: Float, y: Float, glyph: Float, backdrop: com.kyant.back
     val pressed by interaction.collectIsPressedAsState()
     Box(
         Modifier.offset(x.dp, y.dp)
-            .size(TABS_HEIGHT.dp).glass(CircleShape, backdrop, look.dark).clip(CircleShape)
+            .size(TABS_HEIGHT.dp).glass(CircleShape, backdrop, look.dark, under = look.card).clip(CircleShape)
             .background(look.label.copy(alpha = if (look.dark) 0.12f else 0.08f))
             .clickable(interaction, indication = null, onClick = actions::more),
         contentAlignment = Alignment.Center,
@@ -527,7 +527,7 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, 
     val scroll = rememberScrollState()
     val shape = RoundedCornerShape(20.dp)
     Box(
-        Modifier.fillMaxWidth().heightIn(min = 40.dp).glass(shape, backdrop, look.dark)
+        Modifier.fillMaxWidth().heightIn(min = 40.dp).glass(shape, backdrop, look.dark, under = look.card)
             .clickable(remember { MutableInteractionSource() }, indication = null) { if (!caret) actions.raiseKeys() },
     ) {
         Box(

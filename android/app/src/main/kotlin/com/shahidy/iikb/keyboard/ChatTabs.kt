@@ -122,7 +122,7 @@ fun ChatTabs(
                 drawLayer(drawn)
             },
     ) {
-        Box(Modifier.matchParentSize().glass(CircleShape, backdrop, look.dark))
+        Box(Modifier.matchParentSize().glass(CircleShape, backdrop, look.dark, under = look.card))
         Box(
             Modifier.matchParentSize().clip(CircleShape).fadeCutEnds(scroll.value > 0, scroll.value < scroll.maxValue)
                 .horizontalScroll(scroll).width(content.dp)
