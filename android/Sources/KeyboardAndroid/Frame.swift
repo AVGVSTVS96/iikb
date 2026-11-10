@@ -153,7 +153,9 @@ struct Theme: Encodable {
         keyPressed = t.keyPressed.argb
         card = t.card.argb
         let dark = t.card.red < 0.5
-        glass = (dark ? RGBA(red: 39 / 255, green: 39 / 255, blue: 40 / 255, alpha: 0.87)
+        glass =
+            (dark
+            ? RGBA(red: 39 / 255, green: 39 / 255, blue: 40 / 255, alpha: 0.87)
             : RGBA(red: 224 / 255, green: 225 / 255, blue: 230 / 255, alpha: 0.87)).argb
         rim = RGBA(white: dark ? 1 : 0, alpha: 0.12).argb
         label = t.label.argb
