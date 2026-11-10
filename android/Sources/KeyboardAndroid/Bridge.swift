@@ -266,9 +266,9 @@ public func documentChanged(env: Env, _: jclass, handle: jlong) -> jboolean {
     with(env, handle) { $0.engine.documentChanged($0.typing) == .changed ? 1 : 0 }
 }
 
-@_cdecl("Java_com_shahidy_iikb_keyboard_Native_barMore")
-public func barMore(env: Env, _: jclass, handle: jlong, shown: jboolean) {
-    with(env, handle) { $0.barMore = shown != 0 }
+@_cdecl("Java_com_shahidy_iikb_keyboard_Native_shown")
+public func shown(env: Env, _: jclass, handle: jlong, menu: jboolean, chat: jboolean, keysUp: jboolean) {
+    with(env, handle) { $0.shown = (menu: menu != 0, chat: chat != 0, keysUp: keysUp != 0) }
 }
 
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_leaveField")

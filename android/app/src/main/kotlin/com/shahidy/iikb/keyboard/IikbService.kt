@@ -403,7 +403,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     private fun render() {
         val view = view ?: return
         tellSources(byKeyboard = true)
-        Native.barMore(handle, !(chatOpen && keysUp))
+        Native.shown(handle, menuOpen, chatOpen, keysUp)
         val frame = Frame.parse(Native.frame(handle))
         val chat = chatOpen
         if (frame.panel == null && !chat) keysUp = false

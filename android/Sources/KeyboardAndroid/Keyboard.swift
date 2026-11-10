@@ -22,8 +22,17 @@ final class Keyboard {
     private var dark = false
     private var showsGlobe = false
     private var folds = false
+    /// What Kotlin's `IikbService` shows: the menu open, a chat open, and the keys up under a chat or panel.
+    var shown = (menu: false, chat: false, keysUp: false)
     /// The bar shows More, which it leaves out while a chat with the keys up has its own beside its tabs.
-    var barMore = true
+    private var barMore: Bool { !(shown.chat && shown.keysUp) }
+    /// Whether the keys are in sight, not under the menu or a chat or panel in their place: iOS's `placeMic`, which
+    /// puts the one mic in the bar while they aren't, even with the Record Key on.
+    private var keysShown: Bool {
+        let panelOpen = shown.chat || engine.panel != nil
+        let inPlace = panelOpen && !shown.keysUp && engine.panel != .emoji
+        return !inPlace && !(shown.menu && !panelOpen)
+    }
     private let style = KeyboardStyle.ios27
     private let emojiSearch: EmojiSearch
 
@@ -111,7 +120,7 @@ final class Keyboard {
         let tools: [Panel] = engine.settings.emojiKey && context.device != .phone ? [.emoji] : []
         let keys = topRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
         let bar = BarLayout(
-            toolbar, keys: keys, tools: tools.count, more: barMore, mic: !keyed, maximumSlot: toolbar.slot)
+            toolbar, keys: keys, tools: tools.count, more: barMore, mic: !(keyed && keysShown), maximumSlot: toolbar.slot)
         let menuKeys = context.menuKeys(in: geometry.layout)
         let items = context.menu
         return Frame(

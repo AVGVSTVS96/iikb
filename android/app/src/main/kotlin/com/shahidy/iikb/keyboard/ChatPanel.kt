@@ -149,7 +149,7 @@ fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
                 photo?.let { PhotoView(it) { photo = null } }
             }
             Spacer(Modifier.size(6.dp))
-            MessageBox(line, chats.open?.name?.let { "Message $it" } ?: "Message", caret = keysUp, mic = state.mic)
+            MessageBox(line, chats.open?.name?.let { "Message $it" } ?: "Message", caret = keysUp)
         }
         // More's glass starts where the keys and the messages do, and the tabs a key's gap after it, as iOS's.
         val top = (bar.top + (bar.bar - TABS_HEIGHT) / 2).toFloat()
@@ -483,22 +483,18 @@ fun markdown(text: String, opens: ((String) -> Unit)? = null): AnnotatedString =
 
 /**
  * The message box, as Messages' and iOS's `MessageField`: outlined in a hairline, what the keys typed (or the
- * placeholder), the caret while the keys are up, growing a line at a time to five, past which it scrolls. One button at
- * its end: the mic while there's nothing to send, so a message is said with the keys down, and send once there is,
- * each growing in where the other shrinks away; both while a dictation runs over text, the mic to stop it. A tap brings
- * the keys up.
+ * placeholder), the caret while the keys are up, growing a line at a time to five, past which it scrolls. Send grows in
+ * at its end once there's something to send and shrinks away when there isn't. It has no mic of its own: the
+ * keyboard's one mic dictates into it as into any field. A tap brings the keys up.
  */
 @Composable
-private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, mic: String) {
+private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean) {
     val look = LocalColors.current
     val actions = LocalActions.current
     val density = LocalDensity.current.density
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val empty = line.text.isEmpty()
     val canSend = line.text.isNotBlank()
-    val dictating = mic == "LISTENING" || mic == "WRITING"
-    val showsMic = !canSend || dictating
-    val both = canSend && showsMic
     val scroll = rememberScrollState()
     val shape = RoundedCornerShape(20.dp)
     Box(
@@ -506,8 +502,10 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, 
             .border((1 / density).dp, if (look.dark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.09f), shape)
             .clickable(remember { MutableInteractionSource() }, indication = null) { if (!caret) actions.raiseKeys() },
     ) {
-        val end = if (both) 2 * BUTTON + 3 * MARGIN else BUTTON + 2 * MARGIN
-        Box(Modifier.heightIn(max = (22 * 5 + 18).dp).verticalScroll(scroll).padding(start = 14.dp, end = end.dp, top = 9.dp, bottom = 9.dp)) {
+        Box(
+            Modifier.heightIn(max = (22 * 5 + 18).dp).verticalScroll(scroll)
+                .padding(start = 14.dp, end = (BUTTON + 2 * MARGIN).dp, top = 9.dp, bottom = 9.dp),
+        ) {
             BasicText(
                 if (empty) AnnotatedString(placeholder) else AnnotatedString(line.text),
                 style = TextStyle(fontSize = 17.sp, lineHeight = 22.sp, color = if (empty) look.secondary else look.label),
@@ -527,18 +525,6 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, 
         LaunchedEffect(line.text) { scroll.scrollTo(scroll.maxValue) }
         val motion = spring<Float>(dampingRatio = 1 - BUTTON_BOUNCE, stiffness = (2 * PI / BUTTON_SPRING).let { (it * it).toFloat() })
         val send by animateFloatAsState(if (canSend) 1f else 0f, motion, label = "send")
-        val micShown by animateFloatAsState(if (showsMic) 1f else 0f, motion, label = "mic")
-        val micBeside by animateFloatAsState(if (both) 1f else 0f, motion, label = "beside")
-        val listening = mic == "LISTENING"
-        Box(
-            Modifier.align(Alignment.BottomEnd).padding(MARGIN.dp)
-                .offset(x = (-(BUTTON + MARGIN) * micBeside).dp).size(BUTTON.dp).appear(micShown)
-                .background(if (listening) look.record else look.mic, CircleShape).alpha(if (mic == "WRITING") 0.5f else 1f)
-                .clickable(remember { MutableInteractionSource() }, indication = null, enabled = showsMic) { actions.mic() },
-            contentAlignment = Alignment.Center,
-        ) {
-            if (listening) Glyph("stop.fill", Color.White, 12.dp) else Glyph("waveform", look.micGlyph, 16.dp)
-        }
         Box(
             Modifier.align(Alignment.BottomEnd).padding(MARGIN.dp).size(BUTTON.dp).appear(send)
                 .background(look.accent, CircleShape)
@@ -603,7 +589,7 @@ private const val BOTTOM_FADE = 10f
 /** As iOS's `ImageBubble`. */
 private const val PHOTO_WIDTH = 240f
 private const val PHOTO_HEIGHT = 320f
-/** As iOS's `MessageField`: its button's side and margin, and the spring it changes on. */
+/** As iOS's `MessageField`: send's side and margin, and the spring it grows in on. */
 private const val BUTTON = 28f
 private const val MARGIN = 6f
 private const val BUTTON_SPRING = 0.3f
