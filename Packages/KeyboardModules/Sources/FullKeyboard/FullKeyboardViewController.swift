@@ -189,6 +189,9 @@ open class FullKeyboardViewController: UIInputViewController {
 
     override open func viewDidLoad() {
         super.viewDidLoad()
+        let center = NotificationCenter.default
+        center.addObserver(self, selector: #selector(hostLeft), name: .NSExtensionHostDidEnterBackground, object: nil)
+        center.addObserver(self, selector: #selector(hostCameBack), name: .NSExtensionHostDidBecomeActive, object: nil)
         [toolbarView, keyboardView, menuView].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
@@ -328,7 +331,8 @@ open class FullKeyboardViewController: UIInputViewController {
 
     override open func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        isShown = true
+        appeared = true
+        hostAway = false
         KeyboardHost.appeared()
         updateHost()
         keyboard = .random(in: 1 ... .max)
@@ -384,7 +388,7 @@ open class FullKeyboardViewController: UIInputViewController {
 
     override open func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        isShown = false
+        appeared = false
         keepChat()
         chats.keep()
         leaveChat()
@@ -448,11 +452,13 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     override open func selectionDidChange(_ textInput: UITextInput?) {
+        hostAway = false
         updateHost()
         syncWithDocument()
     }
 
     override open func textDidChange(_ textInput: UITextInput?) {
+        hostAway = false
         updateHost()
         syncWithDocument()
     }
@@ -869,9 +875,17 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     private var ranking = false
-    /// From viewWillAppear to viewWillDisappear. Once the keyboard goes away the text document proxy is torn down while
-    /// this controller lives on, and reading it then crashes, so a ranking job or load that finishes later draws nothing.
-    private var isShown = false
+    /// From viewWillAppear to viewWillDisappear, and not while the host app is in the background. Once the keyboard or
+    /// its app goes away the text document proxy is torn down while this controller lives on, and reading it then
+    /// crashes, so a ranking job or load that finishes later draws nothing. The host going to the background doesn't
+    /// always end in viewWillDisappear (crash of 10 November, build 966).
+    private var isShown: Bool { appeared && !hostAway }
+    private var appeared = false
+    private var hostAway = false
+
+    @objc private func hostLeft() { hostAway = true }
+
+    @objc private func hostCameBack() { hostAway = false }
 
     private func renderSuggestions() {
         guard isShown else { return }
