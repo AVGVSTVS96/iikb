@@ -1,5 +1,6 @@
 import KeyboardCore
 import UIKit
+import UniformTypeIdentifiers
 
 /// A chat's message box: a real `UITextView`, focused while the keys are up under it, so the caret, the loupe, the
 /// selection handles and the edit menu are iOS's own. Its text is a `LineDocument` the keys type into through the
@@ -15,12 +16,24 @@ public final class MessageField: UIView, UITextViewDelegate {
     public var onSend: () -> Void = {}
     /// The box was tapped without its caret, to bring the keys up.
     public var onTap: () -> Void = {}
+    /// The paperclip beside the box was tapped, to pick photos.
+    public var onAttach: () -> Void = {}
+    /// An attached photo's ✕ was tapped, by its index.
+    public var onRemove: (Int) -> Void = { _ in }
+    /// Paste in the box's edit menu, with photos on the clipboard: their items, each still to be read.
+    public var onPastePhotos: ([NSItemProvider]) -> Void = { _ in }
 
     /// The box is iOS's Liquid Glass, as the tabs, More and the mic around it are.
     private let glass = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
     private let field = Field()
     private let placeholder = UILabel()
     private let send = UIButton(type: .custom)
+    /// Photos go with the words: a paperclip beside the box, as in Telegram, and what's attached above the words in it,
+    /// as in Messages.
+    private let attach = UIButton(type: .custom)
+    private let attachGlass = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
+    private let strip = UIScrollView()
+    private var thumbs: [Thumb] = []
     private var shown: Shown?
     /// Set while the box shows the document, so the changes it makes aren't taken for iOS's.
     private var showing = false
@@ -31,7 +44,8 @@ public final class MessageField: UIView, UITextViewDelegate {
         var placeholder: String
         var theme: KeyboardTheme
         var caret: Bool
-        var canSend: Bool { text.contains { !$0.isWhitespace } }
+        var photos: [URL]
+        var canSend: Bool { !photos.isEmpty || text.contains { !$0.isWhitespace } }
     }
 
     private static let font = UIFont.systemFont(ofSize: 17)
@@ -40,6 +54,13 @@ public final class MessageField: UIView, UITextViewDelegate {
     private static let sendMargin: CGFloat = 6
     private static let inset = UIEdgeInsets(top: 9, left: 14, bottom: 9, right: sendSize + 2 * sendMargin)
     private static let cornerRadius: CGFloat = 20
+    /// The paperclip's circle, as tall as the box's one line, and its gap to the box.
+    private static let attachSize: CGFloat = 40
+    private static let attachGap: CGFloat = 8
+    /// The attached photos' row inside the box, above the words.
+    private static let thumbSize: CGFloat = 76
+    private static let stripPadding: CGFloat = 8
+    private static var stripHeight: CGFloat { thumbSize + stripPadding }
     private static let lines = {
         let style = NSMutableParagraphStyle()
         style.minimumLineHeight = lineHeight
@@ -83,6 +104,20 @@ public final class MessageField: UIView, UITextViewDelegate {
         send.layer.cornerRadius = Self.sendSize / 2
         send.addAction(UIAction { [unowned self] _ in onSend() }, for: .touchUpInside)
         addSubview(send)
+
+        attachGlass.cornerConfiguration = .capsule()
+        attachGlass.isUserInteractionEnabled = false
+        addSubview(attachGlass)
+        attach.accessibilityIdentifier = "iikb.chat.attach"
+        attach.accessibilityLabel = "Attach photos"
+        attach.addAction(UIAction { [unowned self] _ in onAttach() }, for: .touchUpInside)
+        addSubview(attach)
+        strip.showsHorizontalScrollIndicator = false
+        strip.alwaysBounceHorizontal = true
+        strip.clipsToBounds = false
+        strip.isHidden = true
+        addSubview(strip)
+        field.onPastePhotos = { [unowned self] in onPastePhotos($0) }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -90,8 +125,11 @@ public final class MessageField: UIView, UITextViewDelegate {
     /// `caret` while the keys are up to type into it, which focuses the box as they come up and as the keys change its
     /// line, never otherwise, so text selected in a message keeps its selection while the keys stay up. The box has no
     /// mic of its own: the keyboard's one mic types into it like any field, so dictating works the same everywhere.
-    public func show(_ line: LineDocument, placeholder text: String, caret: Bool, theme: KeyboardTheme) {
-        let next = Shown(text: line.text, selection: line.selection, placeholder: text, theme: theme, caret: caret)
+    public func show(
+        _ line: LineDocument, placeholder text: String, caret: Bool, photos: [URL] = [], theme: KeyboardTheme
+    ) {
+        let next = Shown(
+            text: line.text, selection: line.selection, placeholder: text, theme: theme, caret: caret, photos: photos)
         guard next != shown else { return }
         let last = shown
         shown = next
@@ -109,7 +147,16 @@ public final class MessageField: UIView, UITextViewDelegate {
             )
             look.contentInsets = .zero
             send.configuration = look
+            var clip = UIButton.Configuration.plain()
+            clip.baseForegroundColor = theme.label.ui
+            clip.image = UIImage(
+                systemName: "paperclip", withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .regular)
+            )
+            clip.contentInsets = .zero
+            attach.configuration = clip
+            thumbs.forEach { $0.show(theme) }
         }
+        if next.photos != last?.photos { showPhotos(next.photos, theme: theme) }
         if next.text != field.text || next.theme != last?.theme {
             var attributes = Self.attributes
             attributes[.foregroundColor] = theme.label.ui
@@ -139,25 +186,70 @@ public final class MessageField: UIView, UITextViewDelegate {
         CGSize(width: size.width, height: min(height(for: size.width, lines: 5), size.height))
     }
 
-    /// The height the field wants at `width`, growing a line at a time up to `lines`, past which it scrolls.
+    /// The height the box wants at `width`, its photos' row and then its words, growing a line at a time up to
+    /// `lines`, past which they scroll.
     public func height(for width: CGFloat, lines: Int) -> CGFloat {
-        let content = field.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
-        let shown = ((content - Self.inset.top - Self.inset.bottom) / Self.lineHeight).rounded()
-        return Self.inset.top + Self.inset.bottom + Self.lineHeight * min(max(shown, 1), CGFloat(lines))
+        let inset = textInset
+        let box = max(width - Self.attachSize - Self.attachGap, 1)
+        let content = field.sizeThatFits(CGSize(width: box, height: .greatestFiniteMagnitude)).height
+        let shown = ((content - inset.top - inset.bottom) / Self.lineHeight).rounded()
+        return inset.top + inset.bottom + Self.lineHeight * min(max(shown, 1), CGFloat(lines))
+    }
+
+    /// The words' inset in the box, below the photos' row when there are photos.
+    private var textInset: UIEdgeInsets {
+        var inset = Self.inset
+        if shown?.photos.isEmpty == false { inset.top += Self.stripHeight }
+        return inset
     }
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        glass.frame = bounds
-        field.frame = bounds
-        let inset = Self.inset
+        let clip = Self.attachSize
+        attachGlass.frame = CGRect(x: 0, y: bounds.maxY - clip, width: clip, height: clip)
+        attach.frame = attachGlass.frame
+        let box = bounds.inset(by: UIEdgeInsets(top: 0, left: clip + Self.attachGap, bottom: 0, right: 0))
+        glass.frame = box
+        field.frame = box
+        let inset = textInset
+        if field.textContainerInset != inset { field.textContainerInset = inset }
         placeholder.frame = CGRect(
-            x: inset.left, y: inset.top, width: max(bounds.width - inset.left - inset.right, 0), height: Self.lineHeight
-        )
+            x: box.minX + inset.left, y: inset.top, width: max(box.width - inset.left - inset.right, 0),
+            height: Self.lineHeight)
         let size = Self.sendSize
         send.bounds.size = CGSize(width: size, height: size)
-        send.center = CGPoint(x: bounds.maxX - Self.sendMargin - size / 2, y: bounds.maxY - Self.sendMargin - size / 2)
+        send.center = CGPoint(x: box.maxX - Self.sendMargin - size / 2, y: box.maxY - Self.sendMargin - size / 2)
+        let pad = Self.stripPadding
+        strip.frame = CGRect(x: box.minX + pad, y: pad, width: box.width - 2 * pad, height: Self.thumbSize)
+        for (index, thumb) in thumbs.enumerated() {
+            thumb.frame = CGRect(
+                x: CGFloat(index) * (Self.thumbSize + pad), y: 0, width: Self.thumbSize, height: Self.thumbSize)
+        }
+        strip.contentSize = CGSize(
+            width: max(CGFloat(thumbs.count) * (Self.thumbSize + pad) - pad, 0), height: Self.thumbSize)
         field.scrollRangeToVisible(field.selectedRange)
+    }
+
+    /// The attached photos as thumbnails in the box, each with its ✕; the newest scrolled into view.
+    private func showPhotos(_ photos: [URL], theme: KeyboardTheme) {
+        let added = photos.count > thumbs.count
+        thumbs.forEach { $0.removeFromSuperview() }
+        thumbs = photos.enumerated().map { index, url in
+            let thumb = Thumb(url)
+            thumb.accessibilityIdentifier = "iikb.chat.photo.\(index)"
+            thumb.onRemove = { [unowned self] in onRemove(index) }
+            thumb.show(theme)
+            strip.addSubview(thumb)
+            return thumb
+        }
+        strip.isHidden = photos.isEmpty
+        field.textContainerInset = textInset
+        superview?.setNeedsLayout()
+        setNeedsLayout()
+        layoutIfNeeded()
+        if added {
+            strip.scrollRectToVisible(thumbs.last?.frame ?? .zero, animated: false)
+        }
     }
 
     /// Send grows in at the box's end once there's something to send, and shrinks away when there isn't.
@@ -174,6 +266,8 @@ public final class MessageField: UIView, UITextViewDelegate {
 
     override public func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         if send.isEnabled, send.frame.insetBy(dx: -4, dy: -8).contains(point) { return send }
+        if attach.frame.insetBy(dx: -4, dy: -4).contains(point) { return attach }
+        if !strip.isHidden, let hit = strip.hitTest(convert(point, to: strip), with: event) { return hit }
         return super.hitTest(point, with: event)
     }
 
@@ -201,14 +295,84 @@ public final class MessageField: UIView, UITextViewDelegate {
 }
 
 /// The box's text view, which takes focus only while the box shows a caret (`textViewShouldBeginEditing`): a tap on it
-/// otherwise asks for the keys.
+/// otherwise asks for the keys. Paste with photos on the clipboard attaches them.
 private final class Field: UITextView {
     var onActivate: () -> Void = {}
+    var onPastePhotos: ([NSItemProvider]) -> Void = { _ in }
     var focusable = false
 
     override func accessibilityActivate() -> Bool {
         onActivate()
         return true
+    }
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(paste(_:)), UIPasteboard.general.hasImages { return true }
+        return super.canPerformAction(action, withSender: sender)
+    }
+
+    override func paste(_ sender: Any?) {
+        let board = UIPasteboard.general
+        guard board.hasImages else { return super.paste(sender) }
+        onPastePhotos(board.itemProviders.filter { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) })
+    }
+}
+
+/// An attached photo in the box: the picture, rounded, and a ✕ in its corner that takes it off.
+private final class Thumb: UIView {
+    var onRemove: () -> Void = {}
+    private let picture = UIImageView()
+    private let remove = UIButton(type: .custom)
+    private let url: URL
+    private var loading: Task<Void, Never>?
+
+    init(_ url: URL) {
+        self.url = url
+        super.init(frame: .zero)
+        picture.contentMode = .scaleAspectFill
+        picture.clipsToBounds = true
+        picture.layer.cornerRadius = 12
+        picture.layer.cornerCurve = .continuous
+        addSubview(picture)
+        var look = UIButton.Configuration.filled()
+        look.cornerStyle = .capsule
+        look.baseBackgroundColor = UIColor.black.withAlphaComponent(0.55)
+        look.baseForegroundColor = .white
+        look.image = UIImage(
+            systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 9, weight: .bold))
+        look.contentInsets = .zero
+        remove.configuration = look
+        remove.accessibilityLabel = "Remove photo"
+        remove.addAction(UIAction { [unowned self] _ in onRemove() }, for: .touchUpInside)
+        addSubview(remove)
+        isAccessibilityElement = false
+        loading = Task { [weak self, url] in
+            let image = await Self.thumbnail(url)
+            self?.picture.image = image
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    deinit { loading?.cancel() }
+
+    func show(_ theme: KeyboardTheme) {
+        picture.backgroundColor = theme.key.ui
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        picture.frame = bounds
+        remove.frame = CGRect(x: bounds.maxX - 26, y: 4, width: 22, height: 22)
+    }
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        remove.frame.insetBy(dx: -8, dy: -8).contains(point) ? remove : nil
+    }
+
+    @concurrent nonisolated private static func thumbnail(_ url: URL) async -> UIImage? {
+        guard let data = try? Data(contentsOf: url) else { return nil }  // file: a photo to send
+        return await ImageBubble.decode(data, side: 240)
     }
 }
 

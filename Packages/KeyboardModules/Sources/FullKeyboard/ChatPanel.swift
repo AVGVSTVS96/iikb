@@ -18,6 +18,14 @@ final class ChatPanel: UIView, PanelContent {
     var onSelect: (Range<Int>) -> Void = { _ in }
     /// iOS replaced a range of the box's text, by its edit menu's Cut or Paste.
     var onReplace: (Range<Int>, String) -> Void = { _, _ in }
+    /// The paperclip was tapped, to pick photos.
+    var onAttach: () -> Void = {}
+    /// An attached photo was taken off, by its index.
+    var onRemove: (Int) -> Void = { _ in }
+    /// Photos pasted into the box, still to be read.
+    var onPastePhotos: ([NSItemProvider]) -> Void = { _ in }
+    /// The photos attached to the next message, shown in the box.
+    var photos: [URL] = []
     /// A link in a message was opened.
     var onOpen: (URL) -> Void = { _ in }
     /// A chat's tab was tapped, by its index in the list.
@@ -36,6 +44,7 @@ final class ChatPanel: UIView, PanelContent {
     private let composer = MessageField()
     private var line: LineDocument?
     private var typing = false
+    private var picking = false
 
     private struct Shown: Equatable {
         var revision: Int
@@ -59,9 +68,12 @@ final class ChatPanel: UIView, PanelContent {
         thread.onRead = { [unowned self] in if typing { onBrowse() } }
         thread.fetch = { [chats] in await chats.data(at: $0) }
         composer.onSend = { [unowned self] in onSend() }
-        composer.onTap = { [unowned self] in if !typing { onFocus() } }
+        composer.onTap = { [unowned self] in if !typing || picking { onFocus() } }
         composer.onSelect = { [unowned self] in onSelect($0) }
         composer.onReplace = { [unowned self] in onReplace($0, $1) }
+        composer.onAttach = { [unowned self] in onAttach() }
+        composer.onRemove = { [unowned self] in onRemove($0) }
+        composer.onPastePhotos = { [unowned self] in onPastePhotos($0) }
         message.accessibilityIdentifier = "iikb.chat.message"
         message.onTurnOn = { [unowned self] in onTurnOn() }
         tabs.onPick = { [unowned self] in onPick($0) }
@@ -78,18 +90,19 @@ final class ChatPanel: UIView, PanelContent {
         shown = nil
     }
 
-    /// The box shows `line`; `typing` is whether the keys are up under it.
-    func show(_ line: LineDocument, typing: Bool) {
+    /// The box shows `line`; `typing` is whether the keys are up under it, or the photo grid when `picking`, which
+    /// leaves the box without its caret, so a tap on it brings the keys back.
+    func show(_ line: LineDocument, typing: Bool, picking: Bool) {
         self.line = line
         if typing != self.typing { setNeedsLayout() }
-        self.typing = typing
+        (self.typing, self.picking) = (typing, picking)
     }
 
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
         if let line {
             composer.show(
-                line, placeholder: chats.open.map { "Message \($0.name)" } ?? "Message", caret: typing && fullAccess(),
-                theme: theme)
+                line, placeholder: chats.open.map { "Message \($0.name)" } ?? "Message",
+                caret: typing && !picking && fullAccess(), photos: photos, theme: theme)
         }
         bar = metrics.toolbar.bar
         glyph = metrics.toolbar.glyph

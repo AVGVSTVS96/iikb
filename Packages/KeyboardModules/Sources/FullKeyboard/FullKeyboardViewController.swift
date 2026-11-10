@@ -108,15 +108,23 @@ open class FullKeyboardViewController: UIInputViewController {
         return needsInputModeSwitchKey ? 0 : 91
     }
     private var panelInKeysPlace: Bool { panelOpen && !keysUp && engine.panel != .emoji }
+    /// The photos attached to the open chat's next message, and the grid they're picked in.
+    private let photos = ChatPhotos()
+    /// The photo grid is up in the keys' place, the chat over it as with the keys up.
+    private var picking = false
     private lazy var chatPanel: ChatPanel = {
         let panel = ChatPanel(chats: chats)
         panel.fullAccess = { [unowned self] in hasFullAccess }
         panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
         panel.onSend = { [unowned self] in
             feedback(.separator)
+            if line?.text.isEmpty == true { return send("") }
             handle(.trigger(Key(.return)))
         }
         panel.onFocus = { [unowned self] in raiseKeys() }
+        panel.onAttach = { [unowned self] in pickPhotos() }
+        panel.onRemove = { [unowned self] in photos.remove(at: $0) }
+        panel.onPastePhotos = { [unowned self] in photos.paste($0) }
         panel.onPick = { [unowned self] in suggestionBar.onChat($0) }
         panel.onMore = { [unowned self] in suggestionBar.onMore() }
         panel.onOpen = { [unowned self] in open($0) }
@@ -128,7 +136,7 @@ open class FullKeyboardViewController: UIInputViewController {
             render()
         }
         panel.onBrowse = { [unowned self] in
-            keysUp = false
+            (keysUp, picking) = (false, false)
             render()
         }
         panel.onSelect = { [unowned self] range in
@@ -148,6 +156,7 @@ open class FullKeyboardViewController: UIInputViewController {
         var text: String
         var keysUp: Bool
         var drafts: [String: String]
+        var photos: [UnsentPhoto]?
     }
     private static let keptChat = StoredFile<KeptChat>(
         URL.applicationSupportDirectory.appending(path: "chat-kept.json"))
@@ -249,6 +258,10 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         sources.onHint = { [unowned self] in render() }
         chats.changed = { [weak self] in self?.render() }
+        photos.changed = { [weak self] in
+            self?.keepChat()
+            self?.render()
+        }
         suggestionBar.onCancel = { [unowned self] in
             feedback(.other)
             Dictation.send(.cancel)
@@ -309,6 +322,7 @@ open class FullKeyboardViewController: UIInputViewController {
             : line != nil
                 ? CGRect(x: 0, y: 0, width: width, height: max(room - toolbar.height, 0))
                 : CGRect(x: 0, y: max(room - bar - toolbar.panelHeight, 0), width: width, height: toolbar.panelHeight)
+        if picking { photos.shown?.frame = keyboardView.frame }
         TouchTrace.shared.layout(view)
     }
 
@@ -473,6 +487,7 @@ open class FullKeyboardViewController: UIInputViewController {
                 Self.keptChat.remove()
                 if hasFullAccess, kept.field == field {
                     drafts = kept.drafts
+                    photos.restore(kept.photos ?? [])
                     return openChat(kept.text, at: kept.chat, keysUp: kept.keysUp)
                 }
             }
@@ -654,7 +669,8 @@ open class FullKeyboardViewController: UIInputViewController {
                 inKeysPlace: keyboardView.bounds.height, field: metrics.toolbar.field)
         }
         if let line {
-            chatPanel.show(line, typing: keysUp)
+            chatPanel.photos = photos.attached.map(\.url)
+            chatPanel.show(line, typing: keysUp, picking: picking)
             panelView.show(query: line.text, caret: line.caret, theme: theme, metrics: shown)
         } else if panel != nil {
             panelView.show(query: engine.query, theme: theme, metrics: shown)
@@ -682,7 +698,8 @@ open class FullKeyboardViewController: UIInputViewController {
     /// More button offers where Settings › Layout › Keyboard Menu puts layouts there.
     private func renderMenu(_ context: LayoutContext, metrics: KeyboardMetrics) {
         let open = menuOpen && !panelOpen
-        keyboardView.isHidden = open || panelInKeysPlace
+        keyboardView.isHidden = open || panelInKeysPlace || picking
+        photos.shown?.isHidden = !picking
         if open != !menuView.isHidden {
             menuView.isHidden = !open
             if open {
@@ -727,7 +744,7 @@ open class FullKeyboardViewController: UIInputViewController {
     /// from its key, closes.
     private func back() {
         if keysUp, engine.panel != .emoji {
-            keysUp = false
+            (keysUp, picking) = (false, false)
             return render()
         }
         let fromMenu = engine.panel != .emoji
@@ -746,10 +763,39 @@ open class FullKeyboardViewController: UIInputViewController {
 
     /// A tap on the field of a panel in the keys' place: the keys come up to type into it.
     private func raiseKeys() {
-        guard !keysUp else { return }
+        guard !keysUp || picking else { return }
         feedback(.other)
-        keysUp = true
+        (keysUp, picking) = (true, false)
         render()
+    }
+
+    /// Opens iikb to ask iOS for access to the photos, which the keyboard shares, and back to the app you're in, where
+    /// the chat opens again as you left it; only from an app iikb can bring you back to.
+    private func allowPhotos() {
+        updateHost()
+        guard KeyboardHost.returns(to: hostApp, apps: engine.corrector?.memory.apps.map { Array($0.keys) } ?? []) else {
+            notice = "Opening iikb would close this. Turn on photos from Chats in another app."
+            return render()
+        }
+        open(AppLink.Photos(back: hostApp).url)
+    }
+
+    /// The paperclip: your photos come up in the keys' place, or go back down to the chat.
+    private func pickPhotos() {
+        feedback(.other)
+        if picking {
+            (keysUp, picking) = (false, false)
+            return render()
+        }
+        if photos.shown == nil {
+            let grid = photos.grid
+            grid.onAllow = { [unowned self] in allowPhotos() }
+            view.addSubview(grid)
+        }
+        photos.grid.show(theme: theme)
+        (keysUp, picking) = (true, true)
+        render()
+        view.setNeedsLayout()
     }
 
     /// Something picked in a panel or the menu's shelves is typed, and the menu gives the keys back.
@@ -917,7 +963,9 @@ open class FullKeyboardViewController: UIInputViewController {
     private func keepChat() {
         guard let line, let field else { return }
         Self.keptChat.save(
-            KeptChat(field: field, chat: chats.open?.id, text: line.text, keysUp: keysUp, drafts: drafts))
+            KeptChat(
+                field: field, chat: chats.open?.id, text: line.text, keysUp: keysUp && !picking, drafts: drafts,
+                photos: photos.attached))
     }
 
     /// Another chat from its pill, the line you'd begun kept with the chat you left and the one you'd begun in this chat
@@ -937,25 +985,34 @@ open class FullKeyboardViewController: UIInputViewController {
     private func closeChat() {
         guard line != nil else { return }
         Self.keptChat.remove()
+        photos.clear()
         leaveChat()
         syncWithDocument()
     }
 
     private func leaveChat() {
         guard line != nil else { return }
+        photos.dropGrid()
+        picking = false
         chats.stop()
         engine.leaveField()
         line = nil
         keysUp = false
     }
 
-    /// What return took from the line goes to the open chat, which keeps it until its extension has it. With no chat
-    /// open to keep it, it comes back to the line.
+    /// What return took from the line goes to the open chat with the photos attached, which keeps them until its
+    /// extension has them, and the chat comes back down to read. With no chat open to keep it, the text comes back to
+    /// the line.
     private func send(_ text: String) {
         engine.documentChanged(document)
         render()
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !chats.send(text), let line else { return }
+        guard !text.isEmpty || !photos.attached.isEmpty else { return }
+        if chats.send(text, photos: photos.attached) {
+            if !photos.attached.isEmpty { (keysUp, picking) = (false, false) }
+            return photos.clear()
+        }
+        guard let line, !text.isEmpty else { return }
         line.insert(text)
         engine.documentChanged(line)
         render()

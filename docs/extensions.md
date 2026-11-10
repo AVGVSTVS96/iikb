@@ -19,7 +19,7 @@ iikb ──► your extension ──► wherever it sends
      ◄── replies show as they come
 ```
 
-Chats is about reading and dictating, so it opens with the keys down and the chat filling a keyboard grown for it. The chats are tabs in the bar; hold them to list every chat. With the keys up the tabs and More stay put, at the chat's top. The box has no mic of its own: the keyboard's mic (at the bar's end, or the Record Key while the keys show) dictates into it like any field, and ↑ grows in at its end once there's something to send, so a message is said and sent without the keys. A dictation leaves the keys up or down as they were and lands in the box as one edit, waiting for ↑. If the keyboard goes away with a chat open, as when the mic opens iikb, the chat comes back as you left it in the same field. Tapping the box brings the keys up under it, with the bar's suggestions on them and the chat still above; tapping the messages puts them away. The keyboard keeps one height from the moment a chat opens, so the app above moves once.
+Chats is about reading and dictating, so it opens with the keys down and the chat filling a keyboard grown for it. The chats are tabs in the bar; hold them to list every chat. With the keys up the tabs and More stay put, at the chat's top. The box has no mic of its own: the keyboard's mic (at the bar's end, or the Record Key while the keys show) dictates into it like any field, and ↑ grows in at its end once there's something to send, so a message is said and sent without the keys. A dictation leaves the keys up or down as they were and lands in the box as one edit, waiting for ↑. The paperclip beside the box puts your newest photos in the keys' place: tap up to ten to attach them, numbered in the order picked, and ↑ sends them with what's in the box as their caption. Without access to your photos, Turn On opens iikb to ask iOS for it. If the keyboard goes away with a chat open, as when the mic opens iikb, the chat comes back as you left it in the same field. Tapping the box brings the keys up under it, with the bar's suggestions on them and the chat still above; tapping the messages puts them away. The keyboard keeps one height from the moment a chat opens, so the app above moves once.
 
 ## Writing one
 
@@ -33,14 +33,14 @@ export default chats({
   name: "notes",
   list: async () => [{ id: "inbox", name: "Inbox", pinned: true }],
   read: async (chat, after) => ({ version: "1", messages: [{ from: "me", text: "buy milk" }] }),
-  send: async (chat, text, id) => { /* write it down */ },
+  send: async (chat, text, id, photos) => { /* write it down */ },
 });
 ```
 
 - `list()`: the chats, `{ id, name, line?, pinned? }`. Pinned ones come first.
 - `read(chat, after)`: the chat's messages, `{ from, text, pending?, files? }`, oldest first, with a `version` that changes when they do. `from` is `me` for yours. With `after`, hold the answer until the messages are no longer at that version, or about 25 seconds, so a reply reaches the keyboard the moment it's written.
 - `files`, in a message: `{ name, url, type?, width?, height? }`, `type` its MIME type and a photo's `width` and `height` its pixels, so it takes its shape before it loads. iikb fetches `url` with the extension's token. `chats()` answers every GET as a chat, so give a full address, or route file paths before calling `answer`. A photo (`image/…`) shows as one; a tap opens it large, and holding it offers Copy. Any other file shows as its name. A message that is only a file has `text: ""`; a photo's caption is its text.
-- `send(chat, text, id)`: your words. `id` names the message, so a retry after a lost answer can send it once.
+- `send(chat, text, id, photos)`: your words, and the photos you attached, each `{ type, bytes, width?, height? }`, a JPEG or PNG and its pixels, up to ten. `id` names the message, so a retry after a lost answer can send it once. A message that is only photos has `text: ""`.
 
 ```sh
 IIKB_TOKEN=secret PORT=2593 bun extensions/notes.ts
@@ -68,7 +68,8 @@ With `Authorization: Bearer <token>` when there's a token.
 GET  <url>                      → { name, chats: [{ id, name, line?, pinned? }] }
 GET  <url>/<chat>?after=<version> → { version, messages: [{ from, text, pending?, files? }] }
 GET  <url>/<file's url>          → the file's bytes, with its Content-Type
-POST <url>/<chat> { text, id }  → 2xx once it's sent
+POST <url>/<chat> { text, id, files? } → 2xx once it's sent
+     files: [{ type: "image/jpeg", data: <base64>, width, height }]
 ```
 
 iikb asks for the open chat's messages again as soon as each answer comes, and stops when the panel closes. One that fails says so in the panel; picking the chat asks again. A message you send is kept on the device and shown in its chat as pending; until the extension answers 2xx for it, iikb sends it again under the same `id` whenever the keyboard appears or a chat's messages come. An extension gets only what you write in its panel, never what you type in the app's field.

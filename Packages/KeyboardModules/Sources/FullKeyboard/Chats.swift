@@ -24,6 +24,21 @@ final class Chats {
 
         var mine: Bool { from == "me" }
 
+        init(from: String, text: String, pending: Bool? = nil, files: [File]? = nil) {
+            (self.from, self.text, self.pending, self.files) = (from, text, pending, files)
+        }
+
+        /// Yours on its way, its photos read from the keyboard's own copies.
+        init(pending message: UnsentMessage) {
+            self.init(
+                from: "me", text: message.text, pending: true,
+                files: message.photos?.map {
+                    File(
+                        name: $0.name, url: $0.url.absoluteString, type: "image/jpeg", width: Double($0.width),
+                        height: Double($0.height))
+                })
+        }
+
         /// A file sent with the message, at `url` relative to the extension's address.
         struct File: Codable, Hashable, Sendable {
             let name: String
@@ -40,7 +55,7 @@ final class Chats {
     /// The open chat as its extension last gave it, then what you sent that the extension doesn't have yet.
     var messages: [Message] {
         guard let open else { return [] }
-        return said + unsent.filter { open.holds($0) }.map { Message(from: "me", text: $0.text, pending: true) }
+        return said + unsent.filter { open.holds($0) }.map(Message.init(pending:))
     }
     private var said: [Message] = []
     /// Each chat's last answer, by its extension and id, so switching back to a chat shows it at once.
@@ -63,6 +78,7 @@ final class Chats {
 
     func reload() {
         services = ExtensionStore.load()
+        UnsentStore.prune()
         if list.isEmpty { restore() }
         deliver()
     }
@@ -148,10 +164,11 @@ final class Chats {
         (listing, reading) = (nil, nil)
     }
 
-    /// Keeps `text` for the open chat, shown as pending, and sends it. False with no chat open to keep it for.
-    func send(_ text: String) -> Bool {
+    /// Keeps `text` and `photos` for the open chat, shown as pending, and sends them. False with no chat open to keep
+    /// them for.
+    func send(_ text: String, photos: [UnsentPhoto] = []) -> Bool {
         guard let chat = open else { return false }
-        UnsentStore.add(UnsentMessage(service: chat.service.id, chat: chat.id, text: text))
+        UnsentStore.add(UnsentMessage(service: chat.service.id, chat: chat.id, text: text, photos: photos))
         deliver()
         return true
     }
@@ -178,7 +195,7 @@ final class Chats {
                 UnsentStore.remove(next)
                 unsent.removeAll { $0 == next }
                 if let open, open.holds(next), answers == answered {
-                    said.append(Message(from: "me", text: next.text, pending: true))
+                    said.append(Message(pending: next))
                 }
                 report()
             }
@@ -232,6 +249,33 @@ final class Chats {
         let chats: [Item]
     }
 
+    /// What a send posts: the words and the photos' JPEGs, in base64 as JSON writes `Data`.
+    nonisolated private struct Sent: Encodable {
+        struct Photo: Encodable {
+            var type = "image/jpeg"
+            let data: Data
+            let width: Int
+            let height: Int
+        }
+
+        let text: String
+        let id: String
+        let files: [Photo]?
+
+        /// A photo whose copy is gone goes without, as the words do; one with nothing left counts as sent.
+        var isEmpty: Bool { text.isEmpty && files == nil }
+
+        init(_ message: UnsentMessage) {
+            (text, id) = (message.text, message.id)
+            let files = (message.photos ?? []).compactMap { photo in
+                (try? Data(contentsOf: photo.url)).map {  // file: a photo to send
+                    Photo(data: $0, width: photo.width, height: photo.height)
+                }
+            }
+            self.files = files.isEmpty ? nil : files
+        }
+    }
+
     nonisolated private struct Read: Decodable {
         let version: String
         let messages: [Message]
@@ -247,10 +291,15 @@ final class Chats {
         return URL(string: (base.hasSuffix("/") ? base : base + "/") + file.url)
     }
 
-    /// A file's bytes from the open chat's extension, with its token.
+    /// A file's bytes from the open chat's extension, with its token, or a photo of yours on its way from the keyboard.
     func data(at url: URL) async -> Data? {
+        if url.isFileURL { return await Self.read(url) }
         guard let service = open?.service else { return nil }
         return await Self.data(Self.request(url, for: service))
+    }
+
+    @concurrent nonisolated private static func read(_ file: URL) async -> Data? {
+        try? Data(contentsOf: file)  // file: a photo to send
     }
 
     @concurrent nonisolated private static func data(_ request: URLRequest) async -> Data? {
@@ -283,7 +332,9 @@ final class Chats {
         var request = request(service.url.appending(component: message.chat), for: service)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONEncoder().encode(["text": message.text, "id": message.id])
+        let body = Sent(message)
+        guard !body.isEmpty else { return true }
+        request.httpBody = try? JSONEncoder().encode(body)
         guard let (_, response) = try? await session.data(for: request) else { return false }
         return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
     }

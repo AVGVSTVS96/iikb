@@ -4,6 +4,7 @@
 <dict>
 	<key>CFBundleDisplayName</key><string>iikb</string>
 	<key>CFBundleShortVersionString</key><string>0.1.0</string>
+	<key>NSPhotoLibraryUsageDescription</key><string>Chats on the iikb keyboard shows your newest photos, so you can send them in a chat.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key><true/>

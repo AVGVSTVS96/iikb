@@ -162,14 +162,32 @@ const extension = chats({
 
     return { version: String(version), messages: threads.get(chat)?.messages ?? [] };
   },
-  send: async (chat, text) => {
+  send: async (chat, text, id, photos) => {
     const thread = threads.get(chat);
 
-    thread?.messages.push({ from: "me", text });
+    const sent = photos.map(({ type, bytes, width, height }, at) => {
+      const name = `${id}-${String(at)}.${type === "image/png" ? "png" : "jpg"}`;
+
+      files.set(`/files/${name}`, new Response(bytes, { headers: { "content-type": type } }));
+
+      return {
+        name,
+        url: file(name),
+        type,
+        ...(width !== undefined && height !== undefined && { width, height }),
+      };
+    });
+
+    thread?.messages.push({ from: "me", text, ...(sent.length > 0 && { files: sent }) });
     changed();
 
     setTimeout(() => {
-      thread?.messages.push({ from: chat, text: `Got it: “${text}”.` });
+      const got =
+        sent.length > 0
+          ? `${String(sent.length)} photo${sent.length === 1 ? "" : "s"}`
+          : `“${text}”`;
+
+      thread?.messages.push({ from: chat, text: `Got it: ${got}.` });
       changed();
     }, 1200);
   },

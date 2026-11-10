@@ -54,10 +54,12 @@ down() {
 # Boots a simulator and installs iikb, built first when a file it's built from is newer than the build, as after a sync,
 # so a shot never shows an older iikb; a build a command made itself (APP set) it refuses when older.
 # A simulator boots slim (simslim: without the ~170 iOS services no check uses, a third of the memory and CPU), keeping
-# the widget and App Intents services Control Center's controls need when SIM_WIDGETS is set.
+# the widget and App Intents services Control Center's controls need when SIM_WIDGETS is set, and the photo library's
+# when SIM_PHOTOS is set.
 boot() {
   xcrun simctl list devices booted | grep -q "$1" || ! command -v simslim >/dev/null ||
-    simslim on "$1" ${SIM_WIDGETS:+--keep com.apple.chronod,com.apple.siriactionsd} >/dev/null
+    simslim on "$1" ${SIM_WIDGETS:+--keep com.apple.chronod,com.apple.siriactionsd} \
+      ${SIM_PHOTOS:+--except photos} >/dev/null
   perl -e 'alarm shift; exec @ARGV' 1800 xcrun simctl bootstatus "$1" -b >/dev/null
   xcrun simctl spawn "$1" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
   if [ ! -e "$APP" ] || [ -n "$(find App Packages Keyboard Controls project.yml -newer "$APP" -print -quit)" ]; then

@@ -65,6 +65,56 @@ final class ChatTests: XCTestCase {
         XCTAssertTrue(wait { !field.exists }, "More leaves the chat")
     }
 
+    func testAPhotoAttachedInAChatIsSentAndShows() throws {
+        let environment = ProcessInfo.processInfo.environment.filter { !$0.value.isEmpty }
+        guard let url = environment["IIKB_EXTENSION"], let shots = environment["IIKB_SHOTS"],
+            environment["IIKB_PHOTOS"] != nil
+        else { throw XCTSkip("Run through PHOTOS=1 scripts/chattest") }
+        continueAfterFailure = false
+
+        let linked = XCUIApplication()
+        var link = URLComponents(string: "iikb://extension")!
+        link.queryItems = [URLQueryItem(name: "name", value: "hex"), URLQueryItem(name: "url", value: url)]
+        linked.open(link.url!)
+        let add = linked.alerts.buttons["Add"]
+        if add.waitForExistence(timeout: 10) { add.tap() }
+        linked.terminate()
+
+        let app = XCUIApplication()
+        app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", "portrait"]
+        app.launch()
+        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        element("iikb.more", in: app).tap()
+        let card = element("iikb.chats.shelf.0", in: app)
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
+        card.tap()
+        let attach = element("iikb.chat.attach", in: app)
+        XCTAssertTrue(attach.waitForExistence(timeout: 10), "the box has a paperclip beside it")
+        Thread.sleep(forTimeInterval: 1)
+        try shot("\(shots)-photo-box")
+
+        attach.tap()
+        let photo = element("iikb.chat.photos.0", in: app)
+        XCTAssertTrue(
+            photo.waitForExistence(timeout: 10),
+            "the paperclip brings your newest photos up in the keys' place, with the access iikb was given")
+        Thread.sleep(forTimeInterval: 2)
+        try shot("\(shots)-photo-grid")
+        photo.tap()
+        XCTAssertTrue(
+            element("iikb.chat.photo.0", in: app).waitForExistence(timeout: 15), "a tapped photo shows in the box")
+        Thread.sleep(forTimeInterval: 1)
+        try shot("\(shots)-photo-attached")
+
+        element("iikb.chat.send", in: app).tap()
+        let reply = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", "1 photo"))
+            .firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 20), "the extension gets the photo and replies")
+        XCTAssertFalse(element("iikb.chat.photo.0", in: app).exists, "the box is empty once it's sent")
+        Thread.sleep(forTimeInterval: 2)
+        try shot("\(shots)-photo-sent")
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }

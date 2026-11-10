@@ -22,6 +22,13 @@ export interface Message {
   readonly files?: readonly File[];
 }
 
+export interface Photo {
+  readonly type: "image/jpeg" | "image/png";
+  readonly bytes: Uint8Array<ArrayBuffer>;
+  readonly width?: number;
+  readonly height?: number;
+}
+
 export interface Messages {
   readonly version: string;
   readonly messages: readonly Message[];
@@ -31,12 +38,35 @@ export interface Chats {
   readonly name: string;
   readonly list: () => Promise<readonly Chat[]>;
   readonly read: (chat: string, after?: string) => Promise<Messages>;
-  readonly send: (chat: string, text: string, id: string) => Promise<void>;
+  readonly send: (
+    chat: string,
+    text: string,
+    id: string,
+    photos: readonly Photo[],
+  ) => Promise<void>;
 }
 
 const SHOWN_LATEST_MESSAGES = 40;
 
-const Sent = z.object({ text: z.string().trim().min(1), id: z.string() });
+const PHOTOS_AT_MOST = 10;
+
+const Sent = z
+  .object({
+    text: z.string().trim(),
+    id: z.string(),
+    files: z
+      .array(
+        z.object({
+          type: z.enum(["image/jpeg", "image/png"]),
+          data: z.base64(),
+          width: z.int().positive().exactOptional(),
+          height: z.int().positive().exactOptional(),
+        }),
+      )
+      .max(PHOTOS_AT_MOST)
+      .default([]),
+  })
+  .refine(({ text, files }) => text !== "" || files.length > 0);
 
 const status = (code: number) => new Response(null, { status: code });
 
@@ -58,10 +88,17 @@ const route = async (extension: Chats, request: Request, chat: string, after: st
   const sent = Sent.safeParse(await request.json().catch(() => null));
 
   if (!sent.success) {
-    return new Response("Send { text, id }", { status: 400 });
+    return new Response("Send { text, id, files? }", { status: 400 });
   }
 
-  await extension.send(chat, sent.data.text, sent.data.id);
+  const { text, id, files } = sent.data;
+
+  const photos = files.map(({ data, ...photo }) => ({
+    ...photo,
+    bytes: Buffer.from(data, "base64"),
+  }));
+
+  await extension.send(chat, text, id, photos);
 
   return status(204);
 };

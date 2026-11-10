@@ -62,6 +62,7 @@ targets:
           - CFBundleURLName: com.shahidy.iikb
             CFBundleURLSchemes: [iikb]
         NSMicrophoneUsageDescription: iikb listens when you tap the mic on the keyboard, and turns what you say into text on your iPhone.
+        NSPhotoLibraryUsageDescription: Chats on the iikb keyboard shows your newest photos, so you can send them in a chat.
         NSLocalNetworkUsageDescription: iikb reads the typing stats a computer you add shares on your network.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -92,6 +93,7 @@ targets:
         CFBundleDisplayName: iikb
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSPhotoLibraryUsageDescription: Chats on the iikb keyboard shows your newest photos, so you can send them in a chat.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSExtension:

@@ -10,6 +10,7 @@
 		<key>CFBundleURLName</key><string>com.shahidy.iikb</string>
 		<key>CFBundleURLSchemes</key><array><string>iikb</string></array>
 	</dict></array>
+	<key>NSPhotoLibraryUsageDescription</key><string>Chats on the iikb keyboard shows your newest photos, so you can send them in a chat.</string>
 	<key>NSMicrophoneUsageDescription</key><string>iikb listens when you tap the mic on the keyboard, and turns what you say into text on your iPhone.</string>
 	<key>NSLocalNetworkUsageDescription</key><string>iikb reads the typing stats a computer you add shares on your network.</string>
 	<key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>

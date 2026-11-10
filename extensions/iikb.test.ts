@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
 
 import { answer } from "./iikb.ts";
-import type { Chats } from "./iikb.ts";
+import type { Chats, Photo } from "./iikb.ts";
 
-const sent: [string, string, string][] = [];
+const sent: [string, string, string, readonly Photo[]][] = [];
 
 const message = (index: number) => ({ from: index % 2 === 1 ? "me" : "notes", text: `${index}` });
 
@@ -14,15 +14,15 @@ const notes: Chats = {
     version: `${chat}@${after ?? "now"}`,
     messages: Array.from({ length: 50 }, (_, index) => message(index)),
   }),
-  send: async (chat, text, id) => {
-    sent.push([chat, text, id]);
+  send: async (chat, text, id, photos) => {
+    sent.push([chat, text, id, photos]);
   },
 };
 
 const call = async (path: string, init?: RequestInit, token?: string) =>
   await answer(notes, new Request(`http://x${path}`, init), token);
 
-const post = async (body: { text: string; id: string }) =>
+const post = async (body: { text: string; id: string; files?: object[] }) =>
   await call("/a%3A1", { method: "POST", body: JSON.stringify(body) });
 
 test("the root lists the chats", async () => {
@@ -43,11 +43,37 @@ test("a post sends its trimmed text with its id", async () => {
   const response = await post({ text: " hi ", id: "m1" });
 
   expect(response.status).toBe(204);
-  expect(sent).toEqual([["a:1", "hi", "m1"]]);
+  expect(sent).toEqual([["a:1", "hi", "m1", []]]);
 
   const blank = await post({ text: " ", id: "m2" });
 
   expect(blank.status).toBe(400);
+});
+
+test("a post's photos come as their bytes, and a photo needs no words", async () => {
+  sent.length = 0;
+
+  const data = Buffer.from("jpeg bytes").toString("base64");
+
+  const response = await post({
+    text: "",
+    id: "m3",
+    files: [{ type: "image/jpeg", data, width: 1600, height: 1200 }],
+  });
+
+  expect(response.status).toBe(204);
+  expect(sent).toEqual([
+    [
+      "a:1",
+      "",
+      "m3",
+      [{ type: "image/jpeg", bytes: Buffer.from("jpeg bytes"), width: 1600, height: 1200 }],
+    ],
+  ]);
+
+  const pdf = await post({ text: "", id: "m4", files: [{ type: "application/pdf", data }] });
+
+  expect(pdf.status).toBe(400);
 });
 
 test("a token is checked when there is one", async () => {

@@ -1,4 +1,5 @@
 import KeyboardStore
+import Photos
 import SwiftUI
 import UIKit
 import VoiceModels
@@ -171,6 +172,10 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             Task { try? await Listener.shared.turnMicOn() }
             return
         }
+        if let photos = contexts.lazy.compactMap({ AppLink.Photos($0.url) }).first {
+            Task { await allowPhotos(back: photos.back) }
+            return
+        }
         guard let request = contexts.lazy.compactMap({ Dictation.Request($0.url) }).first else { return }
         let fromSelf = request.host == Bundle.main.bundleIdentifier
         Task { await listen(thenOpen: fromSelf ? nil : request.host) }
@@ -190,6 +195,14 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         HostApp.log.notice(
             "back to \(host ?? "none", privacy: .public) \(opened ? "opened" : "failed", privacy: .public) after \(Date.now.timeIntervalSince(asked), format: .fixed(precision: 2))s"
         )
+    }
+
+    /// Asks iOS for access to the photos, which only an app in front can, for Chats on the keyboard to show them, then
+    /// reopens the app you were typing in.
+    private func allowPhotos(back host: String?) async {
+        _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+        guard let host, host != Bundle.main.bundleIdentifier else { return }
+        _ = await HostApp.open(host)
     }
 
     /// An extension's link asks before its chats open from the bar.

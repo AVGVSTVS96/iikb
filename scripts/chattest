@@ -1,12 +1,14 @@
 #!/bin/bash
 # Runs on the Mac. OPEN=1 unfolds the iPhone Duo first. An extension's chats through the real keyboard, light and dark,
 # with scripts/chats.ts standing in for the extension, or EXTENSION=<url> for a real one (then CHAT, MESSAGE, REPLY and
-# WAIT say which chat, what to send and what reply to wait for): scripts/chattest ["iPhone Duo"] [iPhone-Duo]
+# WAIT say which chat, what to send and what reply to wait for). PHOTOS=1 also attaches a photo from the grid, with
+# Photos access given to the iikb app, and sends it: scripts/chattest ["iPhone Duo"] [iPhone-Duo]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 NAME=${1:-iPhone Duo}
 TYPE=${2:-iPhone-Duo}
 PORT=${PORT:-2597}
+[ -z "${PHOTOS:-}" ] || export SIM_PHOTOS=1
 ID=$(scripts/sim ensure "$NAME" "$TYPE")
 slug=$(echo "$NAME" | tr 'A-Z ' 'a-z-')
 mkdir -p shots/raw/extensions build/uitest
@@ -18,6 +20,12 @@ scripts/sim use "$ID" iikb
 if [ -n "${OPEN:-}" ]; then scripts/sim unfold "$ID"; else scripts/sim unfold "$ID" 0; fi
 scripts/sim allow "$ID"
 xcrun simctl install "$ID" build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
+if [ -n "${PHOTOS:-}" ]; then
+  find "/System/Library/Desktop Pictures" -name '*.heic' -not -path '*/.thumbnails/*' 2>/dev/null | head -3 | while read -r photo; do
+    xcrun simctl addmedia "$ID" "$photo"
+  done
+  xcrun simctl privacy "$ID" grant photos com.shahidy.iikb
+fi
 for appearance in ${APPEARANCES:-light dark}; do
   xcrun simctl ui "$ID" appearance "$appearance"
   if [ -z "${EXTENSION:-}" ]; then
@@ -25,7 +33,7 @@ for appearance in ${APPEARANCES:-light dark}; do
     stand=$!
   fi
   TEST_RUNNER_IIKB_EXTENSION="${EXTENSION:-http://localhost:$PORT}" TEST_RUNNER_IIKB_CHAT="${CHAT:-}" \
-    TEST_RUNNER_IIKB_MESSAGE="${MESSAGE:-}" TEST_RUNNER_IIKB_REPLY="${REPLY:-}" TEST_RUNNER_IIKB_WAIT="${WAIT:-}" TEST_RUNNER_IIKB_OPEN="${OPEN:-}" \
+    TEST_RUNNER_IIKB_MESSAGE="${MESSAGE:-}" TEST_RUNNER_IIKB_REPLY="${REPLY:-}" TEST_RUNNER_IIKB_WAIT="${WAIT:-}" TEST_RUNNER_IIKB_OPEN="${OPEN:-}" TEST_RUNNER_IIKB_PHOTOS="${PHOTOS:-}" \
     TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/extensions/$slug${OPEN:+-open}-$appearance" \
     xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
     -derivedDataPath build/uitest -only-testing:AppUITests/ChatTests > build/uitest/chat.log 2>&1 || failed=1
