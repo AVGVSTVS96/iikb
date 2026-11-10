@@ -52,8 +52,9 @@ import kotlin.math.roundToInt
 import androidx.compose.material3.Text as MaterialText
 
 /**
- * Text as UIKit sets San Francisco: tracked for its size as SF Pro is, and with no word left alone on a paragraph's
- * last line, which UIKit's standard line-break strategy (`.pushOut`) avoids by moving the line before's last word down.
+ * Text as UIKit sets San Francisco: tracked for its size as SF Pro is, and with no word left alone on the second line
+ * of a two-line paragraph, which UIKit's standard line-break strategy (`.pushOut`) avoids by moving the first line's
+ * last word down. In a paragraph of three lines or more UIKit leaves the word alone (iOS's Privacy and Dictionary).
  * Text with inline content, or that can be selected (`Selectable`), is Material's, and only takes the tracking, as
  * does text set `pushOut = false`, as a UITextView's is.
  */
@@ -174,8 +175,9 @@ private fun pushOut(
         val ends = end == raw.length || raw[end - 1] == '\n'
         val previousStart = first.getLineStart(line - 1)
         val joined = raw[start - 1] != '\n'
+        val twoLines = previousStart == 0 || raw[previousStart - 1] == '\n'
         val alone = raw.substring(start, end).trim().none { it.isWhitespace() }
-        if (!ends || !joined || !alone) return@mapNotNull null
+        if (!ends || !joined || !twoLines || !alone) return@mapNotNull null
         raw.lastIndexOf(' ', start - 2).takeIf { it > previousStart }
     }
     if (breaks.isEmpty()) return first
