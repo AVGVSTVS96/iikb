@@ -98,7 +98,8 @@ private fun GifRows(gifs: Gifs, rows: Int, height: Dp, query: String) {
             var held by remember { mutableStateOf(false) }
             AsyncImage(
                 gif.preview.url, gif.title, loader, contentScale = ContentScale.Crop,
-                modifier = Modifier.heldAway(bounds).width(width).height(height).clip(RoundedCornerShape(8.dp)).background(look.key)
+                modifier = Modifier.heldAway(bounds).width(width).height(height)
+                    .clip(RoundedCornerShape(if (rows == 1) CARD_RADIUS else 8.dp)).background(look.shelfCard)
                     .onGloballyPositioned { bounds = it.boundsInWindow() }
                     .pointerInput(gif, query) {
                         awaitEachGesture {

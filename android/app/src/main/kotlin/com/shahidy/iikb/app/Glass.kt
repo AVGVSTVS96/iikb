@@ -23,10 +23,13 @@ import com.shahidy.iikb.app.design.isDark
  * darkened in dark, with a lit rim on a hairline edge (gray in light) and a soft shadow (faint in light), as
  * `.glassEffect(.regular)` and the tab bar draw it. Over a plain page, with nothing behind to bend, it's the rim, the
  * tint and the shadow. Android draws the blur from 12 and the bend from 13; before, the tint alone stands in. The
- * keyboard, outside the app's palette, says if it's `dark`.
+ * keyboard, outside the app's palette, says if it's `dark`;
+ * `color` tints it further, as `UIGlassEffect.tintColor` does.
  */
 @Composable
-fun Modifier.glass(shape: Shape, backdrop: Backdrop = emptyBackdrop(), dark: Boolean = palette().isDark): Modifier {
+fun Modifier.glass(
+    shape: Shape, backdrop: Backdrop = emptyBackdrop(), dark: Boolean = palette().isDark, color: Color = Color.Transparent,
+): Modifier {
     val tint = if (dark) Color(0xFF3B3B3D).copy(alpha = 0.65f) else Color.White.copy(alpha = 0.72f)
     val edge = if (dark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.16f)
     return drawBackdrop(
@@ -40,7 +43,10 @@ fun Modifier.glass(shape: Shape, backdrop: Backdrop = emptyBackdrop(), dark: Boo
         shadow = {
             Shadow(radius = 16.dp, offset = DpOffset(0.dp, 4.dp), color = Color.Black.copy(alpha = if (dark) 0.3f else 0.03f))
         },
-        onDrawSurface = { drawRect(tint) },
+        onDrawSurface = {
+            drawRect(tint)
+            drawRect(color)
+        },
         onDrawFront = { drawOutline(shape.createOutline(size, layoutDirection, this), edge, style = Stroke(0.5.dp.toPx())) },
     )
 }

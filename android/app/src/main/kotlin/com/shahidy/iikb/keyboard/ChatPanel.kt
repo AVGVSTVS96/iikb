@@ -589,16 +589,24 @@ fun ChatShelf() {
         val row = rememberLazyListState()
         LazyRow(Modifier.fillMaxSize(), state = row, horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
             items(chats.list, key = { it.service.name + "/" + it.id }) { chat ->
-                Pressable(Modifier.size(card, height), 10.dp, onClick = { actions.openChat(chat.id) }) {
-                    Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp)) {
-                        val latest = chat.line?.let { markdown(it).text }?.takeIf { height >= 42.dp }
-                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                            Text(chat.name, color = look.label, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        if (latest != null) {
-                            Box(Modifier.height(15.dp), contentAlignment = Alignment.CenterStart) {
-                                Text(latest, color = look.secondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
+                Pressable(Modifier.size(card, height), CARD_RADIUS, onClick = { actions.openChat(chat.id) }) {
+                    val inner = height - 16.dp
+                    val latest = chat.line?.let { markdown(it).text }?.takeIf { inner >= 30.dp }
+                    val name = @Composable { modifier: Modifier ->
+                        Text(
+                            chat.name, color = look.label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis, modifier = modifier,
+                        )
+                    }
+                    Box(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
+                        if (latest == null) name(Modifier)
+                        else Column(Modifier.fillMaxSize()) {
+                            Box(Modifier.height(18.dp), contentAlignment = Alignment.CenterStart) { name(Modifier) }
+                            Text(
+                                latest, color = look.secondary, fontSize = 12.sp, lineHeight = 15.sp,
+                                maxLines = maxOf(((inner.value - 20) / 15).toInt(), 1), overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
                         }
                     }
                 }

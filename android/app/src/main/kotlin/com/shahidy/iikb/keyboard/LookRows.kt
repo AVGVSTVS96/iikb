@@ -74,7 +74,7 @@ private fun rememberSettings(): Settings {
 
 /**
  * A row of the keyboard's look, scrolling sideways where the choices don't fit: each its art over its name on a card in
- * the key fill, ringed in the theme's blue while it's the one picked.
+ * the shelf's fill, ringed in the theme's blue while it's the one picked, its corners concentric with the shelf's.
  */
 @Composable
 private fun LookRow(
@@ -91,12 +91,12 @@ private fun LookRow(
             val ring by animateFloatAsState(if (chosen) 1f else 0f, label = "ring")
             Box(
                 Modifier.width(84.dp).height(height)
-                    .border(2.dp, look.accent.copy(alpha = ring), RoundedCornerShape(15.dp))
+                    .border(2.dp, look.accent.copy(alpha = ring), RoundedCornerShape(CARD_RADIUS))
                     .clickable(interaction, indication = null) { if (!chosen) pick(name) },
             ) {
                 Column(
                     Modifier.fillMaxSize().padding(3.dp).scale(if (pressed) 0.95f else 1f)
-                        .background(look.key, RoundedCornerShape(12.dp)).padding(horizontal = 6.dp, vertical = 5.dp),
+                        .background(look.shelfCard, RoundedCornerShape(CARD_RADIUS - 3.dp)).padding(horizontal = 6.dp, vertical = 5.dp),
                 ) {
                     Box(Modifier.weight(1f).fillMaxWidth().alpha(if (pressed) 0.6f else 1f)) { art(name) }
                     Text(

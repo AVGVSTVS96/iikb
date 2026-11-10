@@ -1,5 +1,7 @@
 package com.shahidy.iikb.keyboard
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,11 +9,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,7 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import com.shahidy.iikb.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,22 +33,38 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.shahidy.iikb.Text
+import com.shahidy.iikb.app.Hue
+import com.shahidy.iikb.app.Hues
+import com.shahidy.iikb.app.Palette
+import com.shahidy.iikb.app.glass
 import kotlin.math.floor
 
 /**
  * The keyboard's menu, in the keys' place while the bar's More button is on (docs/design.md, "The menu"): a shelf for
- * each history, its name over its newest items in one row, a tap typing one and the name opening its panel. Layouts
- * and iikb Settings stay on holding 123, where you type.
+ * each history, its name beside its newest items in one row, a tap typing one and the name opening its panel. Layouts
+ * and iikb Settings stay on holding 123, where you type. Under the shelves, a scroll away with the Theme shelf's top
+ * showing, the keyboard's theme and stop animation, picked in place.
  */
 @Composable
 fun Menu(state: Overlay.State) {
@@ -53,20 +72,19 @@ fun Menu(state: Overlay.State) {
     val actions = LocalActions.current
     val gifs = LocalGifs.current
     val shelves = Shelf.entries.filter { (it != Shelf.GIFS || gifs != null) && (it != Shelf.CHATS || state.chats) }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().fadeTop()) {
         val count = shelves.size
-        val room = maxHeight.value - HEAD - GAP * (count + 1) - (HEAD + HEAD_GAP) * count
-        val row = floor((room / count).coerceIn(COMPACT_ROW, 96f)).dp
+        val room = maxHeight.value - GAP - PEEK - (CHROME + GAP) * count
+        val row = floor((room / count).coerceIn(COMPACT_ROW, TALLEST)).dp
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(start = state.minX.dp, end = (maxWidth.value - state.maxX).dp, top = GAP.dp),
+            verticalArrangement = Arrangement.spacedBy(GAP.dp),
         ) {
             for (shelf in shelves) {
-                ShelfHead(shelf.title, shelf.glyph, shelf.color) {
+                Platter(shelf.title, shelf.glyph, shelf.hue.of(look.dark), row, {
                     if (shelf == Shelf.CHATS) actions.openChat("") else actions.open(shelf.panel)
-                }
-                Spacer(Modifier.height(HEAD_GAP.dp))
-                Box(Modifier.fillMaxWidth().height(row)) {
+                }) {
                     when (shelf) {
                         Shelf.CLIPBOARD -> ClipShelf(row)
                         Shelf.TRANSCRIPTS -> TranscriptShelf()
@@ -74,52 +92,111 @@ fun Menu(state: Overlay.State) {
                         Shelf.CHATS -> ChatShelf()
                     }
                 }
-                Spacer(Modifier.height(GAP.dp))
             }
-            ShelfHead("Theme", "paintpalette.fill", Color(0xFF30B0C7)) { actions.appearance() }
-            Spacer(Modifier.height(HEAD_GAP.dp))
-            ThemeRow(look.dark)
-            Spacer(Modifier.height(GAP.dp))
-            ShelfHead("Stop Animation", "stop.fill", Color(0xFFFF3B30)) { actions.appearance() }
-            Spacer(Modifier.height(HEAD_GAP.dp))
-            StopRow()
-            Spacer(Modifier.height(GAP.dp))
+            Platter("Theme", "paintpalette.fill", Hues.teal.of(look.dark), THEME_ROW.dp, actions::appearance) {
+                ThemeRow(look.dark)
+            }
+            Platter("Stop Animation", "stop.fill", Hues.red.of(look.dark), STOP_ROW.dp, actions::appearance) {
+                StopRow()
+            }
+            Spacer(Modifier.height(0.dp))
         }
     }
 }
 
-private const val GAP = 10f
-private const val HEAD = 28f
-private const val HEAD_GAP = 6f
+/** Between shelves, and over the first. */
+private const val GAP = 8f
+/** A shelf's glass: its corners, the room around its row, and the column down its side for its name. */
+private const val RADIUS = 22f
+private const val INSET = 6f
+private const val SIDE = 66f
+private const val CHROME = 2 * INSET
+/** The corners of a card on a shelf, concentric with the shelf's glass. */
+val CARD_RADIUS = (RADIUS - INSET).dp
+/** How much of the Theme shelf shows under the histories, enough for its tile to say there's more. */
+private const val PEEK = 40f
+private const val TALLEST = 104f
+private const val THEME_ROW = 78f
+private const val STOP_ROW = 62f
 /** Where the screen is short (landscape), each shelf keeps a compact panel's one row, and the menu scrolls. */
 private const val COMPACT_ROW = 46f
 
+private fun Hue.of(dark: Boolean) = on(if (dark) Palette.dark else Palette.light)
+
 /** The menu's shelves, each with the color Home's card for it has. */
-enum class Shelf(val title: String, val panel: String, val glyph: String, val color: Color) {
-    CLIPBOARD("Clipboard", "clipboard", "list.clipboard", Color(0xFFFF9500)),
-    TRANSCRIPTS("Transcripts", "transcripts", "text.bubble", Color(0xFFFF2D55)),
-    GIFS("GIFs", "gif", "gif", Color(0xFFAF52DE)),
-    CHATS("Chats", "chats", "bubble.left.and.bubble.right", Color(0xFF5856D6)),
+enum class Shelf(val title: String, val panel: String, val glyph: String, val hue: Hue) {
+    CLIPBOARD("Clipboard", "clipboard", "list.clipboard", Hues.orange),
+    TRANSCRIPTS("Transcripts", "transcripts", "text.bubble", Hues.pink),
+    GIFS("GIFs", "gif", "gif", Hues.purple),
+    CHATS("Chats", "chats", "bubble.left.and.bubble.right", Hues.indigo),
 }
 
-/** A shelf's name: its glyph on a colored tile, then the name and a chevron; a tap opens its panel. */
+/** The shelves fade out under the bar as they scroll up, rather than being cut off. */
+private fun Modifier.fadeTop() = graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+    .drawWithContent {
+        drawContent()
+        val fade = GAP.dp.toPx() / size.height
+        drawRect(Brush.verticalGradient(0f to Color.Transparent, fade to Color.Black), blendMode = BlendMode.DstIn)
+    }
+
+/**
+ * One shelf: its name down its side, then what it holds in one row, on a platter of iOS's Liquid Glass tinted faintly
+ * with its tile's color. The name stays put as the row scrolls past it, and the row gets the shelf's whole height,
+ * ending in rounded corners concentric with the platter's.
+ */
 @Composable
-fun ShelfHead(title: String, glyph: String, color: Color, onClick: () -> Unit) {
+private fun Platter(title: String, glyph: String, color: Color, row: Dp, onOpen: () -> Unit, content: @Composable () -> Unit) {
+    val dark = LocalColors.current.dark
+    Row(
+        Modifier.fillMaxWidth().height(row + CHROME.dp)
+            .glass(RoundedCornerShape(RADIUS.dp), dark = dark, color = color.copy(alpha = if (dark) 0.12f else 0.08f))
+            .padding(INSET.dp),
+    ) {
+        ShelfHead(title, glyph, color, Modifier.width(SIDE.dp).fillMaxHeight(), onOpen)
+        Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(CARD_RADIUS))) { content() }
+    }
+}
+
+/**
+ * A shelf's name: its glyph on a colored tile, as Home's cards have, over the name, which drops out where the row is
+ * too short for both; a tap opens the full panel, or for the look's shelves, iikb's Appearance settings.
+ */
+@Composable
+private fun ShelfHead(title: String, glyph: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
     val look = LocalColors.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    Row(
-        Modifier.height(HEAD.dp).alpha(if (pressed) 0.5f else 1f)
-            .clickable(interaction, indication = null, onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(24.dp).background(color, RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
-            if (glyph == "gif") GifBadge(Color.White) else Glyph(glyph, Color.White, Glyphs.square(12f).dp, weight = Glyphs.SEMIBOLD)
+    val shrink by animateFloatAsState(
+        if (pressed) 0.9f else 1f, spring(stiffness = if (pressed) 1540f else 440f), label = "shelf head",
+    )
+    Layout(
+        {
+            Box(
+                Modifier.scale(shrink).background(color, RoundedCornerShape(9.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (glyph == "gif") GifBadge(Color.White, 17.dp)
+                else Glyph(glyph, Color.White, Glyphs.square(15f).dp, weight = Glyphs.SEMIBOLD)
+            }
+            Text(
+                title, color = look.label, fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center, maxLines = 2, modifier = Modifier.alpha(if (pressed) 0.5f else 1f),
+            )
+        },
+        modifier.clickable(interaction, indication = null, onClick = onClick),
+    ) { (tile, name), constraints ->
+        val side = 32.dp.roundToPx()
+        val gap = 4.dp.roundToPx()
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        val tiled = tile.measure(Constraints.fixed(side, side))
+        val named = name.measure(Constraints(minWidth = width, maxWidth = width))
+        val shows = height >= side + gap + named.height
+        val top = maxOf((height - side - if (shows) gap + named.height else 0) / 2, 0)
+        layout(width, height) {
+            tiled.place((width - side) / 2, top)
+            if (shows) named.place(0, top + side + gap)
         }
-        Spacer(Modifier.width(8.dp))
-        Text(title, color = look.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.width(6.dp))
-        Glyph("chevron.right", look.secondary, Glyphs.square(11f).dp, weight = Glyphs.SEMIBOLD)
     }
 }
 
@@ -139,14 +216,14 @@ fun GifBadge(color: Color, side: Dp = 14.dp) {
 }
 
 /**
- * A capsule or card in the key fill, the pressed key fill while pressed, as iOS's cards and badges are; a hold, where
- * there is one, shows all of it, given where this sits in the window.
+ * A capsule or card in a shelf's fill (`shelfCard`), the pressed key fill while pressed, as iOS's cards and
+ * badges are; a hold, where there is one, shows all of it, given where this sits in the window.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Pressable(
     modifier: Modifier, radius: Dp, onClick: () -> Unit, onHold: ((Rect) -> Unit)? = null,
-    fill: Color = LocalColors.current.key, pressedFill: Color = LocalColors.current.keyPressed,
+    fill: Color = LocalColors.current.shelfCard, pressedFill: Color = LocalColors.current.keyPressed,
     content: @Composable () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -162,3 +239,6 @@ fun Pressable(
 
 /** The space between cards or badges in a row. */
 val ITEM_GAP = 6.dp
+
+/** A card's fill on a shelf's glass, and on the keyboard's glass in a panel, letting the glass's tint show through. */
+val Colors.shelfCard get() = if (dark) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.7f)

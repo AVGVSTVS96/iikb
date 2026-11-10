@@ -120,7 +120,7 @@ fun ClipShelf(height: Dp) {
                 }
             }
             items(rows.filter { it.kind != "link" }) { row ->
-                Pressable(Modifier.width(card).fillMaxHeight(), 10.dp, { actions.pick(row) }, { hold(row, it) }) {
+                Pressable(Modifier.width(card).fillMaxHeight(), CARD_RADIUS, { actions.pick(row) }, { hold(row, it) }) {
                     Card(row)
                 }
             }
