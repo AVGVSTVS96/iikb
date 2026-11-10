@@ -36,10 +36,11 @@ extension KeyboardView {
             }
         }
 
-        /// The path with its times, which the simulator's synthesized touches lack: every sample but the last carries the
-        /// time the finger went down, so the path is timed as one sampled at 120 Hz.
+        /// The path with its times, which the simulator's synthesized touches lack: nearly every sample carries the time
+        /// the finger went down (all but the last on iOS 27.1, all but the last two on 27.2), so the path is timed as one
+        /// sampled at 120 Hz.
         var timed: [SwipePoint] {
-            guard path.count > 2, path.dropLast().allSatisfy({ $0.time == 0 }) else { return path }
+            guard path.count > 2, path.filter({ $0.time == 0 }).count * 2 > path.count else { return path }
             return path.enumerated().map { SwipePoint(x: $1.x, y: $1.y, time: Double($0) / 120) }
         }
     }
