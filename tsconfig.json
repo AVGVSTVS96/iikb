@@ -15,5 +15,5 @@
     "skipLibCheck": true
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules", "**/.build", "web/dist", "xtool", ".scratch"]
+  "exclude": ["node_modules", "**/.build", "web/dist", "web/site", "xtool", ".scratch"]
 }

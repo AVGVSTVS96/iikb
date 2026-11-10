@@ -4,11 +4,22 @@ import core from "ultracite/oxlint/core";
 
 export default defineConfig({
   extends: [core, antiSlop],
-  ignorePatterns: [...(core.ignorePatterns ?? []), ".claude/**", "web/dist/**", "web/.build/**"],
+  ignorePatterns: [
+    ...(core.ignorePatterns ?? []),
+    ".claude/**",
+    "web/dist/**",
+    "web/.build/**",
+    "web/site/.next/**",
+    "web/site/out/**",
+  ],
   jsPlugins: [{ name: "no-comments", specifier: "./tools/oxlint/no-comments.ts" }],
   overrides: [
     {
-      files: ["web/site/**/*.js"],
+      files: ["web/site/components/ui/**"],
+      rules: { "eslint/func-style": "off", "import/consistent-type-specifier-style": "off" },
+    },
+    {
+      files: ["web/site/**/*.js", "web/demo/**/*.js"],
       rules: {
         "typescript/no-unsafe-argument": "off",
         "typescript/no-unsafe-assignment": "off",

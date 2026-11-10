@@ -8,6 +8,6 @@ rm -rf dist
 swift package --swift-sdk swift-6.4.0-RELEASE_wasm js -c release --use-cdn
 mkdir dist
 cp -R .build/plugins/PackageToJS/outputs/Package dist/engine
-cp -R site/. dist/
+cp -R demo/. dist/
 cp ../copy/facts.json dist/
 cp ../Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.lexicon ../Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/LEXICON-LICENSE dist/

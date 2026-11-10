@@ -19,7 +19,10 @@ const SURFACES: readonly (readonly [RegExp, string])[] = [
   [/^README\.md$/u, "the README, the front page of github.com/AVGVSTVS96/iikb"],
   [/^docs\/privacy\.md$/u, "iikb's privacy policy, linked from TestFlight"],
   [/^docs\/(?!design\.md$).+\.md$/u, "a guide on GitHub, linked from the README"],
-  [/^web\/site\/(?:index\.html|page\.js|keyboard\.js)$/u, "iikb.vercel.app, iikb's page"],
+  [
+    /^web\/site\/(?:app\/.+\.tsx|components\/site\/.+\.tsx|lib\/keyboard\.js)$/u,
+    "iikb.vercel.app, iikb's page",
+  ],
   [/^copy\//u, "the words and numbers iikb.vercel.app shows"],
   [/^App\/Settings\/changelog\.tsv$/u, "the app's Changelog page"],
 ];

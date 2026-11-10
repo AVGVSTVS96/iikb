@@ -1,10 +1,14 @@
 {
   "name": "iikb",
   "private": true,
+  "workspaces": [
+    "web/site"
+  ],
   "type": "module",
   "scripts": {
-    "check": "oxlint && oxfmt --check && tsc && bun test",
-    "fix": "oxlint --fix; oxfmt"
+    "check": "oxlint && oxfmt --check && tsc && tsc -p web/site && bun test",
+    "fix": "oxlint --fix; oxfmt",
+    "site": "bun --cwd web/site run dev"
   },
   "dependencies": {
     "zod": "4.6.7"

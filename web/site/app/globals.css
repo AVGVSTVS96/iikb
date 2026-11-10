@@ -1,0 +1,172 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "./device.css";
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+@font-face {
+  font-family: "iikb Sans";
+  font-weight: 400;
+  font-display: swap;
+  src:
+    local("Helvetica Neue"),
+    local("HelveticaNeue"),
+    url("/fonts/texgyreheros-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "iikb Sans";
+  font-weight: 500;
+  font-display: swap;
+  src:
+    local("Helvetica Neue Medium"),
+    local("HelveticaNeue-Medium"),
+    url("/fonts/texgyreheros-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "iikb Sans";
+  font-weight: 700;
+  font-display: swap;
+  src:
+    local("Helvetica Neue Bold"),
+    local("HelveticaNeue-Bold"),
+    url("/fonts/texgyreheros-bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "iikb Mono";
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/commit-mono-400.woff2") format("woff2");
+}
+
+@theme inline {
+  --font-sans: "iikb Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: "iikb Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-faint: var(--faint);
+  --color-live: var(--red);
+  --color-pick: var(--blue);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --faint: #a1a1aa;
+  --accent: #f4f4f5;
+  --accent-foreground: #0a0a0a;
+  --destructive: #e5342a;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #a1a1aa;
+  --radius: 0.75rem;
+  --red: #ff3b30;
+  --blue: #007aff;
+  --screen: #ffffff;
+  --bubble-in: #e9e9eb;
+  --kb-bg: #d3d5db;
+  --kb-bar: #000000;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #000000;
+    --foreground: #fafafa;
+    --card: #0a0a0a;
+    --card-foreground: #fafafa;
+    --popover: #0a0a0a;
+    --popover-foreground: #fafafa;
+    --primary: #fafafa;
+    --primary-foreground: #0a0a0a;
+    --secondary: #18181b;
+    --secondary-foreground: #fafafa;
+    --muted: #18181b;
+    --muted-foreground: #a1a1aa;
+    --faint: #71717a;
+    --accent: #18181b;
+    --accent-foreground: #fafafa;
+    --destructive: #ff453a;
+    --border: #27272a;
+    --input: #27272a;
+    --ring: #52525b;
+    --red: #ff453a;
+    --blue: #0a84ff;
+    --screen: #000000;
+    --bubble-in: #262628;
+    --kb-bg: #212121;
+    --kb-bar: #ffffff;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply bg-background font-sans text-foreground antialiased;
+    scroll-behavior: smooth;
+    scroll-padding-top: 72px;
+    font-feature-settings: "tnum";
+  }
+  body {
+    @apply bg-background;
+    overflow-x: clip;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
