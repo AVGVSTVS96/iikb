@@ -117,10 +117,16 @@ struct WritingSettings: View {
         return counts.sorted { ($0.value, AppName.of($1.key)) > ($1.value, AppName.of($0.key)) }.map(\.key)
     }
 
-    /// The style picked for `app`, nil where it follows the default; the default's where `app` is nil.
+    /// The style picked for `app`, nil where it follows the default; the default's where `app` is nil, unless it keeps
+    /// Text Mode's words apart (`kept`).
     private var picked: DictationStyle? {
-        guard let app else { return model.settings.dictationStyle }
+        guard let app else { return kept == nil ? model.settings.dictationStyle : nil }
         return model.settings.appDictationStyles[app]
+    }
+
+    /// The default style with Text Mode's words kept from before, as Excited! with Abbreviated, which no style types.
+    private var kept: String? {
+        model.settings.dictationWords.map { model.settings.dictationStyle.title + " · " + $0.title }
     }
 
     private func pick(_ style: DictationStyle?) {
@@ -129,6 +135,7 @@ struct WritingSettings: View {
                 settings.appDictationStyles[app] = style
             } else if let style {
                 settings.dictationStyle = style
+                settings.dictationWords = nil
             }
         }
     }
@@ -145,12 +152,18 @@ struct WritingSettings: View {
             }
             if app != nil {
                 ChoiceRow(
-                    title: "Default", detail: model.settings.dictationStyle.title, picked: picked == nil
+                    title: "Default", detail: kept ?? model.settings.dictationStyle.title, picked: picked == nil
                 ) { pick(nil) }
+            } else if let kept {
+                ChoiceRow(title: kept, detail: quoted(Sample.style.said) { _ in }, picked: true) {}
             }
             ForEach(DictationStyle.allCases, id: \.self) { style in
                 ChoiceRow(
-                    title: style.title, detail: quoted(Sample.style.said) { $0.style = style }, picked: picked == style
+                    title: style.title,
+                    detail: quoted(Sample.style.said) {
+                        $0.style = style
+                        $0.textMode = nil
+                    }, picked: picked == style
                 ) { pick(style) }
             }
         }

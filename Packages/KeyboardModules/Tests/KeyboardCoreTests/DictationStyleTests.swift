@@ -10,25 +10,37 @@ struct DictationStyleTests {
         DictationWriting(style: style, editing: editing, lists: lists, textMode: .spelledOut).written(heard)
     }
 
-    /// Each style past very casual takes the one before's words and adds its own, so the casual end is one ladder.
-    @Test func theCasualStylesAddWordsAStepAtATime() {
-        let typed = {
-            DictationWriting(style: $0).typed(
-                "By the way, are you free tonight? That's amazing, for real.", lexicon: nil)
-        }
+    /// Wispr Flow's four keep the words; texting and slang are very casual with Text Mode's Texting and Gen Z words.
+    @Test func onlyTextingAndSlangChangeTheWords() {
+        let said = "By the way, are you free tonight? That's amazing, for real."
+        let typed = { DictationWriting(style: $0).typed(said, lexicon: nil) }
         #expect(typed(.casual) == "By the way, are you free tonight? That's amazing, for real")
-        #expect(typed(.veryCasual).hasPrefix("btw, are you free tonight?"))
+        #expect(!typed(.veryCasual).contains("btw"))
         #expect(typed(.texting).hasPrefix("btw, r u free tn?"))
-        #expect(typed(.slang) != typed(.texting))
+        #expect(typed(.slang).hasSuffix("fire, fr"))
     }
 
-    /// Text Mode, once its own setting, becomes the style that types what it did: the more casual of the two.
-    @Test func anOlderTextModeBecomesItsStyle() {
-        #expect(DictationStyle.formal.with(.spelledOut) == .formal)
-        #expect(DictationStyle.formal.with(.abbreviated) == .veryCasual)
-        #expect(DictationStyle.casual.with(.texting) == .texting)
-        #expect(DictationStyle.excited.with(.genZ) == .slang)
-        #expect(DictationStyle.slang.with(.abbreviated) == .slang)
+    /// A Text Mode from when it was its own setting types as it did: as the style that types the same, else kept apart
+    /// beside the style, in every app that follows the default.
+    @Test func anOlderTextModeTypesAsItDid() {
+        func folded(_ style: DictationStyle, _ words: DictationTextMode) -> KeyboardSettings {
+            var settings = KeyboardSettings()
+            settings.dictationStyle = style
+            settings.fold(words)
+            return settings
+        }
+        #expect(folded(.veryCasual, .texting).dictationStyle == .texting)
+        #expect(folded(.veryCasual, .genZ).dictationStyle == .slang)
+        #expect(folded(.formal, .spelledOut).dictationStyle == .formal)
+        #expect(folded(.veryCasual, .genZ).dictationWords == nil)
+        let excited = folded(.excited, .abbreviated)
+        #expect(excited.dictationStyle == .excited && excited.dictationWords == .abbreviated)
+        let said = "By the way, I don't know. See you right now."
+        let before = DictationWriting(style: .excited, textMode: .abbreviated).written(said)
+        #expect(excited.dictation(in: nil).written(said) == before)
+        #expect(
+            folded(.casual, .texting).dictation(in: nil).written(said)
+                == DictationWriting(style: .casual, textMode: .texting).written(said))
     }
 
     @Test func asSaidKeepsEveryWordUmAndUhIncluded() {

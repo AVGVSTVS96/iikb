@@ -8,7 +8,7 @@
 	<array>
 		<dict>
 			<key>FooterText</key>
-			<string>A style sets the capitals, the punctuation and the words: Formal. keeps every mark; Excited! ends short sentences with “!”; Casual drops the last period and the comma after “so” or “hey”; very casual is Casual in lowercase with btw and idk; texting also writes u and tn; slang also writes fr and fire. Each app can have its own in the iikb app. Where a style keeps capitals, they follow Auto-Capitalization in Typing. As Said types every word you say, um and uh too; No Um or Uh leaves those out; Clean also leaves out words said twice, “like” and “you know” said between commas, what you take back with “scratch that”, and what you fix as you go (“two, I mean three”).</string>
+			<string>A style sets the capitals, the punctuation and the words: Formal. keeps every mark; Excited! ends short sentences with “!”; Casual drops the last period and the comma after “so” or “hey”; very casual is Casual in lowercase; texting also writes btw, u and tn; slang also writes fr and fire. Each app can have its own in the iikb app. Where a style keeps capitals, they follow Auto-Capitalization in Typing. As Said types every word you say, um and uh too; No Um or Uh leaves those out; Clean also leaves out words said twice, “like” and “you know” said between commas, what you take back with “scratch that”, and what you fix as you go (“two, I mean three”).</string>
 			<key>Title</key>
 			<string>Writing</string>
 			<key>Type</key>

@@ -49,6 +49,18 @@ extension DictationEditing {
     }
 }
 
+extension DictationTextMode {
+    /// Text Mode's names, from when it was a setting of its own (`KeyboardSettings.dictationWords`).
+    var title: String {
+        switch self {
+        case .spelledOut: "Spelled Out"
+        case .abbreviated: "Abbreviated"
+        case .texting: "Texting"
+        case .genZ: "Gen Z"
+        }
+    }
+}
+
 extension DictationLists {
     var title: String {
         switch self {

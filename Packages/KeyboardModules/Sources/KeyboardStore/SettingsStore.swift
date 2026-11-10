@@ -52,7 +52,7 @@ public enum SettingsStore {
     ]
     private static let skinToneKey = "skinTone"
     private static let appWritingStylesKey = "appWritingStyles"
-    /// Text Mode, a setting of its own until the style took its words (`DictationStyle.with`).
+    /// Text Mode, a setting of its own until the style took its words, now only words kept apart (`KeyboardSettings.fold`).
     private static let textModeKey = "textMode"
 
     private static let oneHandedKey = "oneHanded"
@@ -73,9 +73,11 @@ public enum SettingsStore {
         settings.appDictationStyles = (value(forKey: appWritingStylesKey, sharing: sharing) as? [String: String] ?? [:])
             .compactMapValues(DictationStyle.init)
         if let words = (value(forKey: textModeKey, sharing: sharing) as? String).flatMap(DictationTextMode.init) {
-            settings.dictationStyle = settings.dictationStyle.with(words)
-            set(settings.dictationStyle.rawValue, forKey: dictationStyle.key, sharing: sharing)
-            forget(textModeKey, sharing: sharing)
+            settings.fold(words)
+            if settings.dictationWords == nil {
+                set(settings.dictationStyle.rawValue, forKey: dictationStyle.key, sharing: sharing)
+                forget(textModeKey, sharing: sharing)
+            }
         }
         return settings
     }
@@ -88,6 +90,11 @@ public enum SettingsStore {
         for choice in choices { choice.save(settings) }
         set(settings.skinTone?.rawValue ?? "", forKey: skinToneKey)
         set(settings.appDictationStyles.mapValues(\.rawValue), forKey: appWritingStylesKey)
+        if let words = settings.dictationWords {
+            set(words.rawValue, forKey: textModeKey)
+        } else {
+            forget(textModeKey, sharing: true)
+        }
     }
 
     private static let changed = "com.shahidy.iikb.settings"

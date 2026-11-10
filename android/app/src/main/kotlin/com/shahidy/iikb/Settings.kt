@@ -12,10 +12,11 @@ class Settings(context: Context) {
     val preferences: SharedPreferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     init {
-        // Text Mode, a setting of its own until the style took its words, becomes the style it typed as.
+        // Text Mode, a setting of its own until the style took its words, becomes the style it typed as, or stays
+        // beside the style where none types the same.
         preferences.getString(TEXT_MODE, null)?.let { words ->
             val style = Core.style(lines() + "\n$TEXT_MODE=$words")
-            preferences.edit().putString("writingStyle", style).remove(TEXT_MODE).apply()
+            if (style.isNotEmpty()) preferences.edit().putString("writingStyle", style).remove(TEXT_MODE).apply()
         }
     }
 
@@ -25,7 +26,12 @@ class Settings(context: Context) {
 
     fun set(name: String, value: Boolean) = preferences.edit().putBoolean(name, value).apply()
 
-    fun set(name: String, value: String) = preferences.edit().putString(name, value).apply()
+    /** A default style picked ends a Text Mode kept beside the one before. */
+    fun set(name: String, value: String) {
+        val edit = preferences.edit().putString(name, value)
+        if (name == "writingStyle") edit.remove(TEXT_MODE)
+        edit.apply()
+    }
 
     /** The style each app has of its own, by package, kept as `package:style,…`; one not listed follows the default. */
     fun appStyles(): Map<String, String> = string(APP_STYLES).split(',').mapNotNull { pair ->
@@ -39,11 +45,11 @@ class Settings(context: Context) {
         set(APP_STYLES, styles.entries.joinToString(",") { "${it.key}:${it.value}" })
     }
 
-    /** Every setting as `name=value` lines, as the engine reads them. */
-    fun lines(): String = DEFAULTS.keys.joinToString("\n") { name ->
+    /** Every setting as `name=value` lines, as the engine reads them, with a Text Mode kept beside the style. */
+    fun lines(): String = (DEFAULTS.keys.map { name ->
         val value = preferences.all[name]?.toString() ?: DEFAULTS.getValue(name)
         "$name=$value"
-    }
+    } + listOfNotNull(preferences.getString(TEXT_MODE, null)?.let { "$TEXT_MODE=$it" })).joinToString("\n")
 
     companion object {
         private const val TEXT_MODE = "textMode"

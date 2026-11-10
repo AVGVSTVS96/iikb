@@ -27,7 +27,7 @@ const STYLES = [
   {
     id: "veryCasual",
     title: "very casual",
-    text: "btw, are you free tonight? the show is amazing, for real",
+    text: "by the way, are you free tonight? the show is amazing, for real",
   },
   { id: "texting", title: "texting", text: "btw, r u free tn? the show is amazing, for real" },
   { id: "slang", title: "slang", text: "btw, r u free tn? the show is fire, fr" },

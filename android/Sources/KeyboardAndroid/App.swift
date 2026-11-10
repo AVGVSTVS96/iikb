@@ -38,10 +38,12 @@ public func styles(env: Env, _: jclass) -> jbyteArray? {
 }
 
 /// The style `settings` (`Settings.lines`) write in, a Text Mode kept from before folded into it as iOS's
-/// `SettingsStore` folds it (`DictationStyle.with`), so Kotlin can keep it and forget the Text Mode.
+/// `SettingsStore` folds it (`KeyboardSettings.fold`), so Kotlin can keep it and forget the Text Mode; empty where no
+/// style types those words, so Kotlin keeps both.
 @_cdecl("Java_com_shahidy_iikb_app_Core_style")
 public func style(env: Env, _: jclass, settings: jbyteArray?) -> jbyteArray? {
-    env.array(KeyboardSettings(parsing: env.string(settings) ?? "").dictationStyle.rawValue)
+    let settings = KeyboardSettings(parsing: env.string(settings) ?? "")
+    return env.array(settings.dictationWords == nil ? settings.dictationStyle.rawValue : "")
 }
 
 /// Kotlin holds the mapped lexicon for as long as the app runs.

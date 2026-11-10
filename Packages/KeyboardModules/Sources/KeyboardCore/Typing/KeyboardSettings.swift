@@ -40,6 +40,9 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var appDictationStyles: [String: DictationStyle] = [:]
     public var dictationEditing = DictationEditing.standard
     public var dictationLists = DictationLists.standard
+    /// Text Mode's words where no style types them with `dictationStyle`, as Excited! with Abbreviated, kept so
+    /// dictations type as they did until another style is picked (`fold`).
+    public var dictationWords: DictationTextMode?
 
     public init() {}
 

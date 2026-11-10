@@ -263,7 +263,7 @@ extension KeyboardSettings {
         ]
         self = .initial
         var words: DictationTextMode?
-        defer { if let words { dictationStyle = dictationStyle.with(words) } }
+        defer { if let words { fold(words) } }
         for line in text.split(separator: "\n") {
             let parts = line.split(separator: "=", maxSplits: 1).map(String.init)
             guard parts.count == 2 else { continue }

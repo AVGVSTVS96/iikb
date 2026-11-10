@@ -1,6 +1,7 @@
 /// How a dictation reads: its capitals, its punctuation and how far its words go toward texting, one choice from Formal
 /// to slang, so a style never says one thing while another setting types something else. Wispr Flow's four set only
-/// the marks; very casual, texting and slang each take the one before's and add their words (`words`). What you said is
+/// the marks and keep the words; texting and slang are very casual's marks with Text Mode's Texting and Gen Z words,
+/// as those were typed when Text Mode was a setting of its own (`words`). What you said is
 /// `DictationEditing`'s. Every style gives a question the model ended with a period its question mark. Formal
 /// keeps every comma, ends every sentence, adds the comma after an opening "However" or "Actually" and lets one ! or ?
 /// do. Casual keeps the capitals with less punctuation: no last period, no comma after an opening "So", "Hey" or
@@ -29,31 +30,31 @@ public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
         }
     }
 
-    /// Its words: very casual writes the phrases people type as letters ("btw", "idk"), texting also shortens single
-    /// words ("u", "tn"), and slang also trades words for slang ("fr", "fire").
+    /// Its words: texting writes phrases as letters ("btw") and shortens words ("u", "tn"), and slang also trades words
+    /// for slang ("fr", "fire"); the rest keep them.
     public var words: DictationTextMode {
         switch self {
-        case .formal, .excited, .casual: .spelledOut
-        case .veryCasual: .abbreviated
+        case .formal, .excited, .casual, .veryCasual: .spelledOut
         case .texting: .texting
         case .slang: .genZ
         }
     }
 
-    /// Typed in lowercase, whatever Auto-Capitalization says.
-    public var lowercases: Bool { self == .veryCasual || words.lowercases }
+    /// Which of Wispr Flow's four sets its marks.
+    public var marks: DictationStyle {
+        switch self {
+        case .texting, .slang: .veryCasual
+        default: self
+        }
+    }
 
-    /// The style that types what an older iikb typed for `self` with Text Mode at `words`, from when they were two
-    /// settings: the more casual of the two.
-    public func with(_ words: DictationTextMode) -> DictationStyle {
-        let fromWords: DictationStyle =
-            switch words {
-            case .spelledOut: self
-            case .abbreviated: .veryCasual
-            case .texting: .texting
-            case .genZ: .slang
-            }
-        return fromWords.words.rank > self.words.rank ? fromWords : self
+    /// Typed in lowercase, whatever Auto-Capitalization says.
+    public var lowercases: Bool { marks == .veryCasual || words.lowercases }
+
+    /// The style that types exactly what `style` typed with Text Mode at `words` when they were two settings, or nil
+    /// where none does, as Excited! with Abbreviated.
+    public static func typing(_ style: DictationStyle, _ words: DictationTextMode) -> DictationStyle? {
+        allCases.first { $0.marks == style.marks && $0.words == words }
     }
 
     /// `text`'s sentence marks in this style, before a list it may end on is written as one.
@@ -831,9 +832,21 @@ public struct DictationWriting: Hashable, Sendable {
 extension KeyboardSettings {
     /// How a dictation is written in `app` (its bundle ID): in the style picked for it, else your default.
     public func dictation(in app: String?) -> DictationWriting {
-        DictationWriting(
+        let own = app.flatMap { appDictationStyles[$0] } != nil
+        return DictationWriting(
             style: dictationStyle(in: app), editing: dictationEditing, lists: dictationLists,
-            capitalizes: autoCapitalization)
+            textMode: own ? nil : dictationWords, capitalizes: autoCapitalization)
+    }
+
+    /// Takes in a Text Mode kept from when it was a setting of its own, so dictations type as they did: as the style
+    /// that types the same, else as the style with those words kept apart (`dictationWords`) until another is picked.
+    public mutating func fold(_ words: DictationTextMode) {
+        if let style = DictationStyle.typing(dictationStyle, words) {
+            dictationStyle = style
+            dictationWords = nil
+        } else {
+            dictationWords = words
+        }
     }
 
     public func dictationStyle(in app: String?) -> DictationStyle {
