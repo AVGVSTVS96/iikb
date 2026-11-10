@@ -1,9 +1,9 @@
 #!/bin/bash
 # Runs on a Mac. Everything a batch of changes needs, at once, on one simulator, the iPhone Duo folded unless named:
 # one build of the app and every test, KeyboardUI's package tests, every UI test with Full Access on the simulator and
-# shots/demo's made-up transcripts in the app (each test capped at 2 minutes, a failure retried once) but the three
-# only their own scripts can set up, the voice test with scripts/voiceapp.py standing in for the app, and the screenshot
-# tests again in dark, into shots/raw/verify/.
+# shots/demo's made-up transcripts in the app (each test capped at 5 minutes, as GitHub's Macs need, a failure retried
+# once) but the four that need another setup, the voice test with scripts/voiceapp.py standing in for the app, and the
+# screenshot tests again in dark, into shots/raw/verify/.
 # scripts/verify ["iPhone 17"] [iPhone-17] (OPEN=1 unfolds; ORIENTATION=landscape)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -36,7 +36,7 @@ uitest() {
   mkdir -p "$prefix"
   TEST_RUNNER_IIKB_SHOTS=$prefix TEST_RUNNER_IIKB_ORIENTATION=${ORIENTATION:-portrait} \
     xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
-    -derivedDataPath build/uitest -test-timeouts-enabled YES -default-test-execution-time-allowance 120 \
+    -derivedDataPath build/uitest -test-timeouts-enabled YES -default-test-execution-time-allowance 300 \
     -retry-tests-on-failure -test-iterations 2 -collect-test-diagnostics never "$@" > "$log" 2>&1 || failed=1
   summary "$log"
 }
@@ -45,6 +45,8 @@ step "package tests"
 prefix=$shots/package
 uitest package -only-testing:KeyboardUITests -skip-testing:KeyboardUITests/Evaluation
 
+# Messages stops answering in a slim simulator once a conversation opens, before iikb comes into it.
+messages=AppUITests/ToolPanelTests/testAHeldGifDragsIntoTheMessage
 for appearance in light dark; do
   scripts/sim boot "$ID"
   xcrun simctl ui "$ID" appearance "$appearance"
@@ -54,9 +56,10 @@ for appearance in light dark; do
     # The real iPhone's chats (scripts/chatdevice), Control Center with its widget services (scripts/controltest), and a
     # recording said by a macOS voice (scripts/sharetest).
     uitest light -only-testing:AppUITests -skip-testing:AppUITests/VoiceTests -skip-testing:AppUITests/ChatBoxDeviceTests \
-      -skip-testing:AppUITests/MicControlTests -skip-testing:AppUITests/RecordingShareTests
+      -skip-testing:AppUITests/MicControlTests -skip-testing:AppUITests/RecordingShareTests -skip-testing:"$messages"
   else
-    uitest dark -only-testing:AppUITests/PanelTests -only-testing:AppUITests/ToolPanelTests -only-testing:AppUITests/SuggestionShots
+    uitest dark -only-testing:AppUITests/PanelTests -only-testing:AppUITests/ToolPanelTests -only-testing:AppUITests/SuggestionShots \
+      -skip-testing:"$messages"
   fi
   step "voice test, $appearance"
   /usr/bin/python3 scripts/voiceapp.py "$ID" "$group" &
