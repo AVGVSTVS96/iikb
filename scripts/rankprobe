@@ -1,5 +1,5 @@
 #!/bin/sh
-# Times the suggestion bar's ranking on the iPhone the Mac reaches, in the installed iikb (scripts/phone): scripts/rankprobe.
+# Times the suggestion bar's ranking on the iPhone the Mac reaches, in the installed iikb (the install link, scripts/phone): scripts/rankprobe.
 # Types the first 100 phrases of the evaluation corpus with seeded noisy taps, as Evaluation.latency() does (scripts/eval
 # latency, here on Linux), and prints median, p95, p99 and max for letter-up and space-up. Keep the iPhone unlocked.
 set -e

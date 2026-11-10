@@ -1,4 +1,4 @@
 #!/bin/bash
 # What dictation types for spoken versions, decimals, percentages, domains and emails, and for the "point", "dot" and
-# "at" that stay words (scripts/formats.txt, FormatTests). scripts/phone installs nothing that fails it.
+# "at" that stay words (scripts/formats.txt, FormatTests). scripts/phone puts nothing that fails it on the install link.
 exec "$(dirname "$0")/coretest" --filter "\\.FormatTests"

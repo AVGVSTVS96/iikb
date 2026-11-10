@@ -1,4 +1,4 @@
-# What the iPhone's iikb is built from, as git pathspecs: scripts/phone installs main only once one of these changed,
+# What the iPhone's iikb is built from, as git pathspecs: scripts/phone puts main on the install link only once one of these changed,
 # and a commit's Changelog: trailer shows on the iPhone's Changelog page and iikb.vercel.app only when it changed one.
 App
 Keyboard

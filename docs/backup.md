@@ -42,7 +42,7 @@ When something changes, never on a clock:
   without it);
 - the app, as it starts, each time it writes down a dictation, keeps what one became, or changes the transcripts, and each time you change the
   Dictionary;
-- `scripts/phone`, before every install (`scripts/backup`, which copies the same files through the Mac).
+- `scripts/backup`, which copies the same files through the Mac when you run it.
 
 Each sync asks the server what it holds and sends every file it lacks or holds at another size or modification time to
 the second (rsync's quick check), so a send that failed, offline or cut off, goes with the next. A recording goes once
@@ -57,8 +57,8 @@ already kept one of it); nothing is ever deleted.
 An iPad's files are kept apart, in `~/.local/share/iikb/backup-ipad`, so they never go over the iPhone's: each request
 names its device (`X-Device`, from the model, "iPad" or "iPhone"; none is an iPhone), and a device other than an iPhone
 sends nothing until the server's listing names it back. The personal network and the Mac's files are one for both.
-`scripts/phone iPad` backs the iPad up there too, and `IIKB_BACKUP=~/.local/share/iikb/backup-ipad scripts/restore`
-puts it back.
+`IIKB_BACKUP=~/.local/share/iikb/backup-ipad scripts/backup <udid>` backs the iPad up there too, and
+`IIKB_BACKUP=~/.local/share/iikb/backup-ipad scripts/restore <udid>` puts it back.
 It runs as the user service `iikb-backup` (dotfiles), on port 2592 behind `tailscale serve` at `/backup`, so
 only the tailnet reaches it, and takes requests with the token in `~/.config/iikb/backup.env`.
 
@@ -71,7 +71,7 @@ What it answers, to the token:
 
 A build gets the server from `Packages/KeyboardModules/Sources/KeyboardStore/Resources/Keys/backup.key`, kept out of git: the
 address on the first line, the token on the second. `scripts/phone` takes it from the main checkout and won't build
-without it, so no install of its leaves the iPhone unbacked. `scripts/sync` leaves it out of the Mac's trees, so a
+without it, so every build it puts on the install link (scripts/AGENTS.md) backs up. `scripts/sync` leaves it out of the Mac's trees, so a
 simulator's made-up data never reaches the backup. A build without the file sends nothing and shows no Backup section.
 
 ## Your network
@@ -99,9 +99,10 @@ up first (`scripts/backup`), once it has picked what to put back, so what the iP
 `versions/` rather than written over. It quits the app first when the app's files go back. A keyboard that's up reads what was put back the next time it appears.
 
 A reinstall that starts a new container sends its near-empty files over the good ones as soon as the app starts, so
-the good ones are in `versions/` and the mirror holds the empty ones. Right after each install `scripts/phone` looks in
-iikb's container, and when it's new and empty, as after the app was deleted, it writes the time in `reinstalls` (in the
-backup folder): a shrink in the day after that is taken for the new container, and any other is you (Reset Learned
+the good ones are in `versions/` and the mirror holds the empty ones. When iikb's container is new and empty, as after
+the app was deleted, add the time to `reinstalls` in the backup folder after installing and before opening iikb
+(`date +%Y-%m-%dT%H%M%S >> ~/.local/share/iikb/backup/reinstalls`, `backup-ipad` for an iPad): a shrink in the day
+after that is taken for the new container, and any other is you (Reset Learned
 Words, a deleted transcript, a cleared clipboard), which backs up and restores as it is. Without `--at`,
 `scripts/restore` leaves out only a file the mirror holds at under half the size of a copy replaced in the day after a
 reinstall in the last 30 days (one over 4 KB), puts the rest back, and prints the `--at` that puts each larger copy back;
@@ -112,5 +113,5 @@ Reset Learned Words and Taps gives the memory a new reset token, and a keyboard 
 so `scripts/restore` puts `keyboard/support/typing-memory.json` back without its token, and the first keyboard to read it
 saves it at once under the one it has: restoring that file alone, from before the reset (`--at`), undoes a reset, and a
 reset made once a keyboard has read it lets it go as any other. Your network comes back with the next one the server
-makes. A build from before this fix can't read a memory without a token, so it stops learning until it's updated: restore
-the memory only after `scripts/phone` has put a newer build on the iPhone.
+makes. Older builds can't read a memory restored without its token and stop learning until they're updated, so restore
+the memory only once the device runs a current build.

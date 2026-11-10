@@ -1,7 +1,8 @@
 #!/bin/bash
 # Runs on the Mac (scripts/mac 'scripts/chatdevice'): UITests/ChatBoxDeviceTests on the real iPhone the Mac reaches, or
 # the class TEST names (TEST=BarShots), signed for the team in $TEAM, its screenshots exported to shots/raw/chatdevice/
-# (shots/raw/<TEST>/). The test installs a debug build over the phone's iikb, keeping its data; scripts/phone --reinstall --now puts main back after.
+# (shots/raw/<TEST>/). The test installs a debug build over the phone's iikb, keeping its data, so it runs only when Bassim asks, and he
+# taps the install link after to put main back.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 TEAM=${TEAM:-6SV62PQ76B}

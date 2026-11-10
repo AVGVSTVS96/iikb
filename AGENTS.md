@@ -30,9 +30,9 @@ Each module keeps its own AGENTS.md beside its code, with what it holds and why.
 
 ## Build and test
 
-Development happens on a Linux box. Simulator builds, tests and screenshots run on a Mac over ssh (`ssh mac`); the iPhone build is made here and installed through the Mac with `scripts/phone`.
+Development happens on a Linux box. Simulator builds, tests and screenshots run on a Mac over ssh (`ssh mac`); the iPhone build is made here, signed on the Mac and put on the install link with `scripts/phone`, where Bassim taps Install when he wants it.
 - `scripts/mac <command>` syncs the tree to one of the Mac's three slots and runs the command there inside one of the Mac's turns (`turn`, two heavy runs at once across projects). Each slot has its own folder and its own simulators, so up to two runs go at once and the rest wait, and the Mac never runs more than three simulators, counting other projects'.
-- A change is checked here first: `scripts/coretest` for KeyboardCore, `scripts/check` for whether everything builds for the iPhone. Then it goes to main and onto the phone with `scripts/phone` as soon as it's ready, since the phone is where changes are tried.
+- A change is checked here first: `scripts/coretest` for KeyboardCore, `scripts/check` for whether everything builds for the iPhone. Then it goes to main and onto the install link with `scripts/phone` as soon as it's ready. Nothing installs on his iPhone or iPad but his own tap there, so a change is tried on the phone once he has installed a build that has it (`scripts/phone` prints the build on each device the Mac reaches).
 - The simulator is only for reproducing an issue being chased, in what only it shows (a layout, a screen, typing through the real extension), one run at a time (`SIM_REPRO=1`); otherwise a change is checked on the iPhone.
 - Device builds take the team from `Config/Team.xcconfig` (`DEVELOPMENT_TEAM = …`, not committed), which syncing leaves in place.
 - To prove a change works, follow the `verify` skill (`.claude/skills/verify`).
@@ -49,8 +49,8 @@ scripts/public-review.ts [--all|--text <where>]  # a reviewer reads what iikb sh
 scripts/format [--check]                        # swift format on every tracked Swift file (.swift-format); --check is what scripts/check and CI run
 bun run check                                   # the TypeScript and JavaScript (after bun install): oxlint, oxfmt --check, tsc, bun test, as CI runs it
 bun run fix                                     # oxlint's fixes, then oxfmt
-scripts/phone [iPad]                            # main's last commit built, signed and installed on the iPhone, or the iPad (--reinstall renews the signing); away from the Mac, offered on a link (scripts/AGENTS.md)
-scripts/backup <udid>                           # the iPhone's iikb data copied to ~/.local/share/iikb/backup here, never deleted, replaced files kept in versions/ (scripts/phone runs it first)
+scripts/phone                                   # main's last commit built, signed and put on the install link for the iPhone and iPad, then the build each device has (--rebuild even when nothing changed)
+scripts/backup <udid>                           # the iPhone's iikb data copied to ~/.local/share/iikb/backup here, never deleted, replaced files kept in versions/
 scripts/restore <udid> [--at <time>|now] [name…]  # the backup put back on the iPhone, all of it or the files named, as it is or as it was at a time; leaves out a copy much smaller than one replaced in the day after an install left iikb a new, empty container (docs/backup.md)
 scripts/mac scripts/verify                      # main's last commit on one iPhone Duo simulator: package and UI tests, light and dark, shots in shots/raw/verify/ (only with SIM_REPRO=1, while reproducing an issue)
 scripts/mac scripts/test                        # KeyboardCore and KeyboardUI package tests on an iOS simulator
@@ -86,8 +86,8 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | Never a Bluetooth microphone unless one is picked in Settings › Microphone (VoiceCapture) | judgment: nothing enforces it |
 | A page opened from another in its tab has one Back, in the Duo's side bar with the tabs on every screen (App) | `backInSideBar(_:)`, `BackTests` |
 | A new use of the host app goes through `FullKeyboardViewController.hostApp` (FullKeyboard) | judgment: nothing enforces it |
-| Only main's last commit reaches the phone, never linked below iOS 27.1, and a direct install never mid-dictation or without backup (scripts) | `scripts/phone`: builds main in its own worktree, waits for the dictation, refuses without `backup.key` or below 27.1 |
-| Restore only after `scripts/phone`: an old build can't read a memory restored without its token | judgment: nothing enforces it |
+| Only main's last commit reaches the phone, and only when Bassim taps Install on the link: no agent installs on his devices, a device test (`scripts/chatdevice`) included, unless he asks; never linked below iOS 27.1 (scripts) | `scripts/phone`: builds main in its own worktree and only offers it, refuses without `backup.key` or below 27.1; judgment for the rest |
+| Restore only once the device has a build from the link: an old build can't read a memory restored without its token | judgment: nothing enforces it |
 | Comments only for a decision or fact the code can't show (one `WHY:` line or a link) | `tools/oxlint/no-comments.ts` in TypeScript; judgment in Swift |
 | Every AGENTS.md names only code that exists, and no file keeps a conflict marker | `ArchitectureTests` |
 | A change you'd notice in the app or keyboard carries a `Changelog:` trailer, one short line (App/Settings/ChangelogPage.swift). It shows on each platform whose files the commit changes: iPhone's Changelog and iikb.vercel.app for `scripts/iphone-paths.txt`, Android's for `android/`; a change worded differently for each is two commits | `scripts/phone`, `web/changes.ts`, android/app/build.gradle.kts |

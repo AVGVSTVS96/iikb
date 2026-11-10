@@ -22,10 +22,10 @@ scripts/mac scripts/edittest                    # what dictations become: a long
 scripts/voiceprobe v3 clip.wav                  # on the iPhone: a Parakeet's load and write times in the installed iikb (scripts/phone)
 scripts/judgeprobe questions.jsonl             # on the iPhone: Apple's on-device model choosing among written forms or answering in its own words, cold, warm and prewarmed, in the installed iikb
 scripts/eval                                    # scorer here on Linux: the phrase corpus typed with tap noise and with biased thumbs, checked against scripts/eval.expected (scripts/mac scripts/eval adds the UITextChecker baseline)
-scripts/gate                                    # the bar on everyday text (scripts/gate.txt) through TypingEngine: fresh, with awkward contact names, and on the iPhone's own network and memory from the backup; scripts/phone installs no build that fails it (about 2 min)
+scripts/gate                                    # the bar on everyday text (scripts/gate.txt) through TypingEngine: fresh, with awkward contact names, and on the iPhone's own network and memory from the backup; scripts/phone puts no build that fails it on the install link (about 2 min)
 scripts/voiceloop [--cached]                    # dictation end to end: Bassim's dictations and a spoken set (macOS voices, whispered, in his loud rooms) through Parakeet on the Mac and the app's and keyboard's text path here, scored against what each should type, errors ranked by kind into voicebench/categories.txt (about 15 s warm; scripts/AGENTS.md)
 scripts/rivals                                  # on the Mac: the cleanup bench, scripts/rivals.txt said by two macOS voices through iikb, Wispr Flow and Aqua Voice at their defaults, scored per kind ("scripts/rivals")
-scripts/formats                                 # what dictation types for versions, decimals, percentages, domains and emails, and the "point", "dot" and "at" that stay words (scripts/formats.txt); scripts/phone installs no build that fails it (seconds after scripts/gate)
+scripts/formats                                 # what dictation types for versions, decimals, percentages, domains and emails, and the "point", "dot" and "at" that stay words (scripts/formats.txt); scripts/phone puts no build that fails it on the install link (seconds after scripts/gate)
 scripts/web                                     # web demo into web/dist (swift.org 6.4.0 toolchain + its Wasm SDK + binaryen; on the Mac: rsync, then run it there)
 scripts/lexicon                                 # rebuild en.lexicon (downloads ~1 GB, streams ~30 GB of 2-grams)
 scripts/personal record.jsonl [en.network [out]] # fine-tune en.network on your typing (the server does it when the record changes)
@@ -45,19 +45,20 @@ uv run --with pillow --with numpy --with scipy scripts/shotdiff.py v7   # key-by
 ## scripts/phone
 
 It builds the app and keyboard with [xtool](https://github.com/xtool-org/xtool) from the root `Package.swift` and `xtool.yml` (their Info.plists are `Config/xtool/`, kept in step with `project.yml` by hand), and:
-- signs them with a free-team profile that xtool renews on every run. It covers every device the team has registered; a new phone gets registered by one direct `xtool install` to it.
-- stamps main's commit count as the build number (Settings › About shows it); an iPhone that already has that build is left alone.
-- installs them through the Mac with `devicectl` on the iPhone the Mac reaches, by cable or Wi-Fi, once the running app's status in the App Group (`Dictation.Status`) says no dictation is being recorded or written down, checked last thing before the install, after the backup, so an install never cuts off a dictation.
-- installs nothing that fails `scripts/gate` (the bar) or then `scripts/formats` (dictation's versions, decimals, percentages and addresses), each run on the commit it builds; the second reuses the first's build, so it adds seconds.
-- tells `Config/notify`, an executable never committed and given one line, why main can't reach the device when a check, the build, signing, the backup or the install fails or the Mac doesn't answer (a device that drops out mid-install gets the link instead, with `Config/link`): once per reason, however many runs hit it, and once more when an install or a link clears it.
-- then starts iikb in the background, now or the moment the iPhone next unlocks (`scripts/unlocked`, left running on the Mac, which watches SpringBoard's lock state), so Parakeet's compile for the new install begins then rather than at the next dictation.
-- with `Config/link` set up, offers the build instead when the Mac can't reach the device (away from its Wi-Fi and cable; at home an idle iPhone stays listed): on a page in your tailnet, `<url>/iphone/`, opened in Safari, where a tap on Install installs it over the air from a manifest (`itms-services`). That needs a trusted HTTPS address, which `tailscale serve` gives the folder the pages go in once: `sudo tailscale serve --bg --set-path=/iikb-link ~/.local/share/iikb/link` on this Linux box (the Mac's App Store Tailscale can't serve a folder). `Config/link`, never committed, sets `url=` to that address, and `Config/notify` (below) is told when a device gets its first link since its last direct install. That install is your tap: no backup, dictation check or launch first. The next direct install takes the page down, so the link never offers a build older than the device's.
+- signs them with the team's development profile that xtool renews on every run. It covers every device the team has registered (the iPhone and the iPad), so one build serves both; a new device gets registered by one direct `xtool install` to it.
+- stamps main's commit count as the build number (Settings › About shows it), and builds only when something iikb is built from changed since the build on the link.
+- builds nothing that fails `scripts/gate` (the bar) or then `scripts/formats` (dictation's versions, decimals, percentages and addresses), each run on the commit it builds; the second reuses the first's build, so it adds seconds.
+- puts the build on the install link: a page in your tailnet, opened in Safari on the iPhone or iPad from any network, where a tap on Install installs it over the air from a manifest (`itms-services`), keeping iikb's data. Nothing installs by itself; the link always holds main's latest build, with its last changes under the button. The page needs a trusted HTTPS address, which `tailscale serve` gives the folder it's in, set up once: `sudo tailscale serve --bg --set-path=/iikb-link ~/.local/share/iikb/link` on this Linux box (the Mac's App Store Tailscale can't serve a folder). `Config/link`, never committed, sets `url=` to that address.
+- tells `Config/notify`, an executable never committed and given one line, why main can't get onto the link when a check, the build or signing fails or the Mac doesn't answer: once per reason, however many runs hit it, and once more when a build goes up.
+- prints the build on each device the Mac reaches by cable or Wi-Fi, which is how an agent knows whether its change is on the phone yet.
+
+An install from the link has no backup first (the app and keyboard send their files to the backup server as they change, docs/backup.md), and iOS doesn't start the app after it, so Parakeet compiles for a new build at its first dictation.
 
 It needs:
 - Swift 6.4.
 - xtool built from [AVGVSTVS96/xtool](https://github.com/AVGVSTVS96/xtool). It signs with the real bundle and group IDs, so it updates the installed app and keeps its data, where stock xtool installs a separate `XTL-…` copy; and it keeps the App Group on free teams, which stock xtool drops, so iOS deletes the group's container.
 - xtool's Darwin SDK: `xtool sdk install --slim` on an Xcode whose iPhoneOS platform also holds Xcode-beta's `iPhoneOS27.1.sdk`. The fork picks the newest iPhoneOS SDK for `arm64-apple-ios` and puts `-Xclang-linker -isysroot -Xclang-linker <its path>` in the bundle's `toolset-swb.json`. Never rebuild xtool while others build, since a rebuild that changes its Anisette provider logs it out.
-- `xtool auth login`, and the iPhone paired with the Mac.
+- `xtool auth login`.
 
 Linker facts:
 - The keyboard target links with `-ObjC` because its principal class is only named in Info.plist.

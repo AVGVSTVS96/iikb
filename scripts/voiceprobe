@@ -1,5 +1,5 @@
 #!/bin/sh
-# Times a Parakeet loading and writing on the iPhone the Mac reaches, in the installed iikb (scripts/phone):
+# Times a Parakeet loading and writing on the iPhone the Mac reaches, in the installed iikb (the install link, scripts/phone):
 # scripts/voiceprobe <ultra|v3|unified|unified-fp16|clean> <clip.wav> [ane|cpu|gpu]. iikb plays silence while it runs, so
 # a locked screen or another app in front doesn't suspend it. Prints Documents/probe.log once the run is done. clean
 # deletes what a Unified probe downloaded.

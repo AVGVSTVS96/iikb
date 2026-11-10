@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Prove a change to iikb works the way a user meets it, with the cheapest real check first. KeyboardCore's tests and the iPhone build run here on Linux; the Mac's simulators type through the real keyboard extension and take screenshots; scripts/phone puts main on the iPhone, where changes are tried. Use before calling any change to the keyboard, the engine, the web demo or the app done.
+description: Prove a change to iikb works the way a user meets it, with the cheapest real check first. KeyboardCore's tests and the iPhone build run here on Linux; the Mac's simulators type through the real keyboard extension and take screenshots; scripts/phone puts main on the install link, and a change is tried on the iPhone once Bassim installs a build with it. Use before calling any change to the keyboard, the engine, the web demo or the app done.
 ---
 
 # Verify iikb
@@ -8,7 +8,7 @@ description: Prove a change to iikb works the way a user meets it, with the chea
 ## Order
 
 1. Here, on Linux: `scripts/coretest` for anything in `KeyboardCore` (and `scripts/eval` when it changes what gets typed), and `scripts/check` for anything that builds into the app or the keyboard (the iPhone build, unsigned, a few minutes). Both must pass before a change lands.
-2. Land on main and run `scripts/phone`, the moment the change is ready: the iPhone is where changes are tried. It prints `build <N> (main <commit>) is on the iPhone`; quote that line, and the same number shows in the app at Settings › About.
+2. Land on main and run `scripts/phone`, the moment the change is ready. It prints `build <N> (main <commit>) is on the install link`; quote that line and tell Bassim what's in it. Only his tap installs it, so check on the iPhone (probes, screenshots) once the build the Mac reads from it, printed after, is N or later; the same number shows in the app at Settings › About.
 3. The simulator only while reproducing an issue you're chasing (`SIM_REPRO=1`), for what only it shows: one row below, on the iPhone Duo. Otherwise the check is on the iPhone.
 
 ## The Mac

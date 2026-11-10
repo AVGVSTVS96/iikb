@@ -1,125 +1,85 @@
 #!/bin/sh
-# Builds iikb on this Linux box with xtool and provisions it for the free team's devices. The team holds one development
+# Builds main for the iPhone and iPad and puts it on the install link, a page in your tailnet (Config/link,
+# scripts/AGENTS.md), where you tap Install whenever you like, from any network: nothing ever installs by itself.
+# It builds iikb on this Linux box with xtool and provisions it for the team's devices. The team holds one development
 # certificate, and it's the Mac's: xtool's identity (~/.config/xtool/data/<team>) holds that certificate without its
 # key, so xtool (Bassim's fork) makes the profiles for it and signs ad hoc, and scripts/resign signs on the Mac, whose
 # login keychain has the key.
 # Never let xtool revoke a certificate to make its own: that breaks what the Mac signs (stdin is closed, so it can't ask).
-# Then it backs up the phone's iikb data here (scripts/backup), and won't install without that backup, and installs it
-# through the Mac on the iPhone the Mac reaches, by cable or Wi-Fi, once no dictation is being recorded or written down
-# there, as the running app's status in the App Group says, checked last thing before the install. An install that left
-# iikb a new, empty container, as one after deleting the app does, is written in the backup's `reinstalls`, so
-# scripts/backup and scripts/restore take the near-empty files sent in the day after it for that rather than for you.
-# Then it starts iikb in the background, now or the moment the iPhone next unlocks (scripts/unlocked), so Parakeet
-# compiles for the new build right away rather than at the next dictation. That compile has iikb write about 500 MB
-# (VoiceModels/AGENTS.md), so main is installed only when something iikb is built from has changed since the commit last
-# installed, which the stamp keeps: a commit to docs, tests or scripts alone goes with the next one that changes iikb.
 # It builds GitHub's main as just fetched, not this checkout's main, which an agent's uncommitted work can hold back,
-# in its own worktree, so agents' branches and uncommitted edits never reach the phone,
-# and one run at a time, so agents installing at once queue instead of sharing that worktree. That worktree, its lock
-# and its stamp sit beside the main checkout whichever worktree runs this, so every run shares one queue; and the build
-# on the device is read again just before the install, so one already newer is never replaced by an older one.
-# The build number is main's commit count, which Settings › About shows as "Version 0.1.0 (<build>)"; when the iPhone
-# already has that build, nothing is built or installed, unless --reinstall (which renews the signing).
-# Its build doesn't wait for a turn (~/.local/bin/turn): installs go out the moment main is ready, one at a time by
-# this script's own lock, and a build that waited for a turn while holding it could wait on runs queued behind it.
-# Installs go out at most once every 10 minutes: a run soon after the last install waits out the rest, then installs
-# main as it is by then, so builds that finish meanwhile land as one batch and the runs queued behind it find their
-# build already on the iPhone. --now skips the wait.
-# Before building it runs scripts/gate and then scripts/formats on that commit, and installs nothing that fails either.
-# `scripts/phone iPad` does all of it on the iPad the Mac reaches instead, never touching the iPhone: its own stamp, and
-# its own backup (~/.local/share/iikb/backup-ipad, as the backup server keeps an iPad's apart; docs/backup.md).
-# With Config/link set up (scripts/AGENTS.md), a device the Mac can't reach, away from its Wi-Fi and cable, gets the
-# build offered on a page in your tailnet instead, where you tap Install: no backup, dictation check or launch first.
-# When main can't reach the device (a failed check, build, signing or install, or the Mac not answering), Config/notify,
-# if set up, is told why once, again only if the reason changes, and once more when an install or offer clears it.
-# Usage: scripts/phone [iPad] [--now] [--reinstall]
+# in its own worktree, so agents' branches and uncommitted edits never reach the link, and one run at a time, so agents
+# running it at once queue instead of sharing that worktree. That worktree, its lock and its stamp sit beside the main
+# checkout whichever worktree runs this, so every run shares one queue.
+# The build number is main's commit count, which Settings › About shows as "Version 0.1.0 (<build>)". Main goes up only
+# when something iikb is built from has changed since the build on the link (scripts/iphone-paths.txt), at most once
+# every 10 minutes, so builds that land meanwhile go up as one; --now skips the wait, --rebuild builds even when nothing
+# changed. Its build doesn't wait for a turn (~/.local/bin/turn): a build that waited for one while holding the lock
+# could wait on runs queued behind it.
+# Before building it runs scripts/gate and then scripts/formats on that commit, and puts up nothing that fails either.
+# When main can't get onto the link (a failed check, build or signing, or the Mac not answering), Config/notify, if set
+# up, is told why once, again only if the reason changes, and once more when a build goes up.
+# Then it prints the build on each device the Mac reaches, which is how you know what's been tapped.
+# Usage: scripts/phone [--now] [--rebuild]
 set -e
 cd "$(dirname "$0")/.."
-kind=iPhone now= reinstall=
+now= rebuild=
 for arg; do
   case $arg in
-    (iPhone|iPad) kind=$arg ;;
     (--now) now=1 ;;
-    (--reinstall) reinstall=1 ;;
-    (*) echo "usage: scripts/phone [iPad] [--now] [--reinstall]" >&2; exit 2 ;;
+    (--rebuild) rebuild=1 ;;
+    (*) echo "usage: scripts/phone [--now] [--rebuild] (one link serves the iPhone and the iPad)" >&2; exit 2 ;;
   esac
 done
 main=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 build=$main-build
-lower=$(echo "$kind" | tr A-Z a-z)
 link=$main/Config/link
-blocked=$build.blocked-$lower
+[ -f "$link" ] || { echo "$link is missing: it says where the install link is served (scripts/AGENTS.md)" >&2; exit 1; }
+. "$link"
+page=$HOME/.local/share/iikb/link
+stamp=$build.offered
+blocked=$build.blocked
 tell() { [ ! -x "$main/Config/notify" ] || "$main/Config/notify" "$1" || true; }
 block() {
   read -r was _ 2>/dev/null < "$blocked" || was=
   [ "$was" != "$1" ] || return 0
   echo "$1 $(date +%s)" > "$blocked"
-  tell "iikb can't get onto your $kind: $2.${installed:+ It stays on build $installed.} A message comes here when that clears."
+  tell "main can't get onto the iikb install link: $2.${offered:+ It stays on build $offered.} A message comes here when that clears."
 }
 unblock() {
   read -r _ since 2>/dev/null < "$blocked" || return 0
   rm -f "$blocked"
-  tell "iikb installs are moving again: $1 (blocked since $(date -d "@$since" '+%-I:%M%P'))."
+  tell "iikb builds are going up again: $1 (blocked since $(date -d "@$since" '+%-I:%M%P'))."
 }
 # Each step that can stop main names itself in `why`, which the exit reports if the run fails there.
 why=
 trap 'why=; exit 130' HUP INT TERM
 failed() {
   [ -n "$why" ] || return 0
-  ssh -o ConnectTimeout=20 mac true 2>/dev/null || why="mac the MacBook isn't answering, and every install goes through it"
+  ssh -o ConnectTimeout=20 mac true 2>/dev/null || why="mac the MacBook isn't answering, and every build is signed there"
   block "${why%% *}" "${why#* }"
 }
 trap '[ "$?" = 0 ] || failed' EXIT
-find_phone() {
-  ssh mac sh -s "$kind" <<'MAC'
-xcrun devicectl list devices --json-output /tmp/iikb-phone-$1.json >/dev/null && /usr/bin/python3 -c "
-import json, sys
-for d in json.load(open('/tmp/iikb-phone-$1.json'))['result']['devices']:
+# The build on each device the Mac reaches by cable or Wi-Fi, one line each.
+on_devices() {
+  ssh mac sh <<'MAC' || true
+xcrun devicectl list devices --json-output /tmp/iikb-devices.json >/dev/null 2>&1 &&
+/usr/bin/python3 -c "
+import json
+for d in json.load(open('/tmp/iikb-devices.json'))['result']['devices']:
     h, c = d['hardwareProperties'], d['connectionProperties']
-    if h.get('deviceType') == sys.argv[1] and h.get('reality') == 'physical' and c.get('transportType'): print(h['udid']); break" "$1"
+    if h.get('reality') == 'physical' and c.get('transportType'): print(h['deviceType'], h['udid'])" |
+while read -r kind udid; do
+  xcrun devicectl device info apps --device "$udid" --bundle-id com.shahidy.iikb --json-output /tmp/iikb-apps.json >/dev/null 2>&1 &&
+  /usr/bin/python3 -c "import json; print(next(('the $kind has build ' + a.get('bundleVersion', '?') for a in json.load(open('/tmp/iikb-apps.json'))['result']['apps']), 'the $kind has no iikb'))"
+done
 MAC
 }
-installed_build() {
-  ssh mac sh -s "$phone" <<'MAC'
-xcrun devicectl device info apps --device "$1" --bundle-id com.shahidy.iikb --json-output /tmp/iikb-apps-$1.json >/dev/null 2>&1 &&
-/usr/bin/python3 -c "import json; print(next((a.get('bundleVersion', '') for a in json.load(open('/tmp/iikb-apps-$1.json'))['result']['apps']), ''))"
-MAC
-}
-# Waits for the device unlocked and in reach, and reads the build on it; with a link, one out of reach is away.
-reach() {
-  away=
-  until ssh -o ConnectTimeout=20 mac true 2>/dev/null; do
-    block mac "the MacBook isn't answering, and every install goes through it"
-    echo "waiting for the Mac to answer" >&2
-    sleep 60
-  done
-  until phone=$(find_phone) && [ -n "$phone" ]; do
-    [ ! -f "$link" ] || { away=1; return; }
-    echo "waiting for the $kind to be unlocked and on the Mac's Wi-Fi or cable" >&2
-    sleep 30
-  done
-  until installed=$(installed_build); do
-    echo "waiting for the $kind to be unlocked: it was reached but locked" >&2
-    sleep 30
-  done
-}
-# The wait for the device comes before the lock, so a run for a device out of reach never holds up another's install.
-reach
 exec 9>"$build.lock"
 flock 9
-stamp=$build.installed
-backups=${IIKB_BACKUP:-$HOME/.local/share/iikb/backup}
-if [ "$kind" != iPhone ]; then
-  stamp=$stamp-$lower
-  backups=$HOME/.local/share/iikb/backup-$lower
-fi
-offered=$build.offered-$lower
-page=$HOME/.local/share/iikb/link/$lower
-last=$stamp
-[ -z "$away" ] || [ ! -f "$offered" ] || last=$offered
-wait=$(( ${PHONE_EVERY:-600} - $(date +%s) + $(stat -c %Y "$last" 2>/dev/null || echo 0) ))
+read -r offered from < "$stamp" 2>/dev/null || offered=
+wait=$(( ${PHONE_EVERY:-600} - $(date +%s) + $(stat -c %Y "$stamp" 2>/dev/null || echo 0) ))
 if [ "$wait" -gt 0 ] && [ -z "$now" ]; then
-  echo "the last install was under 10 minutes ago, so this one installs main as it is in ${wait}s, with whatever lands meanwhile" >&2
+  echo "the last build went up under 10 minutes ago, so this one puts up main as it is in ${wait}s, with whatever lands meanwhile" >&2
   sleep "$wait"
 fi
 [ -d "$build" ] || git worktree add -q --detach "$build"
@@ -128,38 +88,18 @@ git fetch -q origin main
 commit=$(git rev-parse --short origin/main)
 number=$(git rev-list --count origin/main)
 why=
-reach
-on="on the $kind"
-if [ -n "$away" ]; then
-  . "$link"
-  [ ! -f "$offered" ] || { stamp=$offered on="offered at $url/$lower/"; }
-  read -r installed _ < "$stamp" 2>/dev/null || installed=
-fi
-case $installed in (*[!0-9]*)
-  echo "the $kind has build $installed, a TestFlight build rather than one of main's, so main replaces it" >&2
-  installed= ;;
-esac
-ahead() { case $installed in (''|*[!0-9]*) return 1 ;; esac; [ "$installed" -gt "$number" ]; }
-if ahead && [ -z "$reinstall" ]; then
-  echo "the $kind has build $installed, newer than main's $number ($commit), so nothing is installed" >&2
-  exit 1
-fi
-if [ "$installed" = "$number" ] && [ -z "$reinstall" ]; then
-  echo "build $number (main $commit) is already $on"
-  unblock "build $number is $on"
-  exit 0
-fi
-read -r stamped from < "$stamp" 2>/dev/null || true
-if [ "$installed" = "${stamped:-}" ] && [ -z "$reinstall" ] && git diff --quiet "$from" "$commit" -- $(git show "$commit:scripts/iphone-paths.txt" | grep -v '^#') 2>/dev/null; then
-  echo "build $installed (main $from) is $on and nothing iikb is built from has changed since, so main $commit waits for a change that needs an install"
-  unblock "build $installed is $on, and nothing since needs an install"
+if [ -z "$rebuild" ] && { [ "$offered" = "$number" ] ||
+  git diff --quiet "$from" "$commit" -- $(git show "$commit:scripts/iphone-paths.txt" | grep -v '^#') 2>/dev/null; }; then
+  echo "build $offered (main $from) is on the install link, $url/, and nothing iikb is built from has changed since"
+  unblock "build $offered is on the link"
+  on_devices
   exit 0
 fi
 git -C "$build" checkout -q -f --detach "$commit"
 why="gate build $number fails the typing check (scripts/gate)"
-"$build/scripts/gate" || { echo "build $number (main $commit) fails scripts/gate, so it isn't installed" >&2; exit 1; }
+"$build/scripts/gate" || { echo "build $number (main $commit) fails scripts/gate, so it doesn't go up" >&2; exit 1; }
 why="formats build $number fails the dictation formats check (scripts/formats)"
-"$build/scripts/formats" || { echo "build $number (main $commit) fails scripts/formats, so it isn't installed" >&2; exit 1; }
+"$build/scripts/formats" || { echo "build $number (main $commit) fails scripts/formats, so it doesn't go up" >&2; exit 1; }
 why="changelog build $number's changelog couldn't be made"
 for plist in Config/xtool/iikb-Info.plist Config/xtool/Keyboard-Info.plist Config/xtool/Controls-Info.plist; do
   python3 -c "import plistlib, sys; p = plistlib.load(open(sys.argv[1], 'rb')); p['CFBundleVersion'] = sys.argv[2]; plistlib.dump(p, open(sys.argv[1], 'wb'))" "$build/$plist" "$number"
@@ -185,7 +125,7 @@ info["IIKBChangelog"] = rows
 plistlib.dump(info, open(path, "wb"))
 PY
 backup=$main/Packages/KeyboardModules/Sources/KeyboardStore/Resources/Keys/backup.key
-why="backupkey the server that builds iikb has no backup key, so no build can back up your data first"
+why="backupkey the server that builds iikb has no backup key, so the build couldn't back up your data"
 [ -f "$backup" ] || { echo "$backup is missing, so this build wouldn't back up the iPhone's iikb data (docs/backup.md)" >&2; exit 1; }
 for key in "$main"/Packages/KeyboardModules/Sources/*/Resources/Keys/*.key; do
   to=$build/${key#"$main"/}
@@ -203,6 +143,11 @@ for binary in xtool/iikb.app/iikb xtool/iikb.app/PlugIns/Keyboard.appex/Keyboard
   }
 done
 why="resign the Mac couldn't sign build $number"
+until ssh -o ConnectTimeout=20 mac true 2>/dev/null; do
+  block mac "the MacBook isn't answering, and every build is signed there"
+  echo "waiting for the Mac to answer" >&2
+  sleep 60
+done
 rsync -a --delete xtool/iikb.app/ mac:Developer/iikb-phone/iikb.app/
 serial=$(python3 -c "
 import glob, os, plistlib, subprocess
@@ -210,99 +155,39 @@ path = max(glob.glob(os.path.expanduser('~/.config/xtool/data/??????????')), key
 der = plistlib.load(open(path, 'rb'))['certificate']
 print(subprocess.run(['openssl', 'x509', '-inform', 'DER', '-noout', '-serial'], input=der, capture_output=True).stdout.decode().split('=')[1].strip())")
 ssh mac sh -s "$serial" < scripts/resign
-# Puts the signed build on the tailnet page for a device the Mac can't reach.
-offer() {
-  . "$link"
-  why="offer build $number couldn't be put on the install page"
-  ssh mac 'cd Developer/iikb-phone && rm -rf Payload iikb.ipa && mkdir Payload && cp -R iikb.app Payload/ && ditto -c -k --keepParent Payload iikb.ipa && rm -rf Payload'
-  mkdir -p "$page"
-  scp -q mac:Developer/iikb-phone/iikb.ipa "$page/iikb-$number.ipa"
-  python3 - "$page" "$url/$lower" "$number" <<'PY'
+why="offer build $number couldn't be put on the install link"
+ssh mac 'cd Developer/iikb-phone && rm -rf Payload iikb.ipa && mkdir Payload && cp -R iikb.app Payload/ && ditto -c -k --keepParent Payload iikb.ipa && rm -rf Payload'
+mkdir -p "$page"
+scp -q mac:Developer/iikb-phone/iikb.ipa "$page/iikb-$number.ipa"
+python3 - "$page" "$url" "$number" Config/xtool/iikb-Info.plist <<'PY'
 import html, plistlib, sys, urllib.parse
-page, url, number = sys.argv[1:]
+page, url, number, info = sys.argv[1:]
 plistlib.dump({"items": [{
     "assets": [{"kind": "software-package", "url": f"{url}/iikb-{number}.ipa"}],
     "metadata": {"bundle-identifier": "com.shahidy.iikb", "bundle-version": number, "kind": "software", "title": "iikb"},
 }]}, open(f"{page}/manifest.plist", "wb"))
 install = html.escape("itms-services://?action=download-manifest&url=" + urllib.parse.quote(f"{url}/manifest.plist", safe=""))
+changes = "".join(
+    f"<li><span>{row['build']}</span>{html.escape(row['change'])}</li>"
+    for row in plistlib.load(open(info, "rb"))["IIKBChangelog"][:8]
+)
 open(f"{page}/index.html", "w").write(f"""<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>iikb {number}</title>
-<body style="font: 17px -apple-system, system-ui; display: grid; place-items: center; min-height: 90vh">
-<a href="{install}" style="font-size: 22px; font-weight: 600">Install iikb {number}</a>
+<style>
+body {{ font: 17px/1.4 -apple-system, system-ui; max-width: 30em; margin: 18vh auto 0; padding: 0 20px }}
+a {{ display: block; padding: 14px; border-radius: 14px; background: #0a84ff; color: white; text-align: center; font-weight: 600; text-decoration: none }}
+ul {{ list-style: none; padding: 0; margin-top: 28px; opacity: .75; font-size: 15px }}
+li {{ display: grid; grid-template-columns: 3em 1fr; margin: 8px 0 }} span {{ opacity: .6 }}
+</style>
+<a href="{install}">Install iikb {number}</a>
+<ul>{changes}</ul>
 """)
 PY
-  find "$page" -name 'iikb-*.ipa' ! -name "iikb-$number.ipa" -delete
-  [ -f "$offered" ] || first=1
-  echo "$number $(git rev-parse "$commit")" > "$offered"
-  message="iikb build $number is ready for your $kind: open $url/$lower/ in Safari and tap Install"
-  echo "$message"
-  why=
-  [ ! -f "$blocked" ] || first=
-  unblock "build $number is ready at $url/$lower/, tap Install in Safari"
-  [ -z "${first:-}" ] || tell "$message"
-  exit 0
-}
-[ -z "$away" ] || offer
-# A locked or asleep iPhone, or one off the Mac's network and cable, can't be reached; the install waits for it.
-reachable() { ssh mac xcrun devicectl device info details --device "$phone" >/dev/null 2>&1; }
-until reachable; do
-  echo "waiting for the $kind to be unlocked and on the Mac's Wi-Fi or cable" >&2
-  sleep 30
-done
-why="backup backing up your $kind's iikb data failed, and nothing installs without it"
-IIKB_BACKUP=$backups scripts/backup "$phone"
-dictating() {
-  ssh mac sh -s "$phone" <<'MAC'
-xcrun devicectl device info processes --device "$1" --json-output /tmp/iikb-processes.json >/dev/null 2>&1 &&
-xcrun devicectl device copy from --device "$1" --domain-type appGroupDataContainer --domain-identifier group.com.shahidy.iikb \
-  --source Library/dictation.json --destination /tmp/iikb-dictation.json >/dev/null 2>&1 &&
-/usr/bin/python3 -c "
-import json, sys
-running = any(p['executable'].endswith('iikb.app/iikb') for p in json.load(open('/tmp/iikb-processes.json'))['result']['runningProcesses'])
-status = json.load(open('/tmp/iikb-dictation.json'))
-sys.exit(0 if running and (status.get('listening') or status.get('writing')) else 1)"
-MAC
-}
-while dictating; do
-  echo "waiting for the dictation on the $kind to be recorded and written down, since an install would cut it off" >&2
-  sleep 2
-done
-why=
-installed=$(installed_build) || true
-if ahead && [ -z "$reinstall" ]; then
-  echo "build $installed went on the $kind while build $number (main $commit) was being built, so the older one isn't installed"
-  exit 0
-fi
-why="install the Mac couldn't install build $number on your $kind"
-# Over Wi-Fi the connection can drop mid-install ("Connection invalid"); the next try goes through.
-for try in 1 2 3; do
-  ssh mac xcrun devicectl device install app --device "$phone" Developer/iikb-phone/iikb.app && break
-  if [ "$try" = 3 ]; then
-    if ! reachable; then
-      [ ! -f "$link" ] || offer
-      why="install your $kind stopped answering partway through installing build $number (locked, asleep, or off the Mac's Wi-Fi and cable)"
-    fi
-    exit 1
-  fi
-  echo "the install was cut off, so it tries again" >&2
-  until reachable; do sleep 30; done
-done
-fresh=$(ssh mac sh -s "$phone" <<'MAC'
-xcrun devicectl device info files --device "$1" --domain-type appDataContainer --domain-identifier com.shahidy.iikb \
-  --subdirectory Library --json-output /tmp/iikb-library.json >/dev/null 2>&1 &&
-/usr/bin/python3 -c "import json; print(not any(f['relativePath'].startswith('Application Support/') for f in json.load(open('/tmp/iikb-library.json'))['result']['files']))"
-MAC
-) || true
-if [ "$fresh" = True ]; then
-  mkdir -p "$backups" && date +%Y-%m-%dT%H%M%S >> "$backups/reinstalls"
-  echo "the install started iikb in a new, empty container; IIKB_BACKUP=$backups scripts/restore $phone puts its data back (docs/backup.md)" >&2
-fi
-why=
-ssh mac 'cat > Developer/iikb-phone/unlocked' < scripts/unlocked
-ssh mac "pkill -f 'iikb-phone/unlocked $phone'; nohup /usr/bin/python3 -I Developer/iikb-phone/unlocked $phone >/dev/null 2>&1 </dev/null &"
+find "$page" -name 'iikb-*.ipa' ! -name "iikb-$number.ipa" -delete
 echo "$number $(git rev-parse "$commit")" > "$stamp"
-rm -rf "$offered" "$page"
-echo "build $number (main $commit) is on the $kind"
-unblock "build $number is on the $kind"
+why=
+echo "build $number (main $commit) is on the install link, $url/: tap Install there in Safari on the iPhone or iPad"
+unblock "build $number is on the link"
+on_devices

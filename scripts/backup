@@ -1,8 +1,8 @@
 #!/bin/bash
 # Copies iikb's data off the iPhone the Mac reaches into ~/.local/share/iikb/backup here: the app's, the
 # keyboard's and the App Group's files, all but Parakeet's models. Nothing is deleted there, and a file a backup
-# replaces is kept under versions/<time>, so one wiped on the phone can be put back. scripts/phone runs it before
-# every install. In the day after an install left iikb a new, empty container (`reinstalls`, written by scripts/phone), a
+# replaces is kept under versions/<time>, so one wiped on the phone can be put back. In the day after an install left
+# iikb a new, empty container (`reinstalls`, docs/backup.md), a
 # file the iPhone holds at under half the size of the backup's (over 4 KB) is kept under smaller/<time> rather than over
 # the backup's, which stays for scripts/restore to put back; --smaller takes such files anyway. Any other shrink was you
 # (Reset Learned Words, a deleted transcript) and is backed up as it is.
