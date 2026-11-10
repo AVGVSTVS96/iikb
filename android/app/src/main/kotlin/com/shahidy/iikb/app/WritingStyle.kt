@@ -38,10 +38,16 @@ fun WritingStyle() {
     var app by remember { mutableStateOf(DEFAULT) }
     val styles = store.appStyles()
     val default = store.string("writingStyle")
-    val picked = if (app == DEFAULT) default else styles[app]
+    val title = Core.styles.firstOrNull { it.value == default }?.title
+    /** The default style with Text Mode's words kept from before, as Excited! · Abbreviated, which no style types. */
+    val kept = TEXT_MODES[store.string("textMode")]?.let { words -> "$title · $words" }
+    /** The style picked for [app], null where it follows the default; the default's, unless it keeps Text Mode's words. */
+    val picked = if (app == DEFAULT) default.takeIf { kept == null } else styles[app]
+    /** `said` as typed with `changed` set; a style of its own, an app's or a row's, types without the kept words. */
     fun typed(said: String, vararg changed: Pair<String, String>): String {
         val set = mapOf("writingStyle" to (picked ?: default)) + changed
-        val lines = store.lines().lines().joinToString("\n") { line ->
+        val words = changed.none { it.first == "writingStyle" } && (app == DEFAULT || picked == null)
+        val lines = store.lines().lines().filter { words || !it.startsWith("textMode=") }.joinToString("\n") { line ->
             set.entries.firstOrNull { line.startsWith("${it.key}=") }?.let { "${it.key}=${it.value}" } ?: line
         }
         return Core.typed(context, said, lines)
@@ -63,7 +69,10 @@ fun WritingStyle() {
             Divider()
         }
         if (app != DEFAULT) {
-            ChoiceRow("Default", Core.styles.firstOrNull { it.value == default }?.title, picked == null) { pick(null) }
+            ChoiceRow("Default", kept ?: title, picked == null) { pick(null) }
+            Divider()
+        } else if (kept != null) {
+            ChoiceRow(kept, quoted(Sample.STYLE.said), true) {}
             Divider()
         }
         Core.styles.forEachIndexed { index, style ->
@@ -131,5 +140,8 @@ private fun WritingPreview(said: String, typed: String) {
 
 private const val RAMBLED = "Um, I think the the plan is, like, two, I mean three."
 
+/** Text Mode's names, from when it was a setting of its own, kept beside the style where none types its words. */
+private val TEXT_MODES =
+    mapOf("spelledOut" to "Spelled Out", "abbreviated" to "Abbreviated", "texting" to "Texting", "genZ" to "Gen Z")
 private val EDITING = listOf("asSaid" to "As Said", "light" to "No Um or Uh", "clean" to "Clean")
 private val LISTS = listOf("numbered" to "Numbered", "bulleted" to "Bulleted", "off" to "Off")
