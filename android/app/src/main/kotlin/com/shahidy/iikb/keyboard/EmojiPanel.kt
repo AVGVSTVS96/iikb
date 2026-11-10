@@ -211,6 +211,9 @@ class EmojiPanel(private val view: KeyboardView, private val scroller: OverScrol
     /** Where the held emoji sits, for its tones. */
     fun frameOf(index: Int, frame: Frame): RectF? = place(geometry(frame.toolbar), index)
 
+    /** The top of the emoji's rows. */
+    fun top(frame: Frame): Float = geometry(frame.toolbar).area.top
+
     private fun index(g: Geometry, x: Float, y: Float): Int {
         val index = if (g.compact) {
             floor((x - g.area.left + offset) / g.cell).toInt()

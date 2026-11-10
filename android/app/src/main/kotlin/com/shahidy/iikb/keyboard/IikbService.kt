@@ -246,6 +246,8 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         overlay.view.visibility = View.GONE
         val root = FrameLayout(this)
         root.setPadding(0, (HEADROOM * resources.displayMetrics.density).toInt(), 0, 0)
+        root.clipToPadding = false
+        root.clipChildren = false
         root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         root.addView(overlay.view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))
         root.addView(overlay.peek, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))

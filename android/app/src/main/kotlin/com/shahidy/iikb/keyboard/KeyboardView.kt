@@ -219,7 +219,10 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                 "letter", picked, null, true, null, "center", false, false, "letter", "character", true, picked, null,
                 picked, tones, false,
             )
-            showAccents(frame, cap, tones, symbols = false, selected = tones.indexOf(picked).coerceAtLeast(0))
+            showAccents(
+                frame, cap, tones, symbols = false, selected = tones.indexOf(picked).coerceAtLeast(0),
+                ceiling = emoji.top(frame) - TONES_RISE + 1 - keysTop,
+            )
             invalidate()
         }.also { handler.postDelayed(it, ACCENT_HOLD) }
     }
@@ -950,7 +953,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         canvas.drawText(label, bubble.centerX() - width / 2, baseline, text)
     }
 
-    private fun showAccents(frame: Frame, cap: Cap, options: List<String>, symbols: Boolean, selected: Int) {
+    /** Accents rise as far as `ceiling`, the top of the keyboard unless given, in the keys' coordinates. */
+    private fun showAccents(frame: Frame, cap: Cap, options: List<String>, symbols: Boolean, selected: Int, ceiling: Float = -keysTop + 1) {
         val padding = 10f
         val cell = if (symbols) 50f else (cap.width + 4).toFloat()
         val height = (if (symbols) cap.height + 18 else cap.height * 1.57).toFloat()
@@ -958,7 +962,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val width = cell * options.size + padding * 2
         val x = (cap.x + cap.width / 2 - padding - cell * (selected + 0.5)).toFloat()
             .coerceAtLeast(7f).coerceAtMost((frame.width - width - 7).toFloat())
-        val y = (cap.y - height - 3).toFloat().coerceAtLeast(-keysTop + 1)
+        val y = (cap.y - height - 3).toFloat().coerceAtLeast(ceiling)
         accents = Accents(options, symbols, RectF(x, y, x + width, y + height), cell, padding, highlight, selected)
     }
 
@@ -1003,6 +1007,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         const val EMOJI_PITCH = 36f
         const val EMOJI_SIZE = 24f * 24f / 27f
         const val EMOJI_SLOP = 8f
+        /** How far a held emoji's tones may rise above the emoji's rows, as iOS's `EmojiPanel` lets them. */
+        const val TONES_RISE = 8f
         const val SWIPE_DISTANCE = 0.8
         const val DOUBLE_TAP = 350L
         const val ACCENT_HOLD = 450L
