@@ -276,7 +276,7 @@ why="install the Mac couldn't install build $number on the $kind (devicectl)"
 # Over Wi-Fi the connection can drop mid-install ("Connection invalid"); the next try goes through.
 for try in 1 2 3; do
   ssh mac xcrun devicectl device install app --device "$phone" Developer/iikb-phone/iikb.app && break
-  [ "$try" -lt 3 ] || exit 1
+  [ "$try" -lt 3 ] || { reachable || why="install your $kind stopped answering partway through installing build $number (locked, asleep, or off the Mac's Wi-Fi and cable)"; exit 1; }
   echo "the install was cut off, so it tries again" >&2
   until reachable; do sleep 30; done
 done
