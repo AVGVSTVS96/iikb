@@ -214,13 +214,21 @@ final class Chats {
 
     private func follow(_ chat: Chat) async {
         var version: String?
+        var wait = Duration.seconds(1)
         while !Task.isCancelled {
             let read = await Self.read(chat, after: version)
             guard !Task.isCancelled, open == chat else { return }
             guard let read else {
-                problem = "Can’t reach \(chat.service.name). Pick the chat to try again."
-                return report()
+                if problem == nil {
+                    problem = "Can’t reach \(chat.service.name). Trying again."
+                    report()
+                }
+                // timer: unlisted (a failed read has no event to wait for, so the next try backs off, 1 s up to 15 s)
+                try? await Task.sleep(for: wait)
+                wait = min(wait * 2, .seconds(15))
+                continue
             }
+            wait = .seconds(1)
             guard read.version != version || problem != nil else { continue }
             version = read.version
             said = read.messages
