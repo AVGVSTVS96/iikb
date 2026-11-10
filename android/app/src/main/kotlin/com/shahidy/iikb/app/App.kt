@@ -5,33 +5,22 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import com.shahidy.iikb.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -45,20 +34,32 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.shahidy.iikb.Settings
+import com.shahidy.iikb.Text
 import com.shahidy.iikb.app.clipboard.ClipboardPage
 import com.shahidy.iikb.app.stats.StatsPage
 import com.shahidy.iikb.app.stats.StatsSection
 import com.shahidy.iikb.app.transcripts.TranscriptsPage
+import kotlin.math.roundToInt
 
 /** The tabs go under the keyboard while it's up, as iOS's do, so the page keeps the room above the keys. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -149,33 +150,53 @@ enum class Tab(val title: String, val symbol: String) {
 
 /**
  * The tabs as iOS's tab bar draws them on an iPhone: a capsule of glass floating over the page's foot, the page
- * scrolling on under it, each tab its filled glyph over its name in the label's color, the picked one tinted on a
- * darker pill of its own.
+ * scrolling on under it, each tab its filled glyph over its name in the label's color, as wide as the wider of the two
+ * (at least 40), the room left shared evenly around them, and the picked one tinted on a darker pill 22 wider each side
+ * than its tab (at least 82 wide), kept inside the capsule.
  */
 @Composable
 private fun TabBar(tab: Int, backdrop: Backdrop, pick: (Int) -> Unit) {
     val palette = palette()
     val dark = palette == Palette.dark
     val capsule = RoundedCornerShape(percent = 50)
-    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 21.dp, end = 21.dp, top = 6.dp, bottom = 4.dp)) {
-        Row(Modifier.fillMaxWidth().height(62.dp).glass(capsule, backdrop).padding(4.dp)) {
-            Tab.entries.forEachIndexed { index, item ->
-                val picked = index == tab
-                val tint = if (picked) palette.accent else palette.label
-                Column(
-                    Modifier.weight(1f).fillMaxHeight().clip(capsule)
-                        .background(if (picked) Color.Black.copy(alpha = if (dark) 0.42f else 0.08f) else Color.Transparent)
-                        .clickable(interactionSource = null, indication = null) { pick(index) }
-                        .semantics { role = Role.Tab; selected = picked },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Icon(Symbols[item.symbol], null, tint = tint, modifier = Modifier.size(30.dp))
-                    Text(
-                        item.title, color = tint, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1,
-                        modifier = Modifier.padding(top = 1.dp),
-                    )
+    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 21.dp, end = 21.dp, bottom = 4.dp)) {
+        Layout(
+            content = {
+                Box(Modifier.clip(capsule).background(Color.Black.copy(alpha = if (dark) 0.42f else 0.08f)))
+                Tab.entries.forEachIndexed { index, item ->
+                    val picked = index == tab
+                    val tint = if (picked) palette.accent else palette.label
+                    Column(
+                        Modifier.clickable(interactionSource = null, indication = null) { pick(index) }
+                            .semantics { role = Role.Tab; selected = picked },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(Symbols[item.symbol], null, tint = tint, modifier = Modifier.size(30.dp))
+                        Text(
+                            item.title, color = tint, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1,
+                            modifier = Modifier.padding(top = 1.dp),
+                        )
+                    }
                 }
+            },
+            modifier = Modifier.fillMaxWidth().height(62.dp).glass(capsule, backdrop).padding(4.dp),
+        ) { measurables, constraints ->
+            val width = constraints.maxWidth
+            val height = constraints.maxHeight
+            val tabs = measurables.drop(1)
+            val sizes = tabs.map { maxOf(it.maxIntrinsicWidth(height), 40.dp.roundToPx()) }
+            val gap = (width - sizes.sum()).coerceAtLeast(0) / (tabs.size + 1f)
+            val starts = sizes.runningFold(gap) { x, size -> x + size + gap }
+            val slots = tabs.mapIndexed { index, tab ->
+                tab.measure(Constraints.fixed((sizes[index] + gap).roundToInt(), height))
+            }
+            val pillWidth = minOf(maxOf(sizes[tab] + 44.dp.roundToPx(), 82.dp.roundToPx()), width)
+            val pill = measurables.first().measure(Constraints.fixed(pillWidth, height))
+            layout(width, height) {
+                val center = starts[tab] + sizes[tab] / 2f
+                pill.place((center - pillWidth / 2f).roundToInt().coerceIn(0, width - pillWidth), 0)
+                slots.forEachIndexed { index, slot -> slot.place((starts[index] - gap / 2).roundToInt(), 0) }
             }
         }
     }
