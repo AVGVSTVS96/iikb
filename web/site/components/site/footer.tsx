@@ -142,7 +142,7 @@ export const Footer = ({ head }: { head: { sha: string; day: string } }) => {
         </div>
         <Separator className="mt-6" />
         <div className="flex flex-col justify-between gap-1.5 py-6 font-mono text-xs text-faint sm:flex-row">
-          <span>made on an iPhone Duo · MIT · iOS 26+ · Android beta</span>
+          <span className="text-balance">made on an iPhone Duo · MIT · iOS 26+ · Android beta</span>
           <a
             href={`https://github.com/AVGVSTVS96/iikb/commit/${head.sha}`}
             className="transition-colors hover:text-foreground"

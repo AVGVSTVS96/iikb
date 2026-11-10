@@ -124,15 +124,15 @@ export default function Page() {
 
         <Section id="typing" index="02" title="it learns your thumbs.">
           <Body className="grid gap-10">
-            <div className="grid gap-10 sm:grid-cols-2 sm:gap-6">
-              <div className="grid gap-2">
+            <div className="grid items-start gap-10 sm:grid-cols-2 sm:gap-6">
+              <div className="grid content-start gap-2">
                 <Big value={String(accuracy.iikb)} unit="%" className="mb-3 text-pick" />
                 <p className="text-[17px]">words right with off-target thumbs</p>
                 <p className="font-mono text-xs text-muted-foreground">
                   {accuracy.baseline}% nearest key + Apple’s spell checker
                 </p>
               </div>
-              <div className="grid gap-2">
+              <div className="grid content-start gap-2">
                 <Big value="88.2" unit="%" className="mb-3" />
                 <p className="text-[17px]">
                   swipes read right the first time, level with Apple’s keyboard
@@ -155,7 +155,7 @@ export default function Page() {
               {count(accuracy.phrases)} phrases typed twice with simulated off-target taps.{" "}
               <a
                 href={`${REPO}/blob/main/PROGRESS.md`}
-                className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
+                className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground whitespace-nowrap"
               >
                 How it’s measured
               </a>
@@ -174,7 +174,7 @@ export default function Page() {
               <Fact value="$0" label="no word limit, no account" />
               <Fact value="on‑device" label="NVIDIA Parakeet, on the iPhone’s Neural Engine" />
             </dl>
-            <div className="grid items-stretch gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
               <KeyboardShot
                 name="kb-voice"
                 height={680}
@@ -193,7 +193,7 @@ export default function Page() {
                 alt="iikb’s menu: cut, copy and paste, then shelves of clipboard links, transcripts, GIFs and themes"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3 md:gap-6">
+            <div className="grid gap-4 sm:grid-cols-2 md:gap-6">
               {TILES.map((t) => (
                 <Card key={t.name} className="gap-4 pb-0">
                   <CardHeader className="gap-0.5">

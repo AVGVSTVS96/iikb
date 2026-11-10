@@ -17,6 +17,7 @@ export const Themes = () => {
   const [held, setHeld] = useState(false);
   const [seen, setSeen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLOListElement>(null);
   const name = NAMES[at] ?? "standard";
 
   useEffect(() => {
@@ -39,7 +40,13 @@ export const Themes = () => {
 
   useEffect(() => {
     theme.send(name);
-  }, [name]);
+    const el = list.current;
+    const on = el?.children[at];
+
+    if (el && on instanceof HTMLElement && el.scrollWidth > el.clientWidth) {
+      el.scrollTo({ left: on.offsetLeft - 20, behavior: "smooth" });
+    }
+  }, [name, at]);
 
   useEffect(() => {
     if (held || !seen || matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -67,7 +74,8 @@ export const Themes = () => {
       }}
     >
       <ol
-        className="grid grid-cols-3 gap-x-4 gap-y-2 md:col-span-4 md:grid-cols-1 md:gap-1"
+        ref={list}
+        className="-mx-5 flex gap-x-5 overflow-x-auto px-5 pb-1 [mask-image:linear-gradient(90deg,transparent,#000_20px,#000_calc(100%-40px),transparent)] [scrollbar-width:none] md:col-span-4 md:mx-0 md:grid md:gap-1 md:overflow-visible md:px-0 md:[mask-image:none]"
         aria-label="Themes"
       >
         {NAMES.map((n, i) => (

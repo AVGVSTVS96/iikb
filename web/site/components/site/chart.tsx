@@ -77,7 +77,7 @@ export const Chart = ({ ours, theirs, block }: Props) => {
           {[80, 85, 90, 95, 100].map((v) => (
             <g key={v}>
               <line x1={LEFT} x2={width} y1={y(v)} y2={y(v)} className="stroke-border" />
-              <text x={0} y={y(v) + 4} className="fill-faint font-mono text-[11px]">
+              <text x={0} y={y(v) + 4} className="fill-muted-foreground font-mono text-[11px]">
                 {v}%
               </text>
             </g>
@@ -91,7 +91,7 @@ export const Chart = ({ ours, theirs, block }: Props) => {
                 x={x(i)}
                 y={height - 6}
                 textAnchor="middle"
-                className="fill-faint font-mono text-[11px]"
+                className="fill-muted-foreground font-mono text-[11px]"
               >
                 {((i + 1) * block).toLocaleString("en-US")}
               </text>
@@ -113,7 +113,11 @@ export const Chart = ({ ours, theirs, block }: Props) => {
             <circle key={`t${i}`} cx={x(i)} cy={y(v)} r={3} className={`fill-faint ${fade}`} />
           ))}
           {narrow ? null : (
-            <text x={x(last) + 30} y={height - 6} className="fill-faint font-mono text-[11px]">
+            <text
+              x={x(last) + 30}
+              y={height - 6}
+              className="fill-muted-foreground font-mono text-[11px]"
+            >
               words typed
             </text>
           )}

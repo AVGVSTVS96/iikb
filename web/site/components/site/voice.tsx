@@ -38,14 +38,15 @@ export const Styles = () => {
   const style = STYLES.find((s) => s.id === id) ?? STYLES[2];
 
   return (
-    <div className="grid grid-rows-[auto_1fr] gap-4">
+    <div className="grid min-w-0 grid-rows-[auto_1fr] gap-4">
       <Tabs
+        className="min-w-0"
         value={id}
         onValueChange={(v) => {
           setId(String(v));
         }}
       >
-        <TabsList className="w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto">
+        <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none]">
           {STYLES.map((s) => (
             <TabsTrigger key={s.id} value={s.id} className="h-8 flex-none px-3">
               {s.title}
