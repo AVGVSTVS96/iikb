@@ -45,13 +45,6 @@ const Fact = ({ value, unit, label }: { value: string; unit?: string; label: str
 
 const TILES = [
   {
-    name: "kb-clipboard",
-    height: 680,
-    title: "Clipboard",
-    line: "links, pins, images",
-    alt: "Clipboard history above the keys, links shown with their site’s icon",
-  },
-  {
     name: "kb-gif",
     height: 968,
     title: "GIFs",
@@ -64,6 +57,13 @@ const TILES = [
     title: "Emoji",
     line: `${count(facts.emoji)}, by name`,
     alt: "Emoji search for pizza",
+  },
+  {
+    name: "kb-clipboard",
+    height: 680,
+    title: "Clipboard",
+    line: "links, pins, images",
+    alt: "Clipboard history above the keys, links shown with their site’s icon",
   },
   {
     name: "kb-transcripts",
@@ -174,7 +174,7 @@ export default function Page() {
               <Fact value="$0" label="no word limit, no account" />
               <Fact value="on‑device" label="NVIDIA Parakeet, on the iPhone’s Neural Engine" />
             </dl>
-            <div className="grid items-center gap-6 md:grid-cols-2">
+            <div className="grid items-stretch gap-6 md:grid-cols-2">
               <KeyboardShot
                 name="kb-voice"
                 height={680}
@@ -256,7 +256,7 @@ export default function Page() {
           <Body className="grid gap-10">
             <dl className="grid grid-cols-2 gap-6 md:grid-cols-4">
               <Fact value={count(changes.commits)} label="commits" />
-              <Fact value={day(changes.since)} label="since" />
+              <Fact value={day(changes.since)} label="first commit" />
               <Fact value={count(tests.core)} label="tests" />
               <Fact value={count(lexiconWords)} label="words known" />
             </dl>

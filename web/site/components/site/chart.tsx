@@ -112,6 +112,11 @@ export const Chart = ({ ours, theirs, block }: Props) => {
           {theirs.map((v, i) => (
             <circle key={`t${i}`} cx={x(i)} cy={y(v)} r={3} className={`fill-faint ${fade}`} />
           ))}
+          {narrow ? null : (
+            <text x={x(last) + 30} y={height - 6} className="fill-faint font-mono text-[11px]">
+              words typed
+            </text>
+          )}
           {narrow ? (
             <>
               <text

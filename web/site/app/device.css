@@ -174,9 +174,9 @@
   width: 1px;
   background: linear-gradient(
     transparent,
-    rgb(128 128 128 / 0.18) 20%,
-    rgb(128 128 128 / 0.18) 80%,
-    transparent
+    rgb(128 128 128 / 0.14) 15%,
+    rgb(128 128 128 / 0.14) 48%,
+    transparent 58%
   );
 }
 .duo.whole .base .inner::after {

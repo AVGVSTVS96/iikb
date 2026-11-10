@@ -38,14 +38,14 @@ export const Styles = () => {
   const style = STYLES.find((s) => s.id === id) ?? STYLES[2];
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-rows-[auto_1fr] gap-4">
       <Tabs
         value={id}
         onValueChange={(v) => {
           setId(String(v));
         }}
       >
-        <TabsList className="flex-wrap justify-start group-data-horizontal/tabs:h-auto">
+        <TabsList className="w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto">
           {STYLES.map((s) => (
             <TabsTrigger key={s.id} value={s.id} className="h-8 flex-none px-3">
               {s.title}
@@ -53,7 +53,7 @@ export const Styles = () => {
           ))}
         </TabsList>
       </Tabs>
-      <Card className="min-h-[248px]">
+      <Card className="min-h-[248px] justify-center">
         <CardContent className="grid gap-5">
           <p className="flex items-baseline gap-2.5 font-mono text-xs leading-relaxed text-muted-foreground">
             <span className="relative top-[-1px] size-[7px] flex-none rounded-full bg-live shadow-[0_0_0_3px_color-mix(in_srgb,var(--red)_22%,transparent)]" />

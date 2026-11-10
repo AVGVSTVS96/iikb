@@ -185,6 +185,10 @@ export const mountKeyboard = (root, { active = () => root.isConnected } = {}) =>
       return;
     }
 
+    for (const other of kb.querySelectorAll(".k.down")) {
+      other.classList.remove("down");
+    }
+
     el.classList.add("down");
 
     if (k.length === 1) {
