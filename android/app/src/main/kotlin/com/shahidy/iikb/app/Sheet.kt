@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,7 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.dp
 import com.shahidy.iikb.app.design.isDark
 
@@ -101,13 +101,31 @@ fun Sheet(
                 .scrollable(grow, Orientation.Vertical, flingBehavior = settle),
         ) {
             Column {
-                Row(Modifier.fillMaxWidth().padding(start = 14.5.dp, end = 14.5.dp, top = 15.5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    SheetButton("Cancel", enabled = true, prominent = false, onClick = close)
-                    Text(
-                        title, color = palette.label, fontSize = Type.body, fontWeight = FontWeight.SemiBold,
-                        textAlign = TextAlign.Center, maxLines = 1, modifier = Modifier.weight(1f),
-                    )
-                    SheetButton(action, enabled, prominent = true, onClick = confirm)
+                Layout(
+                    content = {
+                        SheetButton("Cancel", enabled = true, prominent = false, onClick = close)
+                        Text(
+                            title, color = palette.label, fontSize = Type.body, fontWeight = FontWeight.SemiBold,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                        SheetButton(action, enabled, prominent = true, onClick = confirm)
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(start = 14.5.dp, end = 14.5.dp, top = 15.5.dp),
+                ) { (cancel, name, confirming), constraints ->
+                    val loose = constraints.copy(minWidth = 0, minHeight = 0)
+                    val left = cancel.measure(loose)
+                    val right = confirming.measure(loose)
+                    val gap = 8.dp.roundToPx()
+                    val room = constraints.maxWidth - left.width - right.width - 2 * gap
+                    val middle = name.measure(loose.copy(maxWidth = maxOf(room, 0)))
+                    val height = maxOf(left.height, right.height, middle.height)
+                    layout(constraints.maxWidth, height) {
+                        left.place(0, (height - left.height) / 2)
+                        right.place(constraints.maxWidth - right.width, (height - right.height) / 2)
+                        val centered = (constraints.maxWidth - middle.width) / 2
+                        val x = centered.coerceIn(left.width + gap, maxOf(left.width + gap, constraints.maxWidth - right.width - gap - middle.width))
+                        middle.place(x, (height - middle.height) / 2)
+                    }
                 }
                 Column(
                     Modifier.verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 24.dp),

@@ -45,6 +45,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shahidy.iikb.ThisDevice
@@ -110,7 +111,7 @@ fun StatsPage(section: StatsSection, pick: (StatsSection) -> Unit, computer: Str
                 actions = {
                     if (!inRow) {
                         menu(false)
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(12.dp))
                     }
                     MicSwitch()
                 },
@@ -147,7 +148,7 @@ private fun pillsWidth(sections: List<StatsSection>): androidx.compose.ui.unit.D
 
 /**
  * The device Stats shows, picked from a menu: this phone and each computer, then Add Computer and, for a computer,
- * Forget. In the bar it's a glass circle of the device's glyph; at the pills' end, its glyph and name in their look.
+ * Forget. In the bar it's a glass capsule of the device's glyph, wider for a computer's; at the pills' end, its glyph and name in their look.
  */
 @Composable
 private fun Devices(
@@ -161,7 +162,8 @@ private fun Devices(
             PillMenuLabel(symbol, computer ?: ThisDevice.NAME, Modifier.clip(CircleShape).clickable { open = true })
         } else {
             Box(
-                Modifier.size(44.dp).glass(CircleShape).clip(CircleShape).clickable { open = true },
+                Modifier.size(if (computer == null) DpSize(44.dp, 44.dp) else DpSize(49.dp, 45.dp))
+                    .glass(RoundedCornerShape(percent = 50)).clip(RoundedCornerShape(percent = 50)).clickable { open = true },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(

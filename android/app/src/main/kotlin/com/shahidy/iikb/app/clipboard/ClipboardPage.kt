@@ -147,9 +147,9 @@ fun ClipboardPage() {
                 }
             }
         }
-        groups.forEach { (title, rows) ->
+        groups.forEachIndexed { index, (title, rows) ->
             item(key = title) {
-                Box(Modifier.padding(bottom = 24.dp)) {
+                Box(Modifier.padding(bottom = if (index < groups.lastIndex) 24.dp else 0.dp)) {
                     Rows(title) {
                         rows.forEachIndexed { index, row ->
                             if (index > 0) Divider()

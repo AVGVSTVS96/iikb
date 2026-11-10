@@ -193,8 +193,8 @@ object Symbols {
         "laptopcomputer" to stroked("M3.9 17.3V7.2a1.3 1.3 0 0 1 1.3-1.3h13.6a1.3 1.3 0 0 1 1.3 1.3v10.1", 1.56f) +
             filled("M.9 17h22.2a.92.92 0 0 1 0 1.85H.9a.92.92 0 0 1 0-1.85Z") + secondary("M4.7 6.7h14.6v10.3H4.7Z"),
         "trash" to stroked("M4 6.2h16 M9.2 6V4.6a1.1 1.1 0 0 1 1.1-1.1h3.4a1.1 1.1 0 0 1 1.1 1.1V6 M6 6.6l.9 12.7a1.9 1.9 0 0 0 1.9 1.7h6.4a1.9 1.9 0 0 0 1.9-1.7L18 6.6 M10 10v7 M14 10v7", 1.6f),
-        "plus" to stroked("M12 5v14M5 12h14", 2f),
-        "arrow.up.forward" to stroked("M7 17 17 7 M8.5 7H17v8.5", 2.6f),
+        "plus" to stroked("M12 5v14M5 12h14", 2.3f),
+        "arrow.up.forward" to stroked("M5.5 18.5 18.5 5.5 M8 5.5H18.5V16", 2f),
         "chevron.right" to stroked("M9 4.5l7.5 7.5L9 19.5", 2.2f),
         "chevron.left" to stroked("M14.16 5.45 7.45 12 14.16 18.55", 1.75f),
         "chevron.up.chevron.down" to stroked("M8 9l4-4 4 4 M8 15l4 4 4-4", 2.2f),

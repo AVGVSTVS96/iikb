@@ -62,10 +62,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
@@ -135,12 +139,12 @@ val CardShape = RoundedCornerShape(22.dp)
  * A page: its title and buttons in a bar pinned at the top, as iOS's navigation bar holds them, over a column of
  * sections 28 apart that scrolls under it. A tab's page has a large title until it scrolls (iOS's `.inlineLarge`);
  * one opened from another (`onBack`) a small one. It makes room for the keyboard unless it lies `underKeyboard`, as
- * Home does (iOS's `.ignoresSafeArea(.keyboard)`).
+ * Home does (iOS's `.ignoresSafeArea(.keyboard)`), and leaves `end` free under its last section.
  */
 @Composable
 fun Page(
     title: String, onBack: (() -> Unit)? = null, pinned: (@Composable () -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {}, underKeyboard: Boolean = false,
+    actions: @Composable RowScope.() -> Unit = {}, underKeyboard: Boolean = false, end: Dp = 40.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scroll = rememberScrollState()
@@ -148,7 +152,7 @@ fun Page(
     Frame(title, onBack, scrolled, pinned, actions) { top ->
         Column(
             Modifier.fillMaxSize().let { if (underKeyboard) it else it.imePadding() }.verticalScroll(scroll)
-                .padding(start = 16.dp, end = 16.dp, top = top + 8.dp, bottom = 40.dp + if (underKeyboard) LocalTabBarUnderKeys.current else LocalTabBar.current),
+                .padding(start = 16.dp, end = 16.dp, top = top + if (pinned == null) 8.dp else 0.dp, bottom = end + if (underKeyboard) LocalTabBarUnderKeys.current else LocalTabBar.current),
             verticalArrangement = Arrangement.spacedBy(28.dp),
             content = content,
         )
@@ -167,7 +171,7 @@ fun ListPage(
         LazyColumn(
             Modifier.fillMaxSize().imePadding(),
             state = list,
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top + 8.dp, bottom = 40.dp + LocalTabBar.current),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top + if (pinned == null) 8.dp else 0.dp, bottom = 40.dp + LocalTabBar.current),
         ) { content() }
     }
 }
@@ -213,16 +217,21 @@ private fun Frame(
     }
 }
 
-/** iOS 26's scroll edge under a bar: what's under it blurred and washed toward white in light and near black in dark. */
+/**
+ * iOS 26's scroll edge under a bar: what's under it blurred and washed nearly away, toward white in light and near
+ * black in dark, over a hairline at its foot.
+ */
 @Composable
 private fun Modifier.scrollEdge(backdrop: Backdrop, shown: Float): Modifier {
     if (shown == 0f) return this
-    val wash = if (palette().isDark) Color(0xFF121212).copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f)
+    val palette = palette()
+    val wash = if (palette.isDark) Color(0xFF121212).copy(alpha = 0.86f) else Color.White.copy(alpha = 0.86f)
     return drawPlainBackdrop(
         backdrop, { RectangleShape },
-        effects = { blur(4.dp.toPx()) },
+        effects = { blur(8.dp.toPx()) },
         layerBlock = { alpha = shown },
         onDrawSurface = { drawRect(wash) },
+        onDrawFront = { drawRect(palette.divider, Offset(0f, size.height - 1f), Size(size.width, 1f)) },
     )
 }
 
@@ -246,7 +255,7 @@ private fun Bar(title: String, onBack: (() -> Unit)?, scrolled: Boolean, actions
                 Text(
                     title, color = palette.label, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.layoutId("large").padding(start = 4.dp).alpha(1 - small),
+                    modifier = Modifier.layoutId("large").alpha(1 - small),
                 )
             }
             Text(
@@ -437,8 +446,11 @@ fun MenuRow(title: String, picked: String, choices: List<Pair<String, String>>, 
     val palette = palette()
     var open by remember { mutableStateOf(false) }
     Box {
-        Line(title, value = choices.firstOrNull { it.first == picked }?.second, onClick = { open = true }) {
-            Trailing("chevron.up.chevron.down")
+        Line(title, onClick = { open = true }) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                choices.firstOrNull { it.first == picked }?.let { Text(it.second, color = palette.secondary, fontSize = Type.body, maxLines = 1) }
+                Icon(MenuChevron, null, tint = palette.secondary)
+            }
         }
         DropdownMenu(
             open, { open = false }, Modifier.background(palette.card), shape = RoundedCornerShape(14.dp),
@@ -461,6 +473,15 @@ fun MenuRow(title: String, picked: String, choices: List<Pair<String, String>>, 
         }
     }
 }
+
+/** SF's `chevron.up.chevron.down` at body size, semibold, cropped to its ink as an SF Symbol's image is: 10 by 16. */
+private val MenuChevron = ImageVector.Builder(
+    defaultWidth = 10.dp, defaultHeight = 16.dp, viewportWidth = 10f, viewportHeight = 16f,
+).addPath(
+    pathData = PathParser().parsePathString("M1 6 5 1.6 9 6 M1 10 5 14.4 9 10").toNodes(),
+    stroke = SolidColor(Color.Black), strokeLineWidth = 1.7f,
+    strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
+).build()
 
 /** Stops on one track, Standard in the middle, named at its ends, the picked one's name beside the title (iOS's `StopSlider`). */
 @Composable
@@ -496,8 +517,9 @@ fun Stops(title: String, name: String, stops: List<Pair<String, String>>, low: S
             val step = (size.width - thumb) / (stops.size - 1)
             val y = size.height / 2
             val x = thumb / 2 + position * step
-            drawLine(palette.divider, Offset(thumb / 2, y), Offset(size.width - thumb / 2, y), 4.dp.toPx(), StrokeCap.Round)
-            drawLine(palette.accent, Offset(thumb / 2, y), Offset(x, y), 4.dp.toPx(), StrokeCap.Round)
+            val track = 4.dp.toPx()
+            drawLine(palette.divider, Offset(track / 2, y), Offset(size.width - track / 2, y), track, StrokeCap.Round)
+            drawLine(palette.accent, Offset(track / 2, y), Offset(x, y), track, StrokeCap.Round)
             for (stop in stops.indices) {
                 val color = if (stop <= index) palette.accent else palette.secondary.copy(alpha = 0.45f)
                 drawCircle(color, 4.dp.toPx(), Offset(thumb / 2 + stop * step, y))

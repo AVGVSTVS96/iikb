@@ -73,11 +73,12 @@ fun Home(open: (String) -> Unit, show: (Tab, StatsSection?) -> Unit) {
                     Modifier.padding(end = 10.dp).size(44.dp).cardPress { focus.clearFocus() }.clip(CircleShape)
                         .background(palette.accent),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Symbols["checkmark"], "Done", tint = Color.White, modifier = Modifier.size(24.dp)) }
+                ) { Icon(DoneCheck, "Done", tint = Color.White, modifier = Modifier.size(28.dp)) }
             }
             MicSwitch()
         },
         underKeyboard = true,
+        end = 16.dp,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             TryField { typing = it }
@@ -248,3 +249,6 @@ private fun ShortcutCards(open: (String) -> Unit) {
         }
     }
 }
+
+/** The Done button's check, at its regular weight, as a confirm button draws `checkmark`. */
+private val DoneCheck = glyph("M5.4 12.6 10 17.4 18.5 5.6", 1.65f)

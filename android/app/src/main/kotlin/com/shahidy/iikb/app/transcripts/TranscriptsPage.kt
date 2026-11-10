@@ -571,7 +571,7 @@ private fun CopyRow(text: String) {
 @Composable
 private fun ActionRow(title: String, symbol: String?, color: Color, onClick: () -> Unit) =
     Line(title, onClick = onClick, color = color) {
-        if (symbol != null) Icon(Symbols[symbol], null, tint = color, modifier = Modifier.size(20.5.dp))
+        if (symbol != null) Icon(Symbols[symbol], null, tint = color, modifier = Modifier.size(22.5.dp))
     }
 
 /** SF's `chevron.right` at footnote size, semibold, cropped to its ink as an SF Symbol's image is: 5.4 by 10.7. */
