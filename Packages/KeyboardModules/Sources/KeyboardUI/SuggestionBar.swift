@@ -485,7 +485,7 @@ public final class SuggestionBar: UIView {
     }
 
     /// The tools in their glass capsule, which reaches a fifth of a button past them: on BarLayout's places, or, where no
-    /// suggestions show and their titles fit, each titled in an equal share of a capsule that runs on to the mic, as far
+    /// suggestions show and their titles fit, each titled, sharing out the spare room evenly so every gap between them is one size, in a capsule that runs on to the mic, as far
     /// from it as from More, so the bar has no empty stretch at any width.
     private func placeTools(_ layout: BarLayout, reach: UIEdgeInsets) {
         toolGlass.isHidden = tools.isEmpty
@@ -495,17 +495,16 @@ public final class SuggestionBar: UIView {
         let gap = CGFloat(layout.pitch) - side - pad
         let end = (layout.mic.map { CGRect($0).minX } ?? CGFloat(layout.maxX)) - gap - pad
         tools.forEach { $0.button.use(glyph: CGFloat(toolbar.glyph)) }
-        let share = (end - first.minX) / CGFloat(tools.count)
-        let titled =
-            !enabled && !recording && edits == nil && !noticed
-            && tools.allSatisfy { $0.button.titledWidth(side) <= share }
+        let widths = tools.map { $0.button.titledWidth(side) }
+        let spare = (end - first.minX - widths.reduce(0, +)) / CGFloat(tools.count)
+        let titled = !enabled && !recording && edits == nil && !noticed && spare >= 0
+        var x = first.minX
         for (index, (tool, frame)) in zip(tools, layout.tools).enumerated() {
             tool.button.titled = titled
             let place =
-                titled
-                ? CGRect(x: first.minX + CGFloat(index) * share, y: first.minY, width: share, height: side)
-                : CGRect(frame)
+                titled ? CGRect(x: x, y: first.minY, width: widths[index] + spare, height: side) : CGRect(frame)
             tool.button.place(place, glyph: CGFloat(toolbar.glyph), reach: reach)
+            x = place.maxX
         }
         let last = tools.last?.button.frame ?? first
         toolGlass.frame = CGRect(x: first.minX, y: first.minY, width: last.maxX - first.minX, height: side)
