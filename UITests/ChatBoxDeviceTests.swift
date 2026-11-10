@@ -246,6 +246,46 @@ final class ChatBoxDeviceTests: XCTestCase {
         element("iikb.more", in: app).tap()
     }
 
+    /// One mic dictates into a chat: the box has none of its own, and the bar's is there with the keys down and up,
+    /// before and after there's text to send, in light and dark. It never starts a dictation.
+    func testOneMicDictatesIntoTheChatOnThePhone() throws {
+        continueAfterFailure = false
+        let was = XCUIDevice.shared.appearance
+        addTeardownBlock { XCUIDevice.shared.appearance = was }
+        let app = XCUIApplication()
+        app.launchArguments = ["-iikbFocus", "YES"]
+        app.launch()
+        XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 10), "iikb is not the active keyboard")
+        element("iikb.more", in: app).tap()
+        let card = element("iikb.chats.shelf.0", in: app)
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
+        card.tap()
+        let field = element("iikb.chat.field", in: app)
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the chat opens with its message box")
+        let mic = element("iikb.mic", in: app)
+        let send = element("iikb.chat.send", in: app)
+        for look in [XCUIDevice.Appearance.light, .dark] {
+            XCUIDevice.shared.appearance = look
+            let name = look == .dark ? "dark" : "light"
+            Thread.sleep(forTimeInterval: 2)
+            XCTAssertFalse(element("iikb.chat.mic", in: app).exists, "the box has no mic of its own")
+            XCTAssertTrue(mic.isHittable, "the bar's mic is there with the keys down")
+            shot("20-keys-down-\(name)")
+            field.tap()
+            XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 5), "tapping the box brings the keys up")
+            for character in "one mic" { key(character == " " ? "space" : String(character), in: app).tap() }
+            Thread.sleep(forTimeInterval: 1)
+            XCTAssertTrue(send.isHittable, "send shows once there's text")
+            XCTAssertTrue(mic.isHittable, "and the mic stays, for the next dictation")
+            shot("21-typed-\(name)")
+            for _ in 0..<7 { key("delete", in: app).tap() }
+            element("iikb.chat.messages", in: app).tap()
+            XCTAssertTrue(
+                mic.waitForExistence(timeout: 3) && mic.isHittable, "the mic is there with the keys down again")
+        }
+        element("iikb.more", in: app).tap()
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }

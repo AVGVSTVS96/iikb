@@ -1,8 +1,8 @@
 import KeyboardCore
 import UIKit
 
-/// The bar's mic: a round button, white on dark and black on light, with a green dot while the app keeps the
-/// microphone on. While it listens it turns record red and grows into a capsule over the suggestions, which holds the
+/// The bar's mic: a round button of iOS's Liquid Glass, tinted white on dark and black on light, with a green dot while
+/// the app keeps the microphone on. While it listens it turns record red and grows into a capsule over the suggestions, which holds the
 /// recording, with a white stop where the mic was and a soft red halo that swells as you talk; while the
 /// app writes a dictation down a spinner, or what its `stopAnimation` shows, takes the glyph's place, and a tap still starts the next one. Tap to start or
 /// stop; only the app turns the microphone off.
@@ -10,7 +10,12 @@ public final class MicButton: UIControl {
     public enum Phase { case off, on, listening, writing }
 
     /// The face's corner radius, where it takes a key's shape; otherwise round.
-    var corner: CGFloat? { didSet { setNeedsLayout() } }
+    var corner: CGFloat? {
+        didSet {
+            refresh()
+            setNeedsLayout()
+        }
+    }
     /// Whether a halo swells around it with your voice while it listens: in the bar, never as the Record Key, whose
     /// neighbors sit too close.
     var breathes = false
@@ -20,6 +25,10 @@ public final class MicButton: UIControl {
     private(set) var phase = Phase.off
     private let halo = UIView()
     private let face = UIView()
+    /// The bar's mic is glass tinted the mic's color, red while it listens, so it sits with the glass around it; the
+    /// Record Key keeps a key's solid face.
+    private let glass = UIVisualEffectView()
+    private var tint: UIColor?
     private let glyph = UIImageView()
     private let stop = UIImageView()
     private let dot = UIView()
@@ -41,7 +50,9 @@ public final class MicButton: UIControl {
         isAccessibilityElement = true
         accessibilityTraits = .button
         for view in [halo, face] { view.layer.cornerCurve = .continuous }
-        for view in [halo, face, glyph, stop, dot, spinner, ring, check] as [UIView] {
+        glass.cornerConfiguration = .capsule()
+        glass.clipsToBounds = true
+        for view in [halo, glass, face, glyph, stop, dot, spinner, ring, check] as [UIView] {
             view.isUserInteractionEnabled = false
             addSubview(view)
         }
@@ -187,7 +198,15 @@ public final class MicButton: UIControl {
     private func refresh() {
         let listening = phase == .listening
         let idle = phase == .off || phase == .on
-        face.backgroundColor = listening ? theme.record.ui : theme.mic.ui
+        let color = listening ? theme.record.ui : theme.mic.ui
+        glass.isHidden = corner != nil
+        if corner == nil, color != tint {
+            tint = color
+            let tinted = UIGlassEffect(style: .regular)
+            tinted.tintColor = color
+            glass.effect = tinted
+        }
+        face.backgroundColor = corner == nil ? .clear : color
         halo.backgroundColor = theme.record.ui
         halo.alpha = listening && breathes ? 0.2 : 0
         glyph.tintColor = theme.micGlyph.ui
@@ -227,6 +246,7 @@ public final class MicButton: UIControl {
             return
         }
         face.layer.shadowColor = theme.mic.ui.cgColor
+        face.layer.shadowPath = UIBezierPath(roundedRect: face.bounds, cornerRadius: face.layer.cornerRadius).cgPath
         face.layer.shadowOffset = .zero
         face.layer.shadowRadius = 10
         let pulse = CABasicAnimation(keyPath: "shadowOpacity")
@@ -276,6 +296,7 @@ public final class MicButton: UIControl {
     override public func layoutSubviews() {
         super.layoutSubviews()
         face.frame = bounds
+        glass.frame = bounds
         face.layer.cornerRadius = corner ?? bounds.height / 2
         let side = min(bounds.width, bounds.height)
         let end = CGRect(

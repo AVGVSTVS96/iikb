@@ -223,7 +223,10 @@ open class FullKeyboardViewController: UIInputViewController {
             open(AppLink.appearance)
         }
         suggestionBar.onMore = { [unowned self] in toggleMenu() }
-        suggestionBar.onMic = { [unowned self] in toggleVoice() }
+        suggestionBar.onMic = { [unowned self] in
+            feedback(.other)
+            toggleVoice()
+        }
         suggestionBar.onTool = { [unowned self] in tool($0) }
         suggestionBar.onEdit = { [unowned self] in edit($0) }
         suggestionBar.onChat = { [unowned self] index in
