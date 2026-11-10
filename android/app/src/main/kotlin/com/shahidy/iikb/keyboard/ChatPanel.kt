@@ -150,28 +150,30 @@ fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
             Spacer(Modifier.size(6.dp))
             MessageBox(line, chats.open?.name?.let { "Message $it" } ?: "Message", caret = keysUp, mic = state.mic)
         }
-        if (!keysUp || chats.list.isNotEmpty()) bar.chatMore?.let { more -> GlassMore(more, bar.glyph.toFloat(), backdrop) }
+        // More's glass starts where the keys and the messages do, and the tabs a key's gap after it, as iOS's.
+        val top = (bar.top + (bar.bar - TABS_HEIGHT) / 2).toFloat()
+        val tabsX = bar.keysMinX.toFloat() + TABS_HEIGHT + 6
+        if (!keysUp || chats.list.isNotEmpty()) GlassMore(bar.keysMinX.toFloat(), top, bar.glyph.toFloat(), backdrop)
         if (chats.list.isNotEmpty()) {
             val recording = !keysUp && (state.mic == "LISTENING" || state.mic == "WRITING")
-            val end = if (recording) bar.cancel.x - 8 else minOf(bar.chatMaxX, state.width.toDouble())
+            val end = if (recording) bar.cancel.x - 8 else bar.maxX
             ChatTabs(
                 chats.list.map { it.name }, chats.list.indexOf(chats.open).takeIf { it >= 0 }, state.fresh, backdrop,
-                (end - bar.chatMinX).coerceAtLeast(0.0).toFloat().dp, actions::chat,
-                Modifier.offset(bar.chatMinX.toFloat().dp, (bar.top + (bar.bar - TABS_HEIGHT) / 2).toFloat().dp),
+                (end.toFloat() - tabsX).coerceAtLeast(0f).dp, actions::chat, Modifier.offset(tabsX.dp, top.dp),
             )
         }
     }
 }
 
-/** More beside the tabs, on a circle of glass as tall as their capsule, in the bar's More's place: it closes the chat. */
+/** More beside the tabs, on a circle of glass as tall as their capsule, at `x`, `y`: it closes the chat. */
 @Composable
-private fun GlassMore(box: Box, glyph: Float, backdrop: com.kyant.backdrop.Backdrop) {
+private fun GlassMore(x: Float, y: Float, glyph: Float, backdrop: com.kyant.backdrop.Backdrop) {
     val look = LocalColors.current
     val actions = LocalActions.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     Box(
-        Modifier.offset((box.x + box.width / 2 - TABS_HEIGHT / 2).toFloat().dp, (box.y + box.height / 2 - TABS_HEIGHT / 2).toFloat().dp)
+        Modifier.offset(x.dp, y.dp)
             .size(TABS_HEIGHT.dp).glass(CircleShape, backdrop, look.dark).clip(CircleShape)
             .clickable(interaction, indication = null, onClick = actions::more),
         contentAlignment = Alignment.Center,

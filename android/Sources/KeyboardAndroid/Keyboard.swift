@@ -110,11 +110,8 @@ final class Keyboard {
         let keyed = grid.rows.joined().contains { $0.key.action == .dictate }
         let tools: [Panel] = engine.settings.emojiKey && context.device != .phone ? [.emoji] : []
         let keys = topRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
-        let layout = { (more: Bool) in
-            BarLayout(toolbar, keys: keys, tools: tools.count, more: more, mic: !keyed, maximumSlot: toolbar.slot)
-        }
-        let bar = layout(barMore)
-        let beside = barMore ? bar : layout(true)
+        let bar = BarLayout(
+            toolbar, keys: keys, tools: tools.count, more: barMore, mic: !keyed, maximumSlot: toolbar.slot)
         let menuKeys = context.menuKeys(in: geometry.layout)
         let items = context.menu
         return Frame(
@@ -127,8 +124,8 @@ final class Keyboard {
                 results: toolbar.results, field: toolbar.field, panelHeight: toolbar.panelHeight,
                 compact: toolbar.isCompact, blockMinX: metrics.margin.leading + metrics.sideInset,
                 blockMaxX: width - metrics.margin.trailing - metrics.sideInset, minX: bar.minX, maxX: bar.maxX,
-                more: bar.more.map(Box.init), chatMinX: beside.minX, chatMaxX: beside.maxX,
-                chatMore: beside.more.map(Box.init), mic: bar.mic.map(Box.init), tools: bar.tools.map(Box.init),
+                more: bar.more.map(Box.init), keysMinX: keys.first?.minX ?? 0, mic: bar.mic.map(Box.init),
+                tools: bar.tools.map(Box.init),
                 slots: bar.slots.map(Box.init), emoji: Box(bar.emoji), emojiBeside: bar.emojiBeside,
                 cancel: Box(bar.cancel), recording: Box(bar.recording)),
             caps: caps,

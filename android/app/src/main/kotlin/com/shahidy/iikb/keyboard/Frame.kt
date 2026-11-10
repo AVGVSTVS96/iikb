@@ -85,10 +85,8 @@ data class Bar(
     val minX: Double,
     val maxX: Double,
     val more: Box? = null,
-    /** Where an open chat's tabs and More sit: the span and More of the bar with More, whether or not it shows More. */
-    val chatMinX: Double = minX,
-    val chatMaxX: Double = maxX,
-    val chatMore: Box? = more,
+    /** Where the top row's first key starts, as an open chat's More does. */
+    val keysMinX: Double = blockMinX,
     val mic: Box? = null,
     val tools: List<Box>,
     val slots: List<Box>,

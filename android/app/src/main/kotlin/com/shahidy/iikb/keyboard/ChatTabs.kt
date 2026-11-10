@@ -40,6 +40,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.Backdrop
@@ -53,8 +56,8 @@ import kotlin.math.PI
 
 /**
  * The chats as tabs in one capsule, as iOS's `ChatTabs` holds them: each chat's name, the open one on a platter that
- * slides to the tab you pick on a spring, the capsule hugging the tabs, or scrolling with its cut ends faded when they
- * don't fit. The capsule is iOS's Liquid Glass (`glass`) over `backdrop`, what's under it. Holding it lists every chat in
+ * slides to the tab you pick on a spring, raised white in light mode as iOS's segmented control's, the capsule hugging
+ * the tabs, or scrolling with its cut ends faded when they don't fit, the open tab centered. The capsule is iOS's Liquid Glass (`glass`) over `backdrop`, what's under it. Holding it lists every chat in
  * a menu, the open one checked. A chat with something you haven't seen has a dot after its name, in its padding, so
  * marking it moves nothing.
  */
@@ -82,13 +85,13 @@ fun ChatTabs(
     val platterWidth = remember { Animatable(0f) }
     var placed by remember { mutableStateOf<Int?>(null) }
     val target = shown?.takeIf { it in names.indices }
-    LaunchedEffect(target, widths) {
+    // The row centers the open tab only when the pick or its width changes, so it never scrolls back under a finger.
+    LaunchedEffect(target, widths, width) {
         target ?: return@LaunchedEffect
         val x = starts[target]
         val slides = placed != null && placed != target
         placed = target
-        val view = (width - 2 * INSET).coerceAtLeast(0f)
-        val offset = minOf(maxOf(scroll.value / density, x + widths[target] + 40 - view), x - 40).coerceIn(0f, maxOf(content - width, 0f))
+        val offset = (x + widths[target] / 2 - width / 2).coerceIn(0f, maxOf(content - width, 0f))
         if (slides) {
             val motion = spring<Float>(dampingRatio = 1 - BOUNCE, stiffness = (2 * PI / SPRING).let { (it * it).toFloat() })
             coroutineScope {
@@ -141,7 +144,10 @@ fun ChatTabs(
             if (target != null) {
                 Box(
                     Modifier.offset(x = platter.value.dp, y = INSET.dp).size(platterWidth.value.dp, (HEIGHT - 2 * INSET).dp)
-                        .background(if (look.dark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.08f), CircleShape),
+                        .let {
+                            if (look.dark) it else it.dropShadow(CircleShape, Shadow(3.dp, Color.Black.copy(alpha = 0.12f), offset = DpOffset(0.dp, 1.dp)))
+                        }
+                        .background(if (look.dark) Color.White.copy(alpha = 0.14f) else Color.White, CircleShape),
                 )
             }
             names.forEachIndexed { index, name ->
