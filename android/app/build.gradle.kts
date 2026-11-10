@@ -100,8 +100,8 @@ val keys = tasks.register<Keys>("keys") {
 
 /**
  * Settings › Changelog's `changelog.json`: each change with its build and day, newest first, from the `Changelog:`
- * trailers of commits to android/, as scripts/phone writes iOS's `IIKBChangelog`. The Core it shares with iOS came
- * whole in its first build, so iOS's older lines aren't Android's changes. `android/changelog.tsv` rewords a commit's
+ * trailers of commits to android/ and to the Core and English data it shares with iOS, as scripts/phone writes iOS's
+ * `IIKBChangelog`. Those came whole in Android's first build, so only shared commits since then are Android's changes. `android/changelog.tsv` rewords a commit's
  * line (its hash, a tab, the line) where the trailer spoke of iOS, which someone on Android has never seen. Trailers from
  * before iOS's lists took only iPhone commits start "On Android, ", which goes here.
  */
@@ -120,7 +120,11 @@ abstract class Changelog : DefaultTask() {
     fun write() {
         val rewording = reworded.get().asFile.readLines().filter { it.isNotBlank() }
             .associate { line -> line.substringBefore('\t') to line.substringAfter('\t') }
-        val entries = git("log", "--format=%H%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)", "--", "android")
+        val first = git("rev-list", "--reverse", "HEAD", "--", "android").lineSequence().first()
+        val entries = git(
+            "log", "--format=%H%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)", "$first^..HEAD", "--",
+            "android", "Packages/KeyboardModules/Sources/KeyboardCore", "Packages/KeyboardModules/Sources/KeyboardEnglish",
+        )
             .lines()
             .filter { it.isNotBlank() }
             .flatMap { line ->
