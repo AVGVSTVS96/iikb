@@ -5,6 +5,7 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.Typeface
 import kotlin.math.sqrt
 import androidx.core.graphics.PathParser
 
@@ -179,6 +180,10 @@ object Glyphs {
         "text.bubble" to lines(
             "M5.05 2.25h13.8a3.5 3.5 0 0 1 3.5 3.5v8.65a3.5 3.5 0 0 1-3.5 3.5H10.6l-3.95 3.95V17.9h-1.6a3.5 3.5 0 0 1-3.5-3.5V5.75a3.5 3.5 0 0 1 3.5-3.5Z",
         ) + lines("M6.6 6.62h10.5M6.6 9.99h10.5M6.6 13.33h6", 0.66f),
+        "bubble.left.and.bubble.right.fill" to shape(
+            "M4.17 2.73H14.34A3.6 3.6 0 0 1 17.94 6.33V6.15H12.09A3.87 3.87 0 0 0 8.22 10.02V17.67H8.31C7.59 18.66 6.51 19.56 5.25 19.92C4.8 20.01 4.44 19.83 4.44 19.47V17.67H4.08A4.05 4.05 0 0 1 .03 13.62V6.78A4.05 4.05 0 0 1 4.17 2.73Z " +
+                "M12.09 7.05H21A2.97 2.97 0 0 1 23.97 10.02V14.88C23.97 16.41 22.44 17.85 20.37 17.85V20.64C20.37 21.09 19.92 21.27 19.56 21L14.97 17.85H12.09A2.97 2.97 0 0 1 9.12 14.88V10.02A2.97 2.97 0 0 1 12.09 7.05Z",
+        ),
         "bubble.left.and.bubble.right" to lines(
             "M4 8h9a2 2 0 0 1 2 2v5.5a2 2 0 0 1-2 2H8l-3.5 3v-3H4a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z M9 8V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v5.5a2 2 0 0 1-2 2h-.5v3l-3.5-3H15",
         ),
@@ -271,6 +276,28 @@ object Glyphs {
         val scale = fitted(side)
         val size = 24 * scale
         draw(canvas, name, x + (12 - ink.centerX()) * scale, y + (12 - ink.centerY()) * scale, size, paint)
+    }
+
+    /** iOS's filled GIF glyph is this share of a glyph's side wide, so its solid block weighs what a filled symbol does. */
+    const val GIF_FILLED = 0.76f
+    private val gif = Path()
+    private val gifLetters = Path()
+    private val gifText = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    /**
+     * GIF has no symbol: as iOS's filled `Panel.gifGlyph`, a solid rounded block `GIF_FILLED` of a `side` glyph wide,
+     * "GIF" in bold `labels` cut out of it, centered on (`x`, `y`).
+     */
+    fun drawGif(canvas: Canvas, x: Float, y: Float, side: Float, paint: Paint, labels: Typeface) {
+        val unit = GIF_FILLED * side / 18.4f
+        val box = RectF(x - 9.2f * unit, y - 7.2f * unit, x + 9.2f * unit, y + 7.2f * unit)
+        gifText.typeface = Typeface.create(labels, 700, false)
+        gifText.textSize = 8 * unit
+        gif.reset()
+        gif.addRoundRect(box, 3.6f * unit, 3.6f * unit, Path.Direction.CW)
+        gifText.getTextPath("GIF", 0, 3, x - gifText.measureText("GIF") / 2, y + gifText.textSize * 0.35f, gifLetters)
+        gif.op(gifLetters, Path.Op.DIFFERENCE)
+        canvas.drawPath(gif, paint)
     }
 
     private val matrix = Matrix()

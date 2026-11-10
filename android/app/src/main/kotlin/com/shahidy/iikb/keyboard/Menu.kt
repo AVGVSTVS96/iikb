@@ -2,6 +2,9 @@ package com.shahidy.iikb.keyboard
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import android.graphics.Paint
+import android.graphics.Typeface
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,6 +45,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -93,10 +98,10 @@ fun Menu(state: Overlay.State) {
                     }
                 }
             }
-            Platter("Theme", "paintpalette.fill", Hues.teal.of(look.dark), THEME_ROW.dp, actions::appearance) {
+            Platter("Theme", "paintpalette.fill", Hues.teal.of(look.dark), THEME_ROW.dp, actions::appearance, fitted = false) {
                 ThemeRow(look.dark)
             }
-            Platter("Stop Animation", "stop.fill", Hues.red.of(look.dark), STOP_ROW.dp, actions::appearance) {
+            Platter("Stop Animation", "stop.fill", Hues.red.of(look.dark), STOP_ROW.dp, actions::appearance, fitted = false) {
                 StopRow()
             }
             Spacer(Modifier.height(0.dp))
@@ -125,10 +130,10 @@ private fun Hue.of(dark: Boolean) = on(if (dark) Palette.dark else Palette.light
 
 /** The menu's shelves, each with the color Home's card for it has. */
 enum class Shelf(val title: String, val panel: String, val glyph: String, val hue: Hue) {
-    CLIPBOARD("Clipboard", "clipboard", "list.clipboard", Hues.orange),
-    TRANSCRIPTS("Transcripts", "transcripts", "text.bubble", Hues.pink),
+    CLIPBOARD("Clipboard", "clipboard", "list.clipboard.fill", Hues.orange),
+    TRANSCRIPTS("Transcripts", "transcripts", "text.bubble.fill", Hues.pink),
     GIFS("GIFs", "gif", "gif", Hues.purple),
-    CHATS("Chats", "chats", "bubble.left.and.bubble.right", Hues.indigo),
+    CHATS("Chats", "chats", "bubble.left.and.bubble.right.fill", Hues.indigo),
 }
 
 /** The shelves fade out under the bar as they scroll up, rather than being cut off. */
@@ -145,24 +150,28 @@ private fun Modifier.fadeTop() = graphicsLayer(compositingStrategy = Compositing
  * ending in rounded corners concentric with the platter's.
  */
 @Composable
-private fun Platter(title: String, glyph: String, color: Color, row: Dp, onOpen: () -> Unit, content: @Composable () -> Unit) {
+private fun Platter(
+    title: String, glyph: String, color: Color, row: Dp, onOpen: () -> Unit, fitted: Boolean = true,
+    content: @Composable () -> Unit,
+) {
     val dark = LocalColors.current.dark
     Row(
         Modifier.fillMaxWidth().height(row + CHROME.dp)
             .glass(RoundedCornerShape(RADIUS.dp), dark = dark, color = color.copy(alpha = if (dark) 0.12f else 0.08f))
             .padding(INSET.dp),
     ) {
-        ShelfHead(title, glyph, color, Modifier.width(SIDE.dp).fillMaxHeight(), onOpen)
+        ShelfHead(title, glyph, fitted, color, Modifier.width(SIDE.dp).fillMaxHeight(), onOpen)
         Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(CARD_RADIUS))) { content() }
     }
 }
 
 /**
  * A shelf's name: its glyph on a colored tile, as Home's cards have, over the name, which drops out where the row is
- * too short for both; a tap opens the full panel, or for the look's shelves, iikb's Appearance settings.
+ * too short for both; a tap opens the full panel, or for the look's shelves, iikb's Appearance settings. A panel's
+ * glyph is its bar tool's filled one, `fitted` as the bar fits them; the look's are 15 semibold.
  */
 @Composable
-private fun ShelfHead(title: String, glyph: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
+private fun ShelfHead(title: String, glyph: String, fitted: Boolean, color: Color, modifier: Modifier, onClick: () -> Unit) {
     val look = LocalColors.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -175,7 +184,7 @@ private fun ShelfHead(title: String, glyph: String, color: Color, modifier: Modi
                 Modifier.scale(shrink).background(color, RoundedCornerShape(9.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                if (glyph == "gif") GifBadge(Color.White, 17.dp)
+                if (fitted) PanelGlyph(glyph, Color.White, 16.dp)
                 else Glyph(glyph, Color.White, Glyphs.square(15f).dp, weight = Glyphs.SEMIBOLD)
             }
             Text(
@@ -197,6 +206,22 @@ private fun ShelfHead(title: String, glyph: String, color: Color, modifier: Modi
             tiled.place((width - side) / 2, top)
             if (shows) named.place(0, top + side + gap)
         }
+    }
+}
+
+/** A panel's filled glyph as the bar draws its tool, `side` the glyph's size. */
+@Composable
+private fun PanelGlyph(name: String, color: Color, side: Dp) {
+    val paint = remember { Paint(Paint.ANTI_ALIAS_FLAG) }
+    Canvas(Modifier.size(side)) {
+        paint.color = color.toArgb()
+        val canvas = drawContext.canvas.nativeCanvas
+        val (x, y) = center
+        canvas.save()
+        canvas.scale(density, density, x, y)
+        if (name == "gif") Glyphs.drawGif(canvas, x, y, side.value, paint, Typeface.DEFAULT)
+        else Glyphs.drawFitted(canvas, name, x, y, side.value, paint)
+        canvas.restore()
     }
 }
 

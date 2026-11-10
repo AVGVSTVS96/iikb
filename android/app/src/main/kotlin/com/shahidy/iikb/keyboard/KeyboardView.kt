@@ -140,8 +140,6 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     }
     private val trail = Trail(this)
     private val glass = BarGlass()
-    private val gifPath = Path()
-    private val gifLetters = Path()
     private var deleteRepeat: Runnable? = null
 
     private class Accents(
@@ -286,7 +284,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     }
 
     private fun toolInk(panel: String, glyph: Float) =
-        if (panel == "gif") GIF_FILLED * glyph else Glyphs.fittedWidth(TOOL_GLYPHS.getValue(panel), glyph)
+        if (panel == "gif") Glyphs.GIF_FILLED * glyph else Glyphs.fittedWidth(TOOL_GLYPHS.getValue(panel), glyph)
 
     private fun toolTitle(bar: Bar) {
         text.typeface = android.graphics.Typeface.create(painter.labels, 500, false)
@@ -314,21 +312,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                 text.color = ink
                 canvas.drawText(title, start + width + TITLE_GAP, place.centerY() + (text.textSize * 0.7f) / 2 - 0.5f, text)
             }
-            if (tool.panel == "gif") drawGif(canvas, x, place.centerY(), glyph) else Glyphs.drawFitted(canvas, TOOL_GLYPHS.getValue(tool.panel), x, place.centerY(), glyph, fill)
+            if (tool.panel == "gif") Glyphs.drawGif(canvas, x, place.centerY(), glyph, fill, painter.labels) else Glyphs.drawFitted(canvas, TOOL_GLYPHS.getValue(tool.panel), x, place.centerY(), glyph, fill)
         }
-    }
-
-    /** GIF has no symbol: as iOS's filled `Panel.gifGlyph`, a solid rounded block 0.76 of a `side` glyph wide, "GIF" cut out of it. */
-    private fun drawGif(canvas: Canvas, x: Float, y: Float, side: Float) {
-        val unit = GIF_FILLED * side / 18.4f
-        val box = RectF(x - 9.2f * unit, y - 7.2f * unit, x + 9.2f * unit, y + 7.2f * unit)
-        text.typeface = android.graphics.Typeface.create(painter.labels, 700, false)
-        text.textSize = 8 * unit
-        gifPath.reset()
-        gifPath.addRoundRect(box, 3.6f * unit, 3.6f * unit, Path.Direction.CW)
-        text.getTextPath("GIF", 0, 3, x - text.measureText("GIF") / 2, y + text.textSize * 0.35f, gifLetters)
-        gifPath.op(gifLetters, Path.Op.DIFFERENCE)
-        canvas.drawPath(gifPath, fill)
     }
 
     private fun drawSuggestions(canvas: Canvas, frame: Frame) {
@@ -954,8 +939,6 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     private companion object {
         const val TOP_ROW_REACH = 10f
         const val TITLE_GAP = 6f
-        /** iOS's filled GIF glyph is this share of the glyph's side wide, so its solid block weighs what a filled symbol does. */
-        const val GIF_FILLED = 0.76f
         val TOOL_TITLES = mapOf("emoji" to "Emoji", "gif" to "GIFs", "transcripts" to "Transcripts", "clipboard" to "Clipboard")
         /** iOS's `BarLayout.emojiPitch`, and its 24 pt emoji at the size Noto's draw as wide as Apple's. */
         const val EMOJI_PITCH = 36f
