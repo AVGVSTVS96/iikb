@@ -610,7 +610,7 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         // 375 is the narrowest iPhone; only the iPad's floating keyboard is narrower.
         let narrow = width < 375
-        let tools: [Panel] = engine.settings.emojiKey && device != .phone && !narrow ? [.emoji] : []
+        let tools = narrow ? [] : barTools(device)
         let panel = line != nil ? chatPanel : engine.panel.flatMap { panels[$0] }
         let inPlace = panelInKeysPlace
         panelView.focuses = hasFullAccess
@@ -629,7 +629,7 @@ open class FullKeyboardViewController: UIInputViewController {
         panelView.block = block
         suggestionBar.toolbar = toolbar
         suggestionBar.maximumSlotWidth = metrics.toolbar.slot
-        suggestionBar.update(tools: tools, theme: theme)
+        suggestionBar.update(tools: tools, open: engine.panel, theme: theme)
         let fresh = line != nil ? seen.update(chats) : []
         chatPanel.fresh = fresh
         chatPanel.tabsRow = (suggestionBar.chatRow.minX - block.minX, suggestionBar.chatRow.maxX - block.minX)
@@ -662,6 +662,16 @@ open class FullKeyboardViewController: UIInputViewController {
         let keysShown = !panelInKeysPlace && !(menuOpen && !panelOpen)
         suggestionBar.micInBar = !(keyed && keysShown)
         keyMic.isHidden = !keyed
+    }
+
+    /// The bar's tools: on iPad the emoji's, where the emoji key is on, and with Predictive Text off the panels the menu
+    /// opens, in the suggestions' room, outside a chat, whose tabs take that room.
+    private func barTools(_ device: DeviceClass) -> [Panel] {
+        let shelves = !engine.settings.predictiveText && line == nil
+        return Panel.tools.filter { panel in
+            guard panels[panel] != nil else { return false }
+            return panel == .emoji ? engine.settings.emojiKey && device != .phone : shelves
+        }
     }
 
     /// The menu in the keys' place while it's open: the clipboard's, Transcripts' and the GIFs' shelves, then what the

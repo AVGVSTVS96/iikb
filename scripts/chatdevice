@@ -1,14 +1,15 @@
 #!/bin/bash
-# Runs on the Mac (scripts/mac 'scripts/chatdevice'): UITests/ChatBoxDeviceTests on the real iPhone the Mac reaches,
-# signed for the team in $TEAM, its screenshots exported to shots/raw/chatdevice/. The test installs a debug build over
-# the phone's iikb, keeping its data; scripts/phone --reinstall --now puts main back after.
+# Runs on the Mac (scripts/mac 'scripts/chatdevice'): UITests/ChatBoxDeviceTests on the real iPhone the Mac reaches, or
+# the class TEST names (TEST=BarShots), signed for the team in $TEAM, its screenshots exported to shots/raw/chatdevice/
+# (shots/raw/<TEST>/). The test installs a debug build over the phone's iikb, keeping its data; scripts/phone --reinstall --now puts main back after.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 TEAM=${TEAM:-6SV62PQ76B}
 phone=${PHONE:-$(xcrun xctrace list devices 2>/dev/null |
   awk '/^== Devices Offline|^== Simulators/ {exit} /iPhone/ {gsub(/[()]/, "", $NF); print $NF; exit}')}
 [ -n "$phone" ] || { echo "no iPhone in reach of the Mac" >&2; exit 1; }
-out=$PWD/shots/raw/chatdevice
+out=$PWD/shots/raw/${TEST:-chatdevice}
+TEST=${TEST:-ChatBoxDeviceTests}
 result=build/chatdevice.xcresult
 rm -rf "$out" "$result"
 mkdir -p "$out"
@@ -17,7 +18,7 @@ xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "
   -derivedDataPath build/device -allowProvisioningUpdates DEVELOPMENT_TEAM="$TEAM" -quiet
 xcodebuild test-without-building -project iikb.xcodeproj -scheme iikb -destination "id=$phone" \
   -derivedDataPath build/device -resultBundlePath "$result" -collect-test-diagnostics never \
-  -only-testing:AppUITests/ChatBoxDeviceTests${ONLY:+/$ONLY} || failed=1
+  -only-testing:AppUITests/$TEST${ONLY:+/$ONLY} || failed=1
 xcrun xcresulttool export attachments --path "$result" --output-path "$out" >/dev/null
 ls "$out"
 exit ${failed:-0}
