@@ -451,6 +451,12 @@ fun Empty(glyph: String, title: String, text: String, action: Pair<String, () ->
 
 /** Numbers, dates and times as the iOS app writes them. */
 object Format {
+    /**
+     * The narrow space before AM or PM, as wide as SF Pro's U+202F: Roboto has no U+202F, and the font Android falls
+     * back to draws it a full space wide, so it's Roboto's hair space, held to its neighbors by word joiners.
+     */
+    const val NARROW = "\u2060\u200A\u2060"
+
     private val integer = NumberFormat.getIntegerInstance()
 
     fun count(value: Int): String = integer.format(value)
@@ -503,7 +509,7 @@ object Format {
     fun moment(time: Instant): String {
         val local = time.atZone(ZoneId.systemDefault())
         val today = local.toLocalDate() == LocalDate.now()
-        return local.format(DateTimeFormatter.ofPattern(if (today) "h:mm\u202Fa" else "MMM d, h:mm\u202Fa"))
+        return local.format(DateTimeFormatter.ofPattern(if (today) "h:mm'$NARROW'a" else "MMM d, h:mm'$NARROW'a"))
     }
 
     /** How long ago, as iOS's named relative dates say it: "now", "8 minutes ago", "yesterday". */
@@ -513,7 +519,7 @@ object Format {
         return if (now - then < 60_000) "now" else DateUtils.getRelativeTimeSpanString(then, now, DateUtils.MINUTE_IN_MILLIS).toString()
     }
 
-    fun hour(hour: Int): String = LocalTime.of(hour, 0).format(DateTimeFormatter.ofPattern("h\u202Fa"))
+    fun hour(hour: Int): String = LocalTime.of(hour, 0).format(DateTimeFormatter.ofPattern("h'$NARROW'a"))
 
     /** <1% for a share under one percent, else a whole percent. */
     fun percent(share: Double) = if (share > 0 && share < 0.01) "<1%" else "${(share * 100).roundToInt()}%"

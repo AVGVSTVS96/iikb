@@ -259,7 +259,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         if (showsEmoji) drawEmoji(canvas, frame)
     }
 
-    /** A divider shows between two slots shown without a pill, empty ones too, as iOS's bar has it over a panel. */
+    /** A divider shows between two slots shown without a pill, empty ones too, as iOS's bar has it over a panel, and before an emoji in the last slot's place unless it's held. */
     private fun drawDividers(canvas: Canvas, frame: Frame) {
         val bar = frame.toolbar
         val showsEmoji = frame.panel == null && frame.emoji.isNotEmpty()
@@ -267,8 +267,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         for (index in 0 until 2) {
             val box = bar.slots[index]
             val pill = { at: Int -> frame.panel == null && (frame.chips.getOrNull(at)?.kind == "correction" || pressedBar == "slot$at") }
-            if (pill(index) || pill(index + 1)) continue
-            if (index + 1 == 2 && showsEmoji && !bar.emojiBeside) continue
+            val emojiNext = index + 1 == 2 && showsEmoji && !bar.emojiBeside
+            if (pill(index) || if (emojiNext) pressedBar == "emoji0" else pill(index + 1)) continue
             val x = (box.x + box.width).toFloat()
             canvas.drawRect(x - 0.5f, box.midY.toFloat() - 14, x + 0.5f, box.midY.toFloat() + 14, fill)
         }

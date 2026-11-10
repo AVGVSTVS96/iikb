@@ -546,7 +546,6 @@ fun Year(activity: Activity, kinds: List<Kind> = listOf(Kind.TYPED, Kind.SAID)) 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (kinds.size > 1) {
                     LegendDot(Kind.TYPED.color(palette), "Typed")
-                    Spacer(Modifier.width(6.dp))
                     LegendDot(Kind.SAID.color(palette), "Dictated")
                 }
                 Spacer(Modifier.weight(1f))

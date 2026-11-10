@@ -58,6 +58,7 @@ import com.shahidy.iikb.app.Symbols
 import com.shahidy.iikb.app.MicSwitch
 import com.shahidy.iikb.app.LocalResumes
 import com.shahidy.iikb.app.design.Empty
+import com.shahidy.iikb.app.design.Format
 import com.shahidy.iikb.app.design.Glyphs
 import com.shahidy.iikb.app.design.Tints
 import com.shahidy.iikb.app.design.Rows
@@ -198,8 +199,8 @@ private fun shareImage(context: Context, clips: Clips, image: String) {
     context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
-private val clock = DateTimeFormatter.ofPattern("h:mm\u202Fa")
-private val dated = DateTimeFormatter.ofPattern("MMM d 'at' h:mm\u202Fa")
+private val clock = DateTimeFormatter.ofPattern("h:mm'${Format.NARROW}'a")
+private val dated = DateTimeFormatter.ofPattern("MMM d 'at' h:mm'${Format.NARROW}'a")
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
