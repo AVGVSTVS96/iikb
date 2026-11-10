@@ -32,7 +32,7 @@ fun Modifier.glass(shape: Shape, backdrop: Backdrop = emptyBackdrop(), dark: Boo
         backdrop, { shape },
         effects = {
             vibrancy()
-            blur(2.dp.toPx())
+            blur(5.dp.toPx())
             lens(14.dp.toPx(), 24.dp.toPx())
         },
         highlight = { Highlight.Default.copy(alpha = if (dark) 0.5f else 1f) },
