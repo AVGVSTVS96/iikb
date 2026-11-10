@@ -10,4 +10,4 @@ iikb app › Settings › Keyboard › Appearance (it opens over a preview of ii
 
 ## Driving it
 
-`scripts/mac 'scripts/sim themes <tag>'` screenshots every theme and look on the Duo's screens, light and dark, into `shots/raw/themes/` (`THEMES`, `SCREENS` and `APPEARANCES` pick some). `-iikbTheme mechanical -iikbThemeAppearance dark` sets one at launch for any screenshot. `ThemeTests` (package) pins each theme's paint, corners and what follows the app.
+`scripts/ci 'scripts/sim themes <tag>'` screenshots every theme and look on the Duo's screens, light and dark, into `shots/raw/themes/` (`THEMES`, `SCREENS` and `APPEARANCES` pick some). `-iikbTheme mechanical -iikbThemeAppearance dark` sets one at launch for any screenshot. `ThemeTests` (package) pins each theme's paint, corners and what follows the app.

@@ -10,9 +10,9 @@ Dictate with the keyboard's mic, then open iikb › Transcripts.
 
 ## Driving it with XCUITest
 
-Not driven yet: dictation needs a real microphone. Screenshots: `TRANSCRIPTS=<transcripts.jsonl> PAGES=transcripts scripts/mac 'scripts/sim duoapp <tag>'` copies one into the app's container and shoots the tab on the Duo's screens; on another simulator copy it into `Library/Application Support/` of `xcrun simctl get_app_container <id> com.shahidy.iikb data` and launch with `-iikbTab transcripts`.
+Not driven yet: dictation needs a real microphone. Screenshots: `TRANSCRIPTS=<transcripts.jsonl> PAGES=transcripts scripts/ci 'scripts/sim duoapp <tag>'` copies one into the app's container and shoots the tab on the Duo's screens; on another simulator copy it into `Library/Application Support/` of `xcrun simctl get_app_container <id> com.shahidy.iikb data` and launch with `-iikbTab transcripts`.
 
-Sending a recording: `scripts/mac scripts/sharetest` puts a made-up transcript and its sound in the app, then opens its menu and its page and taps each way out, light and dark (`RecordingShareTests`). The simulator can't send messages, so Send in Messages shows the share sheet there; only the iPhone shows the message.
+Sending a recording: `scripts/ci scripts/sharetest` puts a made-up transcript and its sound in the app, then opens its menu and its page and taps each way out, light and dark (`RecordingShareTests`). The simulator can't send messages, so Send in Messages shows the share sheet there; only the iPhone shows the message.
 
 ## Gotchas
 

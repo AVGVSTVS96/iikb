@@ -1,8 +1,8 @@
 #!/bin/bash
-# Runs on the Mac. Headless simulator helpers for screenshots and keyboard checks. Each scripts/mac slot has its own
-# simulators (SIMPREFIX, iikb<n>), and ensure shuts down the slot's others, so a slot boots one at a time.
+# Runs on GitHub's Macs (scripts/ci). Headless simulator helpers for screenshots and keyboard checks.
 set -euo pipefail
-# A run leaves its simulator booted for the next one, since each iOS 27.1 boot starts ~300 daemons at once; KEEP= shuts it down.
+[ -n "${GITHUB_ACTIONS:-}" ] || { echo "simulators run on GitHub's Macs: scripts/ci '<command>'" >&2; exit 1; }
+# A run leaves its simulator booted for the next command in the job; KEEP= shuts it down.
 KEEP=${KEEP-1}
 cd "$(dirname "$0")/.."
 
@@ -28,9 +28,8 @@ for r, ds in json.load(sys.stdin)['devices'].items():
         if d['name'] == name and d['isAvailable'] and runtime in ('', r): print(d['udid']); sys.exit()" "$1" "${RUNTIME:-}"
 }
 
-# The slot's one simulator of a device type (named for the type, whatever name the caller gives), made on RUNTIME or
-# else the newest iOS that has the type (iOS 27.1 for the iPhone Duo, the only one that has it), with the slot's other
-# simulators shut down.
+# The one simulator of a device type (named for the type, whatever name the caller gives), made on RUNTIME or else the
+# newest iOS that has the type, with the others shut down.
 ensure() {
   local name="$PREFIX ${2//-/ }" type="com.apple.CoreSimulator.SimDeviceType.$2" id runtime
   id=$(udid "$name")
@@ -47,15 +46,18 @@ print([r['identifier'] for r in json.load(sys.stdin)['runtimes'] if r['platform'
   echo "$id"
 }
 
-# Shuts a simulator down; one already down is fine, as turn or another slot may have shut it while this one waited.
+# Shuts a simulator down; one already down is fine.
 down() {
   xcrun simctl shutdown "$1" 2>/dev/null || ! xcrun simctl list devices booted | grep -q "$1"
 }
 
 # Boots a simulator and installs iikb, built first when a file it's built from is newer than the build, as after a sync,
 # so a shot never shows an older iikb; a build a command made itself (APP set) it refuses when older.
-# A boot waits up to half an hour, since turn holds it until the Mac has room for another simulator.
+# A simulator boots slim (simslim: without the ~170 iOS services no check uses, a third of the memory and CPU), keeping
+# the widget and App Intents services Control Center's controls need when SIM_WIDGETS is set.
 boot() {
+  xcrun simctl list devices booted | grep -q "$1" || ! command -v simslim >/dev/null ||
+    simslim on "$1" ${SIM_WIDGETS:+--keep com.apple.chronod,com.apple.siriactionsd} >/dev/null
   perl -e 'alarm shift; exec @ARGV' 1800 xcrun simctl bootstatus "$1" -b >/dev/null
   xcrun simctl spawn "$1" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
   if [ ! -e "$APP" ] || [ -n "$(find App Packages Keyboard Controls project.yml -newer "$APP" -print -quit)" ]; then
@@ -335,7 +337,7 @@ fill() {
 # Screenshots each of the app's screens on the iPhone Duo's four screens, as duo does for the keyboard:
 # shots/raw/duo/app/<tag>-<screen>-<page>-<appearance>.png, filled as fill says; PAGES picks the pages, SCREENS the
 # screens; ARGS adds launch arguments to each (-iikbScrollToEnd YES shows each page's end); SIM names the simulator.
-# The keys are the default theme unless ARGS picks one, since the slot's simulator keeps whatever an earlier run set.
+# The keys are the default theme unless ARGS picks one, since the simulator keeps whatever an earlier command set.
 duoapp() {
   local tag=$1 id; shift
   id=$(ensure "${SIM:-iPhone Duo}" iPhone-Duo)

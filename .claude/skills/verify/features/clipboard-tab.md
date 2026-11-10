@@ -10,4 +10,4 @@ Copy something in any app with iikb's clipboard turned on, then open iikb › Cl
 
 ## Driving it
 
-`CLIPBOARD=<history.json> PAGES=clipboard scripts/mac 'scripts/sim duoapp <tag>'` copies a history into the App Group and screenshots the tab on the Duo's screens. `ClipboardHistoryTests` (package) pins the order, pins, search and joining a history kept elsewhere; `ClipboardStoreTests` (package, simulator) what's kept from a real pasteboard and from the keyboard's older copy.
+`CLIPBOARD=<history.json> PAGES=clipboard scripts/ci 'scripts/sim duoapp <tag>'` copies a history into the App Group and screenshots the tab on the Duo's screens. `ClipboardHistoryTests` (package) pins the order, pins, search and joining a history kept elsewhere; `ClipboardStoreTests` (package, simulator) what's kept from a real pasteboard and from the keyboard's older copy.

@@ -10,7 +10,7 @@ iikb app › Your Taps. It fills in once the keyboard has Full Access and has cl
 
 ## Driving it
 
-`scripts/mac 'scripts/sim taps "iPhone 17 Pro Max" iPhone-17-Pro-Max <touches.json> <tag>'` copies a touch model into the simulator's App Group and screenshots Heat, Heat with a key (scrolled to its close-up), Aim, Aim with a key, Accuracy, Accuracy with a key (`KEY=p` by default) and the bottom of the screen (`thumbs`), light and dark. `-iikbTapsMode heat|aim|accuracy`, `-iikbTapsKey <label>` and `-iikbTapsScroll detail|bottom` set the screen up at launch. A phone's model comes from `typing-memory.json` in the keyboard's container (`devicectl device copy from --domain-type appDataContainer --domain-identifier com.shahidy.iikb.keyboard`), its `memory.touches` object. The numbers come from `TouchModel.aims(on:)`, covered by `TouchModelTests`.
+`scripts/ci 'scripts/sim taps "iPhone 17 Pro Max" iPhone-17-Pro-Max <touches.json> <tag>'` copies a touch model into the simulator's App Group and screenshots Heat, Heat with a key (scrolled to its close-up), Aim, Aim with a key, Accuracy, Accuracy with a key (`KEY=p` by default) and the bottom of the screen (`thumbs`), light and dark. `-iikbTapsMode heat|aim|accuracy`, `-iikbTapsKey <label>` and `-iikbTapsScroll detail|bottom` set the screen up at launch. A phone's model comes from `typing-memory.json` in the keyboard's container (`devicectl device copy from --domain-type appDataContainer --domain-identifier com.shahidy.iikb.keyboard`), its `memory.touches` object. The numbers come from `TouchModel.aims(on:)`, covered by `TouchModelTests`.
 
 ## Gotchas
 

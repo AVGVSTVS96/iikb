@@ -10,4 +10,4 @@ iikb app › Settings › iikb › Sources › Add Source (name, https address, 
 
 ## Driving it
 
-`scripts/mac scripts/sourcetest` runs `SourceTests` through the real keyboard with `scripts/source.py` standing in for a source, and prints every update it was sent. `SourceFeedTests` (package) pins what's sent and in what order; `bun test sources/` tests the record source.
+`scripts/ci scripts/sourcetest` runs `SourceTests` through the real keyboard with `scripts/source.py` standing in for a source, and prints every update it was sent. `SourceFeedTests` (package) pins what's sent and in what order; `bun test sources/` tests the record source.

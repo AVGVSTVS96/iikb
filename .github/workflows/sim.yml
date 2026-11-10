@@ -1,12 +1,17 @@
-# A simulator check on one of GitHub's Macs, the command scripts/ci was given.
+# A simulator check on one of GitHub's Macs: the command scripts/ci was given, or scripts/verify on each push to main,
+# where a push waits for the run before it and a newer push replaces it in the wait.
 name: sim
-run-name: ${{ inputs.run }}
+run-name: ${{ inputs.run || 'scripts/verify' }}
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       run:
         description: the command, as scripts/ci takes it
         required: true
+concurrency:
+  group: ${{ github.event_name == 'push' && 'verify' || github.run_id }}
 jobs:
   sim:
     runs-on: xcode-27
@@ -19,7 +24,7 @@ jobs:
       - name: check
         run: bash -c "$RUN"
         env:
-          RUN: ${{ inputs.run }}
+          RUN: ${{ inputs.run || 'scripts/verify' }}
       - if: always()
         uses: actions/upload-artifact@v4
         with:

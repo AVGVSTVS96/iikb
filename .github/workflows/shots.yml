@@ -7,22 +7,9 @@ jobs:
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v5
-      - run: sudo xcode-select -s /Applications/Xcode_27.1.app
-      - run: brew install --quiet xcodegen
-      - uses: oven-sh/setup-bun@v2
+      - uses: ./.github/actions/mac
         with:
-          bun-version-file: package.json
-      - run: bun install --frozen-lockfile
-      - run: printf %s "$KLIPY_KEY" > Packages/KeyboardModules/Sources/FullKeyboard/Resources/Keys/klipy.key
-        env:
-          KLIPY_KEY: ${{ secrets.KLIPY_KEY }}
-      # GitHub's release downloads, FluidAudio's binaries among them, time out now and then.
-      - run: |
-          xcodegen generate -q
-          for try in 1 2 3; do
-            xcodebuild -resolvePackageDependencies -project iikb.xcodeproj -scheme iikb -derivedDataPath build/uitest -quiet && break
-            sleep 30
-          done
+          klipy-key: ${{ secrets.KLIPY_KEY }}
       - run: scripts/parity
       - if: always()
         uses: actions/upload-artifact@v4

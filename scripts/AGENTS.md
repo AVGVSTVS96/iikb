@@ -3,22 +3,22 @@
 The everyday commands are in the root AGENTS.md, "Build and test"; the rest are below, then how the bigger ones work.
 
 ```sh
-scripts/mac 'scripts/sim all v7'                # screenshots: system vs iikb, light and dark, 8 devices
-scripts/mac 'scripts/sim variants "iPhone 17" v7'  # return key types, keyboard types, landscape
-scripts/mac 'scripts/sim duo v8'                # Apple's keyboard and iikb on the iPhone Duo's four screens, folded and open (unfolded with Device Hub's hinge event, scripts/devicehub.c)
-scripts/mac 'KEYBOARDS="system iikb" scripts/padshots v1'  # every keyboard state (typing, layers, tray, More, panels, floating) on iPad mini, Pro 11 and Pro 13, portrait and landscape, light and dark, Apple's beside it: shots/raw/pad/v1/ (landscape shots come out turned; key frames in each -empty.txt)
+scripts/ci 'scripts/sim all v7'                 # screenshots: system vs iikb, light and dark, 8 devices
+scripts/ci 'scripts/sim variants "iPhone 17" v7'   # return key types, keyboard types, landscape
+scripts/ci 'scripts/sim duo v8'                 # Apple's keyboard and iikb on the iPhone Duo's four screens, folded and open (unfolded with Device Hub's hinge event, scripts/devicehub.c)
+scripts/ci 'KEYBOARDS="system iikb" scripts/padshots v1'   # every keyboard state (typing, layers, tray, More, panels, floating) on iPad mini, Pro 11 and Pro 13, portrait and landscape, light and dark, Apple's beside it: shots/raw/pad/v1/ (landscape shots come out turned; key frames in each -empty.txt)
 gh workflow run shots                           # every screen of iikb on an iPhone 17, keyboard and app, light and dark, with shots/demo's made-up data and Chats from scripts/chats.ts, on GitHub's Macs (scripts/parity): the run's parity artifact
-scripts/mac 'scripts/capture "iPhone 17" iPhone-17 iikb'  # frames of held keys: pop-ups, accent panel (CAPTURE=menu: the 123 menu)
-scripts/mac 'scripts/shots "iPhone 17" iPhone-17 system light "hel:hel|helo:o"'  # type through a keyboard, screenshot each step
-scripts/mac 'scripts/sim taps "iPhone 17 Pro Max" iPhone-17-Pro-Max touches.json t1'  # the app's Stats › Taps screen with a touch model
+scripts/ci 'scripts/capture "iPhone 17" iPhone-17 iikb'   # frames of held keys: pop-ups, accent panel (CAPTURE=menu: the 123 menu)
+scripts/ci 'scripts/shots "iPhone 17" iPhone-17 system light "hel:hel|helo:o"'   # type through a keyboard, screenshot each step
+scripts/ci 'scripts/sim taps "iPhone 17 Pro Max" iPhone-17-Pro-Max touches.json t1'   # the app's Stats › Taps screen with a touch model
 scripts/keystroke                               # the Mac `ssh mac` reaches shares Keystroke's typing-stats.json with Stats (mac/share, docs/computers.md) and gets the backup key for Keystroke's iPhone view
-scripts/mac scripts/sourcetest                  # a source through the real keyboard, scripts/source.py standing in for it; prints every update it was sent
-scripts/mac scripts/chattest                    # an extension's chats through the real keyboard, scripts/chats.ts standing in for it (EXTENSION=<url> for a real one): a message typed and sent, its reply shown, light and dark, shots in shots/raw/extensions/
-scripts/mac scripts/voicetest                   # the bar's mic through the real keyboard, scripts/voiceapp.py standing in for the app; screenshots light and dark
-scripts/mac scripts/stoptest                    # each stop animation filmed from the bar's mic and the Record Key, scripts/voiceapp.py standing in for the app: shots/raw/stop/<place>-<animation>-<appearance>.mp4 (STOPS, PLACES, APPEARANCES narrow it)
-scripts/mac scripts/sharetest                   # a transcript's recording sent from its menu and its page (made-up words), light and dark, shots in shots/raw/share/
-scripts/mac scripts/controltest                 # Control Center's iikb Mic end to end: the app's microphone on, the control added and tapped, the app's switch off, light and dark, shots in shots/raw/control/
-scripts/mac scripts/edittest                    # what dictations become: a long one edited in the middle and a short one edited at its end, each sent, checked in its transcript (made-up text)
+scripts/ci scripts/sourcetest                   # a source through the real keyboard, scripts/source.py standing in for it; prints every update it was sent
+scripts/ci scripts/chattest                     # an extension's chats through the real keyboard, scripts/chats.ts standing in for it (EXTENSION=<url> for a real one): a message typed and sent, its reply shown, light and dark, shots in shots/raw/extensions/
+scripts/ci scripts/voicetest                    # the bar's mic through the real keyboard, scripts/voiceapp.py standing in for the app; screenshots light and dark
+scripts/ci scripts/stoptest                     # each stop animation filmed from the bar's mic and the Record Key, scripts/voiceapp.py standing in for the app: shots/raw/stop/<place>-<animation>-<appearance>.mp4 (STOPS, PLACES, APPEARANCES narrow it)
+scripts/ci scripts/sharetest                    # a transcript's recording sent from its menu and its page (made-up words), light and dark, shots in shots/raw/share/
+scripts/ci scripts/controltest                  # Control Center's iikb Mic end to end: the app's microphone on, the control added and tapped, the app's switch off, light and dark, shots in shots/raw/control/
+scripts/ci scripts/edittest                     # what dictations become: a long one edited in the middle and a short one edited at its end, each sent, checked in its transcript (made-up text)
 scripts/voiceprobe v3 clip.wav                  # on the iPhone: a Parakeet's load and write times in the installed iikb (scripts/phone)
 scripts/judgeprobe questions.jsonl             # on the iPhone: Apple's on-device model choosing among written forms or answering in its own words, cold, warm and prewarmed, in the installed iikb
 scripts/eval                                    # scorer here on Linux: the phrase corpus typed with tap noise and with biased thumbs, checked against scripts/eval.expected (scripts/mac scripts/eval adds the UITextChecker baseline)
@@ -30,14 +30,16 @@ scripts/web                                     # web demo into web/dist (swift.
 scripts/lexicon                                 # rebuild en.lexicon (downloads ~1 GB, streams ~30 GB of 2-grams)
 scripts/personal record.jsonl [en.network [out]] # fine-tune en.network on your typing (the server does it when the record changes)
 scripts/network                                 # retrain en.network (downloads ~20 GB, about three hours on the Mac's GPU)
-scripts/mac scripts/applebar in.txt out.txt     # Apple's own suggestion bar before each word and after its first two letters, typed through the system keyboard in the simulator, for head-to-heads
+scripts/ci scripts/applebar in.txt out.txt      # Apple's own suggestion bar before each word and after its first two letters, typed through the system keyboard in the simulator, for head-to-heads
 python3 scripts/barmatch.py apple.txt iikb.txt   # the suggestion bar's measure: how many of Apple's bar words iikb's bar shows on the same text, how often the bars are the same, and where each has the word typed next
 uv run --with pillow --with numpy --with scipy scripts/shotdiff.py v7   # key-by-key geometry vs Apple
 ```
 
 ## Simulators
 
-- `scripts/sim` creates its own `iikb<slot> …` simulators and enables the extension by writing `AppleKeyboards` (and, for iPad, `AppleKeyboardsExpanded = 1`) into the simulator's global preferences, so no Settings UI is needed.
+- They run on GitHub's free Macs, never Bassim's: `scripts/ci '<command>'` pushes this checkout's tree, uncommitted changes included, as a signed commit on a branch of its own (`ci/…`, deleted after), runs the command there through `.github/workflows/sim.yml` (Xcode 27.1, 3 CPUs and 7 GB, the iPhone Duo on iOS 27.2), prints the run's link and the command's output, copies `shots/raw/` back and exits as the command did. Each run gets a Mac of its own, so runs go at once, up to five. `scripts/sim` refuses to run anywhere else, and `.github/actions/mac` sets up a run, for `shots.yml` too.
+- Each boots slim with [simslim](https://github.com/mobai-app/simslim), without the ~170 iOS services no check uses (a third of the memory and CPU, measured in github.com/AVGVSTVS96/simlight); `SIM_WIDGETS=1` keeps the widget and App Intents services Control Center's controls need.
+- `scripts/sim` creates its own `iikb …` simulators and enables the extension by writing `AppleKeyboards` (and, for iPad, `AppleKeyboardsExpanded = 1`) into the simulator's global preferences, so no Settings UI is needed.
 - Simulators boot headless; the Simulator app never opens.
 - Reference screenshots of Apple's keyboard come from the same simulators with `KEYBOARDS=system`.
 - Builds are ad-hoc signed for the simulator (`CODE_SIGN_IDENTITY = -`), which embeds simulated entitlements, so the App Group works in the simulator without a team. Device builds need a team with the group `group.com.shahidy.iikb` registered.
@@ -63,7 +65,7 @@ It needs:
 Linker facts:
 - The keyboard target links with `-ObjC` because its principal class is only named in Info.plist.
 - The Controls target links with `-u _main`: nothing references its widget bundle's `main`, so the linker otherwise leaves the whole control out of its static library, and xtool's signer then fails on the near-empty binary ("Can't find free space of LoadCommands").
-- On Linux the Swift driver hands clang `--sysroot`, and clang reads an SDK's version only from `-isysroot`, so without that option the binaries record the deployment target (26.0) as their SDK. iOS 27.1 then runs iikb on the iPhone Duo as an old iPhone app, small and without the vertical bar, which the simulator never showed. `scripts/phone` refuses a build linked below 27.1, and `scripts/mac` runs everything on the Mac with Xcode-beta (27.1) so the simulator shows what the phone does.
+- On Linux the Swift driver hands clang `--sysroot`, and clang reads an SDK's version only from `-isysroot`, so without that option the binaries record the deployment target (26.0) as their SDK. iOS 27.1 then runs iikb on the iPhone Duo as an old iPhone app, small and without the vertical bar, which the simulator never showed. `scripts/phone` refuses a build linked below 27.1, and the simulator runs use Xcode 27.1 so they show what the phone does.
 
 ## scripts/voiceloop
 
@@ -100,4 +102,4 @@ Its runs:
 - `swipe` (not part of a full run, since it needs the 570 MB of swipe.futo.org's test and validation splits from `scripts/swipe data`) decodes the 48,355 test swipes whose word is letters and apostrophes through `Swipe.decode` and prints top-1/3/10 from the encoder alone and with the decoder, against iikb's lexicon and against it with every target added at a fixed frequency (the report adds them too; how common they're made moves top 1 by 2 points, so each of three is printed). It's diffed against eval.expected's `EVAL swipe` lines alone.
 - `swipeTune` fits `Swipe.Scoring` on the validation split.
 
-It runs a Release build (the decoder is slow in Debug), here on Linux in a package of KeyboardCore, the word lists and `Evaluation` alone, which gives the same numbers as the Mac; only the baseline needs `UITextChecker`, so its lines are scored on the Mac (`scripts/mac scripts/eval`). A full run is diffed against `scripts/eval.expected` (the root AGENTS.md's rule table says what a change that moves the numbers owes).
+It runs a Release build (the decoder is slow in Debug), here on Linux in a package of KeyboardCore, the word lists and `Evaluation` alone, which gives the same numbers as the Mac; only the baseline needs `UITextChecker`, so its lines are scored on a Mac (`scripts/ci scripts/eval`). A full run is diffed against `scripts/eval.expected` (the root AGENTS.md's rule table says what a change that moves the numbers owes).

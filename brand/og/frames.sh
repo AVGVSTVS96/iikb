@@ -1,7 +1,7 @@
 #!/bin/sh
 # Crops the keyboard out of scripts/shots' frames into brand/og/frames, as web/site/public/shots/README.md describes
 # (the bottom 997 px of the 1206×2622 screenshot). Run after typing the headline one key per step:
-#   scripts/mac "scripts/shots 'iPhone 17' iPhone-17 iikb dark 's00:|s01:t|s02:h|…'"
+#   scripts/ci "scripts/shots 'iPhone 17' iPhone-17 iikb dark 's00:|s01:t|s02:h|…'"
 set -e
 cd "$(dirname "$0")/../.."
 mkdir -p brand/og/frames

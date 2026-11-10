@@ -30,10 +30,10 @@ Each module keeps its own AGENTS.md beside its code, with what it holds and why.
 
 ## Build and test
 
-Development happens on a Linux box. Simulator builds, tests and screenshots run on a Mac over ssh (`ssh mac`); the iPhone build is made here, signed on the Mac and put on the install link with `scripts/phone`, where Bassim taps Install when he wants it.
-- `scripts/mac <command>` syncs the tree to one of the Mac's three slots and runs the command there inside one of the Mac's turns (`turn`, two heavy runs at once across projects). Each slot has its own folder and its own simulators, so up to two runs go at once and the rest wait, and the Mac never runs more than three simulators, counting other projects'.
+Development happens on a Linux box. Simulator builds, tests and screenshots run on GitHub's free Macs, never Bassim's; the iPhone build is made here, signed on the Mac and put on the install link with `scripts/phone`, where Bassim taps Install when he wants it.
+- `scripts/ci '<command>'` runs the command on one of GitHub's Macs on this checkout's tree, uncommitted changes included, prints the run's link and output, and copies its screenshots back to `shots/raw/` (scripts/AGENTS.md, "Simulators"). Runs go at once, each on its own Mac.
 - A change is checked here first: `scripts/coretest` for KeyboardCore, `scripts/check` for whether everything builds for the iPhone. Then it goes to main and onto the install link with `scripts/phone` as soon as it's ready. Nothing installs on his iPhone or iPad but his own tap there, so a change is tried on the phone once he has installed a build that has it (`scripts/phone` prints the build on each device the Mac reaches).
-- The simulator is only for reproducing an issue being chased, in what only it shows (a layout, a screen, typing through the real extension), one run at a time (`SIM_REPRO=1`); otherwise a change is checked on the iPhone.
+- Simulator checks run by default: a change gets the verify skill's row for what it touches, through `scripts/ci`, and is then checked on the iPhone. Every push to main also runs `scripts/verify` there, the newest commit waiting while one runs.
 - Device builds take the team from `Config/Team.xcconfig` (`DEVELOPMENT_TEAM = …`, not committed), which syncing leaves in place.
 - To prove a change works, follow the `verify` skill (`.claude/skills/verify`).
 
@@ -42,7 +42,7 @@ Prefer committing straight to main, merge parallel work like a zipper on new pro
 TestFlight's public link gets the `beta` branch, a commit of main Bassim OKs: Xcode Cloud builds every push to it (`ci_scripts/`, without private API), and after 24 hours with no push to beta, `.github/workflows/beta.yml` moves it to main's latest. Its testers' note and iikb's description there are `TestFlight/WhatToTest.en-US.txt` and `TestFlight/Description.en-US.txt`; App Store Connect takes the description from main's copy.
 
 ```sh
-scripts/mac scripts/build                       # sync to the Mac, xcodegen, build for the simulator
+scripts/ci scripts/build                        # xcodegen and a build for the simulator, on GitHub's Mac
 scripts/coretest                                # KeyboardCore's tests here on Linux, no Mac (about 25 s)
 scripts/check                                   # this checkout built for the iPhone here on Linux, unsigned (a few minutes; one at a time)
 scripts/public-review.ts [--all|--text <where>]  # a reviewer reads what iikb shows the public: what changed since origin/main, all of it, or text going elsewhere (stdin)
@@ -52,9 +52,9 @@ bun run fix                                     # oxlint's fixes, then oxfmt
 scripts/phone                                   # main's last commit built, signed and put on the install link for the iPhone and iPad, then the build each device has (--rebuild even when nothing changed)
 scripts/backup <udid>                           # the iPhone's iikb data copied to ~/.local/share/iikb/backup here, never deleted, replaced files kept in versions/
 scripts/restore <udid> [--at <time>|now] [name…]  # the backup put back on the iPhone, all of it or the files named, as it is or as it was at a time; leaves out a copy much smaller than one replaced in the day after an install left iikb a new, empty container (docs/backup.md)
-scripts/mac scripts/verify                      # main's last commit on one iPhone Duo simulator: package and UI tests, light and dark, shots in shots/raw/verify/ (only with SIM_REPRO=1, while reproducing an issue)
-scripts/mac scripts/test                        # KeyboardCore and KeyboardUI package tests on an iOS simulator
-scripts/mac scripts/uitest                      # type through the real extension (the iPhone Duo by default)
+scripts/ci scripts/verify                       # main's last commit on one iPhone Duo simulator: package and UI tests, light and dark, shots in shots/raw/verify/ (runs on every push to main)
+scripts/ci scripts/test                         # KeyboardCore and KeyboardUI package tests on an iOS simulator
+scripts/ci scripts/uitest                       # type through the real extension (the iPhone Duo by default)
 ```
 
 The other commands (screenshots, probes on the iPhone, benchmarks, the data builders) are in scripts/AGENTS.md.

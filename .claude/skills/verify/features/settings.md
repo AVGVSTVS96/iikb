@@ -10,7 +10,7 @@ iikb app › Settings, or the keyboard's … menu › iikb Settings, or Settings
 
 ## Driving it with XCUITest
 
-`UITests/SettingsAppTests.swift` flips a switch in the Settings app and reads it in iikb; `SettingsAppTests.testKeepMicOnIsPickedInAppAndShownInSettings` picks a Keep Mic On value in iikb and finds it in Settings (screenshots with `TEST_RUNNER_IIKB_SHOTS=<folder>`); `SuggestionTests.testAutoCorrectionSettingIsSharedWithTheKeyboard` checks the keyboard follows it. `-iikbResetSettings YES` clears settings and the learned memory at launch; `-iikbSettings <page>` (appearance, typing, feedback, voice, writing, dictionary, sources, access) opens a page, and `scripts/mac 'scripts/sim duoapp <tag>'` screenshots every page on the Duo's screens.
+`UITests/SettingsAppTests.swift` flips a switch in the Settings app and reads it in iikb; `SettingsAppTests.testKeepMicOnIsPickedInAppAndShownInSettings` picks a Keep Mic On value in iikb and finds it in Settings (screenshots with `TEST_RUNNER_IIKB_SHOTS=<folder>`); `SuggestionTests.testAutoCorrectionSettingIsSharedWithTheKeyboard` checks the keyboard follows it. `-iikbResetSettings YES` clears settings and the learned memory at launch; `-iikbSettings <page>` (appearance, typing, feedback, voice, writing, dictionary, sources, access) opens a page, and `scripts/ci 'scripts/sim duoapp <tag>'` screenshots every page on the Duo's screens.
 
 ## Gotchas
 

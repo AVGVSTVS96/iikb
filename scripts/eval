@@ -1,10 +1,10 @@
 #!/bin/bash
 # Types the phrase corpus with simulated taps and prints word accuracy for the old and new correctors (AGENTS.md).
 # Here on Linux it runs in a package of KeyboardCore, the word lists and Evaluation alone, and scores iikb's two
-# keyboards; the UITextChecker baseline needs Apple's platforms, so on the Mac (scripts/mac scripts/eval) it scores that
+# keyboards; the UITextChecker baseline needs Apple's platforms, so on a Mac (scripts/ci scripts/eval) it scores that
 # too. Optional argument: one test (noise, biasedThumbs, aimShift, predictions, emoji), or swipe: how well swipes are
 # read on swipe.futo.org's test split (SwipeEvaluation; needs scripts/swipe data and SWIPE_DATA, takes minutes), which is
-# only diffed against eval.expected's swipe lines. A full run must match eval.expected, its baseline lines only on the
+# only diffed against eval.expected's swipe lines. A full run must match eval.expected, its baseline lines only on a
 # Mac; a change that moves the numbers updates that file in the same commit.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)

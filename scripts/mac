@@ -1,83 +1,14 @@
 #!/bin/bash
-# Runs a command on the Mac with Xcode 27.1 (the SDK the phone build uses, which gives the iPhone Duo its vertical bar)
-# in the first free of the Mac's slots, inside one of the Mac's turns (`turn`: two heavy runs at once, across projects),
-# so a run boots and tests within its turn and the rest wait. The Mac runs at most three simulators, so one another
-# project has booted takes a slot away, and while the Mac is short on memory (memory pressure above normal) iikb gets one slot, and a run shuts down the idle slots' simulators. Each slot has its own folder (~/Developer/iikb-slot<n>, where this tree is
-# synced) and its own simulators (iikb<n> …), which stay booted for the slot's next run (KEEP=1), since a boot starts
-# some 200 iOS services at once and loads the Mac for minutes, and shut down once the slot sits idle for 5 minutes.
-# Screenshots the command takes are copied back to shots/raw/. scripts/verify tests what landed: for it, main's last commit is synced from its own worktree (../iikb-main), not this checkout's tree.
+# Runs a command on the Mac for what needs the iPhone it reaches (scripts/chatdevice): syncs this tree to
+# ~/Developer/iikb-device, runs the command there with Xcode 27.1 inside one of the Mac's turns (`turn`), and copies the
+# screenshots it takes back to shots/raw/. Simulator checks run on GitHub's Macs instead (scripts/ci).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-slot='
-import fcntl, json, subprocess, sys, threading
-booted = json.loads(subprocess.run(["xcrun", "simctl", "list", "devices", "booted", "-j"], capture_output=True).stdout or "{}")
-others = sum(not d["name"].startswith("iikb") for ds in booted.get("devices", {}).values() for d in ds)
-def sysctl(name): return subprocess.run(["sysctl", "-n", name], capture_output=True, text=True).stdout
-tight = sysctl("kern.memorystatus_vm_pressure_level").strip() != "1"
-count = 1 if tight else max(1, 3 - others)
-slots = [open(f"/tmp/iikb-slot{n}.lock", "a") for n in range(1, count + 1)]
-def take(f, block):
-    try:
-        fcntl.flock(f, fcntl.LOCK_EX | (0 if block else fcntl.LOCK_NB))
-        return True
-    except BlockingIOError:
-        return False
-taken = next((n for n, f in enumerate(slots, 1) if take(f, False)), None)
-if taken is None:
-    print("waiting for the Mac: its three simulators are taken", file=sys.stderr, flush=True)
-    won, guard, first = threading.Event(), threading.Lock(), []
-    def wait(n, f):
-        take(f, True)
-        with guard:
-            if first:
-                return f.close()
-            first.append(n)
-        won.set()
-    for n, f in enumerate(slots, 1):
-        threading.Thread(target=wait, args=(n, f), daemon=True).start()
-    won.wait()
-    taken = first[0]
-if tight:
-    for n in {1, 2, 3} - {taken}:
-        f = open(f"/tmp/iikb-slot{n}.lock", "a")
-        if take(f, False):
-            for ds in booted.get("devices", {}).values():
-                for d in ds:
-                    if d["name"].startswith(f"iikb{n} "):
-                        subprocess.run(["xcrun", "simctl", "shutdown", d["udid"]], capture_output=True)
-        f.close()
-print(taken, flush=True)
-sys.stdin.read()
-'
-coproc held { ssh mac "$(printf '%q ' /usr/bin/python3 -u -c "$slot")"; }
-read -r n <&"${held[0]}"
-dir=Developer/iikb-slot$n
-idle() {
-  ssh mac sh -s "$n" <<'MAC' || true
-touch "/tmp/iikb-slot$1.used"
-(sleep 330
-[ -n "$(find "/tmp/iikb-slot$1.used" -mmin -5)" ] || /usr/bin/lockf -k -t 0 "/tmp/iikb-slot$1.lock" sh -c \
-  "xcrun simctl list devices booted | sed -n 's/^ *iikb$1 .*(\([0-9A-F-]\{36\}\)) (Booted).*/\\1/p' | xargs -n 1 xcrun simctl shutdown"
-) </dev/null >/dev/null 2>&1 &
-MAC
-}
-trap idle EXIT
-ssh mac "mkdir -p ~/$dir && rm -rf ~/$dir/shots/raw" </dev/null
-case " $* " in
-  *" scripts/verify"*)
-    main=../iikb-main
-    exec 8>"$main.lock"
-    flock 8
-    [ -d "$main" ] || git worktree add -q --detach "$main"
-    git -C "$main" checkout -q -f --detach main
-    echo "verify tests main $(git rev-parse --short main)" >&2
-    "$main/scripts/sync" "$dir" >/dev/null
-    exec 8>&-
-    ;;
-  *) scripts/sync "$dir" >/dev/null ;;
-esac
+dir=Developer/iikb-device
+scripts/sync "$dir" >/dev/null
+ssh mac "rm -rf ~/$dir/shots/raw" </dev/null
 status=0
-printf '%s\n' "$*" | ssh mac "cd ~/$dir && export SIMPREFIX=iikb$n KEEP=1 DEVELOPER_DIR=\${DEVELOPER_DIR:-/Applications/Xcode-beta.app/Contents/Developer} && ~/.local/bin/turn zsh -s" || status=$?
+printf '%s\n' "$*" | ssh mac "cd ~/$dir && export DEVELOPER_DIR=\${DEVELOPER_DIR:-/Applications/Xcode-beta.app/Contents/Developer} && ~/.local/bin/turn zsh -s" || status=$?
 mkdir -p shots/raw
 rsync -a "mac:$dir/shots/raw/" shots/raw/ 2>/dev/null </dev/null || true
 exit "$status"
