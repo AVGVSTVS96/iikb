@@ -167,15 +167,19 @@ fun ChatTabs(
     }
 }
 
-/** The row's ends fade over 36 where it's cut, as iOS's `ButtonScrollView` fades a row that scrolls. */
+/**
+ * A cut end of the row fades out over the capsule's straight side, clear under its round cap, so a tab cut there fades
+ * rather than meeting the cap, as iOS's `ChatTabs.showFade`.
+ */
 private fun Modifier.fadeCutEnds(start: Boolean, end: Boolean) = if (!start && !end) this else
     graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
         drawContent()
-        val fade = (FADE.dp.toPx() / size.width).coerceAtMost(0.5f)
+        val cap = size.height / 2 / size.width
+        val fade = cap + FADE.dp.toPx() / size.width
         drawRect(
             Brush.horizontalGradient(
-                0f to if (start) Color.Transparent else Color.Black, fade to Color.Black,
-                1 - fade to Color.Black, 1f to if (end) Color.Transparent else Color.Black,
+                *(if (start) arrayOf(0f to Color.Transparent, cap to Color.Transparent, fade to Color.Black) else arrayOf(0f to Color.Black)),
+                *(if (end) arrayOf(1 - fade to Color.Black, 1 - cap to Color.Transparent, 1f to Color.Transparent) else arrayOf(1f to Color.Black)),
             ),
             blendMode = BlendMode.DstIn,
         )
@@ -188,7 +192,7 @@ private const val INSET = 2f
 private const val PADDING = 12f
 private const val DOT = 6f
 private const val MAX_TAB = 220f
-private const val FADE = 36f
+private const val FADE = 28f
 /** The platter's spring, as `UIView.animate(springDuration: 0.4, bounce: 0.18)`. */
 private const val SPRING = 0.4f
 private const val BOUNCE = 0.18f
