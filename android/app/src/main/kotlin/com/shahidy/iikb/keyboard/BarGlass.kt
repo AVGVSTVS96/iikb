@@ -11,7 +11,8 @@ import androidx.core.graphics.ColorUtils
  * The bar's glass, iOS's `UIGlassEffect.bar`: iOS's regular glass tinted toward the label, 8% in light and 12% in dark,
  * so it stands off the keyboard's own glass, under More, the tools and the mic. Drawn on the keys' canvas as `app/Glass`
  * draws glass over a plain page, since the keyboard's glass under it has nothing to bend: its tint, a lit rim on a
- * hairline edge, and a soft shadow. `red` tints it toward record red, as the mic's glass while it listens.
+ * hairline edge, and a soft shadow. `red` tints it toward record red, as the mic's glass while it listens, its rim and
+ * edge fading as they do on iOS's red glass.
  */
 class BarGlass {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -38,16 +39,18 @@ class BarGlass {
         canvas.drawPath(shape, fill)
 
         rim.strokeWidth = LIT
-        rim.color = faded(Color.argb(if (dark) 40 else 230, 255, 255, 255), opacity)
+        rim.color = faded(Color.argb(lerp(if (dark) 40 else 230, RED_LIT, red), 255, 255, 255), opacity)
         inner.set(box)
         inner.inset(LIT / 2 + EDGE, LIT / 2 + EDGE)
         canvas.drawRoundRect(inner, radius - LIT / 2 - EDGE, radius - LIT / 2 - EDGE, rim)
         rim.strokeWidth = EDGE
-        rim.color = faded(if (dark) Color.argb(20, 255, 255, 255) else Color.argb(41, 0, 0, 0), opacity)
+        rim.color = faded(if (dark) Color.argb(lerp(20, 0, red), 255, 255, 255) else Color.argb(lerp(41, RED_EDGE, red), 0, 0, 0), opacity)
         inner.set(box)
         inner.inset(EDGE / 2, EDGE / 2)
         canvas.drawRoundRect(inner, radius - EDGE / 2, radius - EDGE / 2, rim)
     }
+
+    private fun lerp(from: Int, to: Int, by: Float) = (from + (to - from) * by.coerceIn(0f, 1f)).toInt()
 
     private fun faded(color: Int, opacity: Float) =
         if (opacity >= 1f) color else ColorUtils.setAlphaComponent(color, (Color.alpha(color) * opacity).toInt())
@@ -58,5 +61,8 @@ class BarGlass {
         const val SHADOW_Y = 4f
         const val LIT = 0.75f
         const val EDGE = 0.5f
+        /** The lit rim's and light edge's alpha on red glass, measured on iOS's recording capsule. */
+        const val RED_LIT = 46
+        const val RED_EDGE = 12
     }
 }
