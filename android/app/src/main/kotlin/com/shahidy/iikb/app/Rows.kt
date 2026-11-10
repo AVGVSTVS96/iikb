@@ -243,10 +243,10 @@ private fun Frame(
 private fun Modifier.scrollEdge(backdrop: Backdrop, shown: Float): Modifier {
     if (shown == 0f) return this
     val palette = palette()
-    val wash = if (palette.isDark) Color(0xFF121212).copy(alpha = 0.86f) else Color.White.copy(alpha = 0.86f)
+    val wash = if (palette.isDark) Color(0xFF121212).copy(alpha = 0.8f) else Color.White.copy(alpha = 0.75f)
     return drawPlainBackdrop(
         backdrop, { RectangleShape },
-        effects = { blur(8.dp.toPx()) },
+        effects = { blur(6.dp.toPx()) },
         layerBlock = { alpha = shown },
         onDrawSurface = { drawRect(wash) },
         onDrawFront = { drawRect(palette.divider, Offset(0f, size.height - 1f), Size(size.width, 1f)) },
