@@ -125,8 +125,10 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         let loaded = fullAccess() && store.loaded
         let found = !links.isEmpty || !items.isEmpty
         let missing: String? =
-            if !fullAccess() { "Clipboard needs Full Access." } else if store.refused {
-                "To keep what you copy, set Paste from Other Apps to Allow."
+            if !fullAccess() {
+                "Clipboard needs Full Access."
+            } else if store.refused, !(found && shown.compact) {
+                found ? "New copies aren’t being kept." : "To keep what you copy, set Paste from Other Apps to Allow."
             } else { nil }
         let empty: String? =
             loaded && !found

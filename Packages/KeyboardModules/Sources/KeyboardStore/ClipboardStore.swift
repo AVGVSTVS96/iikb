@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 /// Keeps what you copy (docs/design.md, "Clipboard"), in the App Group so the app shows the history the keyboard keeps,
 /// never online. Nothing runs in the background: the keyboard looks at the clipboard when it appears and when the
 /// clipboard panel opens, and the app when it comes to the front, and each keeps whatever changed since either last
-/// looked. Reading the clipboard needs Full Access, and Paste from Other Apps (`refused`).
+/// looked. Reading the clipboard needs Full Access, and Paste from Other Apps at Allow (`refused`).
 ///
 /// The history grows for as long as you keep it, so every read and write of its files happens on a queue of its own,
 /// never on the main thread where keys are typed; `history` is what the queue last read, and `onChange` says when
@@ -18,8 +18,8 @@ public final class ClipboardStore {
     nonisolated fileprivate struct Saved: Codable, Sendable {
         var history = ClipboardHistory()
         var seen = 0
-        /// Whether iOS refused the last look at the clipboard.
-        var refused: Bool?
+        /// The clipboard changes since the last one read that iOS gave nothing for, the latest two.
+        var unread: [Int]?
     }
 
     private let disk: Disk
@@ -54,9 +54,23 @@ public final class ClipboardStore {
     /// keeps nothing before then: what it kept would stand in for everything the keyboard had.
     public var started: Bool { disk.started }
 
-    /// Whether iOS refused the keyboard's last look at the clipboard. iOS counts a keyboard's reads as its app's, even
-    /// inside another app, and without asking refuses them unless Settings › Apps › iikb › Paste from Other Apps is Allow.
-    public var refused: Bool { saved?.refused == true }
+    /// Whether iOS seems to be refusing the keyboard's reads. iOS counts a keyboard's reads as its app's, even inside
+    /// another app, and without asking refuses them unless Settings › Apps › iikb › Paste from Other Apps is Allow. A
+    /// refused read looks the same as one copy iOS can't hand over (its app gone, a kind it can't convert), so one alone
+    /// counts only while there's no history to show it was ever on; two different copies in a row count always.
+    public var refused: Bool {
+        let unread = saved?.unread?.count ?? 0
+        return unread >= 2 || (unread == 1 && history.items.isEmpty)
+    }
+
+    /// Paste from Other Apps is Allow, as the app can tell: what went unread was something else.
+    public func allowed() {
+        update { saved, _ in
+            guard saved.unread != nil else { return false }
+            saved.unread = nil
+            return true
+        }
+    }
 
     /// Keeps what's on the clipboard if it changed since the keyboard last looked.
     public func catchUp(_ pasteboard: UIPasteboard = .general, now: Date = .now) {
@@ -272,10 +286,13 @@ nonisolated private struct Disk: Sendable {
             saved.seen = pasteboard.changeCount
             return true
         }
-        let refused = content == nil
-        let changed = saved.refused != refused
-        saved.refused = refused
-        guard let content else { return changed }
+        guard let content else {
+            let unread = saved.unread ?? []
+            guard unread.last != pasteboard.changeCount else { return false }
+            saved.unread = Array((unread + [pasteboard.changeCount]).suffix(2))
+            return true
+        }
+        saved.unread = nil
         saved.seen = pasteboard.changeCount
         if case .text(let text) = content, text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
         saved.history.keep(content, at: time)

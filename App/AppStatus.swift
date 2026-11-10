@@ -32,6 +32,7 @@ import UIKit
         #else
             fullAccess = Self.allowed("kTCCServiceKeyboardNetwork")
             pasteAllowed = Self.allowed("kTCCServicePasteboard")
+            if pasteAllowed { ClipboardStore().allowed() }
         #endif
     }
 
@@ -53,7 +54,12 @@ import UIKit
 
     /// iOS lists Paste from Other Apps under Settings › Apps › iikb only once the app itself has asked to paste; the
     /// keyboard's reads are refused without asking, so a fresh install never shows it. Reading the clipboard here asks.
+    /// With it already Allow, as TCC tells, the keyboard's notice was about a copy iOS couldn't hand over, so this shows
+    /// the clipboard instead of a Settings page with nothing to change.
     static func openPasteSetting() {
+        #if !APP_STORE
+            if shared.pasteAllowed { return Router.shared.show(.clipboard) }
+        #endif
         if !shared.pasteAllowed { _ = UIPasteboard.general.string }
         openSettings()
     }
