@@ -341,8 +341,8 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
     case asSaid
     /// Without um and uh.
     case light
-    /// Without um and uh, words said twice in a row, "like" and "you know" said between commas, what you take back with
-    /// "scratch that", and what you correct as you go ("at two, I mean three").
+    /// Without um and uh, words said twice in a row or said over, "like" and "you know" said between commas, what you
+    /// take back with "scratch that" or "never mind", and what you correct as you go ("at two, I mean three").
     case clean
 
     public static let standard = DictationEditing.asSaid
@@ -415,7 +415,40 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
             guard text[first.upperBound..<second.lowerBound].allSatisfy({ $0 == " " }) else { continue }
             text.removeSubrange(first.upperBound..<second.upperBound)
         }
-        return text
+        return withoutRestarts(text)
+    }
+
+    /// The first of two to four words said again straight after, with or without a comma, as in "we need to, we need
+    /// to ship" or "they're gonna they're gonna sign": you started over.
+    static func withoutRestarts(_ text: [Character]) -> [Character] {
+        var text = text
+        var searched = 0
+        restart: while true {
+            let words = Words.ranges(in: text)
+            for start in words.indices where words[start].lowerBound >= searched {
+                for count in (2...4).reversed() where start + 2 * count <= words.count {
+                    let first = words[start..<start + count]
+                    let again = words[start + count..<start + 2 * count]
+                    let spelled = { (word: Range<Int>) in Words.plain(String(text[word]).lowercased()) }
+                    let gaps = (start..<start + 2 * count - 1).map {
+                        text[words[$0].upperBound..<words[$0 + 1].lowerBound]
+                    }
+                    guard first.map(spelled) == again.map(spelled), Set(first.map(spelled)).count > 1,
+                        !first.contains(where: { isNumber(spelled($0)) }),
+                        gaps.enumerated().allSatisfy({
+                            $1.elementsEqual(" ") || $0 == count - 1 && $1.elementsEqual(", ")
+                        })
+                    else { continue }
+                    let from = first.first!.lowerBound
+                    var said = Array(text[again.first!.lowerBound..<again.last!.upperBound])
+                    if text[from].isUppercase, said[0].isLowercase { said[0] = Character(said[0].uppercased()) }
+                    text.replaceSubrange(from..<again.last!.upperBound, with: said)
+                    searched = from
+                    continue restart
+                }
+            }
+            return text
+        }
     }
 
     private static let repeatable: Set<String> = [
@@ -437,6 +470,7 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
                 if start > 0, TypingEngine.sentenceEnders.contains(text[start - 1]) { start -= 1 }
                 start = sentenceStart(in: text, before: start)
             }
+            if let restart = restart(in: text, from: start, to: at.lowerBound, again: end) { start = restart }
             if end < text.count, text[start].isUppercase, text[end].isLowercase {
                 text[end] = Character(text[end].uppercased())
             }
@@ -445,15 +479,35 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
         return text
     }
 
+    /// "scratch that", or "never mind" said between commas mid-sentence, as in "I'll call you tonight, actually, never
+    /// mind, I'll text you".
     private static func scratch(in text: [Character]) -> Range<Int>? {
         let words = Words.ranges(in: text)
         for (first, second) in zip(words, words.dropFirst())
-        where String(text[first]).lowercased() == "scratch" && String(text[second]).lowercased() == "that"
-            && text[first.upperBound..<second.lowerBound].allSatisfy({ $0 == " " })
-        {
-            return first.lowerBound..<second.upperBound
+        where text[first.upperBound..<second.lowerBound].allSatisfy({ $0 == " " }) {
+            let said = [first, second].map { String(text[$0]).lowercased() }
+            if said == ["scratch", "that"] { return first.lowerBound..<second.upperBound }
+            if said == ["never", "mind"], first.lowerBound >= 2, text[first.lowerBound - 2] == ",",
+                second.upperBound < text.count, text[second.upperBound] == ","
+            {
+                return first.lowerBound..<second.upperBound
+            }
         }
         return nil
+    }
+
+    /// Where, in what a "scratch that" takes back (`from` up to `to`), a clause starts with the two words said after
+    /// it (at `again`), so "Dear team, the launch is Monday. Scratch that, the launch is Thursday" keeps "Dear team,".
+    private static func restart(in text: [Character], from: Int, to: Int, again: Int) -> Int? {
+        let words = Words.ranges(in: text)
+        guard let next = words.firstIndex(where: { $0.lowerBound == again }), next + 1 < words.count else { return nil }
+        let spelled = { (index: Int) in Words.plain(String(text[words[index]]).lowercased()) }
+        let said = [spelled(next), spelled(next + 1)]
+        return words.indices.first { index in
+            words[index].lowerBound > max(from, 1) && words[index].upperBound < to && index + 1 < next
+                && text[words[index].lowerBound - 2..<words[index].lowerBound].elementsEqual(", ")
+                && [spelled(index), spelled(index + 1)] == said
+        }.map { words[$0].lowerBound }
     }
 
     /// Where the sentence holding the character before `at` starts: past the last sentence end or line break.
@@ -548,24 +602,26 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
     ]
 
     private static func correction(in text: [Character], from: Int) -> (range: Range<Int>, with: [Character])? {
-        let words = Words.ranges(in: text)
+        let words = numbered(Words.ranges(in: text), in: text)
         for (index, word) in words.enumerated() where word.lowerBound >= max(from, 2) && index > 0 {
-            guard text[word.lowerBound - 1] == " ", text[word.lowerBound - 2] == ",",
+            guard text[word.lowerBound - 1] == " ", ",.".contains(text[word.lowerBound - 2]),
                 words[index - 1].upperBound == word.lowerBound - 2
             else { continue }
-            for cue in cues where phrase(text, words, at: index, is: cue.words) {
+            let sentences = text[word.lowerBound - 2] == "."
+            if let (next, after) = cued(text, words, at: index) {
                 let comma = word.lowerBound - 2
-                var after = words[index + cue.words.count - 1].upperBound
-                if after < text.count, text[after] == "," { after += 1 } else if cue.comma { continue }
-                guard after < text.count, text[after] == " " else { continue }
-                let said = clause(text, words, from: index + cue.words.count, startingAt: after + 1)
+                let said = clause(text, words, from: next, startingAt: after + 1)
                 guard (1...3).contains(said.count) else { continue }
                 let before = clause(text, words, endingAt: index - 1)
-                guard let replaced = replaced(text, words, before, by: said) else { continue }
+                guard let replaced = replaced(text, words, before, by: said, kindOnly: sentences) else { continue }
                 var with = Array(text[words[said.first!].lowerBound..<words[said.last!].upperBound])
                 with += text[words[replaced.last!].upperBound..<comma]
                 if text[words[replaced[0]].lowerBound].isUppercase, with[0].isLowercase {
                     with[0] = Character(with[0].uppercased())
+                } else if sentences, text[words[replaced[0]].lowerBound].isLowercase,
+                    isNumber(Words.plain(String(text[words[said[0]]]).lowercased()))
+                {
+                    with[0] = Character(with[0].lowercased())
                 }
                 var end = words[said.last!].upperBound
                 if end < text.count, text[end] == ",", replaced.last == before.last { end += 1 }
@@ -573,6 +629,21 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
             }
         }
         return nil
+    }
+
+    /// The cues from word `index` on, one after another as in "sorry, I mean" or "actually make that": the index of
+    /// the word after the last and the space before it.
+    private static func cued(_ text: [Character], _ words: [Range<Int>], at index: Int) -> (Int, Int)? {
+        var found: (Int, Int)?
+        var index = index
+        while let cue = cues.first(where: { phrase(text, words, at: index, is: $0.words) }) {
+            var after = words[index + cue.words.count - 1].upperBound
+            if after < text.count, ",.".contains(text[after]) { after += 1 } else if cue.comma { break }
+            guard after < text.count, text[after] == " " else { break }
+            index += cue.words.count
+            found = (index, after)
+        }
+        return found
     }
 
     /// The indices of the words from `index` on that only spaces part, starting at `startingAt`, if the clause ends at
@@ -602,27 +673,53 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
     }
 
     /// The words of `before` that `said` takes the place of.
-    private static func replaced(_ text: [Character], _ words: [Range<Int>], _ before: [Int], by said: [Int]) -> [Int]?
-    {
-        guard before.count >= said.count else { return nil }
+    /// With `kindOnly`, only a number or a name, as a correction said in sentences of its own ("at two. No wait.
+    /// Three.") is.
+    private static func replaced(
+        _ text: [Character], _ words: [Range<Int>], _ before: [Int], by said: [Int], kindOnly: Bool
+    ) -> [Int]? {
         let spelled = { (index: Int) in Words.plain(String(text[words[index]]).lowercased()) }
         guard !said.contains(where: { unreplaceable.contains(spelled($0)) }) else { return nil }
         let first = said[0]
-        let kind: ((Int) -> Bool)? =
-            isNumber(spelled(first))
-            ? { isNumber(spelled($0)) }
-            : text[words[first].lowerBound].isUppercase ? { text[words[$0].lowerBound].isUppercase } : nil
-        var start = before.count - said.count
-        if let kind, !kind(before[start]) {
-            guard let match = before[...start].lastIndex(where: kind) else { return nil }
-            start = match
+        let span: ArraySlice<Int>
+        if isNumber(spelled(first)) {
+            guard let end = before.lastIndex(where: { isNumber(spelled($0)) }) else { return nil }
+            var start = end
+            while start > 0, isNumber(spelled(before[start - 1])) { start -= 1 }
+            span = before[start..<min(before.count, start + max(said.count, end - start + 1))]
+        } else if text[words[first].lowerBound].isUppercase {
+            guard let start = before.lastIndex(where: { text[words[$0].lowerBound].isUppercase }) else { return nil }
+            span = before[start..<min(before.count, start + said.count)]
+        } else {
+            guard !kindOnly, before.count >= said.count else { return nil }
+            span = before.suffix(said.count)
         }
-        let span = Array(before[start..<start + said.count])
-        return span.contains(where: { unreplaceable.contains(spelled($0)) }) ? nil : span
+        return span.contains(where: { unreplaceable.contains(spelled($0)) }) ? nil : Array(span)
     }
 
+    /// `words` with a written number one word, as "$50,000", "3:30" and "12%" are.
+    private static func numbered(_ words: [Range<Int>], in text: [Character]) -> [Range<Int>] {
+        var merged: [Range<Int>] = []
+        for var word in words {
+            if word.lowerBound > 0, text[word.lowerBound - 1] == "$" { word = word.lowerBound - 1..<word.upperBound }
+            if word.upperBound < text.count, text[word.upperBound] == "%" {
+                word = word.lowerBound..<word.upperBound + 1
+            }
+            if let last = merged.last, last.upperBound + 1 == word.lowerBound, ",.:".contains(text[last.upperBound]),
+                text[last.upperBound - 1].isNumber, text[word.lowerBound].isNumber
+            {
+                merged[merged.count - 1] = last.lowerBound..<word.upperBound
+            } else {
+                merged.append(word)
+            }
+        }
+        return merged
+    }
+
+    /// A number said or written, as "five", "$50,000", "3:30" or "12%".
     private static func isNumber(_ word: String) -> Bool {
-        word.allSatisfy(\.isNumber) || numberWords.contains(word)
+        numberWords.contains(word)
+            || word.contains(where: \.isNumber) && word.allSatisfy { $0.isNumber || "$,.:%".contains($0) }
     }
 
     private static let numberWords: Set<String> = [
@@ -675,7 +772,7 @@ public struct DictationWriting: Hashable, Sendable {
     }
 
     public func written(_ heard: String) -> String {
-        var text = style.punctuated(Self.withoutDoubledPeriods(editing.edited(Array(heard))))
+        var text = style.punctuated(Self.withoutDoubledPeriods(editing.edited(SaidMarks.written(Array(heard)))))
         if lists != .off { text = SpokenList.written(text, bulleted: lists == .bulleted) }
         return String(words.swapped(style.commas(text)))
     }

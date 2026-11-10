@@ -1,0 +1,3 @@
+#!/bin/sh
+# The cleanup bench: scripts/rivals.txt through iikb, Wispr Flow and Aqua Voice, scored (scripts/rivals.py). On the Mac.
+exec python3 -B "$(dirname "$0")/rivals.py" "$@"

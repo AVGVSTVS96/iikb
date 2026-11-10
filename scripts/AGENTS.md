@@ -24,6 +24,7 @@ scripts/judgeprobe questions.jsonl             # on the iPhone: Apple's on-devic
 scripts/eval                                    # scorer here on Linux: the phrase corpus typed with tap noise and with biased thumbs, checked against scripts/eval.expected (scripts/mac scripts/eval adds the UITextChecker baseline)
 scripts/gate                                    # the bar on everyday text (scripts/gate.txt) through TypingEngine: fresh, with awkward contact names, and on the iPhone's own network and memory from the backup; scripts/phone installs no build that fails it (about 2 min)
 scripts/voiceloop [--cached]                    # dictation end to end: Bassim's dictations and a spoken set (macOS voices, whispered, in his loud rooms) through Parakeet on the Mac and the app's and keyboard's text path here, scored against what each should type, errors ranked by kind into voicebench/categories.txt (about 15 s warm; scripts/AGENTS.md)
+scripts/rivals                                  # on the Mac: the cleanup bench, scripts/rivals.txt said by two macOS voices through iikb, Wispr Flow and Aqua Voice at their defaults, scored per kind ("scripts/rivals")
 scripts/formats                                 # what dictation types for versions, decimals, percentages, domains and emails, and the "point", "dot" and "at" that stay words (scripts/formats.txt); scripts/phone installs no build that fails it (seconds after scripts/gate)
 scripts/web                                     # web demo into web/dist (swift.org 6.4.0 toolchain + its Wasm SDK + binaryen; on the Mac: rsync, then run it there)
 scripts/lexicon                                 # rebuild en.lexicon (downloads ~1 GB, streams ~30 GB of 2-grams)
@@ -73,6 +74,15 @@ Dictation from the sound to what the keyboard types, scored against what it shou
 - Against his finals, which keep whatever the build of their day typed and lack what he cut after, four or more words in a row a final lacks, alone or beyond the words they stand in for ("cut later") and the same number in another form ("number form") are set aside, his references go through the Dictionary as a dictation does, and punctuation and capitals count only against finals the keyboard followed (build 479 on).
 - Every remaining error is labelled by what the reference had there (emails, links, versions, times, money, digits, names, else words misheard, dropped or added) and ranked in `voicebench/categories.txt` with examples, and each dictation's texts go to `voicebench/<set>/loop.jsonl`.
 - Nov 5: real 3.58% wrong (the iPhone 3.58%; the bench's Parakeet wrote what the iPhone's did on 579 of 619, and its text stage typed what the iPhone did on 202 of 216, the other 14 each a fix landed since), 9.54% in loud rooms; spoken 16.2% in a quiet room, 26.6% in a loud one, 34.5% whispered. Cold, with every clip said and written, about 11 minutes, most of it waiting for the Mac's turn and Parakeet's 5.5 minutes; warm about 15 s, 30 s once new dictations rebuild the real set, and about 30 s more after a change to KeyboardCore. One run at a time: a second waits for the first, since they share `voicebench/`.
+
+## scripts/rivals
+
+The cleanup bench: how close iikb's dictation comes to Wispr Flow's and Aqua Voice's on the same recordings.
+- `scripts/rivals.txt`'s made-up sentences (fillers, repeats, corrections, lists, punctuation, said commands, names, numbers, messages, and words to keep), each with what a good dictation types and its other right answers, said by Samantha and Daniel.
+- iikb: Parakeet v3 as the app runs it (Tools/VoiceBench) and the text path (Tools/VoiceBench/Text), as Casual with As Said, Casual with Clean, and Formal with Clean. Wispr Flow through the desktop app's login (github.com/mathisarends/whisprflow-re, in the data folder), Aqua Voice through api.aquavoice.com/v1/dictations (its key in `~/.config/rivalbench/aqua-key`), each at its defaults; a rival hears each recording once, kept by its sound.
+- Scores per kind: exact (what a good dictation types, its last period and spacing aside), right words (case and punctuation aside) and words wrong. Each case's texts go to `results.jsonl`.
+- Runs on the Mac, where the voices, Parakeet and the logins are, with its data in `~/.local/share/iikb/rivals`, never the repo. About 4 minutes cold, 30 s once Parakeet has written every recording.
+- Nov 10, exact: Wispr Flow 70%, Aqua Voice 80%; iikb Casual As Said 28% to 36%, Casual Clean 38% to 60%, Formal Clean 63%, from said commands, corrections said as sentences or after "sorry", a few words said over, "never mind", and "scratch that" keeping "Dear team,". What's left is mostly Parakeet: run-on sentences with no punctuation, and digits or names it mishears.
 
 ## scripts/eval
 

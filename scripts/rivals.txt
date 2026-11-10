@@ -1,0 +1,64 @@
+# The cleanup bench scripts/rivals says with macOS voices and runs through iikb, Wispr Flow and Aqua Voice: `kind | said |
+# what a good dictation types`, with other right answers after `||`. A line's \n is a line break. Made-up text only.
+
+fillers | So um I was thinking we could uh grab lunch tomorrow. | So I was thinking we could grab lunch tomorrow. || I was thinking we could grab lunch tomorrow.
+fillers | Um, can you uh send me the file when you get a chance? | Can you send me the file when you get a chance?
+fillers | I think, you know, we should probably, like, wait until Monday. | I think we should probably wait until Monday.
+fillers | Uh the meeting went well, um, but we still need to uh finalize the budget. | The meeting went well, but we still need to finalize the budget.
+fillers | Like, I don't know, it just feels like the design is, um, too busy. | I don't know, it just feels like the design is too busy.
+fillers | Hmm, let me think. Uh, yeah, Thursday works for me. | Let me think. Yeah, Thursday works for me. || Hmm, let me think. Yeah, Thursday works for me.
+
+repeats | I I think the the problem is in the login flow. | I think the problem is in the login flow.
+repeats | We need to, we need to ship this by Friday. | We need to ship this by Friday.
+repeats | Can you, can you check if the server is up? | Can you check if the server is up?
+repeats | The thing is, uh, we kind of, we kind of rushed the the release. | The thing is, we kind of rushed the release.
+
+corrections | Let's meet at two, no wait, three o'clock. | Let's meet at three o'clock. || Let's meet at 3:00. || Let's meet at 3 o'clock.
+corrections | Send it to John, sorry, I mean Sarah. | Send it to Sarah.
+corrections | The budget is fifty thousand, actually make that sixty thousand dollars. | The budget is $60,000. || The budget is sixty thousand dollars.
+corrections | I'll be there on Tuesday, no, Wednesday. | I'll be there on Wednesday.
+corrections | Book a table for four, I mean five people. | Book a table for five people. || Book a table for 5 people.
+corrections | Tell him the package arrived. Scratch that. Tell him the package is delayed. | Tell him the package is delayed.
+corrections | I'll call you tonight. Actually, never mind, I'll text you tomorrow. | I'll text you tomorrow.
+corrections | Dear team, the launch is on Monday. Scratch that, the launch is on Thursday. | Dear team, the launch is on Thursday. || Dear team,\nThe launch is on Thursday.
+
+lists | My grocery list, one, eggs, two, milk, three, bread. | My grocery list:\n1. Eggs\n2. Milk\n3. Bread
+lists | Agenda for today, number one, review the roadmap, number two, hiring update, number three, budget. | Agenda for today:\n1. Review the roadmap\n2. Hiring update\n3. Budget
+lists | There are three steps. First, open the app. Second, tap settings. Third, turn on dictation. | There are three steps:\n1. Open the app.\n2. Tap settings.\n3. Turn on dictation. || There are three steps. First, open the app. Second, tap settings. Third, turn on dictation.
+lists | Things to pack, sunscreen, towels, snacks, and a book. | Things to pack: sunscreen, towels, snacks, and a book.
+
+punctuation | Are you coming to the party on Saturday | Are you coming to the party on Saturday?
+punctuation | What time does the store close and do they take returns | What time does the store close, and do they take returns?
+punctuation | I loved the movie the ending was perfect though the middle dragged a bit | I loved the movie. The ending was perfect, though the middle dragged a bit.
+punctuation | Wait really that's amazing congratulations | Wait, really? That's amazing! Congratulations! || Wait, really? That's amazing. Congratulations!
+punctuation | Okay so the plan is we land around noon grab the rental car and then drive straight to the hotel we can figure out dinner later | Okay, so the plan is we land around noon, grab the rental car, and then drive straight to the hotel. We can figure out dinner later.
+
+commands | Hi Sam comma thanks for the update period see you soon exclamation point | Hi Sam, thanks for the update. See you soon!
+commands | Is it ready question mark | Is it ready?
+commands | First line new line second line | First line\nSecond line
+commands | That's all for now new paragraph best regards | That's all for now.\n\nBest regards
+
+names | I'm flying from new york to san francisco on united next week. | I'm flying from New York to San Francisco on United next week.
+names | Update the iphone app on github and post the link on linkedin. | Update the iPhone app on GitHub and post the link on LinkedIn.
+names | I use chat gpt and google docs every day at work. | I use ChatGPT and Google Docs every day at work.
+
+numbers | The meeting is at three thirty p m on march fifth. | The meeting is at 3:30 PM on March 5th. || The meeting is at 3:30 p.m. on March 5th. || The meeting is at 3:30 PM on March 5. || The meeting is at 3:30 p.m. on March 5. || The meeting is at 3:30pm on March 5th. || The meeting is at 3:30pm on March 5.
+numbers | It costs twenty four dollars and ninety nine cents. | It costs $24.99.
+numbers | Sales grew by twelve percent last quarter. | Sales grew by 12% last quarter.
+numbers | My email is jane dot doe at gmail dot com. | My email is jane.doe@gmail.com.
+numbers | Go to example dot com slash pricing. | Go to example.com/pricing.
+numbers | Call me at four one five, five five five, zero one nine nine. | Call me at 415-555-0199. || Call me at (415) 555-0199.
+numbers | We need about two hundred and fifty units by the fifteenth. | We need about 250 units by the 15th.
+numbers | Upgrade to version two point four point one. | Upgrade to version 2.4.1.
+
+messages | hey so um I was gonna ask if you wanted to uh come over later we're making tacos and I think Mike is coming too let me know | Hey, I was gonna ask if you wanted to come over later. We're making tacos and I think Mike is coming too. Let me know. || Hey, so I was gonna ask if you wanted to come over later. We're making tacos and I think Mike is coming too. Let me know.
+messages | Hi Laura, I wanted to follow up on our call from yesterday. Um, could you send over the contract, uh, by end of day Thursday? Thanks so much. | Hi Laura, I wanted to follow up on our call from yesterday. Could you send over the contract by end of day Thursday? Thanks so much. || Hi Laura,\nI wanted to follow up on our call from yesterday. Could you send over the contract by end of day Thursday?\nThanks so much.
+messages | so yeah um the the demo went really well I think they're gonna they're gonna sign next week | So yeah, the demo went really well. I think they're gonna sign next week. || The demo went really well. I think they're gonna sign next week. || Yeah, the demo went really well. I think they're gonna sign next week.
+
+keep | I like the blue one more than the red one. | I like the blue one more than the red one.
+keep | I mean it, this is the last time. | I mean it, this is the last time.
+keep | You know what, let's just order pizza. | You know what, let's just order pizza.
+keep | No, I don't think that's right. | No, I don't think that's right.
+keep | Wait for me at the station. | Wait for me at the station.
+keep | I had had enough by then. | I had had enough by then.
+keep | Actually, the report is already done. | Actually, the report is already done.

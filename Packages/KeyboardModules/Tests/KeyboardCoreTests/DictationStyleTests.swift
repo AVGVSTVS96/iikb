@@ -261,6 +261,48 @@ struct DictationStyleTests {
         #expect(clean("Call Sam at five, sorry, six.") == "Call Sam at six.")
         #expect(clean("On Tuesday, actually Wednesday.") == "On Wednesday.")
         #expect(write("Let's meet at two, I mean three.", .formal, .light) == "Let's meet at two, I mean three.")
+        #expect(clean("Let's meet at two, no wait, three o'clock.") == "Let's meet at three o'clock.")
+        #expect(clean("Send it to John, sorry, I mean Sarah.") == "Send it to Sarah.")
+        #expect(clean("Book a table for four, I mean five people.") == "Book a table for five people.")
+        #expect(clean("The budget is $50,000, actually make that $60,000.") == "The budget is $60,000.")
+        #expect(clean("Let's meet at two. No wait. Three o'clock.") == "Let's meet at three o'clock.")
+        #expect(clean("Send it to John. Sorry. I mean Sarah.") == "Send it to Sarah.")
+        #expect(
+            clean("I'll call you tonight, actually, never mind, I'll text you tomorrow.") == "I'll text you tomorrow.")
+        #expect(
+            clean("Dear team, the launch is on Monday. Scratch that, the launch is on Thursday.")
+                == "Dear team, the launch is on Thursday.")
+    }
+
+    @Test func aListTakesTheIntroSentencesPeriodAsAColon() {
+        #expect(
+            write("There are three steps. First, open the app. Second, tap settings. Third, turn on dictation.")
+                == "There are three steps:\n1. open the app\n2. tap settings\n3. turn on dictation")
+    }
+
+    @Test func cleanTakesOutWhatYouStartOver() {
+        let clean = { write($0, .formal, .clean) }
+        #expect(clean("We need to, we need to ship this by Friday.") == "We need to ship this by Friday.")
+        #expect(clean("Can you can you check if it's up?") == "Can you check if it's up?")
+        #expect(clean("I think they're gonna they're gonna sign.") == "I think they're gonna sign.")
+        for kept in ["Call 555 555 0199.", "It's five five five, zero one.", "Bye bye bye.", "That's it. That's it!"] {
+            #expect(clean(kept) == kept)
+        }
+    }
+
+    @Test func punctuationSaidByNameIsTyped() {
+        #expect(
+            write("Hi Sam comma thanks for the update period see you soon exclamation point")
+                == "Hi Sam, thanks for the update. See you soon!")
+        #expect(write("Is it ready question mark") == "Is it ready?")
+        #expect(write("First line new line second line.") == "First line\nSecond line.")
+        #expect(write("That's all for now new paragraph best regards.") == "That's all for now.\n\nBest regards.")
+        for kept in [
+            "It took a period of time.", "Add a comma there.", "The grace period ends today.",
+            "They launched a new line of shoes.",
+        ] {
+            #expect(write(kept) == kept)
+        }
     }
 
     @Test func cleanKeepsWhatOnlySoundsLikeACorrection() {

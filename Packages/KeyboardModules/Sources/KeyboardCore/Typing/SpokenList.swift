@@ -9,7 +9,12 @@ enum SpokenList {
         guard let list = first(in: text) else { return text }
         var intro = Array(text[..<list.markers[0].lowerBound])
         while intro.last == " " { intro.removeLast() }
-        if intro.last == "," || intro.last == ";" { intro.removeLast() }
+        if intro.last == "," || intro.last == ";"
+            || intro.last == "." && intro.dropLast().last != "."
+                && !Words.closesAbbreviation(intro, at: intro.count - 1)
+        {
+            intro.removeLast()
+        }
         if let last = intro.last, Words.isWordCharacter(last) { intro.append(":") }
 
         var lines: [[Character]] = intro.isEmpty ? [] : [intro]
