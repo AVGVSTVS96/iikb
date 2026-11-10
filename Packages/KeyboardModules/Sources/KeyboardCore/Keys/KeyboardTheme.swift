@@ -46,8 +46,8 @@ public struct KeyboardTheme: Hashable, Sendable {
     public var micGlyph: RGBA
     public var record: RGBA
     public var searchField: RGBA
-    /// The keyboard's card as iOS draws it behind a keyboard, opaque, for what covers more of the app than the keys
-    /// do (Chats), where the app would show through iOS's glass.
+    /// The keyboard's card as iOS draws it behind a keyboard, opaque, for what must hide the app that shows through
+    /// iOS's glass, as a photo opened in a chat does.
     public var card = RGBA.rgb(224, 225, 232)
 
     /// How each kind of key is painted; the plain themes paint every key with `key`, `keyPressed` and `label`.
