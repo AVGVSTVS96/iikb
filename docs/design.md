@@ -36,7 +36,7 @@ From top to bottom: 3 of padding (iOS draws its backdrop 4 above the keyboard, s
 - Letters: SF Compact (see AGENTS.md: loaded from the system font file), Regular 23, lowercase until shift. The design draws Inter as a stand-in because Paper has no SF.
 - `123` and key words (`go`, `search`): SF Pro 17, Regular (Semibold on the prominent return).
 - Suggestions: SF Pro 17. The middle slot is Medium in the label color; the side slots are Regular in the secondary color. An emoji suggestion is 24.
-- Glyphs, SF Symbols at 22 unless said: `shift` / `shift.fill` / `capslock.fill`, `delete.left` (24), `globe`, `return.left` (24). The bar's are its own: see "The bar". GIF has no symbol: draw a rounded rect 18.4 × 14.4, radius 3.6, 1.7 stroke, with "GIF" in SF Pro Heavy 8 inside it.
+- Glyphs, SF Symbols at 22 unless said: `shift` / `shift.fill` / `capslock.fill`, `delete.left` (24), `globe`, `return.left` (24). The bar's are its own: see "The bar". GIF has no symbol: draw a rounded rect 18.4 × 14.4, radius 3.6, 1.3 stroke, with "GIF" in SF Pro Bold 8 inside it, at 0.88 of the glyph size, so its line matches the regular symbols beside it. The tools' symbols cover a square 0.85 of the glyph size and stand no taller than 0.9 of it, so the tall clipboard and the wide bubble read as one size.
 
 ### The bar
 

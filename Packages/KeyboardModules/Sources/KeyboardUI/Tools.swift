@@ -145,14 +145,16 @@ extension Panel {
         }
     }
 
-    /// A symbol scaled so its glyph, without the margins a symbol image carries, is `side` long on its longer side, in
-    /// its light appearance's shape, since iOS draws some filled in dark (`face.smiling`).
+    /// A symbol scaled so its glyph, without the margins a symbol image carries, covers as much as a square 0.85 of
+    /// `side` and stands no taller than 0.9 of it, so a tall one (the clipboard) and a wide one (the bubble) read as one
+    /// size beside each other; in its light appearance's shape, since iOS draws some filled in dark (`face.smiling`).
     static func symbol(_ name: String, _ side: CGFloat) -> UIImage? {
         let light = UITraitCollection(userInterfaceStyle: .light)
         let configuration = UIImage.SymbolConfiguration(pointSize: side, weight: .regular).withTraitCollection(light)
         guard let image = UIImage(systemName: name, withConfiguration: configuration) else { return nil }
         let ink = CGRect(origin: .zero, size: image.size).inset(by: image.alignmentRectInsets)
-        let scale = side / max(ink.width, ink.height)
+        let scale = min(
+            0.85 * side / (ink.width * ink.height).squareRoot(), 0.9 * side / ink.height, side / ink.width)
         let size = CGSize(width: ink.width * scale, height: ink.height * scale)
         return UIGraphicsImageRenderer(size: size).image { _ in
             light.performAsCurrent {
@@ -185,21 +187,22 @@ extension Panel {
         }.withRenderingMode(.alwaysTemplate)
     }
 
-    /// GIF has no SF Symbol: a rounded rect with "GIF" in it, `side` wide (docs/design.md).
+    /// GIF has no SF Symbol: a rounded rect with "GIF" in it, 0.88 of `side` wide, its line as thick as the regular
+    /// symbols' beside it (docs/design.md).
     package static func gifGlyph(_ side: CGFloat) -> UIImage {
-        let unit = side / 18.4
+        let unit = 0.88 * side / 18.4
         let size = CGSize(width: side, height: 14.4 * unit)
         return UIGraphicsImageRenderer(size: size).image { _ in
             let box = CGRect(origin: .zero, size: size)
             let path = UIBezierPath(
                 roundedRect: box.insetBy(dx: 0.85 * unit, dy: 0.85 * unit), cornerRadius: 3.6 * unit)
-            path.lineWidth = 1.7 * unit
+            path.lineWidth = 1.3 * unit
             UIColor.black.setStroke()
             path.stroke()
             let text = NSAttributedString(
                 string: "GIF",
                 attributes: [
-                    .font: UIFont.systemFont(ofSize: 8 * unit, weight: .heavy), .foregroundColor: UIColor.black,
+                    .font: UIFont.systemFont(ofSize: 8 * unit, weight: .bold), .foregroundColor: UIColor.black,
                 ])
             let bounds = text.size()
             text.draw(at: CGPoint(x: box.midX - bounds.width / 2, y: box.midY - bounds.height / 2))
