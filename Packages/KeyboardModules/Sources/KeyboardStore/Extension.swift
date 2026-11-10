@@ -39,9 +39,9 @@ public enum ExtensionStore {
         SettingsStore.set(data, forKey: key)
     }
 
-    /// Adds `extension`, in place of one with the same name.
+    /// Adds `extension`, in place of one with the same name or address, since one address serves one list of chats.
     public static func add(_ added: Extension) {
-        save(load().filter { $0.name != added.name } + [added])
+        save(load().filter { $0.name != added.name && $0.url != added.url } + [added])
     }
 }
 
