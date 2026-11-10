@@ -819,10 +819,13 @@ def hold(x, y, seconds=1.2):
 
 
 def open_chat(name):
-    """The chat named, open with its keys down from a fresh keyboard, and its photo's bounds when it has one."""
-    keys = keyboard()
-    tap(*keys.more)
-    tap_text(lambda text: text.startswith("Pick up the"), 3)
+    """The chat named, open with its keys down from a fresh keyboard, whether it comes back with a chat open or not,
+    and its photo's bounds when it has one."""
+    launch()
+    tap_text(PROMPT, 2.0)
+    if not any(text.startswith("Message ") for text, _, _ in nodes()):
+        tap(*Keys().more)
+        tap_text(lambda text: text.startswith("Pick up the"), 3)
     if name != "Notes":
         tap_text(name, 3, top=True)
     photos = [bounds for _, description, bounds in nodes() if description == "view.png"]
