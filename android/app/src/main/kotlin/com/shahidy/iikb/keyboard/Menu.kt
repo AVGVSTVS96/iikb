@@ -63,6 +63,7 @@ import com.shahidy.iikb.app.Hue
 import com.shahidy.iikb.app.Hues
 import com.shahidy.iikb.app.Palette
 import com.shahidy.iikb.app.glass
+import com.shahidy.iikb.app.glassSurface
 import kotlin.math.floor
 
 /**
@@ -87,7 +88,7 @@ fun Menu(state: Overlay.State) {
             verticalArrangement = Arrangement.spacedBy(GAP.dp),
         ) {
             for (shelf in shelves) {
-                Platter(shelf.title, shelf.glyph, shelf.hue.of(look.dark), row, {
+                Platter(shelf.title, shelf.glyph, shelf.hue, row, {
                     if (shelf == Shelf.CHATS) actions.openChat("") else actions.open(shelf.panel)
                 }) {
                     when (shelf) {
@@ -98,10 +99,10 @@ fun Menu(state: Overlay.State) {
                     }
                 }
             }
-            Platter("Theme", "paintpalette.fill", Hues.teal.of(look.dark), THEME_ROW.dp, actions::appearance, fitted = false) {
+            Platter("Theme", "paintpalette.fill", Hues.teal, THEME_ROW.dp, actions::appearance, fitted = false) {
                 ThemeRow(look.dark)
             }
-            Platter("Stop Animation", "stop.fill", Hues.red.of(look.dark), STOP_ROW.dp, actions::appearance, fitted = false) {
+            Platter("Stop Animation", "stop.fill", Hues.red, STOP_ROW.dp, actions::appearance, fitted = false) {
                 StopRow()
             }
             Spacer(Modifier.height(0.dp))
@@ -128,6 +129,52 @@ private const val COMPACT_ROW = 46f
 
 private fun Hue.of(dark: Boolean) = on(if (dark) Palette.dark else Palette.light)
 
+/**
+ * How iOS draws a system color inside its glass, as a shelf's tile is: vibrant, a white fill under a color matrix of
+ * that color's (Core Animation's `vibrantColorMatrix`, read from the layer tree in the iOS 27 simulator) that takes the
+ * glass behind it, so the tile comes out lighter than the color in dark and a shade deeper in light. Android can't put
+ * the window's blur through a matrix, so it takes the shelf's glass over the keyboard's card. Each row is red, green,
+ * blue: their weights on the glass's red, green and blue, then what's added.
+ */
+private class Vibrant(private val light: FloatArray, private val dark: FloatArray) {
+    fun on(glass: Color, dark: Boolean): Color {
+        val m = if (dark) this.dark else light
+        fun row(i: Int) = (m[4 * i] * glass.red + m[4 * i + 1] * glass.green + m[4 * i + 2] * glass.blue + m[4 * i + 3]).coerceIn(0f, 1f)
+        return Color(row(0), row(1), row(2))
+    }
+
+    companion object {
+        private val all = mapOf(
+            Hues.orange to Vibrant(
+                floatArrayOf(.0784f, .1242f, .2342f, .5632f, 0f, .1748f, .1818f, .1963f, 0f, .0718f, .2139f, -.1288f),
+                floatArrayOf(.3919f, .1705f, .056f, 1f, .2977f, .2646f, .056f, .5725f, .2977f, .1705f, .1502f, .1882f),
+            ),
+            Hues.pink to Vibrant(
+                floatArrayOf(.0882f, .1812f, .1467f, .5838f, 0f, .1948f, .0863f, -.1047f, 0f, .1208f, .186f, .0265f),
+                floatArrayOf(.4387f, .0714f, .1233f, 1f, .3308f, .1792f, .1233f, .2157f, .3308f, .0714f, .2311f, .3725f),
+            ),
+            Hues.purple to Vibrant(
+                floatArrayOf(.1675f, .2402f, .036f, .3524f, .0399f, .2661f, .0238f, -.1416f, .0631f, .2512f, .1448f, .4193f),
+                floatArrayOf(.3081f, .0477f, .2218f, .8588f, .2007f, .1551f, .2218f, .2039f, .2007f, .0477f, .3292f, .949f),
+            ),
+            Hues.indigo to Vibrant(
+                floatArrayOf(.2744f, .1086f, .0064f, -.0091f, .0975f, .2784f, .0062f, -.0487f, .1434f, .1543f, .1825f, .4805f),
+                floatArrayOf(.3f, .0981f, .2017f, .4275f, .0862f, .3118f, .2017f, .4863f, .0862f, .0981f, .4154f, 1f),
+            ),
+            Hues.teal to Vibrant(
+                floatArrayOf(.1377f, .0324f, .0254f, -.1955f, .243f, .0572f, .0448f, .4197f, .25f, .0588f, .0461f, .4608f),
+                floatArrayOf(0f, .284f, .3029f, 0f, 0f, .284f, .3029f, .8235f, 0f, .284f, .3029f, .8784f),
+            ),
+            Hues.red to Vibrant(
+                floatArrayOf(.1098f, .153f, .15f, .5872f, 0f, .2031f, .0915f, -.075f, 0f, .0945f, .2024f, -.0617f),
+                floatArrayOf(.4544f, .0841f, .0879f, 1f, .325f, .2135f, .0879f, .2588f, .325f, .0841f, .2174f, .2706f),
+            ),
+        )
+
+        fun of(hue: Hue) = all.getValue(hue)
+    }
+}
+
 /** The menu's shelves, each with the color Home's card for it has. */
 enum class Shelf(val title: String, val panel: String, val glyph: String, val hue: Hue) {
     CLIPBOARD("Clipboard", "clipboard", "list.clipboard.fill", Hues.orange),
@@ -151,16 +198,19 @@ private fun Modifier.fadeTop() = graphicsLayer(compositingStrategy = Compositing
  */
 @Composable
 private fun Platter(
-    title: String, glyph: String, color: Color, row: Dp, onOpen: () -> Unit, fitted: Boolean = true,
+    title: String, glyph: String, hue: Hue, row: Dp, onOpen: () -> Unit, fitted: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val dark = LocalColors.current.dark
+    val look = LocalColors.current
+    val dark = look.dark
+    val tint = hue.of(dark).copy(alpha = if (dark) 0.12f else 0.08f)
     Row(
         Modifier.fillMaxWidth().height(row + CHROME.dp)
-            .glass(RoundedCornerShape(RADIUS.dp), dark = dark, color = color.copy(alpha = if (dark) 0.12f else 0.08f))
+            .glass(RoundedCornerShape(RADIUS.dp), dark = dark, color = tint)
             .padding(INSET.dp),
     ) {
-        ShelfHead(title, glyph, fitted, color, Modifier.width(SIDE.dp).fillMaxHeight(), onOpen)
+        val tile = Vibrant.of(hue).on(glassSurface(look.card, dark, tint), dark)
+        ShelfHead(title, glyph, fitted, tile, Modifier.width(SIDE.dp).fillMaxHeight(), onOpen)
         Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(CARD_RADIUS))) { content() }
     }
 }
