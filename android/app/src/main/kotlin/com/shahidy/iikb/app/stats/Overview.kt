@@ -390,7 +390,7 @@ fun Speeds(speeds: Map<Int, Double>) {
         ColumnChart(
             bands.map { (speed, count) -> if (speed in low..high) listOf(count, null) else listOf(null, count) },
             listOf(usual, other), bands.maxOf { it.second }, 130.dp,
-            bands.mapIndexedNotNull { index, (speed, _) -> if (speed % 20 == 0) Tick(index, "$speed") else null },
+            bands.mapIndexedNotNull { index, (speed, _) -> if (speed % 20 == 0) Tick(index, "$speed", true) else null },
             ratio = 0.78f, radius = 2.dp, yLabel = null,
         )
         Caption("Words a minute, each column a stretch of typing")

@@ -18,7 +18,9 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -54,9 +56,10 @@ fun niceMarks(top: Double, count: Int): List<Double> {
 class Rule(val value: Double, val note: String? = null, val leading: Boolean = false, val weight: FontWeight = FontWeight.Normal)
 
 /**
- * Columns, each a stack of `values` (one per series, bottom first, painted by `fills`), or with `lines` the same values as a
- * line per series through the days that have one. The y axis reads `marks` (0, half and `top`, on dashed lines, unless
- * given) at the trailing edge (`yLabel`), or nothing without one. A tap picks a column and a horizontal drag moves the pick; a tap on the picked one lets it go.
+ * Columns, each a stack of `values` (one per series, bottom first, painted by `fills`, a gradient spanning each piece as
+ * Swift Charts paints a mark), or with `lines` the same values as a line per series through the days that have one. The
+ * y axis reads `marks` (0, half and `top`, on dashed lines, unless given) at the trailing edge (`yLabel`), or nothing
+ * without one. A tap picks a column and a horizontal drag moves the pick; a tap on the picked one lets it go.
  */
 @Composable
 fun ColumnChart(
@@ -81,31 +84,32 @@ fun ColumnChart(
     val measurer = rememberTextMeasurer()
     val label = TextStyle(color = palette.secondary, fontSize = 11.sp)
     val count = values.size.coerceAtLeast(1)
+    val shownMarks = marks ?: listOf(0.0, top / 2, top)
+    val gap = with(LocalDensity.current) { 6.dp.toPx() }
+    val axis = yLabel?.let { name -> shownMarks.maxOf { measurer.measure(name(it), label).size.width } + gap } ?: 0f
     var modifier = Modifier.fillMaxWidth().height(height)
     if (onPick != null) {
-        val axis = if (yLabel != null) 40.dp else 0.dp
         modifier = modifier
-            .pointerInput(count, picked) {
+            .pointerInput(count, picked, axis) {
                 detectTapGestures { offset ->
-                    val index = column(offset.x, size.width - axis.toPx(), count)
+                    val index = column(offset.x, size.width - axis, count)
                     onPick(if (index == picked) null else index)
                 }
             }
-            .pointerInput(count) {
+            .pointerInput(count, axis) {
                 detectHorizontalDragGestures { change, _ ->
-                    onPick(column(change.position.x, size.width - axis.toPx(), count))
+                    onPick(column(change.position.x, size.width - axis, count))
                 }
             }
     }
     Canvas(modifier) {
-        val axis = if (yLabel != null) 40.dp.toPx() else 0f
         val bottom = size.height - 18.dp.toPx()
         val plot = size.width - axis
         val step = plot / count
-        val y = { value: Double -> (bottom - (value / top).coerceIn(0.0, 1.0) * (bottom - 6.dp.toPx())).toFloat() }
+        val y = { value: Double -> (bottom - (value / top).coerceIn(0.0, 1.0) * bottom).toFloat() }
         val dash = if (marks == null) PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 3.dp.toPx())) else null
         if (yLabel != null) {
-            for (mark in marks ?: listOf(0.0, top / 2, top)) {
+            for (mark in shownMarks) {
                 drawLine(palette.divider, Offset(0f, y(mark)), Offset(plot, y(mark)), 1.dp.toPx(), pathEffect = dash)
                 text(measurer, yLabel(mark), label, Offset(plot + 6.dp.toPx(), y(mark)), centerY = true)
             }
@@ -135,11 +139,13 @@ fun ColumnChart(
                     base += value!!
                     val high = y(base)
                     val rect = RoundRect(
-                        x, high, x + width, low,
+                        0f, 0f, width, low - high,
                         topLeftCornerRadius = if (position == stack.lastIndex) CornerRadius(corner) else CornerRadius.Zero,
                         topRightCornerRadius = if (position == stack.lastIndex) CornerRadius(corner) else CornerRadius.Zero,
                     )
-                    drawPath(Path().apply { addRoundRect(rect) }, fills[series % fills.size], alpha = alpha)
+                    inset(x, high, size.width - x - width, size.height - low) {
+                        drawPath(Path().apply { addRoundRect(rect) }, fills[series % fills.size], alpha = alpha)
+                    }
                 }
             }
         }
@@ -170,14 +176,15 @@ fun ColumnChart(
 
 private fun column(x: Float, plot: Float, count: Int) = (x / (plot / count)).toInt().coerceIn(0, count - 1)
 
-/** Draws `text` at `at`, centered on it where asked, and kept inside `fit` wide. */
+/** Draws `text` at `at`, centered on it where asked, and kept from running past `fit`, as Swift Charts' labels may run
+ * out on the leading side. */
 fun DrawScope.text(
     measurer: TextMeasurer, text: String, style: TextStyle, at: Offset, centerX: Boolean = false,
     centerY: Boolean = false, fit: Float = Float.MAX_VALUE,
 ) {
     val layout = measurer.measure(text, style)
     var x = if (centerX) at.x - layout.size.width / 2 else at.x
-    x = x.coerceIn(0f, (fit - layout.size.width).coerceAtLeast(0f))
+    x = x.coerceAtMost(fit - layout.size.width)
     val y = if (centerY) at.y - layout.size.height / 2 else at.y
     drawText(layout, topLeft = Offset(x, y))
 }
