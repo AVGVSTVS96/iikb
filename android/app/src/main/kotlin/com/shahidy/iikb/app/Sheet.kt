@@ -44,11 +44,16 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.Layout
+import kotlin.math.roundToInt
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import com.shahidy.iikb.app.design.isDark
 
 /**
  * iOS's form sheet at its medium and large heights: floating 8 off the screen's edges over the page dimmed behind it,
+ * at the medium height its content laid out as wide as the screen and shrunk to fit inside them, as iOS shrinks it,
  * a grabber at its top, its title between Cancel and what it's for, which turns accent once it can, over sections that
  * scroll. Dragged up, or its sections scrolled, it grows to the large height and settles at the nearer one; dragged
  * down from the medium height it closes. It rides up on the keyboard.
@@ -100,7 +105,23 @@ fun Sheet(
             Modifier.fillMaxWidth().height(with(density) { height.toDp() })
                 .scrollable(grow, Orientation.Vertical, flingBehavior = settle),
         ) {
-            Column {
+            val medium = ((detents.second - height) / (detents.second - detents.first)).coerceIn(0f, 1f)
+            Column(
+                Modifier.layout { measurable, constraints ->
+                    val screen = constraints.maxWidth + 16.dp.toPx()
+                    val shrink = 1 - (1 - constraints.maxWidth / screen) * medium
+                    val full = measurable.measure(
+                        Constraints(maxWidth = (constraints.maxWidth / shrink).roundToInt(), maxHeight = (constraints.maxHeight / shrink).roundToInt()),
+                    )
+                    layout(constraints.maxWidth, constraints.maxHeight) {
+                        full.placeWithLayer(0, 0) {
+                            scaleX = shrink
+                            scaleY = shrink
+                            transformOrigin = TransformOrigin(0f, 0f)
+                        }
+                    }
+                },
+            ) {
                 Layout(
                     content = {
                         SheetButton("Cancel", enabled = true, prominent = false, onClick = close)
