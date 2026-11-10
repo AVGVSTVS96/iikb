@@ -78,14 +78,14 @@ struct TapsPage: View {
             let pills = SectionPills(sections: TapMapView.Mode.allCases, selection: $mode, title: \.title)
             if model.layouts.count > 1 {
                 ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 0) {
                         pills
-                        Spacer(minLength: 0)
+                        Spacer(minLength: 8)
                         screens(named: true)
                     }
-                    HStack(spacing: 8) {
+                    HStack(spacing: 0) {
                         pills
-                        Spacer(minLength: 0)
+                        Spacer(minLength: 8)
                         screens(named: false)
                     }
                 }

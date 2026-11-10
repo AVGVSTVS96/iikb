@@ -33,7 +33,7 @@ struct StatsPage: View {
     @Bindable private var router = Router.shared
     @State private var phone = PhoneActivity()
     @State private var adding = LaunchOptions.addsComputer
-    @State private var pillsWidth: CGFloat = 0
+    @State private var rowNeeds: CGFloat = 0
     @State private var rowWidth: CGFloat = 0
     private let computers = Computers.shared
     @Environment(\.scenePhase) private var phase
@@ -44,8 +44,7 @@ struct StatsPage: View {
     private var sections: [Section] { device == .iPhone ? Section.allCases : [.overview, .typing, .dictation] }
     private var section: Section { sections.contains(router.stats) ? router.stats : .overview }
     /// The device menu sits at the pills' end when it fits there beside them, else in the bar.
-    private var menuInRow: Bool { pillsWidth + Self.menuWidth <= rowWidth }
-    private static let menuWidth: CGFloat = 150
+    private var menuInRow: Bool { rowNeeds <= rowWidth }
 
     var body: some View {
         NavigationStack {
@@ -71,15 +70,19 @@ struct StatsPage: View {
                     } set: {
                         router.stats = $0
                     }, title: \.title)
-                HStack(spacing: 8) {
+                HStack(spacing: 0) {
                     pills.layoutPriority(1)
                     if menuInRow {
-                        Spacer(minLength: 0)
+                        Spacer(minLength: 8)
                         devices(inRow: true)
                     }
                 }
                 .background {
-                    pills.fixedSize().hidden().onGeometryChange(for: CGFloat.self, of: \.size.width) { pillsWidth = $0 }
+                    HStack(spacing: 8) {
+                        pills
+                        PillMenuLabel(symbol: device.symbol, title: device.title)
+                    }
+                    .fixedSize().hidden().onGeometryChange(for: CGFloat.self, of: \.size.width) { rowNeeds = $0 }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .onGeometryChange(for: CGFloat.self, of: \.size.width) { rowWidth = $0 }
