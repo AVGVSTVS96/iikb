@@ -343,7 +343,7 @@ private fun TranscriptDetail(transcript: Transcript, back: () -> Unit) {
         Selectable {
             Text(
                 transcript.shown, color = if (transcript.text.isEmpty()) palette.secondary else palette.label,
-                fontSize = 20.sp, lineHeight = 27.sp, modifier = Modifier.fillMaxWidth().card(palette).padding(20.dp),
+                fontSize = 20.sp, lineHeight = 25.sp, modifier = Modifier.fillMaxWidth().card(palette).padding(20.dp),
             )
         }
         TranscriptActions(transcript)

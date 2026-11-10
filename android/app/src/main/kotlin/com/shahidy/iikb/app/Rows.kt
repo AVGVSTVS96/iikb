@@ -189,7 +189,7 @@ fun ListPage(
         LazyColumn(
             Modifier.fillMaxSize().imePadding(),
             state = list,
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top + if (pinned == null) 8.dp else 0.dp, bottom = 40.dp + LocalTabBar.current),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top, bottom = 40.dp + LocalTabBar.current),
         ) { content() }
     }
 }
