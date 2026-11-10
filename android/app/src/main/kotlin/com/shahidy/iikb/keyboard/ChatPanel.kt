@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -543,7 +544,7 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, 
                 .background(look.accent, CircleShape)
                 .clickable(remember { MutableInteractionSource() }, indication = null, enabled = canSend) { actions.send() },
             contentAlignment = Alignment.Center,
-        ) { Glyph("arrow.up", look.accentLabel, 15.dp) }
+        ) { Glyph("arrow.up", look.accentLabel, Glyphs.square(15f).dp, weight = Glyphs.SEMIBOLD) }
     }
 }
 
@@ -577,11 +578,15 @@ fun ChatShelf() {
         LazyRow(Modifier.fillMaxSize(), state = row, horizontalArrangement = Arrangement.spacedBy(ITEM_GAP)) {
             items(chats.list, key = { it.service.name + "/" + it.id }) { chat ->
                 Pressable(Modifier.size(card, height), 10.dp, onClick = { actions.openChat(chat.id) }) {
-                    Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.Center) {
-                        Text(chat.name, color = look.label, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        val latest = chat.line?.let { markdown(it).text }
-                        if (latest != null && height >= 42.dp) {
-                            Text(latest, color = look.secondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp)) {
+                        val latest = chat.line?.let { markdown(it).text }?.takeIf { height >= 42.dp }
+                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                            Text(chat.name, color = look.label, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        if (latest != null) {
+                            Box(Modifier.height(15.dp), contentAlignment = Alignment.CenterStart) {
+                                Text(latest, color = look.secondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 }
