@@ -26,7 +26,7 @@ STAGE = "/data/local/tmp/iikb-shots"
 FOUNDATION = 978307200
 PROMPT = "Type something with iikb"
 SECTIONS = ["layers", "typing", "held", "swipe", "menu", "emoji", "gif", "clipboard", "transcripts", "dictation",
-            "app", "chats", "hint", "replacement"]
+            "app", "chats", "hint", "replacement", "style"]
 
 # iOS's apps in the made-up data, as the Android apps that do the same job (AppNames shows a missing one by its
 # package's last part, so each reads as its app).
@@ -616,9 +616,8 @@ ANDROID_PAGES = [
     # The pill, over the Links section's header in All.
     ("clipboard-links", lambda: (tab("Clipboard"), tap_text("Links", top=True))),
     ("sources-edit", lambda: tap_text("Add Source")),
-    ("writing-eachapp", lambda: each_app()),
 ]
-ANDROID_PAGE_ARGUMENTS = {"sources-edit": "sources", "writing-eachapp": "writing"}
+ANDROID_PAGE_ARGUMENTS = {"sources-edit": "sources"}
 # PAGES narrows the app's pages, by name.
 PAGES = [p for p in PAGES_ALL if not os.environ.get("PAGES") or p[0] in os.environ["PAGES"].split()]
 ANDROID_PAGES = [p for p in ANDROID_PAGES if not os.environ.get("PAGES") or p[0] in os.environ["PAGES"].split()]
@@ -632,17 +631,6 @@ def taps_key(letter):
     x0, y0, x1, y1 = min((b for text, _, b in nodes() if b[1] >= pill[3] and b[2] - b[0] > width * 0.8),
                          key=lambda b: b[1])
     tap(x0 + (x1 - x0) * ("qwertyuiop".index(letter) + 0.5) / 10, y0 + (y1 - y0) / 8, 1.5)
-
-
-def each_app():
-    """Writing Style scrolled to Style in Each App, which lists the apps you've dictated into."""
-    for _ in range(8):
-        hits = [b for text, _, b in nodes() if text == "Style in Each App"]
-        if hits:
-            swipe(540, hits[0][1], 540, 450, 900, 1.2)
-            return
-        swipe(540, 1800, 540, 1000, 600, 1.0)
-    raise RuntimeError("Writing Style has no Style in Each App")
 
 
 def app():
@@ -873,6 +861,41 @@ def replacement():
     shot("keyboard-replacement", 1)
 
 
+def style():
+    """Android's alone, since iOS's run is an upright iPhone, whose bar has no room for it: the bar's writing style on
+    the phone on its side, folded, open, then another picked and held, where iikb's Home has a style of its own, for
+    Use Default."""
+    seed(appWritingStyles=f"{PACKAGE}:texting")
+    rotation = sh("settings get system accelerometer_rotation").strip()
+    sh("settings put system accelerometer_rotation 0; settings put system user_rotation 1")
+    try:
+        launch()
+        tap_text(PROMPT, 2.0)
+        density = int(sh("wm density").split()[-1]) / 160
+        # The keys read off the right side, which the keyboard reaches with the navigation bar at its left: runs of key
+        # down a column through the last keys, against the keyboard's card at the screen's edge.
+        screen = Screen.solid()
+        column, edge = round(screen.width * 0.94), screen.width - 3
+        cells = [(y, screen.pixel(column, y), screen.pixel(edge, y)) for y in range(screen.height // 3, screen.height)]
+        rows = [run for run in screen.runs(cells) if run[1] - run[0] > 60]
+        if len(rows) < 4:
+            raise RuntimeError(f"found {len(rows)} rows of keys, not 4")
+        top, pitch = rows[-4][0], rows[-3][0] - rows[-4][0]
+        across = [(x, screen.pixel(x, top + 14), screen.pixel(edge, top + 14)) for x in range(screen.width)]
+        right = screen.runs(across)[-1][1]
+        # The style's place ends a mic's cell and a gap before the last key's right edge and is 104 dp wide
+        # (BarLayout.styleWidth); the bar sits a row's pitch above the keys.
+        x, y = right - 100 * density, top - pitch * 0.55
+        shot("keyboard-style", 1.5)
+        tap(x, y, 0.2)
+        shot("keyboard-style-open", 0.6)
+        tap(x, y, 0.8)
+        sh(f"input swipe {int(x)} {int(y)} {int(x)} {int(y)} 900")
+        shot("keyboard-style-held", 0.8)
+    finally:
+        sh(f"settings put system user_rotation 0; settings put system accelerometer_rotation {rotation if rotation in ('0', '1') else 1}")
+
+
 def main():
     global appearance, klipy
     was_root = sh("id -u").strip() == "0"
@@ -900,6 +923,7 @@ def main():
             "emoji": lambda: panel("emoji", "pizza"), "gif": lambda: panel("gif", "cat"),
             "clipboard": lambda: panel("clipboard", "sight"), "transcripts": lambda: panel("transcripts", "the"),
             "dictation": dictation, "app": app, "chats": chats, "hint": hint, "replacement": replacement,
+            "style": style,
         }
         failed = []
         for appearance in ("light", "dark"):
