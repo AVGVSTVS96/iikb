@@ -16,6 +16,8 @@ public final class MessageField: UIView, UITextViewDelegate {
     /// The box was tapped without its caret, to bring the keys up.
     public var onTap: () -> Void = {}
 
+    /// The box is iOS's Liquid Glass, as the tabs, More and the mic around it are.
+    private let glass = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
     private let field = Field()
     private let placeholder = UILabel()
     private let send = UIButton(type: .custom)
@@ -50,8 +52,9 @@ public final class MessageField: UIView, UITextViewDelegate {
 
     override public init(frame: CGRect) {
         super.init(frame: frame)
-        layer.cornerCurve = .continuous
-        layer.cornerRadius = Self.cornerRadius
+        glass.cornerConfiguration = .uniformCorners(radius: .fixed(Self.cornerRadius))
+        glass.isUserInteractionEnabled = false
+        addSubview(glass)
         field.delegate = self
         field.backgroundColor = .clear
         field.textContainerInset = Self.inset
@@ -80,9 +83,6 @@ public final class MessageField: UIView, UITextViewDelegate {
         send.layer.cornerRadius = Self.sendSize / 2
         send.addAction(UIAction { [unowned self] _ in onSend() }, for: .touchUpInside)
         addSubview(send)
-        registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitDisplayScale.self]) { (self: Self, _) in
-            self.showEdge()
-        }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -98,8 +98,6 @@ public final class MessageField: UIView, UITextViewDelegate {
         showing = true
         defer { showing = false }
         if next.theme != last?.theme {
-            backgroundColor = theme.searchField.ui
-            showEdge()
             field.tintColor = theme.prominent.ui
             placeholder.textColor = theme.candidate.ui
             var look = UIButton.Configuration.filled()
@@ -148,15 +146,9 @@ public final class MessageField: UIView, UITextViewDelegate {
         return Self.inset.top + Self.inset.bottom + Self.lineHeight * min(max(shown, 1), CGFloat(lines))
     }
 
-    /// A hairline round the box, a pixel wide, as Messages' box has.
-    private func showEdge() {
-        let dark = traitCollection.userInterfaceStyle == .dark
-        layer.borderWidth = 1 / max(traitCollection.displayScale, 1)
-        layer.borderColor = UIColor(white: dark ? 1 : 0, alpha: dark ? 0.1 : 0.09).cgColor
-    }
-
     override public func layoutSubviews() {
         super.layoutSubviews()
+        glass.frame = bounds
         field.frame = bounds
         let inset = Self.inset
         placeholder.frame = CGRect(

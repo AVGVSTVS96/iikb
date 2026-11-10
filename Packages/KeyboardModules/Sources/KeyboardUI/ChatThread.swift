@@ -63,6 +63,8 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate, UIScrollView
     private let scroll = UIScrollView()
     /// Messages fade out over a line and a bit as they scroll up under the tabs, and over less into the box below.
     private static let topFade = 28.0
+    /// How far the last bubble of a run's tail reaches past it, kept clear at both edges.
+    static let tail: CGFloat = 6
     private static let bottomFade = 10.0
     private let fade = CAGradientLayer()
     private var bubbles: [any ChatBubble] = []
@@ -173,7 +175,7 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate, UIScrollView
         fade.locations = [0, top, 1 - bottom, 1].map { NSNumber(value: $0) }
         CATransaction.commit()
         let width = bounds.width
-        let widest = min((width * 0.75).rounded(.down), 520)
+        let widest = min(((width - 2 * Self.tail) * 0.75).rounded(.down), 520)
         var y = Self.topFade - 12
         for (index, bubble) in bubbles.enumerated() {
             let after = index > 0 && bubbles[index - 1].mine == bubble.mine
@@ -181,7 +183,8 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate, UIScrollView
             bubble.joined = (above: after, below: before)
             if index > 0 { y += after ? 2 : 10 }
             let size = bubble.size(within: widest)
-            bubble.frame = CGRect(x: bubble.mine ? width - size.width : 0, y: y, width: size.width, height: size.height)
+            let x = bubble.mine ? width - Self.tail - size.width : Self.tail
+            bubble.frame = CGRect(x: x, y: y, width: size.width, height: size.height)
             y += size.height
         }
         if let note = footnote.text, !note.isEmpty {
@@ -286,7 +289,7 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
         if let shown, shown.content == content, shown.theme == theme { return }
         shown = (content, theme)
         self.mine = mine
-        shape.fillColor = (mine ? theme.prominent.ui : theme.key.ui).cgColor
+        shape.fillColor = (mine ? theme.prominent.ui : theme.chatBubble.ui).cgColor
         alpha = pending ? 0.6 : 1
         let color = mine ? theme.prominentLabel.ui : theme.label.ui
         text.tintColor = mine ? theme.prominentLabel.ui : theme.prominent.ui
@@ -343,7 +346,7 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
     override public func layoutSubviews() {
         super.layoutSubviews()
         text.frame = bounds.inset(by: Self.inset)
-        let path = UIBezierPath(bubble: bounds, mine: mine, joined: joined)
+        let path = UIBezierPath(bubble: bounds, mine: mine, joined: joined, tail: !joined.below)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         shape.frame = bounds
@@ -375,15 +378,34 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
 
 extension UIBezierPath {
     /// A bubble's outline: corners of 18, tightened to 6 on its side toward a neighbor from the same side, as Messages'.
-    convenience init(bubble rect: CGRect, mine: Bool, joined: (above: Bool, below: Bool)) {
+    /// With `tail`, the last of a run, its bottom corner on its side sweeps out into a tail past the rect by
+    /// `ChatThread.tail`.
+    convenience init(bubble rect: CGRect, mine: Bool, joined: (above: Bool, below: Bool), tail: Bool = false) {
         let round: CGFloat = 18
         let tight: CGFloat = 6
         let side = (top: joined.above ? tight : round, bottom: joined.below ? tight : round)
         self.init(
             shape: rect,
             mine
-                ? (topLeft: round, topRight: side.top, bottomLeft: round, bottomRight: side.bottom)
-                : (topLeft: side.top, topRight: round, bottomLeft: side.bottom, bottomRight: round))
+                ? (topLeft: round, topRight: side.top, bottomLeft: round, bottomRight: tail ? 0 : side.bottom)
+                : (topLeft: side.top, topRight: round, bottomLeft: tail ? 0 : side.bottom, bottomRight: round))
+        guard tail else { return }
+        let out = ChatThread.tail
+        let x = mine ? rect.maxX : rect.minX
+        let away: CGFloat = mine ? 1 : -1
+        let tip = UIBezierPath()
+        tip.move(to: CGPoint(x: x, y: rect.maxY - round))
+        tip.addCurve(
+            to: CGPoint(x: x + away * out, y: rect.maxY),
+            controlPoint1: CGPoint(x: x, y: rect.maxY - 6),
+            controlPoint2: CGPoint(x: x + away * out * 0.5, y: rect.maxY - 1))
+        tip.addCurve(
+            to: CGPoint(x: x - away * 12, y: rect.maxY - 3),
+            controlPoint1: CGPoint(x: x + away * out * 0.2, y: rect.maxY + 0.5),
+            controlPoint2: CGPoint(x: x - away * 6, y: rect.maxY - 0.5))
+        tip.addLine(to: CGPoint(x: x - away * round, y: rect.maxY - round))
+        tip.close()
+        append(mine ? tip : tip.reversing())
     }
 
     /// A rectangle with each corner its own radius.
