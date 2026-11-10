@@ -20,7 +20,7 @@ data class Palette(
         val dark = Palette(
             page = Color.Black, card = Color(0xFF1C1C1E), edge = Color(0x12FFFFFF), divider = Color(0xFF2C2C2E),
             label = Color.White, secondary = Color(0xFF8E8E93), accent = Color(0xFF0091FF), selected = Color.White,
-            selectedLabel = Color.Black, track = Color(0xFF39393D), pressed = Color(0xFF2C2C2E),
+            selectedLabel = Color.Black, track = Color(0xFF5A5A5E), pressed = Color(0xFF2C2C2E),
             red = Color(0xFFFF4245), green = Color(0xFF30D158),
         )
         val light = Palette(
