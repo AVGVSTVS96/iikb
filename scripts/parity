@@ -2,7 +2,8 @@
 # Runs on a Mac (GitHub's, through .github/workflows/shots.yml). Every screen of iikb on an iPhone (PHONE, "iPhone 17"
 # by default), the phone layout the Android port is checked against, light and dark, with shots/demo's made-up data: the
 # keyboard's states (UITests/ParityShots, a section a run), dictation in the bar (scripts/voiceapp.py standing in for
-# the app), and each of the app's pages at its top and its end (scripts/sim phoneapp).
+# the app), each of the app's pages at its top and its end (scripts/sim phoneapp), then Chats, with scripts/chats.ts
+# standing in for an extension, last, since the extension it adds would show on the menu and in Settings.
 # Into shots/raw/parity/<screen>-<appearance>.png.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -72,6 +73,29 @@ for shot in shots/raw/phone/app/parity-*.png; do
   end=
   [[ $name == end-* ]] && name=${name#end-} end=-end
   mv "$shot" "$out/app-${name%-*}$end-${name##*-}"
+done
+PORT=${PORT:-2597}
+for appearance in light dark; do
+  xcrun simctl ui "$ID" appearance "$appearance"
+  for attempt in 1 2; do
+    HOST=:: PORT=$PORT bun scripts/chats.ts >build/uitest/chats-$appearance-$attempt.log 2>&1 &
+    stand=$!
+    log=build/uitest/parity-$appearance-chats-$attempt.log
+    TEST_RUNNER_IIKB_SHOTS="$PWD/$out/$appearance" TEST_RUNNER_IIKB_STATES=chats \
+      TEST_RUNNER_IIKB_EXTENSION="http://localhost:$PORT" xcodebuild test-without-building -collect-test-diagnostics never \
+      -project iikb.xcodeproj -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest \
+      -only-testing:AppUITests/ParityShots >"$log" 2>&1 && passed=1 || passed=
+    kill "$stand" 2>/dev/null || true
+    wait "$stand" 2>/dev/null || true
+    [ -n "$passed" ] && break
+    grep -E "error:|Test Case .*failed" "$log" || true
+    [ "$attempt" = 1 ] || failed=1
+  done
+  for shot in "$out/$appearance"-*.png; do
+    [ -e "$shot" ] || continue
+    name=${shot#"$out/$appearance"-}
+    mv "$shot" "$out/${name%.png}-$appearance.png"
+  done
 done
 ls "$out" | wc -l
 cp ~/Library/Logs/DiagnosticReports/*iikb* ~/Library/Logs/DiagnosticReports/*Keyboard* build/uitest/ 2>/dev/null || true
