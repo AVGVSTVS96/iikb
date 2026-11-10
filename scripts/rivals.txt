@@ -25,9 +25,13 @@ corrections | Dear team, the launch is on Monday. Scratch that, the launch is on
 lists | My grocery list, one, eggs, two, milk, three, bread. | My grocery list:\n1. Eggs\n2. Milk\n3. Bread
 lists | Agenda for today, number one, review the roadmap, number two, hiring update, number three, budget. | Agenda for today:\n1. Review the roadmap\n2. Hiring update\n3. Budget
 lists | There are three steps. First, open the app. Second, tap settings. Third, turn on dictation. | There are three steps:\n1. Open the app.\n2. Tap settings.\n3. Turn on dictation. || There are three steps. First, open the app. Second, tap settings. Third, turn on dictation.
-lists | Things to pack, sunscreen, towels, snacks, and a book. | Things to pack: sunscreen, towels, snacks, and a book.
+lists | Things to pack, sunscreen, towels, snacks, and a book. | Things to pack:\n• Sunscreen\n• Towels\n• Snacks\n• A book || Things to pack: sunscreen, towels, snacks, and a book.
+lists | Here's a list of the snacks I want you to grab. Chips, pretzels, popcorn and nuts. | Here's a list of the snacks I want you to grab:\n• Chips\n• Pretzels\n• Popcorn\n• Nuts
+lists | There's a few things I want you to look at, the header, the footer, the menu and the logo. | There's a few things I want you to look at:\n• The header\n• The footer\n• The menu\n• The logo || There's a few things I want you to look at: the header, the footer, the menu, and the logo.
 
 punctuation | Are you coming to the party on Saturday | Are you coming to the party on Saturday?
+punctuation | Hey, by the way, are you free tonight | Hey, by the way, are you free tonight? || Hey by the way, are you free tonight?
+punctuation | Honestly, is that a problem | Honestly, is that a problem?
 punctuation | What time does the store close and do they take returns | What time does the store close, and do they take returns?
 punctuation | I loved the movie the ending was perfect though the middle dragged a bit | I loved the movie. The ending was perfect, though the middle dragged a bit.
 punctuation | Wait really that's amazing congratulations | Wait, really? That's amazing! Congratulations! || Wait, really? That's amazing. Congratulations!

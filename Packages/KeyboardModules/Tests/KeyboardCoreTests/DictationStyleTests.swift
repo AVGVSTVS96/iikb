@@ -274,6 +274,30 @@ struct DictationStyleTests {
                 == "Dear team, the launch is on Thursday.")
     }
 
+    @Test func aQuestionAfterAShortOpeningIsMarked() {
+        #expect(write("Hey, by the way, are you free tonight.") == "Hey, by the way, are you free tonight?")
+        #expect(write("Honestly, is that a problem") == "Honestly, is that a problem?")
+        for kept in ["When you're done, we can go.", "I told him yesterday after the game, can you believe it."] {
+            #expect(write(kept) == kept)
+        }
+    }
+
+    @Test func thingsListedAfterAnIntroAreBulleted() {
+        let casual = { write($0, .veryCasual) }
+        #expect(
+            casual("Here's a list of the fruits I want you to buy. Apples, oranges, pears and dates.")
+                == "Here's a list of the fruits I want you to buy:\n• Apples\n• oranges\n• pears\n• dates")
+        #expect(
+            casual("There's a few things I want you to check for, bananas, olives, apples and grapes.")
+                == "There's a few things I want you to check for:\n• bananas\n• olives\n• apples\n• grapes")
+        for kept in [
+            "I bought apples, oranges and pears.", "We went to Paris, Rome and Berlin last year.",
+            "Here's the thing, it's late, I'm tired and we should go.",
+        ] {
+            #expect(write(kept) == kept)
+        }
+    }
+
     @Test func aListTakesTheIntroSentencesPeriodAsAColon() {
         #expect(
             write("There are three steps. First, open the app. Second, tap settings. Third, turn on dictation.")

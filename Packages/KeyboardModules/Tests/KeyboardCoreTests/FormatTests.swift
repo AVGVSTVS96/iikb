@@ -15,6 +15,15 @@ struct FormatTests {
     ]
 
     @Test func dictationTypesEachFormatAsWritten() throws {
+        try check("formats.txt", DictationWriting(), label: "FORMAT")
+    }
+
+    /// scripts/cleanup.txt with Clean, as Wispr Flow and Aqua Voice clean by default.
+    @Test func dictationCleansAsWritten() throws {
+        try check("cleanup.txt", DictationWriting(editing: .clean), label: "CLEANUP")
+    }
+
+    private func check(_ file: String, _ writing: DictationWriting, label: String) throws {
         let lexicon = Lexicon(
             bytes: Bytes(
                 [UInt8](
@@ -34,14 +43,14 @@ struct FormatTests {
                 for _ in 0..<times { memory.record(word, after: previous) }
             }
         }
-        let cases = try String(contentsOf: Self.root.appending(path: "scripts/formats.txt"), encoding: .utf8)
+        let cases = try String(contentsOf: Self.root.appending(path: "scripts/\(file)"), encoding: .utf8)
             .split(separator: "\n").filter { !$0.hasPrefix("#") }
         var failed: [String] = []
         for line in cases {
             let parts = line.components(separatedBy: " | ")
             let field = parts.count == 3 ? parts[0] : nil
             let heard = parts[parts.count - 2]
-            let wanted = parts[parts.count - 1]
+            let wanted = parts[parts.count - 1].replacingOccurrences(of: "\\n", with: "\n")
             let written = field.flatMap { $0.hasPrefix("> ") ? String($0.dropFirst(2)) + " " : nil } ?? ""
             var engine = TypingEngine(
                 traits: field.flatMap { Self.fields[$0] } ?? InputTraits(autocapitalization: .sentences))
@@ -49,13 +58,13 @@ struct FormatTests {
             let document = TestDocument(written)
             engine.handle(
                 .dictated(
-                    vocabulary.corrected(DictationWriting().written(heard), lexicon: lexicon),
+                    vocabulary.corrected(writing.written(heard), lexicon: lexicon),
                     plain: vocabulary.corrected(heard, lexicon: lexicon)), in: document)
             if document.text != wanted {
-                failed.append("FORMAT FAIL \"\(heard)\" typed \"\(document.text)\", wants \"\(wanted)\"")
+                failed.append("\(label) FAIL \"\(heard)\" typed \"\(document.text)\", wants \"\(wanted)\"")
             }
         }
-        print((["FORMAT: \(cases.count - failed.count)/\(cases.count) pass"] + failed).joined(separator: "\n"))
+        print((["\(label): \(cases.count - failed.count)/\(cases.count) pass"] + failed).joined(separator: "\n"))
         #expect(failed.count == 0)
     }
 }

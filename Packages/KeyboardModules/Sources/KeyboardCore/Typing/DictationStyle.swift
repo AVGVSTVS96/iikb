@@ -145,8 +145,8 @@ public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
     /// after a comma (", right", ", isn't it").
     static func questionsMarked(_ text: [Character]) -> [Character] {
         var text = text
-        for sentence in sentences(in: text).reversed() where asks(words(text, sentence), tagged: tagged(text, sentence))
-        {
+        for sentence in sentences(in: text).reversed()
+        where asks(words(text, sentence), tagged: tagged(text, sentence)) || asksAfterIntro(text, sentence) {
             if endsWithPeriod(text, sentence), let mark = sentence.mark {
                 text[mark] = "?"
             } else if sentence.mark == nil, let last = text[sentence.range].last, last.isLetter || last.isNumber {
@@ -166,6 +166,18 @@ public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
         if ["what", "where", "when", "why", "who", "how", "which"].contains(first) { return verbs.contains(second) }
         guard verbs.contains(first), subjects.contains(second) else { return false }
         return !(["do", "have", "had"].contains(first) && ["it", "that", "this"].contains(second))
+    }
+
+    /// Whether a clause after a short opening one asks, as in "Hey, by the way, are you free tonight": every clause
+    /// before it, set off by commas, has up to four words.
+    private static func asksAfterIntro(_ text: [Character], _ sentence: Sentence) -> Bool {
+        let clauses = Array(text[sentence.range]).split(separator: ",").map { Array($0) }
+        for (index, clause) in clauses.enumerated() where index > 0 {
+            guard Words.ranges(in: clauses[index - 1]).count <= 4 else { return false }
+            let said = Words.ranges(in: clause).map { Words.plain(String(clause[$0]).lowercased()) }
+            if asks(said, tagged: false) { return true }
+        }
+        return false
     }
 
     /// Whether the sentence ends on ", right", ", okay" or a verb and its subject, as in ", isn't it".
@@ -379,6 +391,18 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
                     start -= 1
                 }
             }
+            let comma = start - 2
+            if wordFollows, end > filler.upperBound, text[filler.upperBound] == ",", comma > 0, text[comma] == ",",
+                text[comma + 1] == " ",
+                let word = Words.ranges(in: Array(text[..<comma])).last,
+                word.upperBound == comma, noCommaAfter.contains(Words.plain(String(text[word]).lowercased()))
+            {
+                start = comma
+                end -= 1
+                while end > start, text[end - 1] == " " { end -= 1 }
+                text.replaceSubrange(start..<end, with: [])
+                continue
+            }
             if wordFollows, text[filler.lowerBound].isUppercase, text[end].isLowercase {
                 text[end] = Character(text[end].uppercased())
             }
@@ -386,6 +410,14 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
         }
         return text.contains { $0.isLetter || $0.isNumber } ? text : []
     }
+
+    /// Words a comma never follows, so the pause Parakeet wrote as one before an um goes with it: "the design is, um,
+    /// too busy" is "the design is too busy".
+    private static let noCommaAfter: Set<String> = [
+        "a", "an", "the", "is", "are", "was", "were", "be", "am", "my", "your", "our", "their", "his", "her", "its",
+        "and", "or", "but", "if", "it's", "i'm", "we're", "you're", "they're", "really", "very", "can", "will",
+        "would", "should",
+    ]
 
     private static func isFiller(_ text: [Character], _ word: Range<Int>) -> Bool {
         let glued =

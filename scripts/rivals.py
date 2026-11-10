@@ -83,8 +83,41 @@ def wispr(path):
     return json.loads(done.stdout)
 
 
+AQUA_KEY = Path.home() / ".config/rivalbench/aqua-key"
+
+
+def aqua_settings(body):
+    """Sets the account's dictionary, replacements and instructions (`body`, PATCH /v1/customizations) and returns
+    them as they were, so the bench hears Aqua at its defaults and the account gets its own back."""
+    key = AQUA_KEY.read_text().strip()
+    api = ["-H", f"Authorization: Bearer {key}", "https://api.aquavoice.com/v1/customizations"]
+    was = json.loads(subprocess.run(["curl", "-s", *api], capture_output=True, text=True, check=True).stdout)
+    subprocess.run(["curl", "-s", "-X", "PATCH", "-H", "Content-Type: application/json", "-d", json.dumps(body), *api],
+                   capture_output=True, check=True)
+    return {"operations": [{"type": "custom_instructions_set", "text": was["custom_instructions"]},
+                           {"type": "dictionary_replace", "words": was["dictionary"]},
+                           *({"type": "replacement_set", "from": r["from"], "to": r["to"]} for r in was["replacements"])]}
+
+
+def aqua_defaults(said):
+    """Aqua's answers, the account at its defaults while it hears the clips it hasn't."""
+    cache = {r["sound"] for r in rows(DATA / "cache/aqua.jsonl")}
+    if all(c["sound"] in cache for c in said):
+        return cached("aqua", said, aqua)
+    key = AQUA_KEY.read_text().strip()
+    api = ["-H", f"Authorization: Bearer {key}", "https://api.aquavoice.com/v1/customizations"]
+    was = json.loads(subprocess.run(["curl", "-s", *api], capture_output=True, text=True, check=True).stdout)
+    own = aqua_settings({"operations": [{"type": "custom_instructions_set", "text": ""},
+                                        {"type": "dictionary_replace", "words": []},
+                                        *({"type": "replacement_remove", "from": r["from"]} for r in was["replacements"])]})
+    try:
+        return cached("aqua", said, aqua)
+    finally:
+        aqua_settings(own)
+
+
 def aqua(path):
-    key = (Path.home() / ".config/rivalbench/aqua-key").read_text().strip()
+    key = AQUA_KEY.read_text().strip()
     done = subprocess.run(["curl", "-s", "https://api.aquavoice.com/v1/dictations", "-H", f"Authorization: Bearer {key}",
                            "-F", f"audio=@{path}", "-F", "language=en"], capture_output=True, text=True)
     answer = json.loads(done.stdout or "{}")
@@ -166,9 +199,9 @@ def words(text):
 
 
 def shape(text):
-    """The text as it reads, its spacing, blank lines, curly apostrophes and last period aside."""
+    """The text as it reads, its spacing, blank lines, curly apostrophes, bullet glyph and last period aside."""
     text = re.sub(r"\s*\n\s*", "\n", re.sub(r"[ \t]+", " ", text.replace("’", "'")))
-    return text.strip().rstrip(".").strip()
+    return re.sub(r"(?m)^[-*•] ", "• ", text).strip().rstrip(".").strip()
 
 
 def distance(a, b):
@@ -194,7 +227,7 @@ def main():
     tool = text_stage()
     answers = {name: typed(tool, heard, settings) for name, settings in IIKB.items()}
     answers["Wispr Flow"] = cached("wispr", said, wispr, workers=1)
-    answers["Aqua Voice"] = cached("aqua", said, aqua)
+    answers["Aqua Voice"] = aqua_defaults(said)
     systems = [*IIKB, *RIVALS]
     results = [dict(kind=c["kind"], said=c["said"], voice=c["voice"], right=c["right"], parakeet=heard[c["sound"]],
                     **{s: answers[s].get(c["sound"]) for s in systems}) for c in said]

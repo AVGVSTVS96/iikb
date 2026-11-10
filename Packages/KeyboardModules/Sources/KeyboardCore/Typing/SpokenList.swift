@@ -6,7 +6,7 @@
 /// end of its sentence, and what follows starts a new line.
 enum SpokenList {
     static func written(_ text: [Character], bulleted: Bool = false) -> [Character] {
-        guard let list = first(in: text) else { return text }
+        guard let list = first(in: text) else { return items(text, bulleted: bulleted) ?? text }
         var intro = Array(text[..<list.markers[0].lowerBound])
         while intro.last == " " { intro.removeLast() }
         if intro.last == "," || intro.last == ";"
@@ -26,6 +26,87 @@ enum SpokenList {
         if !rest.isEmpty { lines.append(written(rest, bulleted: bulleted)) }
         return Array(lines.joined(separator: "\n"))
     }
+
+    /// Things listed without numbers after a sentence or clause that says a list comes, as Wispr Flow and Aqua Voice
+    /// write them: "here's a list of the fruits to buy. apples, oranges, pears and dates" is the intro with a colon,
+    /// then "• apples" and the rest, each on a line. The intro's last clause names what's listed ("list", "things", "the
+    /// following") or it ends with a colon; the items are three or more of up to three words each, with no subject or verb, after
+    /// commas and a last "and" or "or".
+    private static func items(_ text: [Character], bulleted: Bool) -> [Character]? {
+        let sentences = DictationStyle.sentences(in: text)
+        for (index, sentence) in sentences.enumerated() {
+            let end = sentence.mark ?? sentence.range.upperBound
+            var parts: [Range<Int>] = []
+            var from = sentence.range.lowerBound
+            for at in from..<end where text[at] == "," || text[at] == ":" {
+                parts.append(from..<at)
+                from = at + 1
+            }
+            parts.append(from..<end)
+            guard let joined = joiner(text, in: parts.last!) else { continue }
+            var said: [Range<Int>] = [parts.last!.lowerBound..<joined.lowerBound, joined.upperBound..<end]
+            if !text[said[0]].contains(where: \.isLetter) { said.removeFirst() }
+            var first = parts.count - 1
+            while first > 0, isItem(text, parts[first - 1]), !announces(text, parts[first - 1]) { first -= 1 }
+            said = parts[first..<parts.count - 1] + said
+            guard said.count >= 3, said.allSatisfy({ isItem(text, $0) }) else { continue }
+            let intro: Range<Int>
+            if first > 0 {
+                intro = sentence.range.lowerBound..<parts[first - 1].upperBound
+            } else if index > 0 {
+                let previous = sentences[index - 1]
+                intro = previous.range.lowerBound..<(previous.mark ?? previous.range.upperBound)
+            } else {
+                continue
+            }
+            guard announces(text, intro) else { continue }
+            var lines = [Array(text[..<intro.upperBound]) + [":"]]
+            lines += said.map { Array("• ") + trimmed(Array(text[$0].drop { $0 == " " })) }
+            var rest = Array(text[min(end + (sentence.mark == nil ? 0 : 1), text.count)...])
+            while rest.first == " " || rest.first?.isNewline == true { rest.removeFirst() }
+            if !rest.isEmpty { lines.append(written(rest, bulleted: bulleted)) }
+            return Array(lines.joined(separator: "\n"))
+        }
+        return nil
+    }
+
+    /// The last " and " or " or " in `part`.
+    private static func joiner(_ text: [Character], in part: Range<Int>) -> Range<Int>? {
+        let said = Array(text[part])
+        for joiner in [" and ", " or "] {
+            let length = joiner.count
+            guard said.count > length else { continue }
+            for at in stride(from: said.count - length, through: 0, by: -1)
+            where String(said[at..<at + length]).lowercased() == joiner {
+                return part.lowerBound + at..<part.lowerBound + at + length
+            }
+        }
+        return nil
+    }
+
+    private static func isItem(_ text: [Character], _ part: Range<Int>) -> Bool {
+        let said = Array(text[part])
+        let words = Words.ranges(in: said).map { Words.plain(String(said[$0]).lowercased()) }
+        return (1...3).contains(words.count) && !words.contains(where: clauseWords.contains)
+    }
+
+    /// Whether the intro ends with a colon or its last clause names what's listed.
+    private static func announces(_ text: [Character], _ intro: Range<Int>) -> Bool {
+        if intro.upperBound < text.count, text[intro.upperBound] == ":" { return true }
+        let said = Array(text[intro].split(separator: ",").last ?? [])
+        let words = Words.ranges(in: said).map { Words.plain(String(said[$0]).lowercased()) }
+        return words.count >= 2 && words.contains(where: listWords.contains)
+    }
+
+    private static let listWords: Set<String> = [
+        "list", "things", "items", "following", "ingredients", "groceries", "stuff", "options",
+    ]
+    private static let clauseWords: Set<String> = [
+        "i", "you", "we", "they", "he", "she", "it", "is", "are", "was", "were", "be", "am", "want", "need", "have",
+        "has", "had", "do", "did", "does", "will", "can", "should", "would", "could", "it's", "that's", "there's",
+        "i'm",
+        "think", "said", "go", "get", "got",
+    ]
 
     private struct Found {
         /// Each marker's word, or "number" and its word.

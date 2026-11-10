@@ -1,0 +1,43 @@
+# What a dictation types with Clean for what Parakeet writes, in a message field with the rest of the default settings
+# (Casual drops the last period), as FormatTests sets up for scripts/formats.txt: `heard | typed`. FormatTests runs
+# them, in scripts/coretest and in scripts/formats, which scripts/phone runs before putting a build on the install link.
+# A \n in `typed` is a line break. Made-up text only, in the forms Parakeet writes. scripts/rivals scores the same features against Wispr Flow and Aqua
+# Voice from the sound up.
+
+# lists said without numbers, after an intro that says one comes
+Here's a list of the snacks I want you to grab. Chips, pretzels, popcorn and nuts. | Here's a list of the snacks I want you to grab:\n• Chips\n• Pretzels\n• Popcorn\n• Nuts
+You know, there's a few things I want you to look at, the header, the footer, the menu and the logo. | There's a few things I want you to look at:\n• The header\n• The footer\n• The menu\n• The logo
+Things to pack, sunscreen, towels, snacks, and a book. | Things to pack:\n• Sunscreen\n• Towels\n• Snacks\n• A book
+Here's what to buy: apples, oranges and dates. | Here's what to buy:\n• Apples\n• Oranges\n• Dates
+I bought apples, oranges and pears. | I bought apples, oranges and pears
+We drove through Ohio, Iowa and Utah last summer. | We drove through Ohio, Iowa and Utah last summer
+
+# lists said with numbers
+My grocery list, one, eggs, two, milk, three, bread. | My grocery list:\n1. Eggs\n2. Milk\n3. Bread
+There are three steps. First, open the app. Second, tap settings. Third, turn it on. | There are three steps:\n1. Open the app\n2. Tap settings\n3. Turn it on
+
+# questions
+Hey, by the way, are you free tonight. | Hey by the way, are you free tonight?
+Are you coming on Saturday | Are you coming on Saturday?
+When you're done, we can go. | When you're done, we can go
+
+# fillers, words said over and corrections
+Um, can you uh send me the file? | Can you send me the file?
+It just feels like the design is, um, too busy. | It just feels like the design is too busy
+The meeting went well, um, but we need to finalize it. | The meeting went well, but we need to finalize it
+We need to, we need to ship this by Friday. | We need to ship this by Friday
+Let's meet at two, no wait, three o'clock. | Let's meet at three o'clock
+Send it to Jonah, sorry, I mean Priya. | Send it to Priya
+Book a table for four. I mean five people. | Book a table for five people
+Tell him it arrived. Scratch that. Tell him it's late. | Tell him it's late
+I'll call you tonight, actually, never mind, I'll text you tomorrow. | I'll text you tomorrow
+
+# punctuation said by name
+Hi Sam comma thanks for the update period see you soon exclamation point | Hi Sam, thanks for the update. See you soon!
+First line new line second line. | First line\nSecond line
+
+# words that stay
+I mean it, this is the last time. | I mean it, this is the last time
+I had had enough by then. | I had had enough by then
+It took a period of time. | It took a period of time
+Wait for me at the station. | Wait for me at the station
