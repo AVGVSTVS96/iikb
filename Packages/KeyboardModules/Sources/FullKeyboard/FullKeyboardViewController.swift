@@ -23,6 +23,9 @@ open class FullKeyboardViewController: UIInputViewController {
     private let suggestionBar = SuggestionBar()
     /// The record button in the bottom row, where Settings › Layout › Record Key puts it in the globe's place.
     private let keyMic = MicButton()
+    /// Whether the keys' layout has the Record Key. While the keys are out of sight (a chat with the keys down, the
+    /// menu, a panel in their place) the mic is the bar's, so there's always the one mic to tap.
+    private var keyed = false
     private let panelView = PanelView()
     /// An open chat's card behind the whole keyboard, tabs, chat and keys, opaque where iOS's glass would show the app
     /// through. Its top corners round inside iOS's own card, whose edge starts 4 above the keyboard (on the Duo, Nov 9).
@@ -115,10 +118,6 @@ open class FullKeyboardViewController: UIInputViewController {
         panel.onSend = { [unowned self] in
             feedback(.separator)
             handle(.trigger(Key(.return)))
-        }
-        panel.onMic = { [unowned self] in
-            feedback(.other)
-            toggleVoice()
         }
         panel.onFocus = { [unowned self] in raiseKeys() }
         panel.onPick = { [unowned self] in suggestionBar.onChat($0) }
@@ -282,9 +281,8 @@ open class FullKeyboardViewController: UIInputViewController {
         keyboardView.onGrid = { [unowned self] grid in
             engine.use(grid)
             suggestionBar.keys = (grid.rows.first ?? []).map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
-            let keyed = grid.rows.joined().contains { $0.key.action == .dictate }
-            suggestionBar.micInBar = !keyed
-            keyMic.isHidden = !keyed
+            keyed = grid.rows.joined().contains { $0.key.action == .dictate }
+            placeMic()
         }
         keyMic.addAction(UIAction { [unowned self] _ in suggestionBar.onMic() }, for: .touchUpInside)
         keyboardView.micKey = keyMic
@@ -641,6 +639,7 @@ open class FullKeyboardViewController: UIInputViewController {
             open: chats.list.firstIndex { $0 == chats.open }, fresh: fresh, theme: theme)
         suggestionBar.update(more: line == nil || !keysUp, on: menuOpen || inPlace)
         suggestionBar.update(edits: menuOpen && panel == nil ? edits : nil, theme: theme)
+        placeMic()
         suggestionBar.update(
             mic: mic, recorded: recorded, saved: dictation.writing, waitingFor: dictation.waiting,
             notice: notice ?? hint, theme: theme)
@@ -651,11 +650,18 @@ open class FullKeyboardViewController: UIInputViewController {
                 inKeysPlace: keyboardView.bounds.height, field: metrics.toolbar.field)
         }
         if let line {
-            chatPanel.show(line, typing: keysUp, mic: mic)
+            chatPanel.show(line, typing: keysUp)
             panelView.show(query: line.text, caret: line.caret, theme: theme, metrics: shown)
         } else if panel != nil {
             panelView.show(query: engine.query, theme: theme, metrics: shown)
         }
+    }
+
+    /// The one mic: the Record Key while it's on screen, the bar's otherwise.
+    private func placeMic() {
+        let keysShown = !panelInKeysPlace && !(menuOpen && !panelOpen)
+        suggestionBar.micInBar = !(keyed && keysShown)
+        keyMic.isHidden = !keyed
     }
 
     /// The menu in the keys' place while it's open: the clipboard's, Transcripts' and the GIFs' shelves, then what the

@@ -10,7 +10,7 @@ you, in any app
 │ ⊞ (DM) General Craft      🎙 │  the screen but the app's room (140 pt, 172 on the Duo)
 │ is the build on? ███████     │
 │ ███ Yes, 655 is on your Duo. │  reading and dictating: keys down
-│ ( Message DM            🎙 ) │
+│ ( Message DM               ) │
 └──────────────────────────────┘
   │ tap the box: keys come up under it, same height
   │ the box's ↑, or send on the keys, sends to the open chat
@@ -19,7 +19,7 @@ iikb ──► your extension ──► wherever it sends
      ◄── replies show as they come
 ```
 
-Chats is about reading and dictating, so it opens with the keys down and the chat filling a keyboard grown for it. The chats are tabs in the bar; hold them to list every chat. With the keys up the tabs and More stay put, at the chat's top. The box's mic turns into ↑ once there's something to send, so a message is said and sent without the keys; a dictation, started there or from the bar, leaves the keys up or down as they were and lands in the box as one edit, waiting for ↑. If the keyboard goes away with a chat open, as when the mic opens iikb, the chat comes back as you left it in the same field. Tapping the box brings the keys up under it, with the bar's suggestions on them and the chat still above; tapping the messages puts them away. The keyboard keeps one height from the moment a chat opens, so the app above moves once.
+Chats is about reading and dictating, so it opens with the keys down and the chat filling a keyboard grown for it. The chats are tabs in the bar; hold them to list every chat. With the keys up the tabs and More stay put, at the chat's top. In the iOS keyboard the box has no mic of its own: the keyboard's mic (at the bar's end, or the Record Key while the keys show) dictates into it like any field, and ↑ grows in at its end once there's something to send, so a message is said and sent without the keys. A dictation leaves the keys up or down as they were and lands in the box as one edit, waiting for ↑. If the keyboard goes away with a chat open, as when the mic opens iikb, the chat comes back as you left it in the same field. Tapping the box brings the keys up under it, with the bar's suggestions on them and the chat still above; tapping the messages puts them away. The keyboard keeps one height from the moment a chat opens, so the app above moves once.
 
 ## Writing one
 

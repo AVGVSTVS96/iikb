@@ -13,15 +13,12 @@ public final class MessageField: UIView, UITextViewDelegate {
     /// iOS replaced `range`, in characters, with the string: a cut, a paste.
     public var onReplace: (Range<Int>, String) -> Void = { _, _ in }
     public var onSend: () -> Void = {}
-    /// The box's mic was tapped, to start or stop a dictation into it.
-    public var onMic: () -> Void = {}
     /// The box was tapped without its caret, to bring the keys up.
     public var onTap: () -> Void = {}
 
     private let field = Field()
     private let placeholder = UILabel()
     private let send = UIButton(type: .custom)
-    private let mic = MicButton()
     private var shown: Shown?
     /// Set while the box shows the document, so the changes it makes aren't taken for iOS's.
     private var showing = false
@@ -32,10 +29,7 @@ public final class MessageField: UIView, UITextViewDelegate {
         var placeholder: String
         var theme: KeyboardTheme
         var caret: Bool
-        var mic: MicButton.Phase
         var canSend: Bool { text.contains { !$0.isWhitespace } }
-        /// The mic shows while there's nothing to send, as Messages', or while a dictation runs, to stop it.
-        var showsMic: Bool { !canSend || mic == .listening || mic == .writing }
     }
 
     private static let font = UIFont.systemFont(ofSize: 17)
@@ -86,9 +80,6 @@ public final class MessageField: UIView, UITextViewDelegate {
         send.layer.cornerRadius = Self.sendSize / 2
         send.addAction(UIAction { [unowned self] _ in onSend() }, for: .touchUpInside)
         addSubview(send)
-        mic.accessibilityIdentifier = "iikb.chat.mic"
-        mic.addAction(UIAction { [unowned self] _ in onMic() }, for: .touchUpInside)
-        addSubview(mic)
         registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitDisplayScale.self]) { (self: Self, _) in
             self.showEdge()
         }
@@ -97,14 +88,10 @@ public final class MessageField: UIView, UITextViewDelegate {
     required init?(coder: NSCoder) { fatalError() }
 
     /// `caret` while the keys are up to type into it, which focuses the box as they come up and as the keys change its
-    /// line, never otherwise, so text selected in a message keeps its selection while the keys stay up; `mic` the dictation's phase, which the
-    /// box's mic shows, so a message can be said and sent with the keys down.
-    public func show(
-        _ line: LineDocument, placeholder text: String, caret: Bool, mic: MicButton.Phase, theme: KeyboardTheme
-    ) {
-        let next = Shown(
-            text: line.text, selection: line.selection, placeholder: text, theme: theme, caret: caret, mic: mic)
-        self.mic.show(mic, theme: theme)
+    /// line, never otherwise, so text selected in a message keeps its selection while the keys stay up. The box has no
+    /// mic of its own: the keyboard's one mic types into it like any field, so dictating works the same everywhere.
+    public func show(_ line: LineDocument, placeholder text: String, caret: Bool, theme: KeyboardTheme) {
+        let next = Shown(text: line.text, selection: line.selection, placeholder: text, theme: theme, caret: caret)
         guard next != shown else { return }
         let last = shown
         shown = next
@@ -145,9 +132,7 @@ public final class MessageField: UIView, UITextViewDelegate {
             field.resignFirstResponder()
         }
         field.focusable = caret
-        if next.canSend != last?.canSend || next.showsMic != last?.showsMic {
-            showButtons(animated: last != nil && window != nil)
-        }
+        if next.canSend != last?.canSend { showSend(animated: last != nil && window != nil) }
         setNeedsLayout()
     }
 
@@ -178,35 +163,25 @@ public final class MessageField: UIView, UITextViewDelegate {
             x: inset.left, y: inset.top, width: max(bounds.width - inset.left - inset.right, 0), height: Self.lineHeight
         )
         let size = Self.sendSize
-        let both = shown.map { $0.canSend && $0.showsMic } ?? false
-        field.textContainerInset.right = both ? 2 * size + 3 * Self.sendMargin : Self.inset.right
-        let last = CGPoint(x: bounds.maxX - Self.sendMargin - size / 2, y: bounds.maxY - Self.sendMargin - size / 2)
         send.bounds.size = CGSize(width: size, height: size)
-        send.center = last
-        mic.bounds.size = send.bounds.size
-        mic.center = both ? CGPoint(x: last.x - size - Self.sendMargin, y: last.y) : last
+        send.center = CGPoint(x: bounds.maxX - Self.sendMargin - size / 2, y: bounds.maxY - Self.sendMargin - size / 2)
         field.scrollRangeToVisible(field.selectedRange)
     }
 
-    /// Send and the mic share the box's end, as Messages' do: the mic while there's nothing to send, send once there
-    /// is, each growing in where the other shrinks away.
-    private func showButtons(animated: Bool) {
+    /// Send grows in at the box's end once there's something to send, and shrinks away when there isn't.
+    private func showSend(animated: Bool) {
         guard let shown else { return }
-        let change = { [send, mic] in
-            for (button, on) in [(send as UIView, shown.canSend), (mic, shown.showsMic)] {
-                button.alpha = on ? 1 : 0
-                button.transform = on ? .identity : CGAffineTransform(scaleX: 0.5, y: 0.5)
-            }
-            self.layoutIfNeeded()
+        let on = shown.canSend
+        let change = { [send] in
+            send.alpha = on ? 1 : 0
+            send.transform = on ? .identity : CGAffineTransform(scaleX: 0.5, y: 0.5)
         }
-        send.isEnabled = shown.canSend
-        mic.isUserInteractionEnabled = shown.showsMic
+        send.isEnabled = on
         if animated { UIView.animate(springDuration: 0.3, bounce: 0.2, animations: change) } else { change() }
     }
 
     override public func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         if send.isEnabled, send.frame.insetBy(dx: -4, dy: -8).contains(point) { return send }
-        if mic.isUserInteractionEnabled, mic.frame.insetBy(dx: -4, dy: -8).contains(point) { return mic }
         return super.hitTest(point, with: event)
     }
 
