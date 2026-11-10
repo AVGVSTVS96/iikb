@@ -28,6 +28,8 @@
 # Before building it runs scripts/gate and then scripts/formats on that commit, and installs nothing that fails either.
 # `scripts/phone iPad` does all of it on the iPad the Mac reaches instead, never touching the iPhone: its own stamp, and
 # its own backup (~/.local/share/iikb/backup-ipad, as the backup server keeps an iPad's apart; docs/backup.md).
+# With Config/link set up (scripts/AGENTS.md), a device the Mac can't reach, away from its Wi-Fi and cable, gets the
+# build offered on a page in your tailnet instead, where you tap Install: no backup, dictation check or launch first.
 # Usage: scripts/phone [iPad] [--now] [--reinstall]
 set -e
 cd "$(dirname "$0")/.."
@@ -42,6 +44,8 @@ for arg; do
 done
 main=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 build=$main-build
+lower=$(echo "$kind" | tr A-Z a-z)
+link=$main/Config/link
 find_phone() {
   ssh mac sh -s "$kind" <<'MAC'
 xcrun devicectl list devices --json-output /tmp/iikb-phone-$1.json >/dev/null && /usr/bin/python3 -c "
@@ -57,9 +61,11 @@ xcrun devicectl device info apps --device "$1" --bundle-id com.shahidy.iikb --js
 /usr/bin/python3 -c "import json; print(next((a.get('bundleVersion', '') for a in json.load(open('/tmp/iikb-apps-$1.json'))['result']['apps']), ''))"
 MAC
 }
-# Waits for the device unlocked and in reach, and reads the build on it.
+# Waits for the device unlocked and in reach, and reads the build on it; with a link, one out of reach is away.
 reach() {
+  away=
   until phone=$(find_phone) && [ -n "$phone" ]; do
+    [ ! -f "$link" ] || { away=1; return; }
     echo "waiting for the $kind to be unlocked and on the Mac's Wi-Fi or cable" >&2
     sleep 30
   done
@@ -75,10 +81,14 @@ flock 9
 stamp=$build.installed
 backups=${IIKB_BACKUP:-$HOME/.local/share/iikb/backup}
 if [ "$kind" != iPhone ]; then
-  stamp=$stamp-$(echo "$kind" | tr A-Z a-z)
-  backups=$HOME/.local/share/iikb/backup-$(echo "$kind" | tr A-Z a-z)
+  stamp=$stamp-$lower
+  backups=$HOME/.local/share/iikb/backup-$lower
 fi
-wait=$(( ${PHONE_EVERY:-600} - $(date +%s) + $(stat -c %Y "$stamp" 2>/dev/null || echo 0) ))
+offered=$build.offered-$lower
+page=$HOME/.local/share/iikb/link/$lower
+last=$stamp
+[ -z "$away" ] || [ ! -f "$offered" ] || last=$offered
+wait=$(( ${PHONE_EVERY:-600} - $(date +%s) + $(stat -c %Y "$last" 2>/dev/null || echo 0) ))
 if [ "$wait" -gt 0 ] && [ -z "$now" ]; then
   echo "the last install was under 10 minutes ago, so this one installs main as it is in ${wait}s, with whatever lands meanwhile" >&2
   sleep "$wait"
@@ -88,6 +98,12 @@ git fetch -q origin main
 commit=$(git rev-parse --short origin/main)
 number=$(git rev-list --count origin/main)
 reach
+on="on the $kind"
+if [ -n "$away" ]; then
+  . "$link"
+  [ ! -f "$offered" ] || { stamp=$offered on="offered at $url/$lower/"; }
+  read -r installed _ < "$stamp" 2>/dev/null || installed=
+fi
 case $installed in (*[!0-9]*)
   echo "the $kind has build $installed, a TestFlight build rather than one of main's, so main replaces it" >&2
   installed= ;;
@@ -98,12 +114,12 @@ if ahead && [ -z "$reinstall" ]; then
   exit 1
 fi
 if [ "$installed" = "$number" ] && [ -z "$reinstall" ]; then
-  echo "build $number (main $commit) is already on the $kind"
+  echo "build $number (main $commit) is already $on"
   exit 0
 fi
 read -r stamped from < "$stamp" 2>/dev/null || true
 if [ "$installed" = "${stamped:-}" ] && [ -z "$reinstall" ] && git diff --quiet "$from" "$commit" -- $(git show "$commit:scripts/iphone-paths.txt" | grep -v '^#') 2>/dev/null; then
-  echo "build $installed (main $from) is on the $kind and nothing iikb is built from has changed since, so main $commit waits for a change that needs an install"
+  echo "build $installed (main $from) is $on and nothing iikb is built from has changed since, so main $commit waits for a change that needs an install"
   exit 0
 fi
 git -C "$build" checkout -q -f --detach "$commit"
@@ -154,6 +170,34 @@ path = max(glob.glob(os.path.expanduser('~/.config/xtool/data/??????????')), key
 der = plistlib.load(open(path, 'rb'))['certificate']
 print(subprocess.run(['openssl', 'x509', '-inform', 'DER', '-noout', '-serial'], input=der, capture_output=True).stdout.decode().split('=')[1].strip())")
 ssh mac sh -s "$serial" < scripts/resign
+if [ -n "$away" ]; then
+  ssh mac 'cd Developer/iikb-phone && rm -rf Payload iikb.ipa && mkdir Payload && cp -R iikb.app Payload/ && ditto -c -k --keepParent Payload iikb.ipa && rm -rf Payload'
+  mkdir -p "$page"
+  scp -q mac:Developer/iikb-phone/iikb.ipa "$page/iikb-$number.ipa"
+  python3 - "$page" "$url/$lower" "$number" <<'PY'
+import html, plistlib, sys, urllib.parse
+page, url, number = sys.argv[1:]
+plistlib.dump({"items": [{
+    "assets": [{"kind": "software-package", "url": f"{url}/iikb-{number}.ipa"}],
+    "metadata": {"bundle-identifier": "com.shahidy.iikb", "bundle-version": number, "kind": "software", "title": "iikb"},
+}]}, open(f"{page}/manifest.plist", "wb"))
+install = html.escape("itms-services://?action=download-manifest&url=" + urllib.parse.quote(f"{url}/manifest.plist", safe=""))
+open(f"{page}/index.html", "w").write(f"""<!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>iikb {number}</title>
+<body style="font: 17px -apple-system, system-ui; display: grid; place-items: center; min-height: 90vh">
+<a href="{install}" style="font-size: 22px; font-weight: 600">Install iikb {number}</a>
+""")
+PY
+  find "$page" -name 'iikb-*.ipa' ! -name "iikb-$number.ipa" -delete
+  [ -f "$offered" ] || first=1
+  echo "$number $(git rev-parse "$commit")" > "$offered"
+  message="iikb build $number is ready for your $kind: open $url/$lower/ in Safari and tap Install"
+  echo "$message"
+  [ -z "${first:-}" ] || [ -z "${notify:-}" ] || $notify "$message"
+  exit 0
+fi
 # A locked or asleep iPhone, or one off the Mac's network and cable, can't be reached; the install waits for it.
 reachable() { ssh mac xcrun devicectl device info details --device "$phone" >/dev/null 2>&1; }
 until reachable; do
@@ -202,4 +246,5 @@ fi
 ssh mac 'cat > Developer/iikb-phone/unlocked' < scripts/unlocked
 ssh mac "pkill -f 'iikb-phone/unlocked $phone'; nohup /usr/bin/python3 -I Developer/iikb-phone/unlocked $phone >/dev/null 2>&1 </dev/null &"
 echo "$number $(git rev-parse "$commit")" > "$stamp"
+rm -rf "$offered" "$page"
 echo "build $number (main $commit) is on the $kind"

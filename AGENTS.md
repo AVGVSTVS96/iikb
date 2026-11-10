@@ -49,7 +49,7 @@ scripts/public-review.ts [--all|--text <where>]  # a reviewer reads what iikb sh
 scripts/format [--check]                        # swift format on every tracked Swift file (.swift-format); --check is what scripts/check and CI run
 bun run check                                   # the TypeScript and JavaScript (after bun install): oxlint, oxfmt --check, tsc, bun test, as CI runs it
 bun run fix                                     # oxlint's fixes, then oxfmt
-scripts/phone [iPad]                            # main's last commit built, signed and installed on the iPhone, or the iPad (--reinstall renews the signing)
+scripts/phone [iPad]                            # main's last commit built, signed and installed on the iPhone, or the iPad (--reinstall renews the signing); away from the Mac, offered on a link (scripts/AGENTS.md)
 scripts/backup <udid>                           # the iPhone's iikb data copied to ~/.local/share/iikb/backup here, never deleted, replaced files kept in versions/ (scripts/phone runs it first)
 scripts/restore <udid> [--at <time>|now] [name…]  # the backup put back on the iPhone, all of it or the files named, as it is or as it was at a time; leaves out a copy much smaller than one replaced in the day after an install left iikb a new, empty container (docs/backup.md)
 scripts/mac scripts/verify                      # main's last commit on one iPhone Duo simulator: package and UI tests, light and dark, shots in shots/raw/verify/ (only with SIM_REPRO=1, while reproducing an issue)
@@ -86,7 +86,7 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | Never a Bluetooth microphone unless one is picked in Settings › Microphone (VoiceCapture) | judgment: nothing enforces it |
 | A page opened from another in its tab has one Back, in the Duo's side bar with the tabs on every screen (App) | `backInSideBar(_:)`, `BackTests` |
 | A new use of the host app goes through `FullKeyboardViewController.hostApp` (FullKeyboard) | judgment: nothing enforces it |
-| Only main's last commit reaches the phone, never mid-dictation, never without backup, never linked below iOS 27.1 (scripts) | `scripts/phone`: builds main in its own worktree, waits for the dictation, refuses without `backup.key` or below 27.1 |
+| Only main's last commit reaches the phone, never linked below iOS 27.1, and a direct install never mid-dictation or without backup (scripts) | `scripts/phone`: builds main in its own worktree, waits for the dictation, refuses without `backup.key` or below 27.1 |
 | Restore only after `scripts/phone`: an old build can't read a memory restored without its token | judgment: nothing enforces it |
 | Comments only for a decision or fact the code can't show (one `WHY:` line or a link) | `tools/oxlint/no-comments.ts` in TypeScript; judgment in Swift |
 | Every AGENTS.md names only code that exists, and no file keeps a conflict marker | `ArchitectureTests` |
