@@ -81,7 +81,9 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.DeviceFontFamilyName
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import com.shahidy.iikb.R
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -113,6 +115,17 @@ object Type {
     val mono = FontFamily(Font(R.font.roboto_mono))
 
     /**
+     * Android's Roboto, its Medium drawn at 450 on Roboto's weight axis (Android 12 on), since Roboto's 500 weighs more
+     * than SF Pro's Medium.
+     */
+    val sans = FontFamily(
+        (100..900 step 100).map { weight ->
+            val drawn = if (weight == 500) 450 else weight
+            Font(DeviceFontFamilyName("sans-serif"), FontWeight(weight), variationSettings = FontVariation.Settings(FontVariation.weight(drawn)))
+        },
+    )
+
+    /**
      * Material's styles set as SF Pro's text sizes run: a line of text as tall as its font, as UIKit sets one, lines
      * apart by iOS's leading at that size, and tracked a little open, since Roboto is narrower than SF Pro and would fit
      * more on each line.
@@ -120,7 +133,7 @@ object Type {
     val typography = Typography().run {
         val ios = { style: TextStyle ->
             style.copy(
-                letterSpacing = 0.01.em, lineHeight = 1.3.em,
+                fontFamily = sans, letterSpacing = 0.01.em, lineHeight = 1.3.em,
                 lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
             )
         }
@@ -252,8 +265,9 @@ private fun Bar(title: String, onBack: (() -> Unit)?, scrolled: Boolean, actions
                     contentAlignment = Alignment.Center,
                 ) { Icon(Symbols["chevron.left"], "Back", tint = palette.label, modifier = Modifier.size(30.dp)) }
             } else {
+                // iOS's large titles are Helvetica Neue Bold tracked -0.02 (AppStyle.applyTitles), 8% wider than Roboto's.
                 Text(
-                    title, color = palette.label, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em,
+                    title, color = palette.label, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.015.em,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.layoutId("large").alpha(1 - small),
                 )
