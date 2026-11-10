@@ -118,13 +118,18 @@ private fun KeyboardPreview(onTap: () -> Unit) {
         Frame.parse(Native.frame(handle)).copy(chips = PREVIEW_SUGGESTIONS.map { Chip(it, "candidate") })
     }
     Box(
-        Modifier.fillMaxWidth().clip(shape).background(Color(frame.theme.card)).border(BorderStroke(1.dp, palette.edge), shape)
+        Modifier.fillMaxWidth().clip(shape).background(if (dark) PREVIEW_CARD_DARK else PREVIEW_CARD_LIGHT)
+            .border(BorderStroke(1.dp, palette.edge), shape)
             .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 10.dp),
     ) {
         Scaled(screen.first.toFloat()) { AndroidView({ KeyboardView(it, Still) }, update = { it.frame = frame }) }
         Box(Modifier.matchParentSize().clickable(remember { MutableInteractionSource() }, null, onClick = onTap))
     }
 }
+
+/** The card behind the preview's keys, whatever the theme: Raycast's preview in dark, the system's card in light. */
+private val PREVIEW_CARD_DARK = Color(0xFF101010)
+private val PREVIEW_CARD_LIGHT = Color(0xFFE2E3E8)
 
 /**
  * `content` laid out `width` dp wide, as the keyboard is across the screen, and drawn scaled down to the width it's
