@@ -210,7 +210,9 @@ path = max(glob.glob(os.path.expanduser('~/.config/xtool/data/??????????')), key
 der = plistlib.load(open(path, 'rb'))['certificate']
 print(subprocess.run(['openssl', 'x509', '-inform', 'DER', '-noout', '-serial'], input=der, capture_output=True).stdout.decode().split('=')[1].strip())")
 ssh mac sh -s "$serial" < scripts/resign
-if [ -n "$away" ]; then
+# Puts the signed build on the tailnet page for a device the Mac can't reach.
+offer() {
+  . "$link"
   why="offer build $number couldn't be put on the install page"
   ssh mac 'cd Developer/iikb-phone && rm -rf Payload iikb.ipa && mkdir Payload && cp -R iikb.app Payload/ && ditto -c -k --keepParent Payload iikb.ipa && rm -rf Payload'
   mkdir -p "$page"
@@ -241,7 +243,8 @@ PY
   unblock "build $number is ready at $url/$lower/, tap Install in Safari"
   [ -z "${first:-}" ] || tell "$message"
   exit 0
-fi
+}
+[ -z "$away" ] || offer
 # A locked or asleep iPhone, or one off the Mac's network and cable, can't be reached; the install waits for it.
 reachable() { ssh mac xcrun devicectl device info details --device "$phone" >/dev/null 2>&1; }
 until reachable; do
@@ -272,11 +275,17 @@ if ahead && [ -z "$reinstall" ]; then
   echo "build $installed went on the $kind while build $number (main $commit) was being built, so the older one isn't installed"
   exit 0
 fi
-why="install the Mac couldn't install build $number on the $kind (devicectl)"
+why="install the Mac couldn't install build $number on your $kind"
 # Over Wi-Fi the connection can drop mid-install ("Connection invalid"); the next try goes through.
 for try in 1 2 3; do
   ssh mac xcrun devicectl device install app --device "$phone" Developer/iikb-phone/iikb.app && break
-  [ "$try" -lt 3 ] || { reachable || why="install your $kind stopped answering partway through installing build $number (locked, asleep, or off the Mac's Wi-Fi and cable)"; exit 1; }
+  if [ "$try" = 3 ]; then
+    if ! reachable; then
+      [ ! -f "$link" ] || offer
+      why="install your $kind stopped answering partway through installing build $number (locked, asleep, or off the Mac's Wi-Fi and cable)"
+    fi
+    exit 1
+  fi
   echo "the install was cut off, so it tries again" >&2
   until reachable; do sleep 30; done
 done
