@@ -37,6 +37,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         fun select(slot: Int)
         fun acceptEmoji(emoji: String)
         fun more()
+        /** A tool at the bar's left: its panel opened in the keys' place, as from the menu. */
+        fun open(panel: String)
         fun mic()
         fun cancelDictation()
         fun dismissHint()
@@ -223,6 +225,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             fill.color = theme.label
             Glyphs.draw(canvas, "more", box.midX.toFloat(), box.midY.toFloat(), bar.glyph.toFloat() * 0.92f, fill)
         }
+        for (tool in bar.tools) drawTool(canvas, frame, tool)
         val edits = edits
         val notice = notice
         val under = mic.suggestions
@@ -237,6 +240,39 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         }
         if (under < 1) canvas.restore()
         mic.draw(canvas, frame, pressedBar)
+    }
+
+    /**
+     * A tool as iOS's `BarButton` draws it: its glyph, in a circle shown while pressed or while its panel is out, but for
+     * the clipboard's, whose tray says so.
+     */
+    private fun drawTool(canvas: Canvas, frame: Frame, tool: Tool) {
+        val box = tool.box
+        val out = tool.panel != "clipboard" && tool.panel == frame.panel
+        if (pressedBar == "tool:${tool.panel}" || out) circle(canvas, box, frame.theme.candidatePill)
+        fill.color = frame.theme.label
+        val x = box.midX.toFloat()
+        val y = box.midY.toFloat()
+        val side = frame.toolbar.glyph.toFloat()
+        if (tool.panel == "gif") return drawGif(canvas, x, y, side)
+        Glyphs.drawFitted(canvas, TOOL_GLYPHS.getValue(tool.panel), x, y, side, fill)
+    }
+
+    /** GIF has no symbol: the word in a rounded frame, as iOS's `Panel.gifGlyph` draws it for a `side` glyph. */
+    private fun drawGif(canvas: Canvas, x: Float, y: Float, side: Float) {
+        val unit = 0.88f * side / 18.4f
+        val height = 14.4f * unit
+        val inset = 0.85f * unit
+        val frame = RectF(x - side / 2 + inset, y - height / 2 + inset, x + side / 2 - inset, y + height / 2 - inset)
+        val style = fill.style
+        fill.style = Paint.Style.STROKE
+        fill.strokeWidth = 1.3f * unit
+        canvas.drawRoundRect(frame, 3.6f * unit, 3.6f * unit, fill)
+        fill.style = style
+        text.typeface = android.graphics.Typeface.create(painter.labels, 700, false)
+        text.textSize = 8 * unit
+        text.color = fill.color
+        canvas.drawText("GIF", x - text.measureText("GIF") / 2, y + text.textSize * 0.35f, text)
     }
 
     private fun drawSuggestions(canvas: Canvas, frame: Frame) {
@@ -304,7 +340,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     /** Cut, Copy and Paste as three pills in the theme's key color, from the More button to the mic. */
     private fun editPills(frame: Frame): List<Pair<String, RectF>> {
         val bar = frame.toolbar
-        val left = (bar.more?.let { it.x + it.width } ?: bar.blockMinX).toFloat() + 6
+        val anchor = bar.tools.lastOrNull()?.box ?: bar.more
+        val left = (anchor?.let { it.x + it.width } ?: bar.blockMinX).toFloat() + 6
         val right = (bar.mic?.x ?: bar.blockMaxX).toFloat() - 6
         val width = (right - left - 16) / 3
         val height = minOf(bar.bar - 4, bar.button + 8).toFloat()
@@ -414,6 +451,8 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val bar = frame.toolbar
         if (y < 0) return null
         bar.more?.takeUnless { chatTabs }?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "more" }
+        if (y < bar.height) bar.tools.filter { abs(it.box.midX - x) <= bar.bar / 2 }.minByOrNull { abs(it.box.midX - x) }
+            ?.let { return "tool:${it.panel}" }
         bar.mic?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "mic" }
         if (mic.hitsCancel(frame, x, y)) return "cancel"
         edits?.let { edits ->
@@ -437,6 +476,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         when {
             target == "more" -> actions.more()
             target == "mic" -> actions.mic()
+            target.startsWith("tool:") -> actions.open(target.removePrefix("tool:"))
             target == "cancel" -> {
                 mic.dissolve(frame, density)
                 actions.cancelDictation()
@@ -844,5 +884,6 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         const val MENU_HOLD = 500L
         val EDITS = listOf("cut", "copy", "paste")
         val EDIT_GLYPHS = mapOf("cut" to "scissors", "copy" to "square.on.square", "paste" to "doc.on.clipboard")
+        val TOOL_GLYPHS = mapOf("emoji" to "face.smiling", "transcripts" to "text.bubble", "clipboard" to "list.clipboard")
     }
 }

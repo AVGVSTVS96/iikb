@@ -4,6 +4,8 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RectF
+import kotlin.math.sqrt
 import androidx.core.graphics.PathParser
 
 /**
@@ -186,6 +188,27 @@ object Glyphs {
     )
 
     fun has(name: String) = name in glyphs
+
+    private val ink = RectF()
+    private val part = RectF()
+
+    /**
+     * Draws `name` as iOS's bar draws a tool's symbol for a `side` glyph: its ink, not its square, covering as much as a
+     * square 0.85 of `side` and no taller than 0.9 of it, so a tall one and a wide one read as one size, centered on
+     * (`x`, `y`).
+     */
+    fun drawFitted(canvas: Canvas, name: String, x: Float, y: Float, side: Float, paint: Paint) {
+        val glyph = glyphs[name] ?: return
+        ink.setEmpty()
+        for (each in glyph.parts) {
+            each.path.computeBounds(part, true)
+            ink.union(part)
+        }
+        ink.inset(-REGULAR / 2, -REGULAR / 2)
+        val scale = minOf(0.85f * side / sqrt(ink.width() * ink.height()), 0.9f * side / ink.height(), side / ink.width())
+        val size = 24 * scale
+        draw(canvas, name, x + (12 - ink.centerX()) * scale, y + (12 - ink.centerY()) * scale, size, paint)
+    }
 
     private val matrix = Matrix()
     private val scaled = Path()

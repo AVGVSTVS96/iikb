@@ -10,7 +10,9 @@ import KeyboardCore
 /// like the input method's, with the lexicon and network so its bar suggests as the keyboard's does.
 @_cdecl("Java_com_shahidy_iikb_app_Core_preview")
 public func preview(env: Env, type: jclass, field: jobject, lexicon: jobject?, network: jobject?) -> jlong {
-    create(env: env, type, field: field, lexicon: lexicon, network: network, swipe: nil, emoji: nil, search: nil)
+    create(
+        env: env, type, field: field, lexicon: lexicon, network: network, swipe: nil, emoji: nil, search: nil,
+        panels: nil)
 }
 
 /// `said` as a dictation is typed with `settings` (`Settings.lines`), as iOS's `WritingSettings` shows each choice.

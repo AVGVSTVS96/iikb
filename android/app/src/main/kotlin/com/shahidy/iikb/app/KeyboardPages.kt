@@ -162,6 +162,7 @@ private object Still : KeyboardView.Actions {
     override fun select(slot: Int) {}
     override fun acceptEmoji(emoji: String) {}
     override fun more() {}
+    override fun open(panel: String) {}
     override fun mic() {}
     override fun expand() {}
     override fun cancelDictation() {}

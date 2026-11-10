@@ -10,6 +10,7 @@ object Native {
 
     @JvmStatic external fun create(
         field: Field, lexicon: ByteBuffer?, network: ByteBuffer?, swipe: ByteBuffer?, emoji: ByteArray, search: ByteArray,
+        panels: ByteArray,
     ): Long
 
     @JvmStatic external fun destroy(handle: Long)

@@ -101,9 +101,11 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         super.onCreate()
         settings = Settings(this)
         field = Field(this)
+        gifs = Klipy.of(this)?.let { Gifs(this, it) }
         handle = Native.create(
             field, map("en.lexicon"), map("en.network"), map("en.swipe"),
             assets.open("emoji.txt").use { it.readBytes() }, assets.open("emoji-search.txt").use { it.readBytes() },
+            listOfNotNull("emoji", "gif".takeIf { gifs != null }, "transcripts", "clipboard").joinToString(" ").encodeToByteArray(),
         )
         memoryFile.takeIf { it.exists() }?.readBytes()?.let { Native.restoreMemory(handle, it) }
         emojiFile.takeIf { it.exists() }?.readBytes()?.let { Native.restoreEmojiHistory(handle, it) }
@@ -112,7 +114,6 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         clips = Clips.of(this)
         clipboard = getSystemService(ClipboardManager::class.java)
         clipboard.addPrimaryClipChangedListener(copied)
-        gifs = Klipy.of(this)?.let { Gifs(this, it) }
         chats = Chats(this)
         seen = ChatSeen(this)
         chats.changed = ::render

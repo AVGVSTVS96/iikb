@@ -68,7 +68,7 @@ struct Bar: Encodable {
     /// Where the top row's first key starts, as an open chat's More does.
     var keysMinX: Double
     var mic: Box?
-    var tools: [Box]
+    var tools: [Tool]
     var slots: [Box]
     var emoji: Box
     var emojiBeside: Bool
@@ -82,6 +82,12 @@ struct Box: Encodable {
     init(_ rect: Rect) {
         (x, y, width, height) = (rect.x, rect.y, rect.width, rect.height)
     }
+}
+
+/// A tool at the bar's left: the panel it opens (`emoji`, `gif`, `transcripts`, `clipboard`) and its button.
+struct Tool: Encodable {
+    var panel: String
+    var box: Box
 }
 
 struct MenuItem: Encodable {

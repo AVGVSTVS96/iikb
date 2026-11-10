@@ -452,6 +452,17 @@ def menu():
         y = keys.height - 300
         swipe(x, y, x, y - keys.height * 0.35, 900, 0.4)
         shot(f"menu-{page}", 1.5)
+    # With Predictive Text off, GIFs, Transcripts and Clipboard sit after More in the suggestions' place, the top row's
+    # second to fourth keys' columns, as iOS's 2da097e0 puts them; the GIFs' opens its panel in the keys' place.
+    seed(predictiveText="false")
+    keys = keyboard("Coffee at ")
+    shot("bar-tools", 1.5)
+    tap(keys["w"][0], keys.bar, 2)
+    shot("bar-tools-gif", 2)
+    keys = keyboard("Coffee at ")
+    tap(*keys.more)
+    find("Clipboard")
+    shot("bar-tools-menu", 1.5)
 
 
 SEARCH = {"gif": "Search KLIPY", "clipboard": "Search clipboard", "transcripts": "Search transcripts"}

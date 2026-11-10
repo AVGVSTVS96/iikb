@@ -69,6 +69,9 @@ data class Cap(
     val midY get() = y + height / 2
 }
 
+/** A tool at the bar's left: the panel it opens and its button. */
+@Serializable data class Tool(val panel: String, val box: Box)
+
 @Serializable
 data class Bar(
     val top: Double,
@@ -88,7 +91,7 @@ data class Bar(
     /** Where the top row's first key starts, as an open chat's More does. */
     val keysMinX: Double = blockMinX,
     val mic: Box? = null,
-    val tools: List<Box>,
+    val tools: List<Tool>,
     val slots: List<Box>,
     val emoji: Box,
     val emojiBeside: Boolean,

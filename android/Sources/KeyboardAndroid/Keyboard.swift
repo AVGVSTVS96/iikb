@@ -34,10 +34,17 @@ final class Keyboard {
         return !inPlace && !(shown.menu && !panelOpen)
     }
     private let style = KeyboardStyle.ios27
+    /// The panels this keyboard can open, as iOS's `panels`: no GIFs in a build without KLIPY's key, and none in the
+    /// app's preview.
+    private let panels: Set<Panel>
     private let emojiSearch: EmojiSearch
 
-    init(document: HostDocument, lexicon: Lexicon?, network: Network?, swipe: Swipe?, emoji: String, search: String) {
+    init(
+        document: HostDocument, lexicon: Lexicon?, network: Network?, swipe: Swipe?, emoji: String, search: String,
+        panels: Set<Panel>
+    ) {
         self.document = document
+        self.panels = panels
         emojiSearch = EmojiSearch(text: search)
         engine.defersSuggestions = true
         engine.corrector = lexicon.map { Corrector(source: $0, network: network) }
@@ -117,7 +124,7 @@ final class Keyboard {
         }
         let toolbar = metrics.toolbar
         let keyed = grid.rows.joined().contains { $0.key.action == .dictate }
-        let tools: [Panel] = engine.settings.emojiKey && context.device != .phone ? [.emoji] : []
+        let tools = barTools(context.device)
         let keys = topRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
         let bar = BarLayout(
             toolbar, keys: keys, tools: tools.count, more: barMore, mic: !(keyed && keysShown),
@@ -135,7 +142,7 @@ final class Keyboard {
                 compact: toolbar.isCompact, blockMinX: metrics.margin.leading + metrics.sideInset,
                 blockMaxX: width - metrics.margin.trailing - metrics.sideInset, minX: bar.minX, maxX: bar.maxX,
                 more: bar.more.map(Box.init), keysMinX: keys.first?.minX ?? 0, mic: bar.mic.map(Box.init),
-                tools: bar.tools.map(Box.init),
+                tools: zip(tools, bar.tools).map { Tool(panel: "\($0)", box: Box($1)) },
                 slots: bar.slots.map(Box.init), emoji: Box(bar.emoji), emojiBeside: bar.emojiBeside,
                 cancel: Box(bar.cancel), recording: Box(bar.recording)),
             caps: caps,
@@ -156,6 +163,16 @@ final class Keyboard {
                     pointsRight: $0.pointsRight)
             }
         )
+    }
+
+    /// The bar's tools, as iOS's `barTools`: on a tablet the emoji's, where the emoji key is on, and with Predictive Text
+    /// off the panels the menu opens, in the suggestions' room, outside a chat, whose tabs take that room.
+    private func barTools(_ device: DeviceClass) -> [Panel] {
+        let shelves = !engine.settings.predictiveText && !shown.chat
+        return Panel.tools.filter { panel in
+            guard panels.contains(panel) else { return false }
+            return panel == .emoji ? engine.settings.emojiKey && device != .phone : shelves
+        }
     }
 
     func resolve(x: Double, y: Double) -> Int {

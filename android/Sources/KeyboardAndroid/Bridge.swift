@@ -35,14 +35,18 @@ private final class Job: @unchecked Sendable {
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_create")
 public func create(
     env: Env, _: jclass, field: jobject, lexicon: jobject?, network: jobject?, swipe: jobject?, emoji: jbyteArray?,
-    search: jbyteArray?
+    search: jbyteArray?, panels: jbyteArray?
 ) -> jlong {
     let keyboard = Keyboard(
         document: HostDocument(env: env, field: field),
         lexicon: bytes(env.direct(lexicon)).flatMap { Lexicon(bytes: $0) },
         network: bytes(env.direct(network)).flatMap { Network(bytes: $0) },
         swipe: bytes(env.direct(swipe)).flatMap { Swipe(bytes: $0) },
-        emoji: env.string(emoji) ?? "", search: env.string(search) ?? "")
+        emoji: env.string(emoji) ?? "", search: env.string(search) ?? "",
+        panels: Set(
+            (env.string(panels) ?? "").split(separator: " ").compactMap { name in
+                Panel.allCases.first { "\($0)" == name }
+            }))
     return jlong(Int(bitPattern: Unmanaged.passRetained(keyboard).toOpaque()))
 }
 
