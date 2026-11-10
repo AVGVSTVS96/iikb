@@ -15,6 +15,7 @@ import subprocess
 import sys
 import threading
 import time
+import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ADB = os.path.expanduser("~/Library/Android/sdk/platform-tools/adb")
@@ -66,12 +67,27 @@ def swipe(x0, y0, x1, y1, ms=400, settle=1.0):
     time.sleep(settle)
 
 
-def shot(name, settle=1.2):
+def shot(name, settle=1.2, screen=None):
     time.sleep(settle)
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, f"{name}-{appearance}.png"), "wb") as file:
-        file.write(adb("exec-out", "screencap", "-p"))
+        file.write(screen.png() if screen else adb("exec-out", "screencap", "-p"))
     print("shot", name, appearance, flush=True)
+
+
+def caret_shot(name, nudge, tries=4):
+    """A shot of Home's field with its caret drawn: the caret blinks, and a screen takes longer to read than it's off,
+    so each try first `nudge`s it, which restarts its blink lit, and keeps the shot whose field has the caret's
+    accent-blue pixels, which nothing else there has."""
+    def blue(screen):
+        rows = range(round(screen.height * 0.13), round(screen.height * 0.3), 2)
+        return sum(1 for y in rows for x in range(0, screen.width, 2)
+                   if (lambda p: p[2] > 180 and p[2] - p[0] > 90)(screen.pixel(x, y)))
+    for attempt in range(tries):
+        nudge()
+        screen = Screen()
+        if blue(screen) > 8 or attempt == tries - 1:
+            return shot(name, 0, screen)
 
 
 class Screen:
@@ -80,6 +96,13 @@ class Screen:
     def __init__(self):
         self.data = adb("exec-out", "screencap")
         self.width, self.height = struct.unpack("<II", self.data[:8])
+
+    def png(self):
+        stride = self.width * 4
+        rows = b"".join(b"\0" + self.data[16 + y * stride:16 + (y + 1) * stride] for y in range(self.height))
+        chunk = lambda kind, body: struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body))
+        header = struct.pack(">IIBBBBB", self.width, self.height, 8, 6, 0, 0, 0)
+        return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(rows, 6)) + chunk(b"IEND", b"")
 
     def pixel(self, x, y):
         at = 16 + (y * self.width + x) * 4
@@ -373,7 +396,16 @@ def held():
     for step in range(1, 9):
         touch("MOVE", x + (left - x) * step / 8, y)
         time.sleep(0.05)
-    shot("keyboard-trackpad", 0.8)
+    time.sleep(0.8)
+
+    def nudge():
+        """The caret moved off the start and back, as the trackpad moves it a character a step."""
+        touch("MOVE", left + keys.space_width * 0.3, y)
+        time.sleep(0.15)
+        touch("MOVE", left, y)
+        time.sleep(0.1)
+
+    caret_shot("keyboard-trackpad", nudge)
     touch("UP", left, y)
     time.sleep(0.6)
     x, y = keys["numbers"]
@@ -621,8 +653,32 @@ THREADS = {
         {"from": "notes", "text": "Want me to set a reminder?"},
     ],
     "design": [{"from": "design", "text": "The new bar looks right in dark mode."}, {"from": "me", "text": "Nice, ship it"}],
-    "trip": [{"from": "trip", "text": "Flights are booked. *Window seats* both ways."}],
+    "trip": [
+        {"from": "trip", "text": "Flights are booked. *Window seats* both ways."},
+        {"from": "me", "text": "", "files": [{"name": "boarding-pass.pdf", "url": "files/boarding-pass.pdf", "type": "application/pdf"}]},
+        {"from": "trip", "text": "The view from the room", "files": [
+            {"name": "view.png", "url": "files/view.png", "type": "image/png", "width": 1200, "height": 900}]},
+    ],
 }
+
+
+def picture(width=1200, height=900):
+    """A made-up photo, a dusk sky over a sea, as a PNG."""
+    rows = []
+    for y in range(height):
+        t = y / height
+        if t < 0.62:
+            color = (int(70 + 160 * t), int(90 + 90 * t), int(170 - 40 * t))
+        else:
+            u = (t - 0.62) / 0.38
+            color = (int(30 + 20 * u), int(70 + 10 * u), int(110 - 30 * u))
+        rows.append(b"\0" + bytes(color) * width)
+    chunk = lambda kind, body: struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body))
+    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(b"".join(rows), 6)) + chunk(b"IEND", b"")
+
+
+FILES = {"files/view.png": ("image/png", picture()), "files/boarding-pass.pdf": ("application/pdf", b"%PDF-1.4\n%%EOF\n")}
 CHATS = [
     {"id": "notes", "name": "Notes", "line": "Pick up the **film** at 5", "pinned": True},
     {"id": "design", "name": "Design", "line": "The new bar looks right"},
@@ -641,10 +697,10 @@ class Extension(BaseHTTPRequestHandler):
         cls.versions = {chat: 1 for chat in THREADS}
         return cls
 
-    def answer(self, code, body=None):
-        data = json.dumps(body).encode() if body is not None else b""
+    def answer(self, code, body=None, raw=None, kind="application/json"):
+        data = raw if raw is not None else json.dumps(body).encode() if body is not None else b""
         self.send_response(code)
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", kind)
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -652,6 +708,9 @@ class Extension(BaseHTTPRequestHandler):
     def do_GET(self):
         path, _, query = self.path.partition("?")
         chat = path.strip("/")
+        if chat in FILES:
+            kind, data = FILES[chat]
+            return self.answer(200, raw=data, kind=kind)
         if not chat:
             return self.answer(200, {"name": "Notes", "chats": CHATS})
         if chat not in self.threads:
@@ -728,6 +787,13 @@ def chats():
     tap(*keys["return"], 3.5)
     tap(keys.width / 2, keys.height * 0.3, 1.2)
     shot("panel-chat-answered", 0.5)
+    tap_text("Trip", 3, top=True)
+    shot("panel-chat-photo", 0.5)
+    x, y = center(find("Trip", top=True))
+    touch("DOWN", x, y)
+    time.sleep(1.2)
+    touch("UP", x, y)
+    shot("panel-chat-tabs-menu", 0.8)
 
 
 def hint():
