@@ -116,12 +116,17 @@ object Type {
 
     /**
      * Android's Roboto, its Medium drawn at 450 on Roboto's weight axis (Android 12 on), since Roboto's 500 weighs more
-     * than SF Pro's Medium.
+     * than SF Pro's Medium. Only Medium is set on the axis: a typeface with an axis set reads to Android as Roboto's
+     * file's 400, so asked for 600 or more it bolds it again on top, and Roboto's own Semibold and Bold already match
+     * SF Pro's stems.
      */
     val sans = FontFamily(
         (100..900 step 100).map { weight ->
-            val drawn = if (weight == 500) 450 else weight
-            Font(DeviceFontFamilyName("sans-serif"), FontWeight(weight), variationSettings = FontVariation.Settings(FontVariation.weight(drawn)))
+            if (weight == 500) {
+                Font(DeviceFontFamilyName("sans-serif"), FontWeight(weight), variationSettings = FontVariation.Settings(FontVariation.weight(450)))
+            } else {
+                Font(DeviceFontFamilyName("sans-serif"), FontWeight(weight))
+            }
         },
     )
 
