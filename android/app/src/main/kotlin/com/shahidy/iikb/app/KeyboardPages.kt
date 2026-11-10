@@ -365,7 +365,7 @@ private fun LayoutSettings(here: Core.KeysHere) {
 @Composable
 fun Typing() {
     Section(
-        footer = "Predictive Text shows three suggestions above the keys, and the next word before you type it. Slide to Type types a word as you swipe across its letters.",
+        footer = "Predictive Text shows three suggestions above the keys, and the next word before you type it. With it off, GIFs, Transcripts and Clipboard take their place. Slide to Type types a word as you swipe across its letters.",
     ) {
         Toggle("Auto-Capitalization", "autoCapitalization")
         Divider()
