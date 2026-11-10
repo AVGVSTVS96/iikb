@@ -58,7 +58,7 @@ fun Modifier.glass(
         backdrop, { shape },
         effects = {
             vibrancy()
-            blur(5.dp.toPx())
+            blur(2.dp.toPx())
             lens(14.dp.toPx(), 24.dp.toPx())
         },
         highlight = { Highlight.Default.copy(alpha = if (dark) 0.5f else 1f, style = HighlightStyle.Default(angle = 90f)) },
