@@ -15,7 +15,7 @@ enum SaidMarks {
     ]
 
     static func written(_ text: [Character]) -> [Character] {
-        var text = text
+        var text = pathsJoined(text)
         var searched = 0
         while let (range, mark) = said(in: text, from: searched) {
             var start = range.lowerBound
@@ -51,5 +51,35 @@ enum SaidMarks {
             }
         }
         return nil
+    }
+
+    /// "slash" after a domain, as in "example.com slash pricing": the path joined on, "example.com/pricing".
+    static func pathsJoined(_ text: [Character]) -> [Character] {
+        var text = text
+        var at = 0
+        while at < text.count {
+            let words = Words.ranges(in: text)
+            guard
+                let index = words.indices.first(where: { index in
+                    index > 0 && index + 1 < words.count && words[index].lowerBound >= at
+                        && String(text[words[index]]).lowercased() == "slash"
+                        && text[words[index - 1].upperBound..<words[index].lowerBound].elementsEqual(" ")
+                        && text[words[index].upperBound..<words[index + 1].lowerBound].elementsEqual(" ")
+                        && isAddress(text, before: words[index - 1].upperBound)
+                })
+            else { break }
+            text.replaceSubrange(words[index - 1].upperBound..<words[index + 1].lowerBound, with: ["/"])
+            at = words[index - 1].upperBound + 1
+        }
+        return text
+    }
+
+    /// Whether the text ending at `end` ends with a domain or a path on one: letters, a dot and letters, no spaces.
+    private static func isAddress(_ text: [Character], before end: Int) -> Bool {
+        var start = end
+        while start > 0, text[start - 1] != " " { start -= 1 }
+        let token = text[start..<end]
+        guard let dot = token.lastIndex(of: "."), dot > start, dot + 1 < end else { return false }
+        return text[dot - 1].isLetter && text[dot + 1].isLetter
     }
 }

@@ -396,7 +396,10 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
             if wordFollows, end > filler.upperBound, text[filler.upperBound] == ",", comma > 0, text[comma] == ",",
                 text[comma + 1] == " ",
                 let word = Words.ranges(in: Array(text[..<comma])).last,
-                word.upperBound == comma, noCommaAfter.contains(Words.plain(String(text[word]).lowercased()))
+                word.upperBound == comma, noCommaAfter.contains(Words.plain(String(text[word]).lowercased())),
+                let next = Words.ranges(in: Array(text[end...])).first,
+                !clauseStarts.contains(
+                    Words.plain(String(text[end + next.lowerBound..<end + next.upperBound]).lowercased()))
             {
                 start = comma
                 end -= 1
@@ -413,12 +416,14 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
     }
 
     /// Words a comma never follows, so the pause Parakeet wrote as one before an um goes with it: "the design is, um,
-    /// too busy" is "the design is too busy".
+    /// too busy" is "the design is too busy", but "the thing is, um, we" keeps its comma before the clause.
     private static let noCommaAfter: Set<String> = [
         "a", "an", "the", "is", "are", "was", "were", "be", "am", "my", "your", "our", "their", "his", "her", "its",
         "and", "or", "but", "if", "it's", "i'm", "we're", "you're", "they're", "really", "very", "can", "will",
         "would", "should",
     ]
+
+    private static let clauseStarts: Set<String> = ["i", "we", "you", "they", "he", "she", "it", "there", "that"]
 
     private static func isFiller(_ text: [Character], _ word: Range<Int>) -> Bool {
         let glued =

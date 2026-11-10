@@ -25,6 +25,7 @@ When you're done, we can go. | When you're done, we can go
 Um, can you uh send me the file? | Can you send me the file?
 It just feels like the design is, um, too busy. | It just feels like the design is too busy
 The meeting went well, um, but we need to finalize it. | The meeting went well, but we need to finalize it
+The thing is, uh, we kind of rushed it. | The thing is, we kind of rushed it
 We need to, we need to ship this by Friday. | We need to ship this by Friday
 Let's meet at two, no wait, three o'clock. | Let's meet at three o'clock
 Send it to Jonah, sorry, I mean Priya. | Send it to Priya
@@ -35,6 +36,8 @@ I'll call you tonight, actually, never mind, I'll text you tomorrow. | I'll text
 # punctuation said by name
 Hi Sam comma thanks for the update period see you soon exclamation point | Hi Sam, thanks for the update. See you soon!
 First line new line second line. | First line\nSecond line
+Go to example.com slash pricing slash teams. | Go to example.com/pricing/teams
+Cut it with a slash and a dot. | Cut it with a slash and a dot
 
 # words that stay
 I mean it, this is the last time. | I mean it, this is the last time
