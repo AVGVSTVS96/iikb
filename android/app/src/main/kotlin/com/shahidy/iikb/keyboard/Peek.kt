@@ -72,6 +72,9 @@ class Held(
     val listed: Boolean = false,
 ) {
     sealed interface Shows {
+        /** Nothing but the menu, under what was held, as UIKit's menu for a view held without a preview. */
+        data object Menu : Shows
+
         /** Text in full; a link's `row` heads it with its site, as the clip's badge names it. */
         data class Text(val text: String, val link: Clips.Row? = null) : Shows
 
@@ -148,20 +151,30 @@ fun Peek(held: Held, bottom: Dp, close: () -> Unit) {
                     measurables[0].measure(Constraints.fixedWidth(px(fits)))
                 }
                 is Held.Shows.Text -> measurables[0].measure(Constraints(maxWidth = px(sides), maxHeight = px(min(cardRoom, MAX_TEXT))))
+                Held.Shows.Menu -> measurables[0].measure(Constraints.fixed(0, 0))
             }
             val cardHeight = card.height / density
             val cardWidth = card.width / density
             val wanted = cardHeight + if (menu > 0) gap + menu else 0f
             // A preview alone (a GIF) is centered in the keyboard, as UIKit centers one it shrinks to fit.
             val alone = menu == 0f && held.shows is Held.Shows.Image
-            val cardTop = if (alone) (height - cardHeight) / 2
-            else (source.center.y - cardHeight / 2).coerceAtMost(room.bottom - wanted).coerceAtLeast(room.top)
-            val left = if (alone) (width - cardWidth) / 2 else (source.center.x - cardWidth / 2).coerceIn(room.left, room.right - cardWidth)
+            val under = held.shows == Held.Shows.Menu
+            val cardTop = when {
+                alone -> (height - cardHeight) / 2
+                under -> source.bottom + MENU_UNDER - gap
+                else -> (source.center.y - cardHeight / 2).coerceAtMost(room.bottom - wanted).coerceAtLeast(room.top)
+            }
+            val left = when {
+                alone -> (width - cardWidth) / 2
+                under -> source.left.coerceIn(room.left, room.right - MENU_WIDTH)
+                else -> (source.center.x - cardWidth / 2).coerceIn(room.left, room.right - cardWidth)
+            }
             val menuTop = cardTop + cardHeight + gap
             val placed = measurables.getOrNull(1)?.measure(
                 Constraints.fixed(px(MENU_WIDTH), px(min(menu, room.bottom - menuTop).coerceAtLeast(0f))),
             )
             val menuLeft = when {
+                under -> left
                 left <= room.left -> room.left
                 left + cardWidth >= room.right -> room.right - MENU_WIDTH
                 else -> (left + cardWidth / 2 - MENU_WIDTH / 2).coerceIn(room.left, room.right - MENU_WIDTH)
@@ -214,6 +227,7 @@ private fun Card(held: Held, close: () -> Unit) {
                 Text(shows.text, color = look.label, fontSize = 17.sp, lineHeight = 22.sp, pushOut = false)
             }
         }
+        Held.Shows.Menu -> Box(Modifier)
         is Held.Shows.Image -> AsyncImage(
             shows.model, "Image", imageLoader(), contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxWidth().aspectRatio(shows.width.toFloat() / shows.height).clip(shape)
@@ -327,5 +341,7 @@ private const val MENU_TITLE = 12f
 private const val MENU_TITLE_GAP = 5f
 private const val MENU_CORNER = 37f
 private const val LIST_ROW = 42f
+/** A menu alone sits this far under what was held. */
+private const val MENU_UNDER = 8f
 private const val LIST_PAD = 10f
 private const val LIST_CORNER = 26f

@@ -1,55 +1,46 @@
 package com.shahidy.iikb.keyboard
 
+import android.content.Context
 import android.util.Patterns
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withLink
-import kotlinx.coroutines.withTimeoutOrNull
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Row
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import com.shahidy.iikb.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,45 +49,75 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.layout.layout
-import kotlin.math.ceil
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.network.NetworkHeaders
+import coil3.network.httpHeaders
+import coil3.request.ImageRequest
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.shahidy.iikb.Text
+import com.shahidy.iikb.app.glass
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.PI
+import kotlin.math.ceil
+import kotlin.math.min
 
 val LocalChats = staticCompositionLocalOf<Chats> { error("no chats") }
 
 /**
- * The chats panel (docs/extensions.md): the open chat's messages, yours on the right, over the message box the keys and
- * the bar's mic type into. With the keys down it fills a keyboard grown for it, the chats as pills in the bar; a tap on
- * the box brings the keys up under it, and a tap on the messages puts them away.
+ * The chats panel (docs/extensions.md), as iOS's `ChatPanel`: the open chat's messages, yours on the right, over the
+ * message box the keys and the bar's mic type into. Opened from the menu it fills a keyboard grown for it, the chats as
+ * tabs in the bar's row beside More, so you read and dictate with the keys down; a tap on the box brings the keys up
+ * under it, the bar's suggestions on them, and a tap on the messages puts them away. The tabs and More stay where they
+ * are as the keys come and go, on glass over the messages scrolling under them. With the keys down the bar's row is
+ * left clear here but for them, so the bar's mic, drawn under it, shows and takes its taps.
  */
 @Composable
 fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
     val look = LocalColors.current
     val chats = LocalChats.current
     val actions = LocalActions.current
+    val bar = state.toolbar ?: return
+    val keysUp = state.keysUp
     val empty = chats.messages.isEmpty()
     val quiet = when {
         !chats.listed -> "Loading chats…"
@@ -104,30 +125,57 @@ fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
         chats.loaded && empty -> "No messages yet."
         else -> null
     }
-    Column(
-        Modifier.fillMaxSize().background(look.card)
-            .padding(start = state.minX.dp, end = state.endInset.dp, top = 8.dp, bottom = if (state.keysUp) 0.dp else 8.dp),
-    ) {
-        val title = chats.open?.name
-        if (state.keysUp && title != null) {
-            Text(
-                title, color = look.secondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(20.dp),
+    val backdrop = rememberLayerBackdrop()
+    var photo by remember { mutableStateOf<Opened?>(null) }
+    LaunchedEffect(chats.open) { photo = null }
+    val row = bar.height.toFloat()
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize().padding(top = if (keysUp) 0.dp else row.dp).background(look.card)
+                .padding(
+                    start = state.minX.dp, end = state.endInset.dp, top = if (keysUp) (row - 6).dp else 0.dp,
+                    bottom = if (keysUp) 0.dp else 8.dp,
+                ),
+        ) {
+            Box(
+                Modifier.weight(1f).fillMaxWidth()
+                    .clickable(remember { MutableInteractionSource() }, indication = null) { if (keysUp) actions.browse() },
+            ) {
+                Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
+                    if (empty) (chats.problem ?: quiet)?.let { Notice(it) }
+                    else Thread(chats.messages.takeLast(SHOWN), chats.problem) { photo = it }
+                }
+                photo?.let { PhotoView(it) { photo = null } }
+            }
+            Spacer(Modifier.size(6.dp))
+            MessageBox(line, chats.open?.name?.let { "Message $it" } ?: "Message", caret = keysUp, mic = state.mic)
+        }
+        if (!keysUp || chats.list.isNotEmpty()) bar.chatMore?.let { more -> GlassMore(more, bar.glyph.toFloat(), backdrop) }
+        if (chats.list.isNotEmpty()) {
+            val recording = !keysUp && (state.mic == "LISTENING" || state.mic == "WRITING")
+            val end = if (recording) bar.cancel.x - 8 else minOf(bar.chatMaxX, state.width.toDouble())
+            ChatTabs(
+                chats.list.map { it.name }, chats.list.indexOf(chats.open).takeIf { it >= 0 }, state.fresh, backdrop,
+                (end - bar.chatMinX).coerceAtLeast(0.0).toFloat().dp, actions::chat,
+                Modifier.offset(bar.chatMinX.toFloat().dp, (bar.top + (bar.bar - TABS_HEIGHT) / 2).toFloat().dp),
             )
         }
-        Box(
-            Modifier.weight(1f).fillMaxWidth()
-                .clickable(remember { MutableInteractionSource() }, indication = null) { if (state.keysUp) actions.browse() },
-        ) {
-            if (empty) {
-                (chats.problem ?: quiet)?.let { Notice(it) }
-            } else {
-                Thread(chats.messages.takeLast(SHOWN), chats.problem)
-            }
-        }
-        Spacer(Modifier.size(6.dp))
-        MessageBox(line, title?.let { "Message $it" } ?: "Message", caret = state.keysUp, mic = state.mic)
     }
+}
+
+/** More beside the tabs, on a circle of glass as tall as their capsule, in the bar's More's place: it closes the chat. */
+@Composable
+private fun GlassMore(box: Box, glyph: Float, backdrop: com.kyant.backdrop.Backdrop) {
+    val look = LocalColors.current
+    val actions = LocalActions.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    Box(
+        Modifier.offset((box.x + box.width / 2 - TABS_HEIGHT / 2).toFloat().dp, (box.y + box.height / 2 - TABS_HEIGHT / 2).toFloat().dp)
+            .size(TABS_HEIGHT.dp).glass(CircleShape, backdrop, look.dark).clip(CircleShape)
+            .clickable(interaction, indication = null, onClick = actions::more),
+        contentAlignment = Alignment.Center,
+    ) { Glyph("more", look.label.copy(alpha = if (pressed) 0.55f else 1f), (glyph * 0.92f).dp) }
 }
 
 @Composable
@@ -137,16 +185,47 @@ private fun Notice(text: String) {
     }
 }
 
-/** The messages from the newest up, the newest at the bottom, going soft where they scroll past either end. */
+/** One bubble of a message, as iOS's `ChatThread` splits one: its photos, then its other files, then its text. */
+private sealed interface Item {
+    val mine: Boolean
+    val pending: Boolean
+
+    data class Words(val message: Chats.Message) : Item {
+        override val mine get() = message.mine
+        override val pending get() = message.pending == true
+    }
+
+    data class Photo(val file: Chats.Message.File, val url: String, override val mine: Boolean, override val pending: Boolean) : Item
+    data class Document(val file: Chats.Message.File, override val mine: Boolean, override val pending: Boolean) : Item
+}
+
+private fun items(messages: List<Chats.Message>, url: (Chats.Message.File) -> String?) = messages.flatMap { message ->
+    val files = message.files.orEmpty()
+    val pending = message.pending == true
+    files.filter { it.isImage }.mapNotNull { file -> url(file)?.let { Item.Photo(file, it, message.mine, pending) } } +
+        files.filterNot { it.isImage }.map { Item.Document(it, message.mine, pending) } +
+        if (message.text.isNotEmpty() || files.isEmpty()) listOf(Item.Words(message)) else emptyList()
+}
+
+/** A photo opened large over the messages. */
+private class Opened(val file: Chats.Message.File, val url: String, val request: ImageRequest, val width: Int, val height: Int)
+
+/**
+ * The messages as Messages lays them out, the newest at the bottom and kept there as they come: a turn's bubbles 2
+ * apart and turns 10, fading out over a line and a bit as they scroll up under the tabs and over less into the box.
+ */
 @Composable
-private fun Thread(messages: List<Chats.Message>, problem: String?) {
+private fun Thread(messages: List<Chats.Message>, problem: String?, open: (Opened) -> Unit) {
     val look = LocalColors.current
+    val chats = LocalChats.current
     val list = rememberLazyListState()
+    val shown = remember(messages, chats.open) { items(messages) { chats.url(it) } }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val widest = minOf(maxWidth * 0.75f, 520.dp)
         LazyColumn(
-            Modifier.fillMaxSize().fadeBothEnds(),
+            Modifier.fillMaxSize().fadeEnds(),
             state = list, reverseLayout = true,
+            contentPadding = PaddingValues(top = (TOP_FADE - 12).dp, bottom = 14.dp),
         ) {
             problem?.let {
                 item {
@@ -156,60 +235,63 @@ private fun Thread(messages: List<Chats.Message>, problem: String?) {
                     )
                 }
             }
-            val newest = messages.asReversed()
-            itemsIndexed(newest) { index, message ->
-                val above = newest.getOrNull(index + 1)?.mine == message.mine
-                val below = newest.getOrNull(index - 1)?.mine == message.mine
+            val newest = shown.asReversed()
+            itemsIndexed(newest) { index, item ->
+                val above = newest.getOrNull(index + 1)?.mine == item.mine
+                val below = newest.getOrNull(index - 1)?.mine == item.mine
                 val gap = if (index == newest.lastIndex) 0.dp else if (above) 2.dp else 10.dp
                 Box(
                     Modifier.fillMaxWidth().padding(top = gap),
-                    contentAlignment = if (message.mine) Alignment.CenterEnd else Alignment.CenterStart,
-                ) { Bubble(message, above, below, widest) }
+                    contentAlignment = if (item.mine) Alignment.CenterEnd else Alignment.CenterStart,
+                ) {
+                    val shape = bubble(item.mine, above, below)
+                    when (item) {
+                        is Item.Words -> Bubble(item.message, shape, widest)
+                        is Item.Document -> FileBubble(item, shape, widest)
+                        is Item.Photo -> PhotoBubble(item, shape, widest, open)
+                    }
+                }
             }
         }
     }
 }
 
-/** 14 dp at the top and bottom fade out, so a message scrolled past the top or under the box goes soft rather than cut. */
-private fun Modifier.fadeBothEnds() = graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
+/** The messages fade out over `TOP_FADE` at the top and `BOTTOM_FADE` at the bottom. */
+private fun Modifier.fadeEnds() = graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
     drawContent()
-    val fade = (14.dp.toPx() / size.height).coerceAtMost(0.5f)
+    val top = (TOP_FADE.dp.toPx() / size.height).coerceAtMost(0.5f)
+    val bottom = (BOTTOM_FADE.dp.toPx() / size.height).coerceAtMost(0.5f)
     drawRect(
-        Brush.verticalGradient(0f to Color.Transparent, fade to Color.Black, 1 - fade to Color.Black, 1f to Color.Transparent),
+        Brush.verticalGradient(0f to Color.Transparent, top to Color.Black, 1 - bottom to Color.Black, 1f to Color.Transparent),
         blendMode = BlendMode.DstIn,
     )
 }
 
+/** A bubble's outline: corners of 18, tightened to 6 on its side toward a neighbor from the same side, as Messages'. */
+private fun bubble(mine: Boolean, above: Boolean, below: Boolean): Shape {
+    val round = 18.dp
+    val top = if (above) 6.dp else round
+    val bottom = if (below) 6.dp else round
+    return if (mine) RoundedCornerShape(topStart = round, topEnd = top, bottomStart = round, bottomEnd = bottom)
+    else RoundedCornerShape(topStart = top, topEnd = round, bottomStart = bottom, bottomEnd = round)
+}
+
+/** A bubble's flat fill, as Messages draws one: yours on the accent color, the other side's on a key's. */
+@Composable
+private fun Modifier.fill(mine: Boolean, pending: Boolean, shape: Shape): Modifier {
+    val look = LocalColors.current
+    return alpha(if (pending) 0.6f else 1f).background(if (mine) look.accent else look.key, shape)
+}
+
 /**
- * One message as Messages draws it: yours on the accent color, theirs on a key's with its shadow, 17 on 22 lines,
- * hugging its text; the corners toward a message from the same side tighten. Markdown's bold, italics and code drawn,
- * and its links and web addresses underlined in the text's color. Its text is iOS's non-editable UITextView: held, it
- * selects with the system's handles and Copy; a link tapped opens, and held offers Open Link and Copy Link.
+ * One message, 17 on 22 lines, hugging its text. Markdown's bold, italics and code drawn, and its links and web
+ * addresses underlined in the text's color. Its text is iOS's non-editable UITextView: held, it selects with the
+ * system's handles and Copy; a link tapped opens, and held offers Open Link and Copy Link.
  */
 @Composable
-private fun Bubble(message: Chats.Message, above: Boolean, below: Boolean, widest: androidx.compose.ui.unit.Dp) {
+private fun Bubble(message: Chats.Message, shape: Shape, widest: Dp) {
     val look = LocalColors.current
-    val round = 18.dp
-    val tight = 6.dp
-    val top = if (above) tight else round
-    val bottom = if (below) tight else round
-    val shape = if (message.mine) {
-        RoundedCornerShape(topStart = round, topEnd = top, bottomStart = round, bottomEnd = bottom)
-    } else {
-        RoundedCornerShape(topStart = top, topEnd = round, bottomStart = bottom, bottomEnd = round)
-    }
-    val fill = if (message.mine) look.accent else look.key
-    Box(
-        Modifier.widthIn(max = widest).alpha(if (message.pending == true) 0.6f else 1f)
-            .drawBehind {
-                val outline = shape.createOutline(size, layoutDirection, this)
-                if (!message.mine) {
-                    translate(top = 1.dp.toPx()) { drawOutline(outline, look.shadow) }
-                }
-                drawOutline(outline, fill)
-            }
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-    ) {
+    Box(Modifier.widthIn(max = widest).fill(message.mine, message.pending == true, shape).padding(horizontal = 12.dp, vertical = 7.dp)) {
         val actions = LocalActions.current
         val hold = LocalHold.current
         val text = remember { arrayOfNulls<TextLayoutResult>(1) }
@@ -232,15 +314,108 @@ private fun Bubble(message: Chats.Message, above: Boolean, below: Boolean, wides
                             ),
                         )
                     }
-                    .layout { measurable, constraints ->
-                        val placeable = measurable.measure(constraints)
-                        val lines = text[0]
-                        val width = if (lines == null) placeable.width else
-                            (0 until lines.lineCount).maxOf { ceil(lines.getLineRight(it) - lines.getLineLeft(it)).toInt() }
-                        layout(width.coerceIn(constraints.minWidth, placeable.width), placeable.height) { placeable.place(0, 0) }
-                    },
+                    .hugLines { text[0] },
             )
         }
+    }
+}
+
+/** As wide as the text's longest line, as UILabel's `sizeThatFits` gives a wrapped label, not the whole width allowed. */
+private fun Modifier.hugLines(lines: () -> TextLayoutResult?) = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val laid = lines()
+    val width = if (laid == null) placeable.width else
+        (0 until laid.lineCount).maxOf { ceil(laid.getLineRight(it) - laid.getLineLeft(it)).toInt() }
+    layout(width.coerceIn(constraints.minWidth, placeable.width), placeable.height) { placeable.place(0, 0) }
+}
+
+/** A file that isn't a photo, as its name after a document glyph. */
+@Composable
+private fun FileBubble(item: Item.Document, shape: Shape, widest: Dp) {
+    val look = LocalColors.current
+    val color = if (item.mine) look.accentLabel else look.label
+    Row(
+        Modifier.widthIn(max = widest).fill(item.mine, item.pending, shape).padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Glyph("doc", color, Glyphs.square(15f).dp)
+        Text(
+            " " + item.file.name, color = color, fontSize = 17.sp, lineHeight = 22.sp, maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** A photo as its extension serves it, with the extension's token. */
+private fun photo(context: Context, url: String, token: String?) = ImageRequest.Builder(context).data(url).apply {
+    token?.let { httpHeaders(NetworkHeaders.Builder().set("Authorization", "Bearer $it").build()) }
+}.build()
+
+/**
+ * A photo, as Messages shows one: the picture itself, rounded as a bubble, up to 240 wide and 320 tall, in its shape
+ * before it comes when the file says its size. A tap opens it large; held, it shows larger above Copy.
+ */
+@Composable
+private fun PhotoBubble(item: Item.Photo, shape: Shape, widest: Dp, open: (Opened) -> Unit) {
+    val look = LocalColors.current
+    val context = LocalContext.current
+    val chats = LocalChats.current
+    val request = remember(item.url) { photo(context, item.url, chats.token) }
+    val told = item.file.width?.let { width -> item.file.height?.let { width to it } }
+    var size by remember(item.url) { mutableStateOf(told) }
+    var loaded by remember(item.url) { mutableStateOf(false) }
+    val (width, height) = size?.takeIf { it.first > 0 && it.second > 0 } ?: (4.0 to 3.0)
+    val wide = minOf(widest.value, PHOTO_WIDTH)
+    val scale = min(wide / width, PHOTO_HEIGHT / height)
+    val opened = { Opened(item.file, item.url, request, width.toInt().coerceAtLeast(1), height.toInt().coerceAtLeast(1)) }
+    var bounds by remember { mutableStateOf(Rect.Zero) }
+    Box(
+        Modifier.size((width * scale).toFloat().dp, (height * scale).toFloat().dp).alpha(if (item.pending) 0.6f else 1f)
+            .clip(shape).background(look.key).onGloballyPositioned { bounds = it.boundsInWindow() }.heldAway(bounds)
+            .held(loaded, { bounds }, opened, { if (loaded) open(opened()) }),
+    ) {
+        AsyncImage(
+            request, item.file.name, imageLoader(), contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+            onSuccess = {
+                loaded = true
+                size = it.result.image.width.toDouble() to it.result.image.height.toDouble()
+            },
+        )
+    }
+}
+
+/** A tap does `tapped`; a hold, once the photo has come, shows it larger above Copy, which copies the original file. */
+@Composable
+private fun Modifier.held(loaded: Boolean, bounds: () -> Rect, photo: () -> Opened, tapped: () -> Unit): Modifier {
+    val hold = LocalHold.current
+    val actions = LocalActions.current
+    return pointerInput(loaded) {
+        detectTapGestures(
+            onTap = { tapped() },
+            onLongPress = {
+                if (!loaded) return@detectTapGestures
+                val shown = photo()
+                hold(
+                    Held(
+                        bounds(), Held.Shows.Image(shown.request, shown.width, shown.height),
+                        actions = listOf(Held.Action("doc.on.doc", "Copy") { actions.copyPhoto(shown.url, shown.file.type) }),
+                    ),
+                )
+            },
+        )
+    }
+}
+
+/** A photo opened from its bubble, as large as the messages, over them until a tap closes it; held, it's the bubble's. */
+@Composable
+private fun PhotoView(photo: Opened, close: () -> Unit) {
+    val look = LocalColors.current
+    var bounds by remember { mutableStateOf(Rect.Zero) }
+    Box(
+        Modifier.fillMaxSize().background(look.card).onGloballyPositioned { bounds = it.boundsInWindow() }
+            .held(true, { bounds }, { photo }, close).padding(8.dp),
+    ) {
+        AsyncImage(photo.request, photo.file.name, imageLoader(), contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
     }
 }
 
@@ -267,14 +442,6 @@ private fun Modifier.heldLink(linkAt: (Offset) -> String?, held: (String) -> Uni
             event.changes.forEach { it.consume() }
         } while (event.changes.any { it.pressed })
     }
-}
-
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.translate(
-    top: Float, block: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit,
-) = drawContext.transform.let {
-    it.translate(0f, top)
-    block()
-    it.translate(0f, -top)
 }
 
 /**
@@ -312,28 +479,32 @@ fun markdown(text: String, opens: ((String) -> Unit)? = null): AnnotatedString =
 }
 
 /**
- * The message box: what the keys typed (or the placeholder), the caret while the keys are up, growing a line at a time
- * to five, past which it scrolls; its own mic and send, so a message can be said and sent with the keys down, send
- * dimmed until there's something to send. A tap brings the keys up.
+ * The message box, as Messages' and iOS's `MessageField`: outlined in a hairline, what the keys typed (or the
+ * placeholder), the caret while the keys are up, growing a line at a time to five, past which it scrolls. One button at
+ * its end: the mic while there's nothing to send, so a message is said with the keys down, and send once there is,
+ * each growing in where the other shrinks away; both while a dictation runs over text, the mic to stop it. A tap brings
+ * the keys up.
  */
 @Composable
 private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, mic: String) {
     val look = LocalColors.current
     val actions = LocalActions.current
+    val density = LocalDensity.current.density
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val empty = line.text.isEmpty()
     val canSend = line.text.isNotBlank()
+    val dictating = mic == "LISTENING" || mic == "WRITING"
+    val showsMic = !canSend || dictating
+    val both = canSend && showsMic
     val scroll = rememberScrollState()
+    val shape = RoundedCornerShape(20.dp)
     Box(
-        Modifier.fillMaxWidth().heightIn(min = 40.dp)
-            .drawBehind {
-                val outline = RoundedCornerShape(20.dp).createOutline(size, layoutDirection, this)
-                if (!look.dark) translate(top = 1.dp.toPx()) { drawOutline(outline, look.shadow) }
-                drawOutline(outline, look.field)
-            }
+        Modifier.fillMaxWidth().heightIn(min = 40.dp).background(look.field, shape)
+            .border((1 / density).dp, if (look.dark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.09f), shape)
             .clickable(remember { MutableInteractionSource() }, indication = null) { if (!caret) actions.raiseKeys() },
     ) {
-        Box(Modifier.heightIn(max = (22 * 5 + 18).dp).verticalScroll(scroll).padding(start = 14.dp, end = (2 * 28 + 3 * 6).dp, top = 9.dp, bottom = 9.dp)) {
+        val end = if (both) 2 * BUTTON + 3 * MARGIN else BUTTON + 2 * MARGIN
+        Box(Modifier.heightIn(max = (22 * 5 + 18).dp).verticalScroll(scroll).padding(start = 14.dp, end = end.dp, top = 9.dp, bottom = 9.dp)) {
             BasicText(
                 if (empty) AnnotatedString(placeholder) else AnnotatedString(line.text),
                 style = TextStyle(fontSize = 17.sp, lineHeight = 22.sp, color = if (empty) look.secondary else look.label),
@@ -350,31 +521,36 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, 
                 },
             )
         }
-        LaunchedScrollToEnd(scroll, line.text)
-        val sendable by animateFloatAsState(if (canSend) 1f else 0.3f, spring(dampingRatio = 0.8f), label = "send")
-        Row(Modifier.align(Alignment.BottomEnd).padding(6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            val listening = mic == "LISTENING"
-            Box(
-                Modifier.size(28.dp).alpha(if (mic == "WRITING") 0.5f else 1f)
-                    .background(if (listening) look.record else look.mic, CircleShape)
-                    .clickable(remember { MutableInteractionSource() }, indication = null) { actions.mic() },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (listening) Glyph("stop.fill", Color.White, 12.dp) else Glyph("waveform", look.micGlyph, 16.dp)
-            }
-            Box(
-                Modifier.size(28.dp).alpha(sendable).background(look.accent, CircleShape)
-                    .clickable(remember { MutableInteractionSource() }, indication = null, enabled = canSend) { actions.send() },
-                contentAlignment = Alignment.Center,
-            ) { Glyph("arrow.up", look.accentLabel, 15.dp) }
+        LaunchedEffect(line.text) { scroll.scrollTo(scroll.maxValue) }
+        val motion = spring<Float>(dampingRatio = 1 - BUTTON_BOUNCE, stiffness = (2 * PI / BUTTON_SPRING).let { (it * it).toFloat() })
+        val send by animateFloatAsState(if (canSend) 1f else 0f, motion, label = "send")
+        val micShown by animateFloatAsState(if (showsMic) 1f else 0f, motion, label = "mic")
+        val micBeside by animateFloatAsState(if (both) 1f else 0f, motion, label = "beside")
+        val listening = mic == "LISTENING"
+        Box(
+            Modifier.align(Alignment.BottomEnd).padding(MARGIN.dp)
+                .offset(x = (-(BUTTON + MARGIN) * micBeside).dp).size(BUTTON.dp).appear(micShown)
+                .background(if (listening) look.record else look.mic, CircleShape).alpha(if (mic == "WRITING") 0.5f else 1f)
+                .clickable(remember { MutableInteractionSource() }, indication = null, enabled = showsMic) { actions.mic() },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (listening) Glyph("stop.fill", Color.White, 12.dp) else Glyph("waveform", look.micGlyph, 16.dp)
         }
+        Box(
+            Modifier.align(Alignment.BottomEnd).padding(MARGIN.dp).size(BUTTON.dp).appear(send)
+                .background(look.accent, CircleShape)
+                .clickable(remember { MutableInteractionSource() }, indication = null, enabled = canSend) { actions.send() },
+            contentAlignment = Alignment.Center,
+        ) { Glyph("arrow.up", look.accentLabel, 15.dp) }
     }
 }
 
-/** The box keeps its last line in view as you type past five. */
-@Composable
-private fun LaunchedScrollToEnd(scroll: androidx.compose.foundation.ScrollState, text: String) {
-    androidx.compose.runtime.LaunchedEffect(text) { scroll.scrollTo(scroll.maxValue) }
+/** Grown in from half its size and faded in as `shown` goes from 0 to 1. */
+private fun Modifier.appear(shown: Float) = graphicsLayer {
+    alpha = shown.coerceIn(0f, 1f)
+    val scale = 0.5f + 0.5f * shown
+    scaleX = scale
+    scaleY = scale
 }
 
 /**
@@ -414,3 +590,14 @@ fun ChatShelf() {
 
 /** At most this many of a chat's latest messages are kept on show, as the extension sends them. */
 private const val SHOWN = 40
+/** As iOS's `ChatThread`: messages fade out over a line and a bit under the tabs, and over less into the box. */
+private const val TOP_FADE = 28f
+private const val BOTTOM_FADE = 10f
+/** As iOS's `ImageBubble`. */
+private const val PHOTO_WIDTH = 240f
+private const val PHOTO_HEIGHT = 320f
+/** As iOS's `MessageField`: its button's side and margin, and the spring it changes on. */
+private const val BUTTON = 28f
+private const val MARGIN = 6f
+private const val BUTTON_SPRING = 0.3f
+private const val BUTTON_BOUNCE = 0.2f

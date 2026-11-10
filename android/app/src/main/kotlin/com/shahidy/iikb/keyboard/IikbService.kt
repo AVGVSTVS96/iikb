@@ -59,6 +59,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     /** A panel opened from the menu has the keys up under it, typing into its search. */
     private var keysUp = false
     private lateinit var chats: Chats
+    private lateinit var seen: ChatSeen
     /** A chat is open, its message line in the app's field's place, which the keys type into (`Native.lineOpen`). */
     private var chatOpen = false
     /** What you'd begun in each chat you switched away from, by chat id. */
@@ -113,6 +114,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         clipboard.addPrimaryClipChangedListener(copied)
         gifs = Klipy.of(this)?.let { Gifs(this, it) }
         chats = Chats(this)
+        seen = ChatSeen(this)
         chats.changed = ::render
         dictation = Dictation(this, this)
         dictation.onChange = ::showDictation
@@ -401,6 +403,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     private fun render() {
         val view = view ?: return
         tellSources(byKeyboard = true)
+        Native.barMore(handle, !(chatOpen && keysUp))
         val frame = Frame.parse(Native.frame(handle))
         val chat = chatOpen
         if (frame.panel == null && !chat) keysUp = false
@@ -411,11 +414,11 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         val normal = (frame.toolbar.height + frame.height).toFloat()
         view.grown = if (menuShown || chat) maxOf(normal, metrics.heightPixels / metrics.density - ROOM_FOR_APP) else 0f
         view.keysHidden = menuShown || inPlace
-        view.barCovered = fromMenu && keysUp
+        view.barCovered = fromMenu && keysUp && !chat
+        view.barOnKeys = chat && keysUp
         view.moreOn = menuShown || inPlace
         view.edits = if (menuShown) edits() else null
-        view.chats = if (chat && !keysUp) chats.list.map { it.name } else null
-        view.openChat = chats.list.indexOf(chats.open).takeIf { it >= 0 }
+        view.chatTabs = chat && !keysUp
         view.hint = hint
         view.frame = frame
         follow(frame, menuShown)
@@ -436,8 +439,9 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         val bar = frame.toolbar
         val grown = view!!.grown.toDouble()
         val (top, height) = when {
-            menuShown || chatOpen && inPlace -> bar.height to grown - bar.height - bottom
-            chatOpen -> 0.0 to grown - frame.height
+            chatOpen && inPlace -> 0.0 to grown - bottom
+            chatOpen -> 0.0 to grown - frame.height - bar.height
+            menuShown -> bar.height to grown - bar.height - bottom
             inPlace -> bar.height to frame.height - bottom
             else -> 0.0 to bar.panelHeight
         }
@@ -453,7 +457,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             Colors.of(frame.theme), bar.blockMinX.toFloat(), bar.blockMaxX.toFloat(),
             panel, frame.query, keysUp, bar.field.toFloat(), frame.width.toFloat(),
             Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }, hasChats,
-            dictation.phase.name, bottom.toFloat(), bar.compact,
+            dictation.phase.name, bottom.toFloat(), bar, if (chatOpen) seen.update(chats) else emptySet(), bar.compact,
         )
     }
 
@@ -888,6 +892,18 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
 
     override fun copyLink(url: String) {
         clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Link", url))
+    }
+
+    override fun copyPhoto(url: String, type: String?) {
+        chats.fetch(url) { bytes ->
+            bytes ?: return@fetch
+            val folder = java.io.File(cacheDir, "chats").apply { mkdirs() }
+            val name = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+            val extension = android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(type ?: "") ?: "jpg"
+            val file = java.io.File(folder, "$name.$extension").apply { if (!exists()) writeBytes(bytes) }
+            val uri = androidx.core.content.FileProvider.getUriForFile(this, Clips.AUTHORITY, file)
+            clipboard.setPrimaryClip(android.content.ClipData.newUri(contentResolver, "Photo", uri))
+        }
     }
 
     private fun openApp(page: String? = null) {

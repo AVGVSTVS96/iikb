@@ -56,6 +56,10 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         fun dragGif(gif: Gif, search: String)
         /** A chat picked on the menu's shelf: it opens, with its line in place of the app's field. */
         fun openChat(id: String)
+        /** A chat's tab tapped, or picked from the tabs' menu, by its place in the list. */
+        fun chat(index: Int)
+        /** The chat's own More, beside its tabs: it closes the chat. */
+        fun more()
         /** The chat's messages tapped with the keys up: they go down, so there's room to read. */
         fun browse()
         /** The message box's send: what's in the chat's line goes. */
@@ -66,6 +70,8 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         fun openLink(url: String)
         /** Copy Link picked on a held link: it goes on the clipboard as text. */
         fun copyLink(url: String)
+        /** Copy picked on a held photo in a chat: the file itself goes on the clipboard. */
+        fun copyPhoto(url: String, type: String?)
     }
 
     /** An open chat's message line, which the keys type into, and its caret. */
@@ -82,6 +88,10 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         val mic: String = "OFF",
         /** The system's bar under the keyboard, which a held item's dimming stops at. */
         val bottom: Float = 0f,
+        /** The bar's layout, where an open chat's tabs and More sit. */
+        val toolbar: Bar? = null,
+        /** The chats with something newer than this keyboard last showed, by their place in the list (`ChatSeen`). */
+        val fresh: Set<Int> = emptySet(),
         /** The bar is compact (a short screen, landscape): a panel over the keys shows one row of results, as iOS's. */
         val compact: Boolean = false,
     ) {

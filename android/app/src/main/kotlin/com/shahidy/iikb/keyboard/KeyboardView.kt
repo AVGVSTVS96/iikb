@@ -47,8 +47,6 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         fun clearSearch()
         /** One of the menu's Cut, Copy and Paste. */
         fun edit(name: String)
-        /** A chat's pill in the bar, by its place in the list. */
-        fun chat(index: Int)
         /** The one-handed keyboard's chevron: both hands back. */
         fun expand()
         fun emojiResults(): List<String>
@@ -100,9 +98,13 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     /** A panel drawn over the bar's place (`Overlay`), with the keys up under it. */
     var barCovered = false
 
-    /** While a chat is read with the keys down, the chats as pills in the suggestions' place, `openChat` the one shown. */
-    var chats: List<String>? = null
-    var openChat: Int? = null
+    /**
+     * While a chat is read with the keys down, its tabs and More, which the overlay draws on glass, take the bar's place
+     * but for the mic, so the bar leaves them out.
+     */
+    var chatTabs = false
+    /** The bar sits on the keys, under a chat over it, as with the keys up in a chat. */
+    var barOnKeys = false
 
     /** A line in the bar's place until your next touch, like a GIF's "Copied" once the menu gives the keys back. */
     var notice: String? = null
@@ -144,6 +146,9 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     /** Where the keys start: under the bar, or at the bottom of a keyboard grown taller, as for a chat with the keys up. */
     private val keysTop get() = frame?.let { maxOf(barHeight, grown - it.height.toFloat()) } ?: 0f
 
+    /** Where the bar starts: the top, or just over the keys. */
+    private val barTop get() = if (barOnKeys) keysTop - barHeight else 0f
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val frame = frame
         val height = if (frame == null) 0 else (maxOf(barHeight + frame.height.toFloat(), grown) * density).toInt()
@@ -157,7 +162,12 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         canvas.scale(density, density)
         when {
             frame.panel == "emoji" -> emoji.draw(canvas, frame, painter.labels)
-            !barCovered -> drawBar(canvas, frame)
+            !barCovered -> {
+                canvas.save()
+                canvas.translate(0f, barTop)
+                drawBar(canvas, frame)
+                canvas.restore()
+            }
         }
         if (keysHidden) return canvas.restore()
         canvas.translate(0f, keysTop)
@@ -208,7 +218,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     private fun drawBar(canvas: Canvas, frame: Frame) {
         val bar = frame.toolbar
         val theme = frame.theme
-        bar.more?.let { box ->
+        bar.more?.takeUnless { chatTabs }?.let { box ->
             if (pressedBar == "more" || moreOn) circle(canvas, box, theme.candidatePill)
             fill.color = theme.label
             Glyphs.draw(canvas, "more", box.midX.toFloat(), box.midY.toFloat(), bar.glyph.toFloat() * 0.92f, fill)
@@ -219,7 +229,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         if (under < 1) canvas.saveLayerAlpha(0f, 0f, width / density, bar.height.toFloat(), (255 * under).toInt())
         when {
             edits != null -> drawEdits(canvas, frame, edits)
-            chats != null && !mic.covers -> drawChats(canvas, frame)
+            chatTabs -> {}
             notice != null && !mic.covers -> drawNotice(canvas, frame, notice)
             hint != null && showsHint(frame) -> drawNotice(canvas, frame, hint!!)
             frame.showsSuggestions && frame.panel == null && !mic.covers -> drawSuggestions(canvas, frame)
@@ -274,7 +284,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         }
     }
 
-    private fun showsHint(frame: Frame) = frame.showsSuggestions && frame.panel == null && !mic.covers && edits == null && chats == null
+    private fun showsHint(frame: Frame) = frame.showsSuggestions && frame.panel == null && !mic.covers && edits == null && !chatTabs
 
     /** A notice or a source's hint, centered between the tools and the mic, shrinking to 70% before it's cut at its end. */
     private fun drawNotice(canvas: Canvas, frame: Frame, notice: String) {
@@ -323,45 +333,6 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             text.color = color
             canvas.drawText(title, x + glyph + 6, box.centerY() + text.textSize * 0.35f, text)
         }
-    }
-
-    /** Each chat's name on a capsule as wide as it, up to 200, from the More button on; the open one on the key fill. */
-    private fun chatPills(frame: Frame): List<Pair<String, RectF>> {
-        val bar = frame.toolbar
-        var x = (bar.more?.let { it.x + it.width } ?: bar.blockMinX).toFloat() + 6
-        val top = (bar.top + bar.bar / 2).toFloat() - 15
-        chatText(false)
-        return chats.orEmpty().map { name ->
-            val width = minOf(text.measureText(name) + 26, 200f)
-            (name to RectF(x, top, x + width, top + 30)).also { x += width + 4 }
-        }
-    }
-
-    private fun chatText(on: Boolean) {
-        text.typeface = android.graphics.Typeface.create(painter.labels, if (on) 600 else 500, false)
-        text.textSize = 15f
-    }
-
-    private fun drawChats(canvas: Canvas, frame: Frame) {
-        val theme = frame.theme
-        val end = (frame.toolbar.mic?.x ?: frame.toolbar.blockMaxX).toFloat() - 6
-        canvas.save()
-        canvas.clipRect(0f, 0f, end, frame.toolbar.height.toFloat())
-        for ((index, pill) in chatPills(frame).withIndex()) {
-            val (name, box) = pill
-            val on = index == openChat
-            if (on || pressedBar == "chat$index") {
-                fill.color = if (on) theme.letter.top else theme.candidatePill
-                if (on) fill.setShadowLayer(0.01f, 0f, 1f, theme.shadow)
-                canvas.drawRoundRect(box, 15f, 15f, fill)
-                fill.clearShadowLayer()
-            }
-            chatText(on)
-            text.color = if (on) theme.label else theme.candidate
-            val label = ellipsize(name, box.width() - 26)
-            canvas.drawText(label, box.left + 13, box.centerY() + text.textSize * 0.35f, text)
-        }
-        canvas.restore()
     }
 
     private fun enabled(edits: Edits, name: String) = when (name) {
@@ -441,15 +412,14 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
 
     private fun barTarget(frame: Frame, x: Float, y: Float): String? {
         val bar = frame.toolbar
-        bar.more?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "more" }
+        if (y < 0) return null
+        bar.more?.takeUnless { chatTabs }?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "more" }
         bar.mic?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "mic" }
         if (mic.hitsCancel(frame, x, y)) return "cancel"
         edits?.let { edits ->
             return editPills(frame).firstOrNull { (name, box) -> enabled(edits, name) && x >= box.left && x <= box.right }?.first
         }
-        if (chats != null && !mic.covers) {
-            return chatPills(frame).indexOfFirst { (_, box) -> x >= box.left && x <= box.right }.takeIf { it >= 0 }?.let { "chat$it" }
-        }
+        if (chatTabs) return null
         if (hint != null && !clearedNotice && showsHint(frame) && y < bar.height) return "hint"
         if (!frame.showsSuggestions || frame.panel != null || mic.covers) return null
         val showsEmoji = frame.emoji.isNotEmpty()
@@ -473,7 +443,6 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             }
             target == "hint" -> actions.dismissHint()
             target in EDITS -> actions.edit(target)
-            target.startsWith("chat") -> actions.chat(target.removePrefix("chat").toInt())
             target.startsWith("slot") -> actions.select(target.removePrefix("slot").toInt())
             target.startsWith("emoji") ->
                 emojiPlaces(frame).getOrNull(target.removePrefix("emoji").toInt())?.let { actions.acceptEmoji(it.first) }
@@ -536,7 +505,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                     barPointer = null
                     val target = pressedBar
                     pressedBar = null
-                    if (target != null && target == barTarget(frame, event.getX(pointer) / density, event.getY(pointer) / density)) {
+                    if (target != null && target == barTarget(frame, event.getX(pointer) / density, event.getY(pointer) / density - barTop)) {
                         barTap(frame, target)
                     }
                     invalidate()
@@ -572,7 +541,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             return
         }
         if (keyY < -TOP_ROW_REACH || keysHidden) {
-            val target = barTarget(frame, x, y) ?: return
+            val target = barTarget(frame, x, y - barTop) ?: return
             barPointer = id
             pressedBar = target
             actions.feedback(Feedback.Kind.OTHER)

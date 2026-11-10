@@ -48,6 +48,8 @@ object Native {
     @JvmStatic external fun deleteRepeat(handle: Long, words: Boolean)
     @JvmStatic external fun documentChanged(handle: Long): Boolean
     @JvmStatic external fun leaveField(handle: Long)
+    /** Whether the bar shows More (`Keyboard.barMore`). */
+    @JvmStatic external fun barMore(handle: Long, shown: Boolean)
     @JvmStatic external fun endSession(handle: Long)
     @JvmStatic external fun suggestionJob(handle: Long): Long
     @JvmStatic external fun runJob(job: Long)

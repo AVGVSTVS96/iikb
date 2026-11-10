@@ -65,6 +65,9 @@ struct Bar: Encodable {
     /// Between the tools and the mic, where the suggestions and a notice go.
     var minX, maxX: Double
     var more: Box?
+    /// Where an open chat's tabs and More sit: the span and More of the bar with More, whether or not it shows More.
+    var chatMinX, chatMaxX: Double
+    var chatMore: Box?
     var mic: Box?
     var tools: [Box]
     var slots: [Box]

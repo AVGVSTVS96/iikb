@@ -2,5 +2,6 @@
 <paths>
     <cache-path name="gifs" path="gifs/" />
     <cache-path name="recordings" path="recordings/" />
+    <cache-path name="chats" path="chats/" />
     <files-path name="clipboard" path="clipboard/" />
 </paths>

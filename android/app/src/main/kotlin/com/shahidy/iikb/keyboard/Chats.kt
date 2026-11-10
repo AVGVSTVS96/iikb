@@ -28,8 +28,16 @@ class Chats(private val context: Context) {
     data class Chat(val service: Service, val id: String, val name: String, val line: String?, val pinned: Boolean)
 
     @Serializable
-    data class Message(val from: String, val text: String, val pending: Boolean? = null) {
+    data class Message(val from: String, val text: String, val pending: Boolean? = null, val files: List<File>? = null) {
         val mine get() = from == "me"
+
+        /** A file sent with the message, at `url` relative to the extension's address; a photo (`image/…`) shows as one. */
+        @Serializable
+        data class File(
+            val name: String, val url: String, val type: String? = null, val width: Double? = null, val height: Double? = null,
+        ) {
+            val isImage get() = type?.startsWith("image/") == true
+        }
     }
 
     var list by mutableStateOf(emptyList<Chat>())
@@ -49,6 +57,8 @@ class Chats(private val context: Context) {
     /** Something shown changed: the list, the open chat's messages, or what went wrong. */
     var changed: () -> Unit = {}
 
+    /** Each chat's last answer, by its extension and id, so switching back to a chat shows it at once. */
+    private val seen = mutableMapOf<String, List<Message>>()
     private val work = Executors.newCachedThreadPool()
     private val main = Handler(Looper.getMainLooper())
     private var listing: Future<*>? = null
@@ -84,8 +94,9 @@ class Chats(private val context: Context) {
         reading?.cancel(true)
         generation++
         if (chat != open) {
-            messages = emptyList()
-            loaded = false
+            val last = chat?.let { seen[key(it)] }
+            messages = last ?: emptyList()
+            loaded = last != null
         }
         open = chat
         chat ?: return
@@ -127,12 +138,37 @@ class Chats(private val context: Context) {
                 }
                 if (read.version != version || problem != null) {
                     messages = read.messages
+                    seen[key(chat)] = read.messages
                     loaded = true
                     problem = null
                     changed()
                 }
                 follow(chat, read.version, started)
             }
+        }
+    }
+
+    private fun key(chat: Chat) = chat.service.url + "\n" + chat.id
+
+    /** Where the open chat's extension serves `file`: its address, or one under the extension's. */
+    fun url(file: Message.File): String? {
+        val service = open?.service ?: return null
+        if (Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:").containsMatchIn(file.url)) return file.url
+        return service.url.trimEnd('/') + "/" + file.url.trimStart('/')
+    }
+
+    /** The open chat's extension's token, which its files are fetched with. */
+    val token get() = open?.service?.token
+
+    /** A file's bytes from the open chat's extension, with its token, off the main thread; `done` on it. */
+    fun fetch(url: String, done: (ByteArray?) -> Unit) {
+        val service = open?.service ?: return done(null)
+        work.execute {
+            val bytes = runCatching {
+                val connection = open(service, url)
+                if (connection.responseCode in 200..299) connection.inputStream.use { it.readBytes() } else null
+            }.getOrNull()
+            main.post { done(bytes) }
         }
     }
 
