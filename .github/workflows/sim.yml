@@ -1,0 +1,37 @@
+# A simulator check on one of GitHub's Macs, the command scripts/ci was given.
+name: sim
+run-name: ${{ inputs.run }}
+on:
+  workflow_dispatch:
+    inputs:
+      run:
+        description: the command, as scripts/ci takes it
+        required: true
+jobs:
+  sim:
+    runs-on: xcode-27
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/mac
+        with:
+          klipy-key: ${{ secrets.KLIPY_KEY }}
+      - name: check
+        run: bash -c "$RUN"
+        env:
+          RUN: ${{ inputs.run }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shots
+          path: shots/raw/
+          if-no-files-found: ignore
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: |
+            build/uitest/*.log
+            build/uitest/**/*.log
+            build/uitest/*.ips
+          if-no-files-found: ignore

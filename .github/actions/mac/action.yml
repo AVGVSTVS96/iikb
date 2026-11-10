@@ -1,0 +1,29 @@
+name: mac
+description: Xcode 27.1, xcodegen, simslim, bun and iikb's packages, for a simulator run on GitHub's Mac
+inputs:
+  klipy-key:
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: sudo xcode-select -s /Applications/Xcode_27.1.app
+    - shell: bash
+      run: brew install --quiet xcodegen mobai-app/tap/simslim
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version-file: package.json
+    - shell: bash
+      run: bun install --frozen-lockfile
+    - shell: bash
+      run: printf %s "$KLIPY_KEY" > Packages/KeyboardModules/Sources/FullKeyboard/Resources/Keys/klipy.key
+      env:
+        KLIPY_KEY: ${{ inputs.klipy-key }}
+    # GitHub's release downloads, FluidAudio's binaries among them, time out now and then.
+    - shell: bash
+      run: |
+        xcodegen generate -q
+        for try in 1 2 3; do
+          xcodebuild -resolvePackageDependencies -project iikb.xcodeproj -scheme iikb -derivedDataPath build/uitest -quiet && break
+          sleep 30
+        done

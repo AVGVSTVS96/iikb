@@ -1,0 +1,39 @@
+#!/bin/bash
+# Runs a simulator check on one of GitHub's free Macs (.github/workflows/sim.yml) and copies its shots/raw/ back:
+# scripts/ci 'OPEN=1 scripts/looktest'. It runs this checkout's tree, uncommitted changes included, pushed as a
+# signed commit on a branch of its own (ci/…) that's deleted after; scripts/verify runs main's last commit instead.
+# Prints the run's link, then the command's output once it ends, and exits as it did.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+[ $# -gt 0 ] || { echo "usage: scripts/ci '<command>'" >&2; exit 2; }
+run="$*"
+case " $run " in
+  *" scripts/verify"*)
+    ref=main
+    git fetch -q origin main
+    echo "verify tests main $(git rev-parse --short origin/main)" >&2
+    ;;
+  *)
+    index=$(mktemp)
+    trap 'rm -f "$index"' EXIT
+    GIT_INDEX_FILE=$index git read-tree HEAD
+    GIT_INDEX_FILE=$index git add -A
+    tree=$(GIT_INDEX_FILE=$index git write-tree)
+    commit=$(git rev-parse HEAD)
+    [ "$tree" = "$(git rev-parse 'HEAD^{tree}')" ] || commit=$(git commit-tree -S -p HEAD -m "ci: $run" "$tree")
+    ref=ci/${commit:0:10}-$RANDOM
+    git push -q origin "$commit:refs/heads/$ref"
+    trap 'rm -f "$index"; gh api -X DELETE "repos/{owner}/{repo}/git/refs/heads/$ref" >/dev/null 2>&1 || true' EXIT
+    ;;
+esac
+url=$(gh workflow run sim.yml --ref "$ref" -f run="$run" 2>&1 | grep -o 'https://[^ ]*/actions/runs/[0-9]*')
+id=${url##*/}
+echo "$url" >&2
+trap 'gh run cancel "$id" >/dev/null 2>&1; exit 130' INT TERM
+status=0
+gh run watch "$id" --exit-status -i 30 >/dev/null 2>&1 || status=$?
+gh run view "$id" --log | awk -F'\t' '$2 == "check" { sub(/^[^ ]+ /, "", $3); print $3 }'
+mkdir -p shots/raw
+gh run download "$id" -n shots -D shots/raw 2>/dev/null || true
+echo "$(gh run view "$id" --json conclusion --jq .conclusion), $url" >&2
+exit "$status"
