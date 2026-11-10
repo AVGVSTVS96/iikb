@@ -8,7 +8,7 @@
 	<array>
 		<dict>
 			<key>FooterText</key>
-			<string>A style sets all the punctuation: Formal keeps every mark, Casual drops the last period and the comma after “so” or “hey”, very casual is Casual in lowercase with fewer commas, and Excited! ends short sentences with “!”. The app picks a style for each app you dictate into. Every style asks a question with “?”. Capitals follow Auto-Capitalization in Typing. As Said types every word you say, um and uh too; Light leaves those out; Clean also leaves out words said twice, “like” and “you know” said between commas, what you take back with “scratch that”, and what you fix as you go (“two, I mean three”).</string>
+			<string>A style sets the capitals, the punctuation and the words: Formal. keeps every mark; Excited! ends short sentences with “!”; Casual drops the last period and the comma after “so” or “hey”; very casual is Casual in lowercase with btw and idk; texting also writes u and tn; slang also writes fr and fire. Each app can have its own in the iikb app. Where a style keeps capitals, they follow Auto-Capitalization in Typing. As Said types every word you say, um and uh too; No Um or Uh leaves those out; Clean also leaves out words said twice, “like” and “you know” said between commas, what you take back with “scratch that”, and what you fix as you go (“two, I mean three”).</string>
 			<key>Title</key>
 			<string>Writing</string>
 			<key>Type</key>
@@ -24,18 +24,22 @@
 			<key>Titles</key>
 			<array>
 				<string>Formal.</string>
+				<string>Excited!</string>
 				<string>Casual</string>
 				<string>very casual</string>
-				<string>Excited!</string>
+				<string>texting</string>
+				<string>slang</string>
 			</array>
 			<key>Type</key>
 			<string>PSMultiValueSpecifier</string>
 			<key>Values</key>
 			<array>
 				<string>formal</string>
+				<string>excited</string>
 				<string>casual</string>
 				<string>veryCasual</string>
-				<string>excited</string>
+				<string>texting</string>
+				<string>slang</string>
 			</array>
 		</dict>
 		<dict>
@@ -44,11 +48,11 @@
 			<key>Key</key>
 			<string>dictationEditing</string>
 			<key>Title</key>
-			<string>Editing</string>
+			<string>Cleanup</string>
 			<key>Titles</key>
 			<array>
 				<string>As Said</string>
-				<string>Light</string>
+				<string>No Um or Uh</string>
 				<string>Clean</string>
 			</array>
 			<key>Type</key>
@@ -66,7 +70,7 @@
 			<key>Key</key>
 			<string>spokenLists</string>
 			<key>Title</key>
-			<string>Lists</string>
+			<string>Spoken Lists</string>
 			<key>Titles</key>
 			<array>
 				<string>Numbered</string>

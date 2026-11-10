@@ -220,29 +220,31 @@ wake();
 const styles = [
   {
     id: "formal",
-    title: "Formal",
-    text: "Running late, but I’ll be there by 3:30pm. Save me a seat.",
+    title: "Formal.",
+    text: "By the way, are you free tonight? The show is amazing, for real.",
+  },
+  {
+    id: "excited",
+    title: "Excited!",
+    text: "By the way, are you free tonight? The show is amazing, for real!",
   },
   {
     id: "casual",
     title: "Casual",
-    text: "Running late, but I’ll be there by 3:30pm. Save me a seat",
+    text: "By the way, are you free tonight? The show is amazing, for real",
   },
   {
     id: "veryCasual",
-    title: "Very casual",
-    text: "running late but i’ll be there by 3:30pm. save me a seat",
+    title: "very casual",
+    text: "btw, are you free tonight? the show is amazing, for real",
   },
-  {
-    id: "excited",
-    title: "Excited",
-    text: "Running late, but I’ll be there by 3:30pm. Save me a seat!",
-  },
+  { id: "texting", title: "texting", text: "btw, r u free tn? the show is amazing, for real" },
+  { id: "slang", title: "slang", text: "btw, r u free tn? the show is fire, fr" },
 ];
 
 const stylePick = document.querySelector(".style-pick");
 const wrote = document.querySelector("[data-wrote]");
-let [, style] = styles;
+let [, , style] = styles;
 
 const showStyle = (s) => {
   style = s;

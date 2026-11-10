@@ -158,7 +158,7 @@ struct WritingSettings: View {
         Box(
             header: "Cleanup",
             footer:
-                "Clean also takes back what you cancel with “scratch that”. Every app gets the same cleanup, and Transcripts keep what the model wrote."
+                "Clean also takes back what you cancel with “scratch that”. Cleanup is the same in every app."
         ) {
             ForEach(DictationEditing.allCases, id: \.self) { editing in
                 ChoiceRow(
