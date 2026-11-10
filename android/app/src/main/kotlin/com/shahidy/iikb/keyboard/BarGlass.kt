@@ -5,14 +5,17 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.core.graphics.ColorUtils
+import com.shahidy.iikb.app.lift
 
 /**
  * The bar's glass, iOS's `UIGlassEffect.bar`: iOS's regular glass tinted toward the label, 8% in light and 12% in dark,
  * so it stands off the keyboard's own glass, under More, the tools and the mic. Drawn on the keys' canvas as `app/Glass`
- * draws glass over a plain page, since the keyboard's glass under it has nothing to bend: its tint, a lit rim on a
- * hairline edge, and a soft shadow. `red` tints it toward record red, as the mic's glass while it listens, its rim and
- * edge fading as they do on iOS's red glass.
+ * draws glass over a plain page, since the keyboard's glass under it has nothing to bend: its tint (in dark, `app/Glass`'s
+ * lift of the keyboard's color), a lit rim on a hairline edge, and a soft shadow. `red` tints it toward record red, as
+ * the mic's glass while it listens, its rim and edge fading as they do on iOS's red glass.
  */
 class BarGlass {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -33,7 +36,7 @@ class BarGlass {
         canvas.drawPath(shape, shadow)
         canvas.restore()
 
-        val glass = if (dark) Color.argb(166, 0x3B, 0x3B, 0x3D) else Color.argb(184, 255, 255, 255)
+        val glass = if (dark) lift(ComposeColor(theme.card)).toArgb() else Color.argb(184, 255, 255, 255)
         val tinted = ColorUtils.compositeColors(ColorUtils.setAlphaComponent(theme.label, if (dark) 31 else 20), glass)
         fill.color = faded(ColorUtils.blendARGB(tinted, theme.record, red), opacity)
         canvas.drawPath(shape, fill)
