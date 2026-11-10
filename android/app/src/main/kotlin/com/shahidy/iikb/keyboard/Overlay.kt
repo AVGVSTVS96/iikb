@@ -183,13 +183,15 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
 /** The theme's colors, as the overlay paints with them: cards, badges and tiles in the plain key fill, as iOS's are. */
 data class Colors(
     val card: Color, val label: Color, val secondary: Color, val key: Color, val keyPressed: Color, val field: Color,
-    val accent: Color, val accentLabel: Color, val mic: Color, val micGlyph: Color, val pill: Color, val shadow: Color, val record: Color, val dark: Boolean,
+    val accent: Color, val accentLabel: Color, val mic: Color, val micGlyph: Color, val pill: Color, val shadow: Color, val record: Color,
+    val chatBubble: Color, val dark: Boolean,
 ) {
     companion object {
         fun of(theme: Theme) = Colors(
             Color(theme.card), Color(theme.label), Color(theme.candidate), Color(theme.key),
             Color(theme.keyPressed), Color(theme.searchField), Color(theme.prominent), Color(theme.prominentLabel), Color(theme.mic), Color(theme.micGlyph), Color(theme.candidatePill),
-            Color(theme.shadow), Color(theme.record), androidx.core.graphics.ColorUtils.calculateLuminance(theme.card) < 0.5,
+            Color(theme.shadow), Color(theme.record), Color(theme.chatBubble),
+            androidx.core.graphics.ColorUtils.calculateLuminance(theme.card) < 0.5,
         )
     }
 }

@@ -6,7 +6,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -31,8 +30,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -53,13 +52,18 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.graphicsLayer
@@ -81,12 +85,15 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -97,10 +104,10 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.shahidy.iikb.Text
 import com.shahidy.iikb.app.glass
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.min
+import kotlinx.coroutines.withTimeoutOrNull
 
 val LocalChats = staticCompositionLocalOf<Chats> { error("no chats") }
 
@@ -149,7 +156,7 @@ fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
                 photo?.let { PhotoView(it) { photo = null } }
             }
             Spacer(Modifier.size(6.dp))
-            MessageBox(line, chats.open?.name?.let { "Message $it" } ?: "Message", caret = keysUp)
+            MessageBox(line, chats.open?.name?.let { "Message $it" } ?: "Message", caret = keysUp, backdrop)
         }
         // More's glass starts where the keys and the messages do, and the tabs a key's gap after it, as iOS's.
         val top = (bar.top + (bar.bar - TABS_HEIGHT) / 2).toFloat()
@@ -224,7 +231,7 @@ private fun Thread(messages: List<Chats.Message>, problem: String?, open: (Opene
     val list = rememberLazyListState()
     val shown = remember(messages, chats.open) { items(messages) { chats.url(it) } }
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val widest = minOf(maxWidth * 0.75f, 520.dp)
+        val widest = minOf((maxWidth - TAIL.dp * 2) * 0.75f, 520.dp)
         LazyColumn(
             Modifier.fillMaxSize().fadeEnds(),
             state = list, reverseLayout = true,
@@ -244,14 +251,14 @@ private fun Thread(messages: List<Chats.Message>, problem: String?, open: (Opene
                 val below = newest.getOrNull(index - 1)?.mine == item.mine
                 val gap = if (index == newest.lastIndex) 0.dp else if (above) 2.dp else 10.dp
                 Box(
-                    Modifier.fillMaxWidth().padding(top = gap),
+                    Modifier.fillMaxWidth().padding(top = gap, start = TAIL.dp, end = TAIL.dp),
                     contentAlignment = if (item.mine) Alignment.CenterEnd else Alignment.CenterStart,
                 ) {
-                    val shape = bubble(item.mine, above, below)
+                    val shape = BubbleShape(item.mine, above, below, tail = !below)
                     when (item) {
                         is Item.Words -> Bubble(item.message, shape, widest)
                         is Item.Document -> FileBubble(item, shape, widest)
-                        is Item.Photo -> PhotoBubble(item, shape, widest, open)
+                        is Item.Photo -> PhotoBubble(item, BubbleShape(item.mine, above, below), widest, open)
                     }
                 }
             }
@@ -270,20 +277,44 @@ private fun Modifier.fadeEnds() = graphicsLayer(compositingStrategy = Compositin
     )
 }
 
-/** A bubble's outline: corners of 18, tightened to 6 on its side toward a neighbor from the same side, as Messages'. */
-private fun bubble(mine: Boolean, above: Boolean, below: Boolean): Shape {
-    val round = 18.dp
-    val top = if (above) 6.dp else round
-    val bottom = if (below) 6.dp else round
-    return if (mine) RoundedCornerShape(topStart = round, topEnd = top, bottomStart = round, bottomEnd = bottom)
-    else RoundedCornerShape(topStart = top, topEnd = round, bottomStart = bottom, bottomEnd = round)
+/**
+ * A bubble's outline, as iOS's `UIBezierPath(bubble:)`: corners of 18, tightened to 6 on its side toward a neighbor
+ * from the same side, as Messages'. With `tail`, the last of a run, its bottom corner on its side sweeps out into a
+ * tail `TAIL` past its bounds.
+ */
+private class BubbleShape(val mine: Boolean, val above: Boolean, val below: Boolean, val tail: Boolean = false) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val unit = density.density
+        val round = 18 * unit
+        val near = { joined: Boolean -> CornerRadius(if (joined) 6 * unit else round) }
+        val far = CornerRadius(round)
+        val bottom = if (tail) CornerRadius.Zero else near(below)
+        val rect = RoundRect(
+            Rect(Offset.Zero, size),
+            topLeft = if (mine) far else near(above), topRight = if (mine) near(above) else far,
+            bottomRight = if (mine) bottom else far, bottomLeft = if (mine) far else bottom,
+        )
+        val path = Path().apply { addRoundRect(rect) }
+        if (!tail) return Outline.Generic(path)
+        val x = if (mine) size.width else 0f
+        val away = if (mine) unit else -unit
+        val y = size.height
+        val tip = Path().apply {
+            moveTo(x, y - round)
+            cubicTo(x, y - 6 * unit, x + away * TAIL * 0.5f, y - unit, x + away * TAIL, y)
+            cubicTo(x + away * TAIL * 0.2f, y + 0.5f * unit, x - away * 6, y - 0.5f * unit, x - away * 12, y - 3 * unit)
+            lineTo(x - away * 18, y - round)
+            close()
+        }
+        return Outline.Generic(Path.combine(PathOperation.Union, path, tip))
+    }
 }
 
-/** A bubble's flat fill, as Messages draws one: yours on the accent color, the other side's on a key's. */
+/** A bubble's flat fill, as Messages draws one: yours on the accent color, the other side's on Messages' gray. */
 @Composable
 private fun Modifier.fill(mine: Boolean, pending: Boolean, shape: Shape): Modifier {
     val look = LocalColors.current
-    return alpha(if (pending) 0.6f else 1f).background(if (mine) look.accent else look.key, shape)
+    return alpha(if (pending) 0.6f else 1f).background(if (mine) look.accent else look.chatBubble, shape)
 }
 
 /**
@@ -303,7 +334,7 @@ private fun Bubble(message: Chats.Message, shape: Shape, widest: Dp) {
         SelectionContainer {
             BasicText(
                 written,
-                style = TextStyle(fontSize = 17.sp, lineHeight = 22.sp, color = if (message.mine) look.accentLabel else look.label),
+                style = LINES.copy(color = if (message.mine) look.accentLabel else look.label),
                 onTextLayout = { text[0] = it },
                 modifier = Modifier.onGloballyPositioned { bounds = it.boundsInWindow() }
                     .heldLink({ position -> text[0]?.let { written.link(it, position) } }) { url ->
@@ -341,11 +372,8 @@ private fun FileBubble(item: Item.Document, shape: Shape, widest: Dp) {
         Modifier.widthIn(max = widest).fill(item.mine, item.pending, shape).padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Glyph("doc", color, Glyphs.square(15f).dp)
-        Text(
-            " " + item.file.name, color = color, fontSize = 17.sp, lineHeight = 22.sp, maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Glyph("doc", color, DOC_GLYPH.dp)
+        Text(" " + item.file.name, color = color, style = LINES, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -482,24 +510,22 @@ fun markdown(text: String, opens: ((String) -> Unit)? = null): AnnotatedString =
 }
 
 /**
- * The message box, as Messages' and iOS's `MessageField`: outlined in a hairline, what the keys typed (or the
- * placeholder), the caret while the keys are up, growing a line at a time to five, past which it scrolls. Send grows in
- * at its end once there's something to send and shrinks away when there isn't. It has no mic of its own: the
- * keyboard's one mic dictates into it as into any field. A tap brings the keys up.
+ * The message box, as iOS's `MessageField`: Liquid Glass, as the tabs, More and the mic around it are, holding what the
+ * keys typed (or the placeholder), the caret while the keys are up, growing a line at a time to five, past which it
+ * scrolls. Send, solid on the glass, grows in at its end once there's something to send and shrinks away when there
+ * isn't. It has no mic of its own: the keyboard's one mic dictates into it as into any field. A tap brings the keys up.
  */
 @Composable
-private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean) {
+private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, backdrop: com.kyant.backdrop.Backdrop) {
     val look = LocalColors.current
     val actions = LocalActions.current
-    val density = LocalDensity.current.density
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val empty = line.text.isEmpty()
     val canSend = line.text.isNotBlank()
     val scroll = rememberScrollState()
     val shape = RoundedCornerShape(20.dp)
     Box(
-        Modifier.fillMaxWidth().heightIn(min = 40.dp).background(look.field, shape)
-            .border((1 / density).dp, if (look.dark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.09f), shape)
+        Modifier.fillMaxWidth().heightIn(min = 40.dp).glass(shape, backdrop, look.dark)
             .clickable(remember { MutableInteractionSource() }, indication = null) { if (!caret) actions.raiseKeys() },
     ) {
         Box(
@@ -508,7 +534,7 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean) 
         ) {
             BasicText(
                 if (empty) AnnotatedString(placeholder) else AnnotatedString(line.text),
-                style = TextStyle(fontSize = 17.sp, lineHeight = 22.sp, color = if (empty) look.secondary else look.label),
+                style = LINES.copy(color = if (empty) look.secondary else look.label),
                 maxLines = if (empty) 1 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis,
                 onTextLayout = { layout = it },
                 modifier = Modifier.fillMaxWidth().drawWithContent {
@@ -530,7 +556,7 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean) 
                 .background(look.accent, CircleShape)
                 .clickable(remember { MutableInteractionSource() }, indication = null, enabled = canSend) { actions.send() },
             contentAlignment = Alignment.Center,
-        ) { Glyph("arrow.up", look.accentLabel, Glyphs.square(15f).dp, weight = Glyphs.SEMIBOLD) }
+        ) { Glyph("arrow.up", look.accentLabel, SEND_GLYPH.dp, weight = Glyphs.SEMIBOLD) }
     }
 }
 
@@ -581,6 +607,16 @@ fun ChatShelf() {
     }
 }
 
+/** Messages' 17 on 22 lines, each its full 22 as UIKit sets them, where Compose trims the first's top and last's bottom. */
+private val LINES = TextStyle(
+    fontSize = 17.sp, lineHeight = 22.sp,
+    lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+)
+/** How far the last bubble of a run's tail reaches past it, kept clear at both edges, as iOS's `ChatThread.tail`. */
+private const val TAIL = 6f
+/** The document and send glyphs drawn as large as SF's `doc` and `arrow.up` at 15 points, 14 × 17.4 and 15 × 17.7. */
+private const val DOC_GLYPH = 22f
+private const val SEND_GLYPH = 21.6f
 /** At most this many of a chat's latest messages are kept on show, as the extension sends them. */
 private const val SHOWN = 40
 /** As iOS's `ChatThread`: messages fade out over a line and a bit under the tabs, and over less into the box. */

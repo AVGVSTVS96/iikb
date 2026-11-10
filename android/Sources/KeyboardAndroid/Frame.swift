@@ -144,7 +144,7 @@ struct Theme: Encodable {
     /// the hairline round its edge. Where nothing frosts, `card` stands in, the glass as it reads over the page.
     var glass, rim: Int32
     var candidate, candidateHighlighted, candidatePill, candidateDivider, expander: Int32
-    var mic, micGlyph, record, searchField, bubble, bubbleLabel, selection, selectionLabel: Int32
+    var mic, micGlyph, record, searchField, bubble, bubbleLabel, selection, selectionLabel, chatBubble: Int32
     var continuous: Bool
     var letter, function, prominentKey: Paint
 
@@ -176,6 +176,7 @@ struct Theme: Encodable {
         bubbleLabel = t.bubbleLabel.argb
         selection = t.selection.argb
         selectionLabel = t.selectionLabel.argb
+        chatBubble = t.chatBubble.argb
         continuous = t.keyShape != nil
         letter = Paint(t.letterKey)
         function = Paint(t.functionKey)

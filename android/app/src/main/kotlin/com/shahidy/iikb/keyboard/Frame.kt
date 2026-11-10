@@ -156,6 +156,7 @@ data class Theme(
     val bubbleLabel: Int,
     val selection: Int,
     val selectionLabel: Int,
+    val chatBubble: Int,
     val continuous: Boolean,
     val letter: KeyPaint,
     val function: KeyPaint,
