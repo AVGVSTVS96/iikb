@@ -229,7 +229,7 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         suggestionBar.onTool = { [unowned self] in tool($0) }
         suggestionBar.onEdit = { [unowned self] in edit($0) }
-        suggestionBar.onStyle = { [unowned self] in pickStyle(DictationStyle.allCases[$0]) }
+        suggestionBar.onStyle = { [unowned self] in pickStyle($0.map { DictationStyle.allCases[$0] }) }
         suggestionBar.onChat = { [unowned self] index in
             guard chats.list.indices.contains(index) else { return }
             feedback(.other)
@@ -414,9 +414,11 @@ open class FullKeyboardViewController: UIInputViewController {
         }
     }
 
-    /// A writing style picked in the bar, for the app the keyboard is in, so its next dictation is written so. Only with
-    /// Full Access, since the app writes the dictation and reads the pick from the shared settings.
-    private func pickStyle(_ style: DictationStyle) {
+    /// A writing style picked in the bar for the app the keyboard is in, so its next dictation there is written so, or
+    /// nil to have it follow the default again. Only with Full Access, since the app writes the dictation and reads the
+    /// pick from the shared settings, and only where the app is known, so a pick is never the default's by mistake.
+    private func pickStyle(_ style: DictationStyle?) {
+        guard let hostApp else { return }
         feedback(.other)
         SettingsStore.set(style, in: hostApp, sharing: hasFullAccess)
         loadSettings()
@@ -828,9 +830,11 @@ open class FullKeyboardViewController: UIInputViewController {
     private func renderSuggestions() {
         guard isShown else { return }
         let style = engine.settings.dictationStyle(in: hostApp)
+        let own = hostApp.map { engine.settings.appDictationStyles[$0] != nil } ?? false
         suggestionBar.update(
-            styles: hasFullAccess ? DictationStyle.allCases.map(\.title) : nil,
-            picked: DictationStyle.allCases.firstIndex(of: style) ?? 0, theme: theme)
+            styles: hasFullAccess && hostApp != nil ? DictationStyle.allCases.map(\.title) : nil,
+            picked: DictationStyle.allCases.firstIndex(of: style) ?? 0,
+            reset: own ? "Use Default (\(engine.settings.dictationStyle.title))" : nil, theme: theme)
         guard engine.suggestionsAreStale else {
             return suggestionBar.update(
                 engine.suggestions, emoji: engine.emojiSuggestions, enabled: engine.showsSuggestions, theme: theme)

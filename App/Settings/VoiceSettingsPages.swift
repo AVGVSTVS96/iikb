@@ -68,26 +68,44 @@ private struct ModelSettings: View {
     }
 }
 
-/// The words and punctuation iikb types for what you say: a preview of the same words as picked, then each style, each
-/// level of editing and each way of writing a list shown by how it types them with everything else as picked.
+/// How iikb writes what you say, as two things: the style, how it reads, which each app can have its own of and the
+/// keyboard's bar picks for the app you're in; and the cleanup, what it leaves out of what you said, the same everywhere.
+/// A preview on top shows what you'd say typed as picked, with the words that show off what you last changed.
 struct WritingSettings: View {
-    private static let said = "Hey, are you free tonight. Let's grab dinner, and then see the show."
+    private enum Sample {
+        case style, cleanup, lists
+
+        var said: String {
+            switch self {
+            case .style: "Hey, by the way, are you free tonight. The food there is amazing, for real."
+            case .cleanup: "Um, so I think the the plan is, like, dinner at two, I mean three."
+            case .lists: "For tonight we need one, eggs, two, milk, three, bread."
+            }
+        }
+    }
+
+    private static let styled = "Hey, by the way, are you free tonight. Let’s grab dinner and then see the show."
     private static let rambled = "Um, I think the the plan is, like, two, I mean three."
-    private static let listed = "Buy one, eggs, two, milk, three, bread."
-    private static let texted =
-        "By the way, are you free tonight? The food there is really amazing, for real. Let me know."
-    private static let preview =
-        "Um, so are you free tonight. Let's grab dinner at the the place on Main, and then see the show at two, I mean three."
     private let model = SettingsModel.shared
+    @State private var sample = Sample.style
+    /// Whose style the list sets: an app's, by its bundle ID, or nil for the default.
+    @State private var app: String?
 
     private func typed(_ said: String, _ change: (inout DictationWriting) -> Void = { _ in }) -> String {
-        var writing = model.settings.dictation(in: nil)
+        var writing = model.settings.dictation(in: app)
         change(&writing)
         return writing.typed(said, lexicon: .english)
     }
 
     private func quoted(_ said: String, _ change: (inout DictationWriting) -> Void) -> String {
         "“" + typed(said, change) + "”"
+    }
+
+    private func update(_ sample: Sample, _ change: @escaping (inout KeyboardSettings) -> Void) {
+        withAnimation(.snappy(duration: 0.25)) {
+            self.sample = sample
+            model.update(change)
+        }
     }
 
     /// The apps you've dictated into, most dictated first, then any other with a style of its own.
@@ -100,74 +118,62 @@ struct WritingSettings: View {
         return counts.sorted { ($0.value, AppName.of($1.key)) > ($1.value, AppName.of($0.key)) }.map(\.key)
     }
 
-    private func style(in app: String) -> Binding<DictationStyle?> {
-        Binding {
-            model.settings.appDictationStyles[app]
-        } set: { style in
-            withAnimation(.snappy(duration: 0.25)) { model.update { $0.appDictationStyles[app] = style } }
+    /// The style picked for `app`, nil where it follows the default; the default's where `app` is nil.
+    private var picked: DictationStyle? {
+        guard let app else { return model.settings.dictationStyle }
+        return model.settings.appDictationStyles[app]
+    }
+
+    private func pick(_ style: DictationStyle?) {
+        update(.style) { settings in
+            if let app {
+                settings.appDictationStyles[app] = style
+            } else if let style {
+                settings.dictationStyle = style
+            }
         }
     }
 
     var body: some View {
-        WritingPreview(said: Self.preview, typed: typed(Self.preview))
+        WritingPreview(said: sample.said, typed: typed(sample.said))
         Box(
             header: "Style",
             footer:
-                "A style sets all the punctuation. Formal keeps every mark; Casual drops the last period and the comma after “so” or “hey”; very casual also drops capitals and the comma before “and” or “but”; Excited! ends short sentences with “!”. Every style asks a question with “?”. Capitals follow Auto-Capitalization in Keyboard › Typing."
+                "A style sets the capitals, the punctuation and the words. Each app can have its own, also picked in the keyboard’s bar where it has room. Where a style keeps capitals, they follow Auto-Capitalization in Keyboard › Typing."
         ) {
+            if !apps.isEmpty {
+                MenuRow(title: "For", selection: $app, choices: [nil] + apps) { $0.map(AppName.of) ?? "Default" }
+            }
+            if app != nil {
+                ChoiceRow(
+                    title: "Default", detail: model.settings.dictationStyle.title, picked: picked == nil
+                ) { pick(nil) }
+            }
             ForEach(DictationStyle.allCases, id: \.self) { style in
                 ChoiceRow(
-                    title: style.title, detail: quoted(Self.said) { $0.style = style },
-                    picked: model.settings.dictationStyle == style
-                ) {
-                    withAnimation(.snappy(duration: 0.25)) { model.update { $0.dictationStyle = style } }
-                }
-            }
-        }
-        if !apps.isEmpty {
-            Box(
-                header: "Style in Each App",
-                footer: "An app on Default writes in the style above. Each app you dictate into shows here."
-            ) {
-                ForEach(apps, id: \.self) { app in
-                    MenuRow(title: AppName.of(app), selection: style(in: app), choices: [nil] + DictationStyle.allCases)
-                    { $0?.title ?? "Default" }
-                }
+                    title: style.title, detail: quoted(Self.styled) { $0.style = style }, picked: picked == style
+                ) { pick(style) }
             }
         }
         Box(
-            header: "Editing",
-            footer: "Clean also takes back what you cancel with “scratch that”. Transcripts keep what the model wrote."
+            header: "Cleanup",
+            footer:
+                "Clean also takes back what you cancel with “scratch that”. Every app gets the same cleanup, and Transcripts keep what the model wrote."
         ) {
             ForEach(DictationEditing.allCases, id: \.self) { editing in
                 ChoiceRow(
                     title: editing.title, detail: quoted(Self.rambled) { $0.editing = editing },
                     picked: model.settings.dictationEditing == editing
-                ) {
-                    withAnimation(.snappy(duration: 0.25)) { model.update { $0.dictationEditing = editing } }
-                }
+                ) { update(.cleanup) { $0.dictationEditing = editing } }
             }
-        }
-        Box(header: "Lists", footer: "A list you say with one, two or first, second is written on lines of its own.") {
-            ForEach(DictationLists.allCases, id: \.self) { lists in
-                ChoiceRow(
-                    title: lists.title, detail: typed(Self.listed) { $0.lists = lists },
-                    picked: model.settings.dictationLists == lists
-                ) {
-                    withAnimation(.snappy(duration: 0.25)) { model.update { $0.dictationLists = lists } }
-                }
-            }
-        }
-        Box(header: "Text Mode", footer: "Each step adds to the one before it. Transcripts keep what the model wrote.")
-        {
-            ForEach(DictationTextMode.allCases, id: \.self) { mode in
-                ChoiceRow(
-                    title: mode.title, detail: quoted(Self.texted) { $0.textMode = mode },
-                    picked: model.settings.dictationTextMode == mode
-                ) {
-                    withAnimation(.snappy(duration: 0.25)) { model.update { $0.dictationTextMode = mode } }
-                }
-            }
+            MenuRow(
+                title: "Spoken Lists",
+                selection: Binding {
+                    model.settings.dictationLists
+                } set: { lists in
+                    update(.lists) { $0.dictationLists = lists }
+                }, choices: DictationLists.allCases
+            ) { $0.title }
         }
     }
 }

@@ -2,7 +2,7 @@
 
 ## Sub-features
 
-How a dictation is typed (`DictationWriting`, KeyboardCore). Style, Wispr Flow's four: Formal (ends with a period), Casual, the default (no last period, no comma after an opening "so" or "also"), very casual (Casual in lowercase) and Excited (ends with "!"). Editing: As Said, the default, keeps every word, um and uh included; Light leaves out um and uh; Clean also leaves out words said twice and what "scratch that" takes back. Lists types a spoken list ("one, eggs, two, milk") as a numbered one. Capitals follow Auto-Capitalization, as typing's do; very casual has none. Each style shows the same words as it would type them. Transcripts keep what the model wrote.
+How a dictation is typed (`DictationWriting`, KeyboardCore), as two things. Style, per app: one choice of capitals, punctuation and words, Formal. (ends with a period), Excited! (ends with "!"), Casual, the default (no last period, no comma after an opening "so" or "also"), very casual (Casual in lowercase, with btw and idk), texting (also u and tn) and slang (also fr and fire); the default's set in the app, an app's own in the app or the keyboard's bar. Cleanup, the same everywhere: As Said, the default, keeps every word, um and uh included; No Um or Uh leaves those out; Clean also leaves out words said twice and what "scratch that" takes back; Spoken Lists types a spoken list ("one, eggs, two, milk") as a numbered or bulleted one. Capitals follow Auto-Capitalization, as typing's do; very casual, texting and slang have none. Each style shows the same words as it would type them. Transcripts keep what the model wrote.
 
 ## How to get to it (user POV)
 

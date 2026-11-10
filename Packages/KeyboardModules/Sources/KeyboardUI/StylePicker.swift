@@ -3,13 +3,15 @@ import UIKit
 
 /// A setting's choices folded into the picked one: its name on a platter in a capsule of the bar's glass. A tap opens it
 /// leftward, over what's beside it, into every choice with the platter still under the picked one; picking slides the
-/// platter to the new one and folds it back around it. VoiceOver adjusts it up and down the choices. The bar's writing
-/// style (`SuggestionBar`).
-public final class StylePicker: UIView {
+/// platter to the new one and folds it back around it. Holding it offers going back to the default, where there's one
+/// to go back to. VoiceOver adjusts it up and down the choices. The bar's writing style (`SuggestionBar`).
+public final class StylePicker: UIView, UIContextMenuInteractionDelegate {
     /// A choice was picked, by its index.
     public var onPick: (Int) -> Void = { _ in }
     /// It opened or folded, so what holds it makes room or takes it back.
     public var onOpen: (Bool) -> Void = { _ in }
+    /// Holding it offers this, "Use Default (Casual)", while the pick is one of its own; nil offers nothing.
+    public var reset: (title: String, action: () -> Void)?
     public private(set) var isOpen = false
 
     private let track = UIVisualEffectView(effect: UIGlassEffect.bar(.lightCurrent))
@@ -39,6 +41,21 @@ public final class StylePicker: UIView {
         platter.layer.shadowRadius = 3
         track.contentView.addSubview(platter)
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tap(_:))))
+        addInteraction(UIContextMenuInteraction(delegate: self))
+    }
+
+    public func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint
+    ) -> UIContextMenuConfiguration? {
+        guard let reset else { return nil }
+        return UIContextMenuConfiguration(actionProvider: { [weak self] _ in
+            UIMenu(children: [
+                UIAction(title: reset.title, image: UIImage(systemName: "arrow.uturn.backward")) { [weak self] _ in
+                    self?.fold()
+                    reset.action()
+                }
+            ])
+        })
     }
 
     required init?(coder: NSCoder) { fatalError() }

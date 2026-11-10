@@ -41,8 +41,8 @@ public final class SuggestionBar: UIView {
     public var onEdit: (Edit) -> Void = { _ in }
     /// A chat's pill was tapped, by its index.
     public var onChat: (Int) -> Void = { _ in }
-    /// A writing style was picked in the bar, by its index.
-    public var onStyle: (Int) -> Void = { _ in }
+    /// A writing style was picked in the bar, by its index, or nil to follow the default again.
+    public var onStyle: (Int?) -> Void = { _ in }
     /// How the recording goes back into the mic when you stop (Settings › Appearance).
     public var stopAnimation = StopAnimation.squeeze { didSet { mic.stopAnimation = stopAnimation } }
     public var maximumSlotWidth = CGFloat.infinity { didSet { setNeedsLayout() } }
@@ -279,7 +279,9 @@ public final class SuggestionBar: UIView {
     }
 
     /// The writing styles' names, `picked` the one a dictation here is written in, or nil where the bar has none.
-    public func update(styles names: [String]?, picked: Int, theme: KeyboardTheme) {
+    /// `reset` names going back to the default, where the pick is the app's own.
+    public func update(styles names: [String]?, picked: Int, reset: String? = nil, theme: KeyboardTheme) {
+        stylePicker.reset = reset.map { title in (title: title, action: { [unowned self] in onStyle(nil) }) }
         if (names == nil) != (styleNames == nil) { setNeedsLayout() }
         styleNames = names
         if names == nil { stylePicker.fold() }

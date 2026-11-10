@@ -43,19 +43,8 @@ extension DictationEditing {
     var title: String {
         switch self {
         case .asSaid: "As Said"
-        case .light: "Light"
+        case .light: "No Um or Uh"
         case .clean: "Clean"
-        }
-    }
-}
-
-extension DictationTextMode {
-    var title: String {
-        switch self {
-        case .spelledOut: "Spelled Out"
-        case .abbreviated: "Abbreviated"
-        case .texting: "Texting"
-        case .genZ: "Gen Z"
         }
     }
 }
