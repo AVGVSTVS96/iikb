@@ -63,15 +63,6 @@ public final class ClipboardStore {
         return unread >= 2 || (unread == 1 && history.items.isEmpty)
     }
 
-    /// Paste from Other Apps is Allow, as the app can tell: what went unread was something else.
-    public func allowed() {
-        update { saved, _ in
-            guard saved.unread != nil else { return false }
-            saved.unread = nil
-            return true
-        }
-    }
-
     /// Keeps what's on the clipboard if it changed since the keyboard last looked.
     public func catchUp(_ pasteboard: UIPasteboard = .general, now: Date = .now) {
         let time = now.timeIntervalSince1970

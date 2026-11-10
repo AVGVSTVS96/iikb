@@ -67,9 +67,6 @@ struct ClipboardStoreTests {
         pasteboard.setData(Data("not an image".utf8), forPasteboardType: UTType.tiff.identifier)
         await keep(store)
         #expect(store.refused)
-        store.allowed()
-        await store.settled()
-        #expect(!store.refused, "the app, which can read the setting, says it's Allow")
     }
 
     @Test func passwordsAreNeverKept() async {

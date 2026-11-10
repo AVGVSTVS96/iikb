@@ -13,7 +13,14 @@ import UIKit
 
     var isSetUp: Bool { isAdded && fullAccess && pasteAllowed }
 
+    #if !APP_STORE
+        private let clipboard = ClipboardStore()
+    #endif
+
     private init() {
+        #if !APP_STORE
+            clipboard.onChange = { [weak self] in self?.readPaste() }
+        #endif
         refresh()
         NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
@@ -31,14 +38,20 @@ import UIKit
             pasteAllowed = fullAccess
         #else
             fullAccess = Self.allowed("kTCCServiceKeyboardNetwork")
-            pasteAllowed = Self.allowed("kTCCServicePasteboard")
-            if pasteAllowed { ClipboardStore().allowed() }
+            readPaste()
+            clipboard.reload()
         #endif
     }
 
     #if !APP_STORE
+        /// TCC grants the app Paste from Other Apps at Ask as at Allow, since the app itself can ask; the keyboard can't,
+        /// so at Ask iOS refuses its reads, which the clipboard history keeps (`ClipboardStore.refused`).
+        private func readPaste() {
+            pasteAllowed = Self.allowed("kTCCServicePasteboard") && !clipboard.refused
+        }
+
         /// Asks TCC, where iOS keeps privacy switches, through its private `TCCAccessPreflight`. iOS files the keyboard's Full
-        /// Access under the app, and Paste from Other Apps is only granted at Allow, never at Ask.
+        /// Access under the app.
         private static func allowed(_ service: String) -> Bool {
             typealias Preflight = @convention(c) (CFString, CFDictionary?) -> Int32
             guard let tcc = dlopen("/System/Library/PrivateFrameworks/TCC.framework/TCC", RTLD_LAZY),
@@ -54,13 +67,12 @@ import UIKit
 
     /// iOS lists Paste from Other Apps under Settings › Apps › iikb only once the app itself has asked to paste; the
     /// keyboard's reads are refused without asking, so a fresh install never shows it. Reading the clipboard here asks.
-    /// With it already Allow, as TCC tells, the keyboard's notice was about a copy iOS couldn't hand over, so this shows
-    /// the clipboard instead of a Settings page with nothing to change.
     static func openPasteSetting() {
-        #if !APP_STORE
-            if shared.pasteAllowed { return Router.shared.show(.clipboard) }
+        #if APP_STORE
+            if !shared.pasteAllowed { _ = UIPasteboard.general.string }
+        #else
+            if !allowed("kTCCServicePasteboard") { _ = UIPasteboard.general.string }
         #endif
-        if !shared.pasteAllowed { _ = UIPasteboard.general.string }
         openSettings()
     }
 }
