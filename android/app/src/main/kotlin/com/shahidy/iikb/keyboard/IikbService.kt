@@ -455,7 +455,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         val inPlace = fromMenu && !keysUp
         val metrics = resources.displayMetrics
         val normal = (frame.toolbar.height + frame.height).toFloat()
-        view.grown = if (menuShown || chat) maxOf(normal, metrics.heightPixels / metrics.density - ROOM_FOR_APP) else 0f
+        view.grown = if (menuShown || chat) maxOf(normal, metrics.heightPixels / metrics.density - ROOM_FOR_APP - HEADROOM) else 0f
         view.keysHidden = menuShown || inPlace
         view.barCovered = fromMenu && keysUp && !chat
         view.barOnKeys = chat && keysUp
@@ -980,7 +980,10 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     }
 
     companion object {
-        /** The menu fills a keyboard grown to all of the screen but this, in dp, for the app (docs/design.md). */
+        /**
+         * The menu fills a keyboard grown to all of the screen but this, in dp, for the app (docs/design.md), measured
+         * to the glass's top edge, `HEADROOM` above the keys' view.
+         */
         const val ROOM_FOR_APP = 140f
         /**
          * iOS draws its keyboard glass this far above the keyboard's own view on an iPhone 17 (on the Duo, 4:
