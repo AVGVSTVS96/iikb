@@ -4,7 +4,6 @@ import android.graphics.BitmapFactory
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -38,8 +37,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TileMode
@@ -275,7 +279,7 @@ private fun Menu(actions: List<Held.Action>, behind: Behind?, close: () -> Unit)
     val look = LocalColors.current
     val shape = RoundedCornerShape(MENU_CORNER.dp)
     Row(
-        Modifier.shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
+        Modifier.shadow(24.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
             .frosted(behind, shape).padding(MENU_PAD.dp),
     ) {
         for (action in actions) {
@@ -294,7 +298,7 @@ private fun Menu(actions: List<Held.Action>, behind: Behind?, close: () -> Unit)
             ) {
                 Glyph(action.glyph, tint, Glyphs.square(MENU_GLYPH).dp)
                 Spacer(Modifier.height(MENU_TITLE_GAP.dp))
-                Text(action.title, color = tint, fontSize = MENU_TITLE.sp, maxLines = 1)
+                Text(action.title, color = tint, fontSize = MENU_TITLE.sp, fontWeight = FontWeight.Medium, maxLines = 1)
             }
         }
     }
@@ -311,7 +315,7 @@ private fun ListMenu(actions: List<Held.Action>, behind: Behind?, close: () -> U
     val shape = if (actions.size == 1) CircleShape else RoundedCornerShape(LIST_CORNER.dp)
     val checks = actions.all { it.glyph == "" || it.glyph == "checkmark" }
     Column(
-        Modifier.shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
+        Modifier.shadow(24.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
             .frosted(behind, shape).padding(vertical = LIST_PAD.dp),
     ) {
         for (action in actions) {
@@ -350,17 +354,25 @@ private fun ListMenu(actions: List<Held.Action>, behind: Behind?, close: () -> U
  */
 class Behind(val image: ImageBitmap, val origin: Offset, val scale: Float)
 
+/** How far down from the top, and up from the bottom, the lit rim fades out, as a share of the glass's height. */
+private fun DrawScope.litFade() = (LIT_FADE.dp.toPx() / size.height).coerceAtMost(0.5f)
+
 /**
  * iOS's menu glass in `shape`: the dimmed keyboard under it blurred to a frost, which the glass's tint lets through
- * faintly, a lit rim on a hairline edge. Until the keyboard's still comes (or where Android can't blur, before 12), the
- * tint alone, opaque, so the rows under it never show sharp through its titles.
+ * faintly, a dark hairline just outside its edge, and a rim lit from above and below that fades into the glass, so the
+ * sides show only the hairline. Until the keyboard's still comes (or where Android can't blur, before 12), the tint
+ * alone, opaque, so the rows under it never show sharp through its titles.
  */
 @Composable
 private fun Modifier.frosted(behind: Behind?, shape: Shape): Modifier {
     val look = LocalColors.current
     var at by remember { mutableStateOf(Offset.Zero) }
     val frost = rememberGraphicsLayer()
-    return onGloballyPositioned { at = it.positionInWindow() }.clip(shape).drawWithContent {
+    return onGloballyPositioned { at = it.positionInWindow() }.drawBehind {
+        val faint = look.glassEdge.copy(alpha = look.glassEdge.alpha * look.litEdge)
+        val edge = Brush.verticalGradient(0f to faint, litFade() to look.glassEdge, 1 - litFade() to look.glassEdge, 1f to faint)
+        drawOutline(shape.createOutline(size, layoutDirection, this), edge, style = Stroke(EDGE.dp.toPx() * 2))
+    }.clip(shape).drawWithContent {
         drawRect(look.glass)
         if (behind != null) {
             frost.renderEffect = BlurEffect(FROST.dp.toPx(), FROST.dp.toPx(), TileMode.Clamp)
@@ -376,7 +388,10 @@ private fun Modifier.frosted(behind: Behind?, shape: Shape): Modifier {
             drawRect(look.glass.copy(alpha = 0.35f))
         }
         drawContent()
-    }.border(0.5.dp, look.glassEdge, shape).border(1.dp, look.glassRim, shape)
+        val outline = shape.createOutline(size, layoutDirection, this)
+        val lit = Brush.verticalGradient(0f to Color.White, litFade() to Color.Transparent, 1 - litFade() to Color.Transparent, 1f to Color.White)
+        for ((width, alpha) in look.litRim) drawOutline(outline, lit, alpha, Stroke(width.dp.toPx() * 2))
+    }
 }
 
 /** iOS's `secondaryLabel`, a held link's address. */
@@ -385,10 +400,13 @@ private val Colors.previewSecondary get() = if (dark) Color(0x99EBEBF5) else Col
 private val Colors.preview get() = if (dark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
 /** iOS's menu glass as it reads over the dimmed keyboard, measured on its shots: the tint `frosted` lays over the frost. */
 private val Colors.glass get() = if (dark) Color(0xFF323233) else Color(0xFFDCDDE1)
-private val Colors.glassEdge get() = if (dark) Color(0x1FFFFFFF) else Color(0x14000000)
-/** The lit rim inside its edge. */
-private val Colors.glassRim get() = if (dark) Color(0x2EFFFFFF) else Color(0xD9FFFFFF)
-private val Colors.destructive get() = if (dark) Color(0xFFFF453A) else Color(0xFFFF3B30)
+private val Colors.glassEdge get() = if (dark) Color(0xED000000) else Color(0x80000000)
+/** How much of the hairline shows where the rim is lit. */
+private val Colors.litEdge get() = if (dark) 0f else 0.4f
+/** The lit rim inside its edge, as bands in from it, each a width in points and a white's alpha, laid one over the next. */
+private val Colors.litRim get() = if (dark) listOf(0.35f to 0.12f, 0.7f to 0.12f, 1.3f to 0.12f) else listOf(0.35f to 0.7f, 0.7f to 0.375f, 1.3f to 0.2f)
+/** The menu's red, as iOS's menu draws a destructive action over its glass, measured on its shots. */
+private val Colors.destructive get() = if (dark) Color(0xFFFF6164) else Color(0xFFF12E33)
 
 /** Measured on iOS's shots of a held clip, transcript and GIF (iPhone 17), in points. */
 private const val SIDE = 16f
@@ -410,12 +428,12 @@ private const val TIGHT_TOP = 12f
 private const val TIGHT_GAP = 10f
 private const val CARD_FLOOR = 60f
 private const val MENU_WIDTH = 250f
-private const val MENU_ROW = 74f
+private const val MENU_ROW = 77f
 private const val MENU_PAD = 4f
 private const val MENU_CELL_CORNER = 20f
 private const val MENU_GLYPH = 17f
 private const val MENU_TITLE = 12f
-private const val MENU_TITLE_GAP = 5f
+private const val MENU_TITLE_GAP = 6f
 private const val MENU_CORNER = 37f
 private const val LIST_ROW = 42f
 /** A view held without a preview lifts this much larger, its top at least this far down the keyboard (iOS's held chat tabs). */
@@ -427,3 +445,5 @@ private const val LIST_PAD = 10f
 private const val LIST_CORNER = 26f
 /** How far the menu's glass blurs what's under it. */
 private const val FROST = 4f
+private const val EDGE = 0.5f
+private const val LIT_FADE = 10f
