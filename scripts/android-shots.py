@@ -544,7 +544,11 @@ def thumbs(keys):
             middle = y + 30
             cells = [(x, screen.pixel(x, middle), board) for x in range(keys.width)]
             row = [run for run in screen.runs(cells, threshold=60, gap=4) if 20 < run[1] - run[0] < 140]
-            return (row[2][0] + row[2][1]) / 2, middle
+            # An emoji can read as two runs or two as one, so the third cell is two pitches past the first: the
+            # pitch is the middle gap between neighbors' centers.
+            centers = [(a + b) / 2 for a, b, *_ in row]
+            pitch = sorted(b - a for a, b in zip(centers, centers[1:]))[(len(centers) - 1) // 2]
+            return centers[0] + 2 * pitch, middle
     raise RuntimeError("no row of emoji found")
 
 
