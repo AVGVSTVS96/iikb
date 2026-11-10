@@ -173,7 +173,7 @@ fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
     }
 }
 
-/** More beside the tabs, on a circle of glass as tall as their capsule, at `x`, `y`: it closes the chat. */
+/** More beside the tabs, on a circle of the bar's glass (tinted toward the label) as tall as their capsule, at `x`, `y`: it closes the chat. */
 @Composable
 private fun GlassMore(x: Float, y: Float, glyph: Float, backdrop: com.kyant.backdrop.Backdrop) {
     val look = LocalColors.current
@@ -183,9 +183,10 @@ private fun GlassMore(x: Float, y: Float, glyph: Float, backdrop: com.kyant.back
     Box(
         Modifier.offset(x.dp, y.dp)
             .size(TABS_HEIGHT.dp).glass(CircleShape, backdrop, look.dark).clip(CircleShape)
+            .background(look.label.copy(alpha = if (look.dark) 0.12f else 0.08f))
             .clickable(interaction, indication = null, onClick = actions::more),
         contentAlignment = Alignment.Center,
-    ) { Glyph("more", look.label.copy(alpha = if (pressed) 0.55f else 1f), (glyph * 0.92f).dp) }
+    ) { Glyph("more", look.label.copy(alpha = if (pressed) 0.55f else 1f), glyph.dp) }
 }
 
 @Composable

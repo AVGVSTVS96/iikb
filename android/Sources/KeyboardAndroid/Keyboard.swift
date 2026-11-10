@@ -137,7 +137,7 @@ final class Keyboard {
             height: geometry.metrics.height(
                 rows: geometry.layout.rows.count, hasNumberRow: geometry.layout.hasNumberRow),
             toolbar: Bar(
-                top: toolbar.top, bar: toolbar.bar, button: toolbar.button, glyph: toolbar.glyph,
+                top: toolbar.top, bar: toolbar.bar, button: toolbar.button, glyph: toolbar.glyph, pitch: bar.pitch,
                 results: toolbar.results, field: toolbar.field, panelHeight: toolbar.panelHeight,
                 compact: toolbar.isCompact, blockMinX: metrics.margin.leading + metrics.sideInset,
                 blockMaxX: width - metrics.margin.trailing - metrics.sideInset, minX: bar.minX, maxX: bar.maxX,

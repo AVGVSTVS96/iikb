@@ -97,6 +97,7 @@ class MicBar(private val view: View) {
     private class Ghost(val x: Float, val y: Float, val scale: Float, val start: Long)
 
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val glass = BarGlass()
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         fontFeatureSettings = "tnum"
         textSize = 15f
@@ -328,16 +329,15 @@ class MicBar(private val view: View) {
             fill.color = ColorUtils.setAlphaComponent(theme.record, (0.2f * 255 * reddened).toInt())
             canvas.drawRoundRect(capsule.left - out, capsule.top - out, capsule.right + out, capsule.bottom + out, radius + out, radius + out, fill)
         }
-        fill.color = ColorUtils.blendARGB(theme.mic, theme.record, reddened)
-        glow(theme, now)
-        canvas.drawRoundRect(capsule, radius, radius, fill)
-        fill.clearShadowLayer()
+        glowAround(canvas, theme, capsule, now)
+        glass.draw(canvas, capsule, theme, red = reddened)
 
         val cx = mic.centerX()
         val cy = mic.centerY()
         val glyph = idle.at(now)
         if (glyph > 0.001f) {
-            fill.color = ColorUtils.setAlphaComponent(theme.micGlyph, (Color.alpha(theme.micGlyph) * glyph.coerceIn(0f, 1f)).toInt())
+            val ink = ColorUtils.blendARGB(theme.label, theme.micGlyph, reddened)
+            fill.color = ColorUtils.setAlphaComponent(ink, (Color.alpha(ink) * glyph.coerceIn(0f, 1f)).toInt())
             Glyphs.draw(canvas, "waveform", cx, cy, micGlyph(mic.width(), WAVE) * (0.5f + 0.5f * glyph), fill)
         }
         if (reddened > 0.001f) {
@@ -346,15 +346,15 @@ class MicBar(private val view: View) {
         }
         val ringing = ring.at(now).coerceIn(0f, 1f)
         if (ringing > 0.001f) {
-            line.color = ColorUtils.setAlphaComponent(theme.micGlyph, (Color.alpha(theme.micGlyph) * ringing).toInt())
+            line.color = ColorUtils.setAlphaComponent(theme.label, (Color.alpha(theme.label) * ringing).toInt())
             line.strokeWidth = 2.5f
             val inset = mic.width() * 0.22f
             oval.set(mic.left + inset, mic.top + inset, mic.right - inset, mic.bottom - inset)
             canvas.drawArc(oval, (now % 900) / 900f * 360f, 108f, false, line)
         }
         val spinning = spinner.at(now).coerceIn(0f, 1f)
-        if (spinning > 0.001f) drawSpinner(canvas, cx, cy, 20f * (0.5f + 0.25f * spinning), theme.micGlyph, spinning, now)
-        if (checking != 0L) drawCheck(canvas, theme.micGlyph, cx, cy, micGlyph(mic.width(), STOP), (now - checking) / 1000f)
+        if (spinning > 0.001f) drawSpinner(canvas, cx, cy, 20f * (0.5f + 0.25f * spinning), theme.label, spinning, now)
+        if (checking != 0L) drawCheck(canvas, theme.label, cx, cy, micGlyph(mic.width(), STOP), (now - checking) / 1000f)
         drawDot(canvas, mic, now)
         canvas.restore()
     }
@@ -466,14 +466,29 @@ class MicBar(private val view: View) {
         canvas.restore()
     }
 
-    /** Drain's mic glows softly in and out while it writes. */
-    private fun glow(theme: Theme, now: Long) {
-        if (glowing == 0L) return
+    /** Drain's mic glows softly in and out while it writes: `fill` casts the glow, and says if it does. */
+    private fun glow(theme: Theme, now: Long): Boolean {
+        if (glowing == 0L) return false
         val cycle = (now - glowing) / 550f
         val half = cycle - floor(cycle)
         val pulse = PULSE.progress(if (floor(cycle).toInt() % 2 == 0) half else 1 - half)
         val glow = 0.25f + 0.65f * pulse
         fill.setShadowLayer(GLOW, 0f, 0f, ColorUtils.setAlphaComponent(theme.mic, (Color.alpha(theme.mic) * glow).toInt()))
+        return true
+    }
+
+    /** The glow round the bar's mic, outside its glass, which would show it through. */
+    private fun glowAround(canvas: Canvas, theme: Theme, capsule: RectF, now: Long) {
+        if (!glow(theme, now)) return
+        val radius = capsule.height() / 2
+        mask.reset()
+        mask.addRoundRect(capsule, radius, radius, Path.Direction.CW)
+        canvas.save()
+        canvas.clipOutPath(mask)
+        fill.color = theme.mic
+        canvas.drawPath(mask, fill)
+        fill.clearShadowLayer()
+        canvas.restore()
     }
 
     /** iOS's medium activity indicator: eight spokes, the brightest stepping round once a second. */

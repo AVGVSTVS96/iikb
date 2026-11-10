@@ -78,6 +78,8 @@ data class Bar(
     val bar: Double,
     val button: Double,
     val glyph: Double,
+    /** From one button at the bar's left to the next (`BarLayout.pitch`). */
+    val pitch: Double,
     val results: Double,
     val field: Double,
     val panelHeight: Double,

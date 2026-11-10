@@ -3,6 +3,7 @@ package com.shahidy.iikb.keyboard
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -11,10 +12,14 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.graphics.ColorUtils
+import com.shahidy.iikb.voice.Dictation
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * The bar and the keys, drawn from the engine's `Frame` in dp, with touches read as `KeyboardView+Touches` reads them
@@ -75,6 +80,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             val old = field
             field = value
             if (value != null && old?.layout != value.layout) touches.values.forEach { it.index = -1 }
+            if (value?.emoji != old?.emoji) emojiScroll = 0f
             if (value?.panel == "emoji" && (old?.panel != "emoji" || old.query != value.query)) {
                 emoji.query = value.query
                 emoji.results = actions.emojiResults()
@@ -133,6 +139,9 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         strokeJoin = Paint.Join.ROUND
     }
     private val trail = Trail(this)
+    private val glass = BarGlass()
+    private val gifPath = Path()
+    private val gifLetters = Path()
     private var deleteRepeat: Runnable? = null
 
     private class Accents(
@@ -220,11 +229,11 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val bar = frame.toolbar
         val theme = frame.theme
         bar.more?.takeUnless { chatTabs }?.let { box ->
-            if (pressedBar == "more" || moreOn) circle(canvas, box, theme.candidatePill)
-            fill.color = theme.label
-            Glyphs.draw(canvas, "more", box.midX.toFloat(), box.midY.toFloat(), bar.glyph.toFloat() * 0.92f, fill)
+            glass.draw(canvas, square(box.midX.toFloat(), box.midY.toFloat(), bar.button.toFloat()), theme)
+            fill.color = pressedInk(theme, pressedBar == "more")
+            Glyphs.draw(canvas, "more", box.midX.toFloat(), box.midY.toFloat(), bar.glyph.toFloat(), fill)
         }
-        for (tool in bar.tools) drawTool(canvas, frame, tool)
+        drawTools(canvas, frame)
         val edits = edits
         val notice = notice
         val under = mic.suggestions
@@ -241,37 +250,85 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         mic.draw(canvas, frame, pressedBar)
     }
 
+    /** A glass button's glyph: the label, faded while pressed, as iOS's glassy `BarButton`. */
+    private fun pressedInk(theme: Theme, pressed: Boolean) =
+        if (pressed) ColorUtils.setAlphaComponent(theme.label, (Color.alpha(theme.label) * 0.55f).toInt()) else theme.label
+
+    private fun square(x: Float, y: Float, side: Float) = RectF(x - side / 2, y - side / 2, x + side / 2, y + side / 2)
+
     /**
-     * A tool as iOS's `BarButton` draws it: its glyph, in a circle shown while pressed or while its panel is out, but for
-     * the clipboard's, whose tray says so.
+     * Where the tools sit, as iOS's `placeTools`: on BarLayout's places, or, where no suggestions show and every title
+     * fits, each titled, the capsule running on to the mic as far from it as from More, the spare room shared out so
+     * every gap between them is one size.
      */
-    private fun drawTool(canvas: Canvas, frame: Frame, tool: Tool) {
-        val box = tool.box
-        val out = tool.panel != "clipboard" && tool.panel == frame.panel
-        if (pressedBar == "tool:${tool.panel}" || out) circle(canvas, box, frame.theme.candidatePill)
-        fill.color = frame.theme.label
-        val x = box.midX.toFloat()
-        val y = box.midY.toFloat()
-        val side = frame.toolbar.glyph.toFloat()
-        if (tool.panel == "gif") return drawGif(canvas, x, y, side)
-        Glyphs.drawFitted(canvas, TOOL_GLYPHS.getValue(tool.panel), x, y, side, fill)
+    private fun toolPlaces(frame: Frame): Pair<List<RectF>, Boolean> {
+        val bar = frame.toolbar
+        val side = bar.button.toFloat()
+        val boxes = bar.tools.map { square(it.box.midX.toFloat(), it.box.midY.toFloat(), side) }
+        val first = boxes.firstOrNull() ?: return boxes to false
+        val pad = (side * 0.2f).roundToInt().toFloat()
+        val gap = bar.pitch.toFloat() - side - pad
+        val end = (bar.mic?.x ?: bar.maxX).toFloat() - gap - pad
+        val widths = bar.tools.map { titledWidth(frame, it.panel) }
+        val spare = (end - first.left - widths.sum()) / widths.size
+        val recording = mic.phase != Dictation.Phase.OFF
+        if (frame.showsSuggestions || recording || edits != null || notice != null || spare < 0) return boxes to false
+        var x = first.left
+        return widths.map { width -> RectF(x, first.top, x + width + spare, first.bottom).also { x = it.right } } to true
     }
 
-    /** GIF has no symbol: the word in a rounded frame, as iOS's `Panel.gifGlyph` draws it for a `side` glyph. */
+    /** A titled tool's width: its glyph and title a gap apart, with a glyph's room before and after them. */
+    private fun titledWidth(frame: Frame, panel: String): Float {
+        val bar = frame.toolbar
+        val ink = toolInk(panel, bar.glyph.toFloat())
+        toolTitle(bar)
+        return ink + TITLE_GAP + ceil(text.measureText(TOOL_TITLES.getValue(panel))) + (bar.button.toFloat() - ink)
+    }
+
+    private fun toolInk(panel: String, glyph: Float) =
+        if (panel == "gif") GIF_FILLED * glyph else Glyphs.fittedWidth(TOOL_GLYPHS.getValue(panel), glyph)
+
+    private fun toolTitle(bar: Bar) {
+        text.typeface = android.graphics.Typeface.create(painter.labels, 500, false)
+        text.textSize = (bar.glyph.toFloat() * 0.7f).roundToInt().toFloat()
+    }
+
+    /** The tools in one capsule of the bar's glass, which reaches a fifth of a button past them, each as iOS's `BarButton`. */
+    private fun drawTools(canvas: Canvas, frame: Frame) {
+        val bar = frame.toolbar
+        if (bar.tools.isEmpty()) return
+        val (places, titled) = toolPlaces(frame)
+        val pad = (bar.button.toFloat() * 0.2f).roundToInt().toFloat()
+        glass.draw(canvas, RectF(places.first().left - pad, places.first().top, places.last().right + pad, places.first().bottom), frame.theme)
+        val glyph = bar.glyph.toFloat()
+        for ((tool, place) in bar.tools.zip(places)) {
+            val ink = pressedInk(frame.theme, pressedBar == "tool:${tool.panel}")
+            fill.color = ink
+            var x = place.centerX()
+            if (titled) {
+                toolTitle(bar)
+                val title = TOOL_TITLES.getValue(tool.panel)
+                val width = toolInk(tool.panel, glyph)
+                val start = ((place.width() - width - TITLE_GAP - ceil(text.measureText(title))) / 2).roundToInt() + place.left
+                x = start + width / 2
+                text.color = ink
+                canvas.drawText(title, start + width + TITLE_GAP, place.centerY() + (text.textSize * 0.7f) / 2 - 0.5f, text)
+            }
+            if (tool.panel == "gif") drawGif(canvas, x, place.centerY(), glyph) else Glyphs.drawFitted(canvas, TOOL_GLYPHS.getValue(tool.panel), x, place.centerY(), glyph, fill)
+        }
+    }
+
+    /** GIF has no symbol: as iOS's filled `Panel.gifGlyph`, a solid rounded block 0.76 of a `side` glyph wide, "GIF" cut out of it. */
     private fun drawGif(canvas: Canvas, x: Float, y: Float, side: Float) {
-        val unit = 0.88f * side / 18.4f
-        val height = 14.4f * unit
-        val inset = 0.85f * unit
-        val frame = RectF(x - side / 2 + inset, y - height / 2 + inset, x + side / 2 - inset, y + height / 2 - inset)
-        val style = fill.style
-        fill.style = Paint.Style.STROKE
-        fill.strokeWidth = 1.3f * unit
-        canvas.drawRoundRect(frame, 3.6f * unit, 3.6f * unit, fill)
-        fill.style = style
+        val unit = GIF_FILLED * side / 18.4f
+        val box = RectF(x - 9.2f * unit, y - 7.2f * unit, x + 9.2f * unit, y + 7.2f * unit)
         text.typeface = android.graphics.Typeface.create(painter.labels, 700, false)
         text.textSize = 8 * unit
-        text.color = fill.color
-        canvas.drawText("GIF", x - text.measureText("GIF") / 2, y + text.textSize * 0.35f, text)
+        gifPath.reset()
+        gifPath.addRoundRect(box, 3.6f * unit, 3.6f * unit, Path.Direction.CW)
+        text.getTextPath("GIF", 0, 3, x - text.measureText("GIF") / 2, y + text.textSize * 0.35f, gifLetters)
+        gifPath.op(gifLetters, Path.Op.DIFFERENCE)
+        canvas.drawPath(gifPath, fill)
     }
 
     private fun drawSuggestions(canvas: Canvas, frame: Frame) {
@@ -377,17 +434,35 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         else -> edits.paste
     }
 
+    /**
+     * The word's emoji as iOS's strip sets them out: centered, or at the end beside the suggestions, and from the start
+     * once they don't fit, the rest a swipe left away (`emojiScroll`).
+     */
     private fun emojiPlaces(frame: Frame): List<Pair<String, Float>> {
         val box = frame.toolbar.emoji
-        val pitch = 36f
-        val count = min(frame.emoji.size, floor(box.width / pitch).toInt().coerceAtLeast(1))
-        val start = (box.midX - count * pitch / 2).toFloat()
-        return frame.emoji.take(count).mapIndexed { index, emoji -> emoji to start + pitch * (index + 0.5f) }
+        val total = EMOJI_PITCH * frame.emoji.size
+        val room = box.width.toFloat()
+        val start = box.x.toFloat() + maxOf(if (frame.toolbar.emojiBeside) room - total else (room - total) / 2, 0f) - emojiScroll
+        return frame.emoji.mapIndexed { index, emoji -> emoji to start + EMOJI_PITCH * (index + 0.5f) }
+    }
+
+    private var emojiScroll = 0f
+    /** Where a touch on the emoji began, and the scroll then, until it moves far enough to scroll them. */
+    private var emojiDrag: Pair<Float, Float>? = null
+
+    private fun scrollEmoji(frame: Frame, x: Float) {
+        val (downX, from) = emojiDrag ?: return
+        if (pressedBar != null && abs(x - downX) < EMOJI_SLOP) return
+        pressedBar = null
+        val most = maxOf(EMOJI_PITCH * frame.emoji.size - frame.toolbar.emoji.width.toFloat(), 0f)
+        emojiScroll = (from + downX - x).coerceIn(0f, most)
     }
 
     private fun drawEmoji(canvas: Canvas, frame: Frame) {
         val box = frame.toolbar.emoji
-        text.textSize = 24f
+        canvas.save()
+        canvas.clipRect(box.x.toFloat(), 0f, (box.x + box.width).toFloat(), frame.toolbar.height.toFloat())
+        text.textSize = EMOJI_SIZE
         text.typeface = painter.labels
         text.color = frame.theme.label
         for ((index, place) in emojiPlaces(frame).withIndex()) {
@@ -400,11 +475,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             val metrics = text.fontMetrics
             canvas.drawText(emoji, x - width / 2, box.midY.toFloat() - (metrics.ascent + metrics.descent) / 2, text)
         }
-    }
-
-    private fun circle(canvas: Canvas, box: Box, color: Int) {
-        fill.color = color
-        canvas.drawCircle(box.midX.toFloat(), box.midY.toFloat(), (box.width / 2).toFloat(), fill)
+        canvas.restore()
     }
 
     private fun ellipsize(label: String, width: Float): String {
@@ -450,8 +521,12 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val bar = frame.toolbar
         if (y < 0) return null
         bar.more?.takeUnless { chatTabs }?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "more" }
-        if (y < bar.height) bar.tools.filter { abs(it.box.midX - x) <= bar.bar / 2 }.minByOrNull { abs(it.box.midX - x) }
-            ?.let { return "tool:${it.panel}" }
+        if (y < bar.height && bar.tools.isNotEmpty()) {
+            val (places, titled) = toolPlaces(frame)
+            val reach = if (titled) 0f else bar.bar.toFloat() / 2
+            bar.tools.indices.filter { x >= places[it].centerX() - maxOf(reach, places[it].width() / 2) && x <= places[it].centerX() + maxOf(reach, places[it].width() / 2) }
+                .minByOrNull { abs(places[it].centerX() - x) }?.let { return "tool:${bar.tools[it].panel}" }
+        }
         bar.mic?.let { if (abs(it.midX - x) <= bar.bar / 2 && y < bar.height) return "mic" }
         if (mic.hitsCancel(frame, x, y)) return "cancel"
         edits?.let { edits ->
@@ -518,6 +593,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                         if (emoji.holding >= 0) accents?.let { track(it, x) } else emoji.touch(event, x, event.getY(pointer) / density, frame, actions)
                         continue
                     }
+                    if (id == barPointer) scrollEmoji(frame, event.getX(pointer) / density)
                     val touch = touches[id] ?: continue
                     if (touch.mode == Mode.SWIPE || touch.swipeReach.isFinite()) {
                         for (h in 0 until event.historySize) {
@@ -583,6 +659,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             val target = barTarget(frame, x, y - barTop) ?: return
             barPointer = id
             pressedBar = target
+            emojiDrag = if (target.startsWith("emoji")) x to emojiScroll else null
             actions.feedback(Feedback.Kind.OTHER)
             return
         }
@@ -876,6 +953,14 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
 
     private companion object {
         const val TOP_ROW_REACH = 10f
+        const val TITLE_GAP = 6f
+        /** iOS's filled GIF glyph is this share of the glyph's side wide, so its solid block weighs what a filled symbol does. */
+        const val GIF_FILLED = 0.76f
+        val TOOL_TITLES = mapOf("emoji" to "Emoji", "gif" to "GIFs", "transcripts" to "Transcripts", "clipboard" to "Clipboard")
+        /** iOS's `BarLayout.emojiPitch`, and its 24 pt emoji at the size Noto's draw as wide as Apple's. */
+        const val EMOJI_PITCH = 36f
+        const val EMOJI_SIZE = 24f * 24f / 27f
+        const val EMOJI_SLOP = 8f
         const val SWIPE_DISTANCE = 0.8
         const val DOUBLE_TAP = 350L
         const val ACCENT_HOLD = 450L
@@ -883,6 +968,6 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         const val MENU_HOLD = 500L
         val EDITS = listOf("cut", "copy", "paste")
         val EDIT_GLYPHS = mapOf("cut" to "scissors", "copy" to "square.on.square", "paste" to "doc.on.clipboard")
-        val TOOL_GLYPHS = mapOf("emoji" to "face.smiling", "transcripts" to "text.bubble", "clipboard" to "list.clipboard")
+        val TOOL_GLYPHS = mapOf("emoji" to "face.smiling.inverse", "transcripts" to "text.bubble.fill", "clipboard" to "list.clipboard.fill")
     }
 }

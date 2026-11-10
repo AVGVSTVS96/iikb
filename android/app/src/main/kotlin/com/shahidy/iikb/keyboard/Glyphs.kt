@@ -50,6 +50,38 @@ object Glyphs {
 
     private fun shape(data: String) = glyph(data, Ink.SHAPE)
 
+    /**
+     * A filled symbol as SF fills one: `body` filled with its outline stroked round it at the regular weight, `lines`
+     * (`weight` of the regular line, round ended) and `holes` cut out of it, and `over` laid on top with a `gap` cut
+     * round it, as a clipboard's clip sits on its board.
+     */
+    private fun carved(body: String, lines: String = "", weight: Float = 1f, holes: String = "", over: String = "", gap: Float = 0f): Glyph {
+        val pen = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        fun parsed(data: String) = PathParser.createPathFromPathData(data).apply { fillType = Path.FillType.EVEN_ODD }
+        fun stroked(data: String, width: Float) = Path().also { out ->
+            val path = parsed(data)
+            pen.strokeWidth = width
+            pen.getFillPath(path, out)
+            out.op(path, Path.Op.UNION)
+        }
+        val ink = stroked(body, REGULAR)
+        if (lines.isNotEmpty()) {
+            pen.style = Paint.Style.STROKE
+            val cut = Path().also { pen.strokeWidth = REGULAR * weight; pen.getFillPath(parsed(lines), it) }
+            ink.op(cut, Path.Op.DIFFERENCE)
+        }
+        if (holes.isNotEmpty()) ink.op(parsed(holes), Path.Op.DIFFERENCE)
+        if (over.isNotEmpty()) {
+            ink.op(stroked(over, gap * 2), Path.Op.DIFFERENCE)
+            ink.op(parsed(over), Path.Op.UNION)
+        }
+        return Glyph(listOf(Part(ink, Ink.SHAPE, 1f)))
+    }
+
     private const val ARROW = "M11.9 3.2 1.9 13.2q-.5.85.7.85h4.8v5.2a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5v-5.2h4.8q1.2 0 .7-.85Z"
     private const val CAPS = "M11.95 2.1 2.6 10.5q-.5.95.7.95h4.3v4h8.7v-4h4.3q1.2 0 .7-.95Z M8.05 18.9h7.8a.6.6 0 0 1 .6.6v1.85a.6.6 0 0 1-.6.6h-7.8a.6.6 0 0 1-.6-.6V19.5a.6.6 0 0 1 .6-.6Z"
     /** `pin`'s cap and waist over its dome, and its needle, tapering to a point. */
@@ -128,6 +160,22 @@ object Glyphs {
             "M8.68 2.71h6.54a.75.75 0 0 1 .75.75v1.27a.75.75 0 0 1-.75.75H8.68a.75.75 0 0 1-.75-.75V3.46a.75.75 0 0 1 .75-.75Z " +
                 "M9.65 2.71a2.3 2.3 0 0 1 4.6 0Z M11.07 2.45a.88.88 0 1 0 1.76 0a.88.88 0 1 0-1.76 0Z",
         ),
+        "list.clipboard.fill" to carved(
+            "M5.55 3.95h12.8a1.4 1.4 0 0 1 1.4 1.4v16.83a2 2 0 0 1-2 2H6.15a2 2 0 0 1-2-2V5.35a1.4 1.4 0 0 1 1.4-1.4Z",
+            lines = "M7.5 10.54h8.9M7.5 14.14h8.9M7.5 17.95h4.4", weight = 0.85f,
+            over = "M8.68 2.71h6.54a.75.75 0 0 1 .75.75v1.27a.75.75 0 0 1-.75.75H8.68a.75.75 0 0 1-.75-.75V3.46a.75.75 0 0 1 .75-.75Z " +
+                "M9.65 2.71a2.3 2.3 0 0 1 4.6 0Z",
+            gap = 0.9f,
+        ),
+        "text.bubble.fill" to carved(
+            "M5.05 2.25h13.8a3.5 3.5 0 0 1 3.5 3.5v8.65a3.5 3.5 0 0 1-3.5 3.5H10.6l-3.95 3.95V17.9h-1.6a3.5 3.5 0 0 1-3.5-3.5V5.75a3.5 3.5 0 0 1 3.5-3.5Z",
+            lines = "M6.6 6.62h10.5M6.6 9.99h10.5M6.6 13.33h6", weight = 0.8f,
+        ),
+        "face.smiling.inverse" to carved(
+            "M21.33 12.1a9.43 9.43 0 1 1-18.86 0a9.43 9.43 0 1 1 18.86 0Z",
+            lines = "M8.6 14.75c.7 1.45 1.7 1.71 3.3 1.71s2.6-.26 3.3-1.71",
+            holes = "M7.92 9.8a1 1.38 0 1 0 2 0a1 1.38 0 1 0-2 0Z M13.9 9.8a1 1.38 0 1 0 2 0a1 1.38 0 1 0-2 0Z",
+        ),
         "text.bubble" to lines(
             "M5.05 2.25h13.8a3.5 3.5 0 0 1 3.5 3.5v8.65a3.5 3.5 0 0 1-3.5 3.5H10.6l-3.95 3.95V17.9h-1.6a3.5 3.5 0 0 1-3.5-3.5V5.75a3.5 3.5 0 0 1 3.5-3.5Z",
         ) + lines("M6.6 6.62h10.5M6.6 9.99h10.5M6.6 13.33h6", 0.66f),
@@ -154,15 +202,16 @@ object Glyphs {
             "M5 4.5h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z M3 16l5-5 4 4 3-3 6 6 M16.5 9a1.5 1.5 0 1 1-3 0a1.5 1.5 0 1 1 3 0Z",
         ),
         "scissors" to lines(
-            "M9.5 6.5a3 3 0 1 1-6 0a3 3 0 1 1 6 0Z M9.5 17.5a3 3 0 1 1-6 0a3 3 0 1 1 6 0Z M8.6 8.6 20.5 18 M8.6 15.4 20.5 6",
-        ),
+            "M6.9 7.4a2.35 2.35 0 1 1-4.7 0a2.35 2.35 0 1 1 4.7 0Z M6.9 16.6a2.35 2.35 0 1 1-4.7 0a2.35 2.35 0 1 1 4.7 0Z " +
+                "M6.5 8.9 10.6 11.4 M6.5 15.1 22.4 6.9",
+        ) + shape("M10.6 10.3 22.6 16.6q.6.5-.1.7L9.9 13.9Q9.2 13.5 9.6 12.1Q10 10.6 10.6 10.3Z M11.4 12.3a.65.65 0 1 0-1.3 0a.65.65 0 1 0 1.3 0Z"),
         "square.on.square" to lines(
             "M10 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z M16 5V4.8A1.8 1.8 0 0 0 14.2 3H5a2 2 0 0 0-2 2v9.2A1.8 1.8 0 0 0 4.8 16H5",
         ),
         "doc" to lines("M7 2.5h7.2L19 7.3V19.5a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2Z M14 2.7V6a1.3 1.3 0 0 0 1.3 1.3h3.5"),
         "doc.on.doc" to lines(
-            "M10 7.5h6.2L21 12.3V19a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2V9.5a2 2 0 0 1 2-2Z M16 7.7v3.3a1.3 1.3 0 0 0 1.3 1.3h3.5 " +
-                "M16 5V4.8A1.8 1.8 0 0 0 14.2 3H5a2 2 0 0 0-2 2v9.2A1.8 1.8 0 0 0 4.8 16H5",
+            "M6 7.5h4.6l3.9 3.9v8.1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9.5a2 2 0 0 1 2-2Z M10.3 7.7v2.6a1.2 1.2 0 0 0 1.2 1.2h2.8 " +
+                "M8.2 4.6v-.1a2 2 0 0 1 2-2h4.6l3.9 3.9v8.1a2 2 0 0 1-2 2h-.9 M14.5 2.7v2.6a1.2 1.2 0 0 0 1.2 1.2h2.8",
         ),
         "safari" to lines("M21.5 12a9.5 9.5 0 1 1-19 0a9.5 9.5 0 1 1 19 0Z") + shape(
             "M16.6 7.4 13.4 13.4 7.4 16.6 10.6 10.6Z M12 13.1a1.1 1.1 0 1 0 0-2.2a1.1 1.1 0 1 0 0 2.2Z",
@@ -192,20 +241,34 @@ object Glyphs {
     private val ink = RectF()
     private val part = RectF()
 
+    /** The ink of `name` on its 24 square, its lines' width included. */
+    private fun ink(glyph: Glyph) {
+        ink.setEmpty()
+        for (each in glyph.parts) {
+            each.path.computeBounds(part, true)
+            if (each.ink != Ink.SHAPE) part.inset(-REGULAR * each.thickness / 2, -REGULAR * each.thickness / 2)
+            ink.union(part)
+        }
+    }
+
+    /** How much `drawFitted` scales a glyph's 24 square for a `side` glyph. */
+    private fun fitted(side: Float) = minOf(0.8f * side / sqrt(ink.width() * ink.height()), 0.8f * side / ink.height(), side / ink.width())
+
+    /** How wide `drawFitted` draws `name`'s ink for a `side` glyph. */
+    fun fittedWidth(name: String, side: Float): Float {
+        ink(glyphs[name] ?: return 0f)
+        return ink.width() * fitted(side)
+    }
+
     /**
      * Draws `name` as iOS's bar draws a tool's symbol for a `side` glyph: its ink, not its square, covering as much as a
-     * square 0.85 of `side` and no taller than 0.9 of it, so a tall one and a wide one read as one size, centered on
+     * square 0.8 of `side` and no taller than that square, so a tall one and a wide one read as one size, centered on
      * (`x`, `y`).
      */
     fun drawFitted(canvas: Canvas, name: String, x: Float, y: Float, side: Float, paint: Paint) {
         val glyph = glyphs[name] ?: return
-        ink.setEmpty()
-        for (each in glyph.parts) {
-            each.path.computeBounds(part, true)
-            ink.union(part)
-        }
-        ink.inset(-REGULAR / 2, -REGULAR / 2)
-        val scale = minOf(0.85f * side / sqrt(ink.width() * ink.height()), 0.9f * side / ink.height(), side / ink.width())
+        ink(glyph)
+        val scale = fitted(side)
         val size = 24 * scale
         draw(canvas, name, x + (12 - ink.centerX()) * scale, y + (12 - ink.centerY()) * scale, size, paint)
     }

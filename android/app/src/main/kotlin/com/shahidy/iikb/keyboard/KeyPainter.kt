@@ -129,7 +129,12 @@ class KeyPainter {
                         -look.labelLift.toFloat()
                     }
                     val baseline = midY + offset - (metrics.ascent + metrics.descent) / 2
-                    canvas.drawText(shownLabel, midX - width / 2, baseline, text)
+                    if (shownLabel == BULLET) {
+                        text.getTextBounds(BULLET, 0, 1, bounds)
+                        canvas.drawCircle(midX, baseline + bounds.exactCenterY(), text.textSize * BULLET_RADIUS, text)
+                    } else {
+                        canvas.drawText(shownLabel, midX - width / 2, baseline, text)
+                    }
                 } else {
                     val leading = cap.align == "leading"
                     val x = if (leading) left + look.textInset.toFloat() else right - look.textInset.toFloat() - width
@@ -172,5 +177,11 @@ class KeyPainter {
             canvas.drawText(corner, right - radius - width, top + radius + bounds.height(), text)
         }
         text.clearShadowLayer()
+    }
+
+    private companion object {
+        /** Roboto's bullet is about half SF Compact's, which is 8 across at a 25.5 letter: drawn as SF's. */
+        const val BULLET = "•"
+        const val BULLET_RADIUS = 4f / 25.5f
     }
 }

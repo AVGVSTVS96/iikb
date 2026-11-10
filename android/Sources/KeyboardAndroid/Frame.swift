@@ -57,6 +57,8 @@ struct Chip: Encodable {
 
 struct Bar: Encodable {
     var top, bar, button, glyph: Double
+    /// From one button at the bar's left to the next (`BarLayout.pitch`).
+    var pitch: Double
     /// An open panel's results and search row, in the bar's place (docs/design.md, "Panels").
     var results, field, panelHeight: Double
     var compact: Bool
@@ -155,7 +157,7 @@ struct Theme: Encodable {
         let dark = t.card.red < 0.5
         glass =
             (dark
-            ? RGBA(red: 39 / 255, green: 39 / 255, blue: 40 / 255, alpha: 0.87)
+            ? RGBA(red: 34 / 255, green: 34 / 255, blue: 35 / 255, alpha: 0.92)
             : RGBA(red: 224 / 255, green: 225 / 255, blue: 230 / 255, alpha: 0.87)).argb
         rim = RGBA(white: dark ? 1 : 0, alpha: 0.12).argb
         label = t.label.argb
