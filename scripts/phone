@@ -15,9 +15,11 @@
 # installed, which the stamp keeps: a commit to docs, tests or scripts alone goes with the next one that changes iikb.
 # It builds GitHub's main as just fetched, not this checkout's main, which an agent's uncommitted work can hold back,
 # in its own worktree, so agents' branches and uncommitted edits never reach the phone,
-# and one run at a time, so agents installing at once queue instead of sharing that worktree. The build number is main's
-# commit count, which Settings › About shows as "Version 0.1.0 (<build>)"; when the iPhone already has that build,
-# nothing is built or installed, unless --reinstall (which renews the signing).
+# and one run at a time, so agents installing at once queue instead of sharing that worktree. That worktree, its lock
+# and its stamp sit beside the main checkout whichever worktree runs this, so every run shares one queue; and the build
+# on the device is read again just before the install, so one already newer is never replaced by an older one.
+# The build number is main's commit count, which Settings › About shows as "Version 0.1.0 (<build>)"; when the iPhone
+# already has that build, nothing is built or installed, unless --reinstall (which renews the signing).
 # Its build doesn't wait for a turn (~/.local/bin/turn): installs go out the moment main is ready, one at a time by
 # this script's own lock, and a build that waited for a turn while holding it could wait on runs queued behind it.
 # Installs go out at most once every 10 minutes: a run soon after the last install waits out the rest, then installs
@@ -38,7 +40,8 @@ for arg; do
     (*) echo "usage: scripts/phone [iPad] [--now] [--reinstall]" >&2; exit 2 ;;
   esac
 done
-build=../iikb-build
+main=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+build=$main-build
 find_phone() {
   ssh mac sh -s "$kind" <<'MAC'
 xcrun devicectl list devices --json-output /tmp/iikb-phone-$1.json >/dev/null && /usr/bin/python3 -c "
@@ -89,7 +92,8 @@ case $installed in (*[!0-9]*)
   echo "the $kind has build $installed, a TestFlight build rather than one of main's, so main replaces it" >&2
   installed= ;;
 esac
-if [ -n "$installed" ] && [ "$installed" -gt "$number" ] && [ -z "$reinstall" ]; then
+ahead() { case $installed in (''|*[!0-9]*) return 1 ;; esac; [ "$installed" -gt "$number" ]; }
+if ahead && [ -z "$reinstall" ]; then
   echo "the $kind has build $installed, newer than main's $number ($commit), so nothing is installed" >&2
   exit 1
 fi
@@ -128,7 +132,6 @@ info = plistlib.load(open(path, "rb"))
 info["IIKBChangelog"] = rows
 plistlib.dump(info, open(path, "wb"))
 PY
-main=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 backup=$main/Packages/KeyboardModules/Sources/KeyboardStore/Resources/Keys/backup.key
 [ -f "$backup" ] || { echo "$backup is missing, so this build wouldn't back up the iPhone's iikb data (docs/backup.md)" >&2; exit 1; }
 for key in "$main"/Packages/KeyboardModules/Sources/*/Resources/Keys/*.key; do
@@ -174,6 +177,11 @@ while dictating; do
   echo "waiting for the dictation on the $kind to be recorded and written down, since an install would cut it off" >&2
   sleep 2
 done
+installed=$(installed_build) || true
+if ahead && [ -z "$reinstall" ]; then
+  echo "build $installed went on the $kind while build $number (main $commit) was being built, so the older one isn't installed"
+  exit 0
+fi
 # Over Wi-Fi the connection can drop mid-install ("Connection invalid"); the next try goes through.
 for try in 1 2 3; do
   ssh mac xcrun devicectl device install app --device "$phone" Developer/iikb-phone/iikb.app && break
