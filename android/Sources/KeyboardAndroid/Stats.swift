@@ -131,9 +131,7 @@ struct TapsBoard: Encodable {
         let faces = KeyFaceContext(
             device: device, layer: kept.layer, kind: .text, shift: .off, returnKind: .default, returnEnabled: true)
         width = geometry.width
-        let frames = items.map(\.frame)
-        let top = frames.map(\.y).min() ?? 0
-        height = (frames.map { $0.y + $0.height }.max() ?? geometry.height) + top
+        height = geometry.height
         keys = items.map { key, frame in
             let face = KeyFace(key, trailing: frame.midX > geometry.width / 2, context: faces).content
             return Box(

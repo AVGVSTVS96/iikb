@@ -56,7 +56,7 @@ import kotlin.math.sin
 enum class TapMode(val title: String) { HEAT("Heat"), AIM("Aim"), ACCURACY("Accuracy") }
 
 /** A keycap's fill on the Taps backdrop, every key's alike, as the keyboard's own theme draws them (iOS's `TapMapView`). */
-fun keyFill(palette: Palette) = if (palette.isDark) Color(0xFF3D3D40) else Color.White
+fun keyFill(palette: Palette) = if (palette.isDark) Color(0xFF444444) else Color.White
 
 /**
  * The keyboard at its size, or smaller where the card is narrower, with what the touch model learned drawn over it, as
