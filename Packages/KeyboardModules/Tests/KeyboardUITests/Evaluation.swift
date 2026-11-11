@@ -25,8 +25,8 @@ struct Evaluation {
         }
     }
 
-    static func phrases() throws -> [String] {
-        let url = try #require(Bundle.module.url(forResource: "phrases", withExtension: "txt"))
+    static func phrases(_ name: String = "phrases") throws -> [String] {
+        let url = try #require(Bundle.module.url(forResource: name, withExtension: "txt"))
         return try String(contentsOf: url, encoding: .utf8).split(separator: "\n").map { $0.lowercased() }
     }
 
@@ -43,6 +43,37 @@ struct Evaluation {
                     }
                 }
                 print("EVAL noise=\(noise) keyboard=\(keyboard.rawValue) \(session.score)")
+            }
+        }
+    }
+
+    /// Each other language typed the same way, from its own phrases (Common Voice's, `phrases.<id>.txt`) on its own
+    /// layout, with its own words (`scripts/eval languages` downloads them into `LANGUAGES`) and no next-word network,
+    /// since none is trained for it yet. A letter no key shows is tapped on the key it's under, and the lexicon is left
+    /// to put it back ("espanol" → "español"). `LANGUAGE` picks one, so scripts/eval runs each in its own process.
+    @Test(arguments: Language.all.filter { $0 != .english }.map(\.id)) func languages(_ id: String) throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let folder = environment["LANGUAGES"], environment["LANGUAGE"] ?? id == id else { return }
+        let language = Language.named(id)
+        let file = URL(fileURLWithPath: folder).appending(path: "\(language.id).lexicon")
+        let lexicon = try #require(Lexicon(bytes: [UInt8](Data(contentsOf: file))))
+        let phrases = try Self.phrases("phrases.\(language.id)")
+        var context = LayoutContext(device: .phone, layer: .letters)
+        context.language = language
+        context.letters = language.layout(nil)
+        for keyboard in Keyboard.scored where keyboard != .baseline {
+            for noise in Self.noiseLevels {
+                var user = SimulatedUser(width: Self.width, noise: noise, seed: 2026, context: context)
+                var session = Session(keyboard, grid: user.grid, lexicon: lexicon)
+                for phrase in phrases {
+                    session.startPhrase()
+                    for word in phrase.split(separator: " ") {
+                        session.type(String(word), by: &user, tappingSpace: false)
+                    }
+                }
+                print(
+                    "EVAL language=\(language.id) layout=\(context.letters.id) noise=\(noise) keyboard=\(keyboard.rawValue) \(session.score)"
+                )
             }
         }
     }
@@ -382,16 +413,17 @@ struct Session {
     var score = Score()
     var window = Score()
 
-    init(_ keyboard: Evaluation.Keyboard, grid: KeyGrid) {
+    /// With `lexicon`, another language's words and no next-word network.
+    init(_ keyboard: Evaluation.Keyboard, grid: KeyGrid, lexicon: Lexicon? = nil) {
         self.keyboard = keyboard
         self.grid = grid
         #if canImport(UIKit)
             let source: any CandidateSource =
-                keyboard == .baseline ? TextCheckerSource(language: "en-US") : Lexicon.english
+                keyboard == .baseline ? TextCheckerSource(language: "en-US") : lexicon ?? Lexicon.english
         #else
-            let source: any CandidateSource = Lexicon.english
+            let source: any CandidateSource = lexicon ?? Lexicon.english
         #endif
-        let corrector = Corrector(source: source, network: keyboard == .baseline ? nil : .english)
+        let corrector = Corrector(source: source, network: keyboard == .baseline || lexicon != nil ? nil : .english)
         corrector.grid = grid
         engine.corrector = corrector
     }
@@ -409,7 +441,7 @@ struct Session {
         let start = document.text.count
         let predictions = engine.suggestions.map { $0.text.lowercased() }
         var typed = ""
-        for character in word + (tappingSpace ? " " : "") {
+        for character in word + (tappingSpace ? " " : "") where user.canTap(character) {
             let (x, y) = user.tap(character)
             let hit = keyboard == .baseline ? grid.index(atX: x, y: y) : engine.key(atX: x, y: y, in: grid)
             guard let hit, let label = grid.rows[hit.row][hit.key].key.label, tappingSpace || label != " " else {
@@ -428,6 +460,7 @@ struct Session {
             engine.corrector?.changeMemory { $0.touches = TouchModel() }
         }
         let final = String(document.text.dropFirst(start)).trimmingCharacters(in: .whitespaces).lowercased()
+            .replacingOccurrences(of: "’", with: "'")
         score.add(word: word, typed: typed, final: final, shown: shown, predictions: predictions)
         window.add(word: word, typed: typed, final: final, shown: shown, predictions: predictions)
     }
@@ -482,16 +515,25 @@ struct SimulatedUser {
         "m": (-0.4, 0.4), "b": (0, 0.7), "o": (0.4, 0.3), "e": (-0.45, 0.3), "*": (0.1, 0.3),
     ]
 
-    init(width: Double, noise: Double, seed: UInt64, bias: [Character: (x: Double, y: Double)] = [:]) {
-        let layout = Layouts.layout(for: LayoutContext(device: .phone, layer: .letters))
+    init(
+        width: Double, noise: Double, seed: UInt64, bias: [Character: (x: Double, y: Double)] = [:],
+        context: LayoutContext = LayoutContext(device: .phone, layer: .letters)
+    ) {
+        let layout = Layouts.layout(for: context)
         grid = KeyGrid(layout, width: width, metrics: KeyboardMetrics.phone(width: width).grid, signature: "eval")
         self.noise = noise
         self.bias = bias
         random = SplitMix64(seed: seed)
     }
 
+    /// Whether a key holds it, on its face or under its long-press; an apostrophe on a layout without one goes untyped.
+    func canTap(_ character: Character) -> Bool {
+        grid.key(holding: String(character)) != nil
+    }
+
+    /// Where a tap for `character` lands: on the key that holds it, around its middle.
     mutating func tap(_ character: Character) -> (Double, Double) {
-        let frame = grid.frame(of: String(character))!
+        let frame = grid.frame(of: grid.key(holding: String(character))!)!
         let pitchX = character == " " ? 45.0 : frame.width + 6
         let pitchY = frame.height + 11
         let offset = bias[character] ?? bias["*"] ?? (0, 0)

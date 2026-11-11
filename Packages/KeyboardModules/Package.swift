@@ -44,6 +44,10 @@ let package = Package(
         .testTarget(name: "KeyboardCoreTests", dependencies: ["KeyboardCore"], exclude: ["Languages"]),
         .testTarget(
             name: "KeyboardUITests", dependencies: ["KeyboardEnglish", "KeyboardStore", "KeyboardUI", "FullKeyboard"],
-            resources: [.copy("phrases.txt"), .copy("chat.txt"), .copy("klipy.json")]),
+            resources: [
+                .copy("phrases.txt"), .copy("phrases.es.txt"), .copy("phrases.fr.txt"), .copy("phrases.de.txt"),
+                .copy("phrases.pt.txt"), .copy("phrases.it.txt"), .copy("phrases.sv.txt"), .copy("chat.txt"),
+                .copy("klipy.json"),
+            ]),
     ]
 )

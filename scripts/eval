@@ -4,13 +4,26 @@
 # keyboards; the UITextChecker baseline needs Apple's platforms, so on a Mac (scripts/ci scripts/eval) it scores that
 # too. Optional argument: one test (noise, biasedThumbs, aimShift, predictions, emoji), or swipe: how well swipes are
 # read on swipe.futo.org's test split (SwipeEvaluation; needs scripts/swipe data and SWIPE_DATA, takes minutes), which is
-# only diffed against eval.expected's swipe lines. A full run must match eval.expected, its baseline lines only on a
+# only diffed against eval.expected's swipe lines, or languages: each other language's phrases (phrases.<id>.txt) typed
+# on its own layout with its own words, downloaded from the release the manifest names into build/languages/, each
+# language in its own process (about 12 minutes), only diffed against eval.expected's language lines. A full run must match eval.expected, its baseline lines only on a
 # Mac; a change that moves the numbers updates that file in the same commit.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 src=$root/Packages/KeyboardModules
 out=$root/build/eval.txt
 mkdir -p "$root/build"
+if [ "${1:-}" = languages ]; then
+  export LANGUAGES=$root/build/languages
+  python3 - "$root/Packages/KeyboardModules/Sources/KeyboardStore/Resources/Languages/manifest.json" "$LANGUAGES" <<'PY'
+import hashlib, json, os, sys, urllib.request
+os.makedirs(sys.argv[2], exist_ok=True)
+for entry in json.load(open(sys.argv[1]))["lexicons"]:
+    path = os.path.join(sys.argv[2], entry["id"] + ".lexicon")
+    if not os.path.exists(path) or hashlib.sha256(open(path, "rb").read()).hexdigest() != entry["sha256"]:
+        urllib.request.urlretrieve(entry["url"], path)
+PY
+fi
 if [ "$(uname)" = Darwin ]; then
   cd "$src"
   ID=$("$root/scripts/sim" ensure "iPhone 17" iPhone-17)
@@ -24,7 +37,7 @@ else
   mkdir -p "$pkg/Sources" "$pkg/Tests/KeyboardUITests"
   ln -sfn "$src/Sources/KeyboardCore" "$pkg/Sources/KeyboardCore"
   ln -sfn "$src/Sources/KeyboardEnglish" "$pkg/Sources/KeyboardEnglish"
-  for file in Evaluation.swift SwipeEvaluation.swift phrases.txt chat.txt; do ln -sf "$src/Tests/KeyboardUITests/$file" "$pkg/Tests/KeyboardUITests/"; done
+  for file in "$src"/Tests/KeyboardUITests/{Evaluation.swift,SwipeEvaluation.swift,chat.txt} "$src"/Tests/KeyboardUITests/phrases*.txt; do ln -sf "$file" "$pkg/Tests/KeyboardUITests/"; done
   cat > "$pkg/Package.swift" <<'SWIFT'
 // swift-tools-version: 6.2
 import PackageDescription
@@ -32,16 +45,29 @@ import PackageDescription
 let package = Package(name: "Eval", targets: [
     .target(name: "KeyboardCore"),
     .target(name: "KeyboardEnglish", dependencies: ["KeyboardCore"], exclude: ["Resources/LEXICON-LICENSE", "Resources/NETWORK-LICENSE"], resources: [.copy("Resources/en.lexicon"), .copy("Resources/en.network"), .copy("Resources/en.swipe"), .copy("Resources/SWIPE-LICENSE"), .copy("Resources/emoji.txt"), .copy("Resources/emoji-search.txt")]),
-    .testTarget(name: "KeyboardUITests", dependencies: ["KeyboardEnglish"], resources: [.copy("phrases.txt"), .copy("chat.txt")]),
+    .testTarget(name: "KeyboardUITests", dependencies: ["KeyboardEnglish"], resources: [.copy("phrases.txt"), .copy("phrases.es.txt"), .copy("phrases.fr.txt"), .copy("phrases.de.txt"), .copy("phrases.pt.txt"), .copy("phrases.it.txt"), .copy("phrases.sv.txt"), .copy("chat.txt")]),
 ])
 SWIFT
   cd "$pkg"
-  swift test -c release -Xswiftc -enable-testing --filter "Evaluation${1:+/$1}" 2>&1 | grep -E "error:|EVAL|✘" | tee "$out"
+  if [ "${1:-}" = languages ]; then
+    swift build -c release -Xswiftc -enable-testing --build-tests 2>&1 | grep -E "error:" || true
+    for id in $(python3 -c 'import json, sys; print(" ".join(l["id"] for l in json.load(open(sys.argv[1]))["lexicons"]))' "$root/Packages/KeyboardModules/Sources/KeyboardStore/Resources/Languages/manifest.json"); do
+      LANGUAGE=$id .build/release/KeyboardUITests-test-runner --testing-library swift-testing --filter Evaluation/languages > "$root/build/eval.$id.txt" 2>&1 &
+    done
+    wait
+    cat "$root"/build/eval.*.txt | grep -E "error:|EVAL|✘" | tee "$out"
+  else
+    swift test -c release -Xswiftc -enable-testing --filter "Evaluation${1:+/$1}" 2>&1 | grep -E "error:|EVAL|✘" | tee "$out"
+  fi
   scored='keyboard=(decoder|learning)|EVAL (emoji|predict|thumbs learned)'
+fi
+if [ "${1:-}" = languages ]; then
+  diff -u <(grep '^EVAL language' "$root/scripts/eval.expected") <(grep '^EVAL language' "$out") && echo "EVAL languages match eval.expected"
+  exit
 fi
 if [ "${1:-}" = swipe ]; then
   diff -u <(grep '^EVAL swipe' "$root/scripts/eval.expected") <(grep '^EVAL swipe' "$out") && echo "EVAL swipe matches eval.expected"
   exit
 fi
 [ -z "${1:-}" ] || exit 0
-diff -u <(grep -E "$scored" "$root/scripts/eval.expected" | grep -v '^EVAL swipe' | sort) <(grep '^EVAL' "$out" | grep -v '^EVAL latency' | grep -v '^EVAL swipe' | sort) && echo "EVAL matches eval.expected"
+diff -u <(grep -E "$scored" "$root/scripts/eval.expected" | grep -v '^EVAL swipe' | grep -v '^EVAL language' | sort) <(grep '^EVAL' "$out" | grep -v '^EVAL latency' | grep -v '^EVAL swipe' | sort) && echo "EVAL matches eval.expected"
