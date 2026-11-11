@@ -62,11 +62,26 @@ boot() {
       ${SIM_PHOTOS:+--except photos} >/dev/null
   perl -e 'alarm shift; exec @ARGV' 1800 xcrun simctl bootstatus "$1" -b >/dev/null
   xcrun simctl spawn "$1" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
+  [ -z "${IIKB_NOW:-}" ] || stop "$1"
   if [ ! -e "$APP" ] || [ -n "$(find App Packages Keyboard Controls project.yml -newer "$APP" -print -quit)" ]; then
     [ "$APP" = build/Build/Products/Debug-iphonesimulator/iikb.app ] || { echo "$APP is older than the tree it would show; build it first" >&2; exit 1; }
     scripts/build >&2 && touch "$APP"
   fi
   xcrun simctl install "$1" "$APP"
+}
+
+# Stops the clock at IIKB_NOW for screens that never move between runs (scripts/screens): the wall clock in iikb's app
+# and keyboard (scripts/clock.c), for every process the simulator starts from here until it shuts down, and the status
+# bar's at 9:41.
+stop() {
+  local clock=$PWD/build/clock.dylib
+  [ "$clock" -nt scripts/clock.c ] || { mkdir -p build && xcrun -sdk iphonesimulator clang -arch arm64 \
+    -mios-simulator-version-min=27.0 -O2 -dynamiclib -o "$clock" scripts/clock.c -framework CoreFoundation &&
+    codesign -f -s - "$clock" 2>/dev/null; }
+  xcrun simctl spawn "$1" launchctl setenv IIKB_NOW "$IIKB_NOW"
+  xcrun simctl spawn "$1" launchctl setenv DYLD_INSERT_LIBRARIES "$clock"
+  xcrun simctl status_bar "$1" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
+    --cellularMode notSupported --batteryState charged --batteryLevel 100
 }
 
 # Turns on Full Access (with paste, Paste from Other Apps too), which iOS keeps in TCC's database, written where Settings

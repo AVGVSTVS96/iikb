@@ -7,6 +7,7 @@ scripts/ci 'scripts/sim all v7'                 # screenshots: system vs iikb, l
 scripts/ci 'scripts/sim variants "iPhone 17" v7'   # return key types, keyboard types, landscape
 scripts/ci 'scripts/sim duo v8'                 # Apple's keyboard and iikb on the iPhone Duo's four screens, folded and open (unfolded with Device Hub's hinge event, scripts/devicehub.c)
 scripts/ci 'KEYBOARDS="system iikb" scripts/padshots v1'   # every keyboard state (typing, layers, tray, More, panels, floating) on iPad mini, Pro 11 and Pro 13, portrait and landscape, light and dark, Apple's beside it: shots/raw/pad/v1/ (landscape shots come out turned; key frames in each -empty.txt)
+gh workflow run screens --ref <branch>          # which screens a branch changes against main's last screens run (every push to main that changes what a screen draws runs it; scripts/screens-watch tells Config/notify what no commit accounts for)
 gh workflow run shots                           # every screen of iikb on an iPhone 17, keyboard and app, light and dark, with shots/demo's made-up data and Chats from scripts/chats.ts, on GitHub's Macs (scripts/parity): the run's parity artifact
 scripts/ci 'scripts/capture "iPhone 17" iPhone-17 iikb'   # frames of held keys: pop-ups, accent panel (CAPTURE=menu: the 123 menu)
 scripts/ci 'scripts/shots "iPhone 17" iPhone-17 system light "hel:hel|helo:o"'   # type through a keyboard, screenshot each step
@@ -105,3 +106,10 @@ Its runs:
 - `swipeTune` fits `Swipe.Scoring` on the validation split.
 
 It runs a Release build (the decoder is slow in Debug), here on Linux in a package of KeyboardCore, the word lists and `Evaluation` alone, which gives the same numbers as the Mac; only the baseline needs `UITextChecker`, so its lines are scored on a Mac (`scripts/ci scripts/eval`). A full run is diffed against `scripts/eval.expected` (the root AGENTS.md's rule table says what a change that moves the numbers owes).
+
+## screens
+
+The check that notices a screen nobody meant to change (`.github/workflows/screens.yml`):
+- Four Macs shoot scripts/parity's screens side by side (`PARTS`: the keyboard light, dark, the app, Chats) with the clock stopped at `IIKB_NOW`: shots/demo's dates count back from it, `scripts/clock.c` stops the wall clock at it in iikb's app and keyboard only (through `DYLD_INSERT_LIBRARIES`, set in the simulator by `scripts/sim boot`), and the status bar reads 9:41. So two runs of one commit match pixel for pixel, but for GIF tiles (KLIPY's pictures, and they play) and the caret.
+- `scripts/screens.py` compares each shot with the last run on main's, leaving out those two, which each shot's outline (`<screen>.json`, every element's identifier, label and frame from `ParityShots`) places, and names what moved, resized or reads differently where a screen changed. The run's summary has the report; its `report` artifact has before | after | change pictures.
+- `scripts/screens-watch`, which `scripts/hooks/pre-push` starts here on a push to main, has a reviewer (Sonnet) look at each changed screen beside the commits since the run before, and sends Config/notify only what no commit says it changes.

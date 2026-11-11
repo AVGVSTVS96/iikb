@@ -1,0 +1,141 @@
+# Which screens a push to main changed: scripts/parity's screens with the clock stopped, shot in parts side by side on
+# GitHub's Macs, then compared with the last run's by scripts/screens.py. Only a push that changes what a screen draws
+# runs it, and a change to the keyboard alone leaves the app's pages out (they carry over from the last run); a push waits for the run
+# before it, and a newer one replaces it in the wait. Run by hand on a branch, it compares the branch with main's last run.
+name: screens
+on:
+  push:
+    branches: [main]
+    paths:
+      - App/**
+      - Keyboard/**
+      - Packages/KeyboardModules/Sources/**
+      - project.yml
+      - UITests/ParityShots.swift
+      - scripts/parity
+      - scripts/sim
+      - scripts/clock.c
+      - scripts/screens.py
+      - shots/demo/**
+      - .github/actions/mac/**
+      - .github/workflows/screens.yml
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.event_name == 'push' && 'screens' || github.run_id }}
+env:
+  IIKB_NOW: '1789494060'
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      before: ${{ steps.plan.outputs.before }}
+      run: ${{ steps.plan.outputs.run }}
+      parts: ${{ steps.plan.outputs.parts }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(gh run list -w screens.yml -b main -s completed -L 20 --json databaseId,headSha \
+            --jq ".[] | select(.databaseId != ${{ github.run_id }}) | \"\(.databaseId) \(.headSha)\"" |
+            while read -r run sha; do
+              gh api "repos/{owner}/{repo}/actions/runs/$run/artifacts" --jq '.artifacts[].name' | grep -qx screens &&
+                git cat-file -e "$sha^{commit}" 2>/dev/null && { echo "$run $sha"; break; }
+            done || true)
+          parts='["light", "dark", "app", "chats"]'
+          if [ -n "$last" ]; then
+            drawn=$(git diff --name-only "${last#* }" HEAD | grep -E '^(App|Keyboard|Packages/KeyboardModules/Sources|UITests/ParityShots|scripts/(parity|sim|clock|screens)|shots/demo|project.yml|\.github/(actions/mac|workflows/screens))' || true)
+            # The keyboard's shots have the app behind them, so only a change to the keyboard alone leaves the app's out.
+            if [ -n "$drawn" ] && ! grep -qvE '^(Keyboard|Packages/KeyboardModules/Sources/FullKeyboard)/' <<<"$drawn"; then
+              parts='["light", "dark", "chats"]'
+            fi
+          fi
+          echo "run=${last% *}" >>"$GITHUB_OUTPUT"
+          echo "before=${last#* }" >>"$GITHUB_OUTPUT"
+          echo "parts=$parts" >>"$GITHUB_OUTPUT"
+          echo "since ${last#* }: $parts"
+  shoot:
+    needs: plan
+    runs-on: xcode-27
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        part: ${{ fromJSON(needs.plan.outputs.parts) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/mac
+        with:
+          klipy-key: ${{ secrets.KLIPY_KEY }}
+      - run: PARTS=${{ matrix.part }} scripts/parity
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shot-${{ matrix.part }}
+          path: shots/raw/parity/
+          if-no-files-found: ignore
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.part }}
+          path: |
+            build/uitest/*.log
+            build/uitest/*.ips
+          if-no-files-found: ignore
+  compare:
+    needs: [plan, shoot]
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: shot-*
+          merge-multiple: true
+          path: after
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ needs.plan.outputs.run }}
+        run: |
+          mkdir -p before after
+          [ -z "$RUN" ] || gh run download "$RUN" -n screens -D before
+          # A screen this run didn't shoot, its part skipped or failed, is the last run's.
+          kept=0
+          for shot in before/*; do
+            [ -e "after/${shot#before/}" ] || { cp "$shot" after/; kept=$((kept + 1)); }
+          done
+          echo "KEPT=$kept" >>"$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screens
+          path: after/
+      - uses: astral-sh/setup-uv@v6
+      - env:
+          BEFORE: ${{ needs.plan.outputs.before }}
+          PARTS: ${{ needs.plan.outputs.parts }}
+        run: |
+          uv run -q --with pillow --with numpy --with scipy scripts/screens.py before after report
+          {
+            echo "## Screens since ${BEFORE:0:10}"
+            echo "Shot: $PARTS; $KEPT kept from the last run."
+            echo
+            cat report/report.md
+            echo
+            [ -z "$BEFORE" ] || git log --format='- %h %s' "$BEFORE..$GITHUB_SHA" -- App Keyboard Packages/KeyboardModules/Sources project.yml
+          } >>"$GITHUB_STEP_SUMMARY"
+          echo "$BEFORE" >report/before
+      - uses: actions/upload-artifact@v4
+        with:
+          name: report
+          path: report/

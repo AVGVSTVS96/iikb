@@ -15,7 +15,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: parity
-          path: shots/raw/parity/
+          path: shots/raw/parity/*.png
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

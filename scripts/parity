@@ -4,11 +4,15 @@
 # keyboard's states (UITests/ParityShots, a section a run), dictation in the bar (scripts/voiceapp.py standing in for
 # the app), each of the app's pages at its top and its end (scripts/sim phoneapp), then Chats, with scripts/chats.ts
 # standing in for an extension, last, since the extension it adds would show on the menu and in Settings.
-# Into shots/raw/parity/<screen>-<appearance>.png.
+# Into shots/raw/parity/<screen>-<appearance>.png, with what XCUITest saw in <screen>-<appearance>.json for the
+# keyboard's. PARTS picks some of light (the keyboard's), dark, app and chats, so they can run side by side on several
+# Macs (.github/workflows/screens.yml).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
 out=shots/raw/parity
+parts=" ${PARTS:-light dark app chats} "
+step() { echo "== $1 $(date +%T)"; }
 mkdir -p "$out"
 export PHONE=${PHONE:-iPhone 17}
 ID=$(scripts/sim ensure "$PHONE" "${PHONE// /-}")
@@ -36,6 +40,8 @@ shutter() {
 }
 
 for appearance in light dark; do
+  [[ $parts == *" $appearance "* ]] || continue
+  step "$appearance"
   xcrun simctl ui "$ID" appearance "$appearance"
   for section in layers typing held swipe menu emoji gif clipboard transcripts dictation-listening dictation-writing; do
     voice=
@@ -60,22 +66,28 @@ for appearance in light dark; do
     kill "$shooter" ${voice:+"$voice"} 2>/dev/null || true
     wait 2>/dev/null || true
   done
-  for shot in "$out/$appearance"-*.png; do
+  for shot in "$out/$appearance"-*.{png,json}; do
+    [ -e "$shot" ] || continue
     name=${shot#"$out/$appearance"-}
-    mv "$shot" "$out/${name%.png}-$appearance.png"
+    mv "$shot" "$out/${name%.*}-$appearance.${name##*.}"
   done
 done
 
-KEEP=1 scripts/sim phoneapp parity || failed=1
-KEEP=1 ARGS="-iikbScrollToEnd YES" scripts/sim phoneapp parity-end || failed=1
-for shot in shots/raw/phone/app/parity-*.png; do
-  name=${shot##*/parity-}
-  end=
-  [[ $name == end-* ]] && name=${name#end-} end=-end
-  mv "$shot" "$out/app-${name%-*}$end-${name##*-}"
-done
+if [[ $parts == *" app "* ]]; then
+  step app
+  KEEP=1 scripts/sim phoneapp parity || failed=1
+  KEEP=1 ARGS="-iikbScrollToEnd YES" scripts/sim phoneapp parity-end || failed=1
+  for shot in shots/raw/phone/app/parity-*.png; do
+    name=${shot##*/parity-}
+    end=
+    [[ $name == end-* ]] && name=${name#end-} end=-end
+    mv "$shot" "$out/app-${name%-*}$end-${name##*-}"
+  done
+fi
 PORT=${PORT:-2597}
+[[ $parts == *" chats "* ]] && step chats
 for appearance in light dark; do
+  [[ $parts == *" chats "* ]] || break
   xcrun simctl ui "$ID" appearance "$appearance"
   for attempt in 1 2; do
     HOST=:: PORT=$PORT bun scripts/chats.ts >build/uitest/chats-$appearance-$attempt.log 2>&1 &
@@ -91,12 +103,13 @@ for appearance in light dark; do
     grep -E "error:|Test Case .*failed" "$log" || true
     [ "$attempt" = 1 ] || failed=1
   done
-  for shot in "$out/$appearance"-*.png; do
+  for shot in "$out/$appearance"-*.{png,json}; do
     [ -e "$shot" ] || continue
     name=${shot#"$out/$appearance"-}
-    mv "$shot" "$out/${name%.png}-$appearance.png"
+    mv "$shot" "$out/${name%.*}-$appearance.${name##*.}"
   done
 done
-ls "$out" | wc -l
+step done
+ls "$out"/*.png | wc -l
 cp ~/Library/Logs/DiagnosticReports/*iikb* ~/Library/Logs/DiagnosticReports/*Keyboard* build/uitest/ 2>/dev/null || true
 exit "${failed:-0}"

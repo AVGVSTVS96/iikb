@@ -3,7 +3,7 @@
 # or clipboard: touches.json (the iPhone Duo's four screens), typing.jsonl, transcripts.jsonl with recordings/<id>.wav,
 # mac.json (Keystroke's version 3 file), clipboard.json and app-names.json (AppName's answers, so no shot waits on the App
 # Store), each in the shape scripts/sim's fill copies (shots/demo/env). Everything is the same on every run but the dates, which
-# count back from now, so Today, "2h" and "Yesterday" hold whenever the shots are taken.
+# count back from now (IIKB_NOW when set, in seconds since 1970), so Today, "2h" and "Yesterday" hold whenever the shots are taken.
 # python3 shots/demo/make.py <folder>
 import json
 import math
@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime, timedelta
 
 FOUNDATION = 978307200  # 2001-01-01, where Swift's Date counts from
-NOW = time.time()
+NOW = float(os.environ.get("IIKB_NOW") or time.time())
 TODAY = datetime.fromtimestamp(NOW).replace(hour=0, minute=0, second=0, microsecond=0)
 ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
 INDENT = [0, 0.5, 1.5]

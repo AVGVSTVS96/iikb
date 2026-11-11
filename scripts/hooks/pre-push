@@ -1,2 +1,5 @@
 #!/bin/sh
-exec bun "$(git rev-parse --show-toplevel)/scripts/public-review.ts" --pre-push
+pushed=$(cat)
+root=$(git rev-parse --show-toplevel)
+case $pushed in *refs/heads/main*) "$root/scripts/screens-watch" --start ;; esac
+printf '%s\n' "$pushed" | bun "$root/scripts/public-review.ts" --pre-push

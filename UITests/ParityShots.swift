@@ -319,6 +319,25 @@ final class ParityShots: XCTestCase {
     private func shot(_ name: String, settle: TimeInterval = 1.2) throws {
         Thread.sleep(forTimeInterval: settle)
         try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(prefix)-\(name).png"))
+        try? outline().write(to: URL(fileURLWithPath: "\(prefix)-\(name).json"))
+    }
+
+    /// What XCUITest sees on the screen as it's shot, for scripts/screens: each element's identifier, label, frame in
+    /// points, and whether it takes text (where a caret blinks).
+    private func outline() throws -> Data {
+        var elements: [[String: Any]] = []
+        let inputs: Set<XCUIElement.ElementType> = [.textField, .textView, .searchField, .secureTextField]
+        func add(_ element: XCUIElementSnapshot) {
+            let frame = element.frame
+            guard !frame.isNull, !frame.isInfinite else { return element.children.forEach(add) }
+            elements.append([
+                "id": element.identifier, "label": element.label, "input": inputs.contains(element.elementType),
+                "frame": [frame.minX, frame.minY, frame.width, frame.height].map { ($0 * 2).rounded() / 2 },
+            ])
+            element.children.forEach(add)
+        }
+        add(try XCUIApplication().snapshot())
+        return try JSONSerialization.data(withJSONObject: elements, options: [.sortedKeys])
     }
 
     private func wait(_ timeout: TimeInterval = 10, _ condition: @escaping () -> Bool) -> Bool {
