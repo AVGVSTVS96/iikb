@@ -25,6 +25,7 @@ jobs:
       - uses: ./.github/actions/mac
         with:
           klipy-key: ${{ secrets.KLIPY_KEY }}
+          save: ${{ matrix.parts == 'dark' }}
       - name: check
         run: bash -c "$RUN"
         env:
