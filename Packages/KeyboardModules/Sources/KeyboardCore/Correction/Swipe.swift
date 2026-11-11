@@ -14,6 +14,14 @@ public final class Swipe: Sendable {
     static let coefficients = 64, frequencies = 8, blocks = 5, dilations = [1, 2, 3, 5, 8], kernel = 7
     static let decoderBlocks = 8, decoderWidth = 256, bottleneck = 64, memory = 15, decoderInputs = 92, headWidth = 32
 
+    /// The network's letters are a–z, in order: a lexicon letter's place among them, if it's one.
+    static func index(of letter: String) -> Int? {
+        guard let ascii = letter.utf8.first, letter.utf8.count == 1, (97...122).contains(ascii) else { return nil }
+        return Int(ascii - 97)
+    }
+
+    static func letter(at index: Int) -> UInt8 { UInt8(97 + index) }
+
     struct Entry {
         let name: String
         let shape: [Int]

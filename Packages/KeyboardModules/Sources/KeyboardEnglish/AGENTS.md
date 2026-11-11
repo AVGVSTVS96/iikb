@@ -9,5 +9,5 @@ The bundled English data and its loaders, apart from the UI, on KeyboardCore and
 - `Network.current`, the personal network when the app has fetched one, is iikb's and lives in KeyboardStore's `PersonalNetwork`.
 
 The builders, so each format has one implementation:
-- `Packages/KeyboardModules/Tools/LexiconBuilder` turns `scripts/lexicon.py`'s word counts into `en.lexicon` with `Lexicon(counts:)`; `Tools/NetworkBuilder` does the same for `scripts/network.py`'s trained weights and `en.network`.
+- `Packages/KeyboardModules/Tools/LexiconBuilder` turns `scripts/lexicon.py`'s word counts into `en.lexicon` with `Lexicon(counts:)`, and any language's the same way (`scripts/tool LexiconBuilder words.tsv out.lexicon`, a line per word: the word, a tab, its count; the lexicon's letters are the ones its words are spelled with); `Tools/NetworkBuilder` does the same for `scripts/network.py`'s trained weights and `en.network`.
 - `scripts/personal` fine-tunes the shipped `en.network`'s output side on `record.jsonl` into the owner's own network (docs/backup.md, "Your network"), kept on the server and the iPhone (`PersonalNetwork`, `Network.current`), never in git.

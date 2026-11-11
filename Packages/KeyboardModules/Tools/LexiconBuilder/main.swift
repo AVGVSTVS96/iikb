@@ -3,7 +3,7 @@ import KeyboardCore
 
 let arguments = CommandLine.arguments
 guard arguments.count == 3 else {
-    print("usage: LexiconBuilder <words.tsv> <out.lexicon>")
+    print("usage: LexiconBuilder <words.tsv> <out.lexicon>  (a line per word: the word, a tab, its count)")
     exit(1)
 }
 let counts = try String(contentsOfFile: arguments[1], encoding: .utf8).split(separator: "\n").compactMap {
@@ -14,4 +14,6 @@ let counts = try String(contentsOfFile: arguments[1], encoding: .utf8).split(sep
 }
 let lexicon = Lexicon(counts: counts)
 try Data(lexicon.bytes).write(to: URL(fileURLWithPath: arguments[2]))
-print("\(lexicon.wordCount) words, \(lexicon.bytes.count) bytes")
+print(
+    "\(lexicon.wordCount) words in \(lexicon.letters.count) letters (\(lexicon.letters.joined())), \(lexicon.bytes.count) bytes"
+)

@@ -2,24 +2,31 @@
 ///
 /// Every level backs off to the next with Witten-Bell weights, which come from the counts themselves (a context
 /// seen N times with T different words trusts itself N / (N + T)): your next-word counts → your word counts → the
-/// lexicon → a word the lexicon doesn't know, spelled letter by letter. Each word's count in a context gives `discount`
-/// to the level below (absolute discounting), since a word seen there once is mostly chance and shouldn't outrank a
-/// word the level below knows far better. How often you keep new words is itself learned: (new + 1) / (all + 2),
-/// Laplace's rule of succession.
+/// lexicon → a word the lexicon doesn't know, spelled letter by letter from the lexicon's letters. Each word's count
+/// in a context gives `discount` to the level below (absolute discounting), since a word seen there once is mostly
+/// chance and shouldn't outrank a word the level below knows far better. How often you keep new words is itself
+/// learned: (new + 1) / (all + 2), Laplace's rule of succession.
 struct LanguageModel {
     let lexicon: Lexicon
     let memory: TypingMemory
     let novelty: Double
     let app: AppWords?
+    /// The letters a word the lexicon doesn't know is spelled with: its own, and any a key shows (`LetterKeys`).
+    let letters: [String]
+    /// ln P(each letter) of such a word.
+    let spellingLogProbability: Double
 
     static let discount = 0.5
-    static let spellingLogProbability = -Math.log(Double(Lexicon.alphabet))
 
     /// `novel` is `novel(in:lexicon:)`, when the caller keeps it counted.
-    init(lexicon: Lexicon, memory: TypingMemory, novel: Int? = nil, app: AppWords? = nil) {
+    init(
+        lexicon: Lexicon, memory: TypingMemory, novel: Int? = nil, app: AppWords? = nil, letters: [String]? = nil
+    ) {
         self.app = app
         self.lexicon = lexicon
         self.memory = memory
+        self.letters = letters ?? lexicon.letters
+        spellingLogProbability = -Math.log(Double(self.letters.count))
         let novel = novel ?? Self.novel(in: memory, lexicon: lexicon)
         novelty = (Double(novel) + 1) / (Double(memory.total) + 2)
     }
@@ -76,21 +83,21 @@ struct LanguageModel {
 
     func lexical(_ word: String) -> Double {
         let known = lexicon.logProbability(of: word).map(Math.exp) ?? 0
-        return (1 - novelty) * known + novelty * Math.exp(Self.spellingLogProbability * Double(word.utf8.count + 1))
+        return (1 - novelty) * known + novelty * Math.exp(spellingLogProbability * Double(word.count + 1))
     }
 
     /// P(next letter | the letters so far), over the lexicon and novel spellings, and P(the word ends here) as `" "`.
     /// Before a word starts, `" "` is how often you type a second space, by the rule of succession.
     func next(after prefix: String) -> [String: Double] {
-        let length = Double(prefix.utf8.count)
+        let length = Double(prefix.count)
         let node = lexicon.node(for: prefix)
-        let novel = { (letters: Double) in novelty * Math.exp(Self.spellingLogProbability * letters) }
+        let novel = { (letters: Double) in novelty * Math.exp(spellingLogProbability * letters) }
         let mass = { (node: Lexicon.Node?) in node.map { (1 - novelty) * Math.exp(lexicon.logMass($0)) } ?? 0 }
         let total = mass(node) + novel(length)
         var result: [String: Double] = [:]
-        for (index, label) in Lexicon.labels.enumerated() {
-            let child = node.flatMap { lexicon.child($0, Lexicon.letter(at: index)) }
-            result[label] = (mass(child) + novel(length + 1)) / total
+        for (index, letter) in letters.enumerated() {
+            let child = index < lexicon.letters.count ? node.flatMap { lexicon.child($0, UInt8(index)) } : nil
+            result[letter] = (mass(child) + novel(length + 1)) / total
         }
         if prefix.isEmpty {
             let space = (Double(memory.spacesAfterSpace) + 1) / (Double(memory.keysAfterSpace) + 2)

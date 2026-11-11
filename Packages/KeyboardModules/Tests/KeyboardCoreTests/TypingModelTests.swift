@@ -552,19 +552,24 @@ struct DecoderTests {
     }
 
     @Test func aDoubledLetterTypedOnceCountsBothWays() {
-        let letters = { (word: String) in Array(word.utf8).compactMap(Lexicon.index(of:)) }
+        let keys = LetterKeys(testLexicon, on: grid)
+        let letters = { (word: String) in keys.places(of: word)! }
         #expect(
-            Decoder.readings(of: letters("hello"), taps: 4, completing: false).filter { $0.letters == letters("helo") }
-                .count == 2)
+            Decoder.readings(of: letters("hello"), taps: 4, completing: false, apostrophe: nil).filter {
+                $0.letters == letters("helo")
+            }
+            .count == 2)
     }
 
     @Test func deadCenterTapsMakeAFarTapCountForLess() {
         let taps = Corrector(source: testLexicon).evidence(
             for: TypedWord("helo", taps: "helo".map { tap(String($0)) }), touches: TouchModel())
         let alone =
-            taps.map { $0.letters[Lexicon.index(of: UInt8(ascii: "p"))!] }.last!
+            taps.map { $0.letters[Int(testLexicon.index(of: "p")!)] }.last!
             + taps.dropLast().map(\.best).reduce(0, +)
-        #expect(Decoder.logLikelihood(of: "help", given: taps, touches: TouchModel(), on: grid) < alone)
+        #expect(
+            Decoder.logLikelihood(of: "help", given: taps, touches: TouchModel(), on: LetterKeys(testLexicon, on: grid))
+                < alone)
     }
 
     @Test func wordsWithoutTapsUseKeyCenters() {

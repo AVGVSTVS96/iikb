@@ -55,9 +55,11 @@ public struct TouchModel: Codable, Hashable, Sendable {
         Int(layouts[grid.signature]?[label]?.count ?? 0)
     }
 
+    /// A letter with no key of its own is learned as the key it's under on a long-press (`KeyGrid.key(holding:)`).
     public mutating func learn(_ samples: some Sequence<TapSample>, on grid: KeyGrid) {
         var model = layout(grid)
-        for sample in samples {
+        for var sample in samples {
+            sample.intended = grid.key(holding: sample.intended) ?? sample.intended
             guard let (u, v) = model.learn(sample) else { continue }
             var taps = recent[grid.signature, default: [:]][sample.intended, default: []]
             taps.append(Offset(x: (u * 1000).rounded() / 1000, y: (v * 1000).rounded() / 1000))

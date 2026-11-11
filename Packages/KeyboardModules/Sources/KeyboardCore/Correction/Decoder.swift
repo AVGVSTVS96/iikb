@@ -1,4 +1,4 @@
-/// How well one tap fits each letter: log densities per square point, indexed a–z then the apostrophe, plus the
+/// How well one tap fits each letter: log densities per square point, indexed by the lexicon's letters, plus the
 /// density of a stray tap (one that meant no letter at all), and where it landed.
 public struct TapEvidence: Hashable, Sendable {
     public var letters: [Double]
@@ -11,9 +11,10 @@ public struct TapEvidence: Hashable, Sendable {
         self.point = point
     }
 
-    static func exact(_ letter: UInt8) -> TapEvidence {
-        var letters = [Double](repeating: -.infinity, count: Lexicon.alphabet)
-        if let index = Lexicon.index(of: letter) { letters[index] = 0 }
+    /// A character typed with no tap to read: the letter it is (its place among `count` letters), or none.
+    static func exact(_ letter: Int?, of count: Int) -> TapEvidence {
+        var letters = [Double](repeating: -.infinity, count: count)
+        if let letter { letters[letter] = 0 }
         return TapEvidence(letters: letters, stray: -.infinity)
     }
 
@@ -62,14 +63,14 @@ struct Decoder {
             return steps.count - 1
         }
 
-        func word(_ spelling: Int) -> String {
+        func word(_ spelling: Int, in lexicon: Lexicon) -> String {
             var letters: [UInt8] = []
             var step = spelling
             while step != Self.empty {
                 letters.append(steps[step].letter)
                 step = steps[step].previous
             }
-            return String(decoding: letters.reversed(), as: UTF8.self)
+            return lexicon.spelling(letters.reversed())
         }
     }
 
@@ -105,7 +106,7 @@ struct Decoder {
             pops += 1
             if state.terminal {
                 guard seen.insert(state.node).inserted else { continue }
-                let word = trail.word(state.spelling)
+                let word = trail.word(state.spelling, in: lexicon)
                 let logPrior = lexicon.logWord(state.node) ?? 0
                 found.append(
                     Result(
@@ -127,7 +128,8 @@ struct Decoder {
             }
             for child in lexicon.children(state.node) {
                 let letter = lexicon.letter(child)
-                guard let index = Lexicon.index(of: letter) else { continue }
+                let index = Int(letter)
+                let apostrophe = letter == lexicon.apostrophe
                 let spelling = trail.extend(state.spelling, with: letter)
                 if i == taps.count {
                     let next = State(
@@ -142,19 +144,18 @@ struct Decoder {
                     State(
                         node: child, tap: i + 1, edits: state.edits, completing: false,
                         score: state.score + taps[i].letters[index] - best[i], spelling: spelling, terminal: false))
-                if letter == 39 || state.edits == 0 {
+                if apostrophe || state.edits == 0 {
                     push(
                         State(
-                            node: child, tap: i, edits: state.edits + (letter == 39 ? 0 : 1), completing: false,
+                            node: child, tap: i, edits: state.edits + (apostrophe ? 0 : 1), completing: false,
                             score: state.score
-                                + (letter == 39 ? Self.apostropheLogProbability : Self.editLogProbability),
+                                + (apostrophe ? Self.apostropheLogProbability : Self.editLogProbability),
                             spelling: spelling, terminal: false))
                 }
                 if state.edits == 0, i + 1 < taps.count {
                     for grandchild in lexicon.children(child) {
-                        guard let second = Lexicon.index(of: lexicon.letter(grandchild)), second != index else {
-                            continue
-                        }
+                        let second = Int(lexicon.letter(grandchild))
+                        guard second != index else { continue }
                         let swapped = taps[i].letters[second] + taps[i + 1].letters[index] - best[i] - best[i + 1]
                         push(
                             State(
@@ -173,16 +174,15 @@ struct Decoder {
     /// could have happened. Within a reading the taps are scored in order, each after the ones before it have taught
     /// the touch model what they meant (the joint predictive): taps that land dead center on their keys say how
     /// steady you are, so a tap far from the key it supposedly meant counts for less. `completing` lets the taps cover
-    /// only the start of the word.
+    /// only the start of the word. Each letter is read on the key that holds it (`LetterKeys`).
     static func logLikelihood(
-        of word: String, given taps: [TapEvidence], touches: TouchModel, on grid: KeyGrid, completing: Bool = false
+        of word: String, given taps: [TapEvidence], touches: TouchModel, on keys: LetterKeys, completing: Bool = false
     ) -> Double {
-        let lower = word.lowercased()
-        let letters = Array(lower.utf8).compactMap(Lexicon.index(of:))
-        guard letters.count == lower.utf8.count else { return -.infinity }
+        guard let letters = keys.places(of: word) else { return -.infinity }
         var total = -Double.infinity
-        let start = touches.layout(grid)
-        for reading in readings(of: letters, taps: taps.count, completing: completing) {
+        let start = touches.layout(keys.grid)
+        let apostrophe = keys.lexicon.apostrophe.map(Int.init)
+        for reading in readings(of: letters, taps: taps.count, completing: completing, apostrophe: apostrophe) {
             var model = start
             var score = reading.logPenalty
             for (tap, letter) in zip(taps, reading.letters) {
@@ -190,8 +190,9 @@ struct Decoder {
                     score += tap.stray
                     continue
                 }
-                let label = Lexicon.labels[letter]
-                if let point = tap.point, let likelihood = model.logLikelihood(x: point.x, y: point.y, for: label) {
+                if let point = tap.point, let label = keys.keys[letter],
+                    let likelihood = model.logLikelihood(x: point.x, y: point.y, for: label)
+                {
                     score += likelihood
                     model.suppose(TapSample(tap: point, intended: label))
                 } else {
@@ -208,8 +209,9 @@ struct Decoder {
         var logPenalty: Double
     }
 
-    /// Every way `taps` taps can spell `letters` (each tap a letter index, or nil for a stray), as the search allows.
-    static func readings(of letters: [Int], taps: Int, completing: Bool) -> [Reading] {
+    /// Every way `taps` taps can spell `letters` (each tap a letter's place, or nil for a stray), as the search allows;
+    /// `apostrophe` is the apostrophe's place, which may go untyped.
+    static func readings(of letters: [Int], taps: Int, completing: Bool, apostrophe: Int?) -> [Reading] {
         var found: [Reading] = []
         func walk(_ i: Int, _ j: Int, _ edited: Bool, _ reading: Reading) {
             if j == taps {
@@ -221,13 +223,13 @@ struct Decoder {
                     i + 1, j + 1, edited,
                     Reading(letters: reading.letters + [letters[i]], logPenalty: reading.logPenalty))
             }
-            if i < letters.count, letters[i] == 26 || !edited {
+            if i < letters.count, letters[i] == apostrophe || !edited {
                 walk(
-                    i + 1, j, edited || letters[i] != 26,
+                    i + 1, j, edited || letters[i] != apostrophe,
                     Reading(
                         letters: reading.letters,
                         logPenalty: reading.logPenalty
-                            + (letters[i] == 26 ? apostropheLogProbability : editLogProbability)))
+                            + (letters[i] == apostrophe ? apostropheLogProbability : editLogProbability)))
             }
             guard !edited else { return }
             if j < taps {

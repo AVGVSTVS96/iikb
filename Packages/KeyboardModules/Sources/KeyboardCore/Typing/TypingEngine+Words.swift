@@ -40,7 +40,7 @@ struct WordTaps: Hashable {
 
     mutating func add(_ tap: Tap, for letter: String, on grid: KeyGrid?) {
         if let erased = erased.removeValue(forKey: letters.count), let grid,
-            grid.reaches(letter, x: erased.x, y: erased.y)
+            grid.reaches(grid.key(holding: letter) ?? letter, x: erased.x, y: erased.y)
         {
             retyped.append(TapSample(tap: erased, intended: letter))
         }

@@ -67,7 +67,8 @@ extension Evaluation {
                 at += count * 12
                 let word = raw.lowercased().replacingOccurrences(of: "’", with: "'").trimmingCharacters(
                     in: CharacterSet.letters.union(CharacterSet(charactersIn: "'")).inverted)
-                guard word.utf8.allSatisfy({ Lexicon.index(of: $0) != nil }), word.utf8.count(where: { $0 != 39 }) >= 2
+                guard word.allSatisfy({ Swipe.index(of: String($0)) != nil || $0 == "'" }),
+                    word.count(where: { $0 != "'" }) >= 2
                 else { continue }
                 items.append(
                     Item(

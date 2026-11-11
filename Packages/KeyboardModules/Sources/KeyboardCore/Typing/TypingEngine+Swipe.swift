@@ -63,7 +63,7 @@ extension TypingEngine {
     private mutating func ownWords(_ corrector: Corrector, besides lexicon: Lexicon) -> Lexicon? {
         let words = Set(
             (Array(corrector.memory.familiar) + Array(corrector.names.values)).filter { word in
-                word.utf8.allSatisfy { Lexicon.index(of: Lexicon.fold($0)) != nil }
+                word.allSatisfy { Swipe.index(of: $0.lowercased()) != nil || $0 == "'" }
                     && lexicon.logProbability(of: word) == nil
             })
         guard !words.isEmpty else { return nil }

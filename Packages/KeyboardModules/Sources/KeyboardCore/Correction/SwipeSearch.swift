@@ -72,11 +72,14 @@ private struct Search {
     static let softplus: [Float] = (0...512).map { Float(Math.log(1 + Math.exp(-Double($0) / 32))) }
 
     func candidates(limit: Int) -> [Swipe.Candidate] {
-        lexicon.bytes.withUnsafeBytes { trie in
-            func letter(_ node: Int32) -> UInt8 { trie[8 + Int(node) * 8] }
-            func flags(_ node: Int32) -> UInt8 { trie[8 + Int(node) * 8 + 3] }
+        let nodes = lexicon.nodes
+        let apostrophe = lexicon.apostrophe
+        let classes = lexicon.letters.map(Swipe.index(of:))
+        return lexicon.bytes.withUnsafeBytes { trie in
+            func letter(_ node: Int32) -> UInt8 { trie[nodes + Int(node) * 8] }
+            func flags(_ node: Int32) -> UInt8 { trie[nodes + Int(node) * 8 + 3] }
             func first(_ node: Int32) -> Int32 {
-                let at = 8 + Int(node) * 8 + 4
+                let at = nodes + Int(node) * 8 + 4
                 return Int32(
                     truncatingIfNeeded: Int(trie[at]) | Int(trie[at + 1]) << 8 | Int(trie[at + 2]) << 16 | Int(
                         trie[at + 3]) << 24)
@@ -85,15 +88,15 @@ private struct Search {
             func extensions(_ node: Int32, _ body: (Int, Int32, Bool) -> Void) {
                 var child = first(node)
                 while child != 0 {
-                    if letter(child) == 39 {
+                    if letter(child) == apostrophe {
                         var grandchild = first(child)
                         while grandchild != 0 {
-                            if let index = Lexicon.index(of: letter(grandchild)), index < Swipe.letters {
+                            if let index = classes[Int(letter(grandchild))] {
                                 body(index, grandchild, true)
                             }
                             grandchild = flags(grandchild) & 1 != 0 ? 0 : grandchild + 1
                         }
-                    } else if let index = Lexicon.index(of: letter(child)), index < Swipe.letters {
+                    } else if let index = classes[Int(letter(child))] {
                         body(index, child, false)
                     }
                     child = flags(child) & 1 != 0 ? 0 : child + 1
@@ -164,12 +167,12 @@ private struct Search {
             }
 
             var found: [Swipe.Candidate] = []
-            for h in beam where h.depth > 0 && trie[8 + Int(h.node) * 8 + 1] != 0 {
+            for h in beam where h.depth > 0 && trie[nodes + Int(h.node) * 8 + 1] != 0 {
                 var letters: [UInt8] = []
                 var at = h.spelling
                 while at > 0 {
                     let entry = spellings[Int(at)]
-                    letters.append(Lexicon.letter(at: Int(entry.letter)))
+                    letters.append(Swipe.letter(at: Int(entry.letter)))
                     if entry.apostrophe { letters.append(39) }
                     at = entry.parent
                 }
@@ -178,7 +181,7 @@ private struct Search {
                 let length = Double(h.depth)
                 let score =
                     Double(h.total) / Math.exp(Math.log(length) * scoring.gamma) + scoring.lambda
-                    * (-Double(trie[8 + Int(h.node) * 8 + 1]) / 10) + scoring.beta * length
+                    * (-Double(trie[nodes + Int(h.node) * 8 + 1]) / 10) + scoring.beta * length
                 found.append(Swipe.Candidate(word: String(decoding: letters, as: UTF8.self), score: score))
             }
             return Array(found.sorted { $0.score > $1.score }.prefix(limit))

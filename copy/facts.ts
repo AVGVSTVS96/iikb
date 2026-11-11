@@ -92,14 +92,16 @@ const emoji = lines(`${RESOURCES}/emoji-search.txt`).filter((line) => !line.star
 
 const lexicon = readFileSync(path.join(root, RESOURCES, "en.lexicon"));
 
-if (lexicon.subarray(0, 4).toString() !== "HXL1") {
-  throw new Error("en.lexicon isn't HXL1");
+if (lexicon.subarray(0, 4).toString() !== "HXL2") {
+  throw new Error("en.lexicon isn't HXL2");
 }
 
+const lexiconNodes =
+  Math.ceil((12 + lexicon.readUInt32LE(8)) / LEXICON_ENTRY_BYTES) * LEXICON_ENTRY_BYTES;
 let lexiconWords = 0;
 
 for (
-  let offset = LEXICON_ENTRY_BYTES;
+  let offset = lexiconNodes;
   offset + LEXICON_ENTRY_BYTES <= lexicon.length;
   offset += LEXICON_ENTRY_BYTES
 ) {

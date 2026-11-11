@@ -9,6 +9,7 @@ public struct KeyMap: Sendable {
         let logOdds: Double
     }
 
+    /// `next` is how likely each key is next, by its label.
     init(grid: KeyGrid, touches: TouchModel.Layout, next: [String: Double]?) {
         signature = grid.signature
         var keys: [String: Entry] = [:]
@@ -48,7 +49,9 @@ public struct KeyMap: Sendable {
 extension Corrector {
     /// The key map for the next touch after `prefix` (`nil` where words aren't expected).
     func keyMap(after prefix: String?) -> KeyMap {
-        let next = prefix.flatMap { prefix in lexicon.map { languageModel($0).next(after: prefix.lowercased()) } }
+        let next = prefix.flatMap { prefix in
+            lexicon.map { letters($0).keyOdds(languageModel($0).next(after: prefix.lowercased())) }
+        }
         return KeyMap(grid: grid, touches: memory.touches.layout(grid), next: next)
     }
 }
