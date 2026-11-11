@@ -102,7 +102,8 @@ val keys = tasks.register<Keys>("keys") {
  * Settings › Changelog's `changelog.json`: each change with its build and day, newest first, from the `Changelog:`
  * trailers of commits to android/ and to the Core and English data it shares with iOS, as scripts/phone writes iOS's
  * `IIKBChangelog`. Those came whole in Android's first build, so only shared commits since then are Android's changes. `android/changelog.tsv` rewords a commit's
- * line (its hash, a tab, the line) where the trailer spoke of iOS, which someone on Android has never seen. Trailers from
+ * line (its hash, a tab, the line) where the trailer spoke of iOS, which someone on Android has never seen, and leaves out
+ * a commit with no line after its hash, whose change Android doesn't have. Trailers from
  * before iOS's lists took only iPhone commits start "On Android, ", which goes here.
  */
 abstract class Changelog : DefaultTask() {
@@ -119,7 +120,7 @@ abstract class Changelog : DefaultTask() {
     @TaskAction
     fun write() {
         val rewording = reworded.get().asFile.readLines().filter { it.isNotBlank() }
-            .associate { line -> line.substringBefore('\t') to line.substringAfter('\t') }
+            .associate { line -> line.substringBefore('\t') to line.substringAfter('\t', "") }
         val first = git("rev-list", "--reverse", "HEAD", "--", "android").lineSequence().first()
         val entries = git(
             "log", "--format=%H%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)", "$first^..HEAD", "--",
@@ -132,7 +133,7 @@ abstract class Changelog : DefaultTask() {
                 val changes = rewording.entries.firstOrNull { sha.startsWith(it.key) }?.let { listOf(it.value) }
                     ?: trailers.split("\u001e").filter { it.isNotBlank() }
                         .map { it.trim().removePrefix("On Android, ").replaceFirstChar(Char::uppercase) }
-                changes.map { Triple(sha, day, it) }
+                changes.filter { it.isNotBlank() }.map { Triple(sha, day, it) }
             }
         val rows = entries.map { (sha, day, change) ->
             mapOf("build" to git("rev-list", "--count", sha).trim().toInt(), "date" to day, "change" to change)

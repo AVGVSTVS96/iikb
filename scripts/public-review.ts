@@ -30,7 +30,7 @@ const SURFACES: readonly (readonly [RegExp, string])[] = [
 const APP_CODE = /^(?:App|Controls|Keyboard|Packages\/[^/]+\/Sources)\/.+\.swift$/u;
 const WORDS = /"[^"\n]*[A-Za-z][^"\n]* [^"\n]*"/u;
 const NO_COMMIT = "0000000000000000000000000000000000000000";
-const TRAILERS = "--format=%(trailers:key=Changelog,valueonly)";
+const TRAILERS = "--format=%H%x1F%(trailers:key=Changelog,valueonly,separator=%x1E)";
 const MESSAGES = "--format=%B%n---";
 
 const IPHONE = (await Bun.file(new URL("iphone-paths.txt", import.meta.url)).text())
@@ -42,6 +42,7 @@ const CHANGELOGS = [
     where:
       "Changelog lines for iPhone: the iOS app's Changelog page and the changelog on iikb.vercel.app",
     paths: IPHONE,
+    reworded: null,
   },
   {
     where:
@@ -51,6 +52,7 @@ const CHANGELOGS = [
       "Packages/KeyboardModules/Sources/KeyboardCore",
       "Packages/KeyboardModules/Sources/KeyboardEnglish",
     ],
+    reworded: "android/changelog.tsv",
   },
 ] as const;
 
@@ -109,6 +111,33 @@ const pieceOf = async (base: string, head: string, path: string): Promise<Piece 
   return null;
 };
 
+const changelog = async (
+  commits: readonly string[],
+  paths: readonly string[],
+  reworded: string | null,
+) => {
+  const entries =
+    reworded === null
+      ? []
+      : (await Bun.file(new URL(`../${reworded}`, import.meta.url)).text())
+          .split("\n")
+          .filter((line) => line !== "")
+          .map((line) => line.split("\t"));
+
+  const log = await $`git log ${TRAILERS} ${commits} -- ${paths}`.text();
+
+  return log
+    .split("\n")
+    .flatMap((line) => {
+      const [sha = "", trailers = ""] = line.split("\u001F");
+      const entry = entries.find(([hash = ""]) => sha.startsWith(hash));
+
+      return entry === undefined ? trailers.split("\u001E") : [entry[1] ?? ""];
+    })
+    .filter((change) => change.trim() !== "")
+    .join("\n");
+};
+
 const changed = async (base: string, head: string): Promise<Piece[]> => {
   const files = (await $`git diff --name-only ${base} ${head}`.text())
     .split("\n")
@@ -118,9 +147,9 @@ const changed = async (base: string, head: string): Promise<Piece[]> => {
   const pieces = found.filter((piece) => piece !== null);
 
   const changelogs = await Promise.all(
-    CHANGELOGS.map(async ({ where, paths }) => ({
+    CHANGELOGS.map(async ({ where, paths, reworded }) => ({
       where,
-      text: (await $`git log ${TRAILERS} ${base}..${head} -- ${paths}`.text()).trim(),
+      text: await changelog([`${base}..${head}`], paths, reworded),
     })),
   );
 
@@ -152,9 +181,9 @@ const everything = async (): Promise<Piece[]> => {
   );
 
   const changelogs = await Promise.all(
-    CHANGELOGS.map(async ({ where, paths }) => ({
+    CHANGELOGS.map(async ({ where, paths, reworded }) => ({
       where: `${where}, newest first`,
-      text: await $`git log -n 200 ${TRAILERS} -- ${paths}`.text(),
+      text: await changelog(["-n", "200"], paths, reworded),
     })),
   );
 
