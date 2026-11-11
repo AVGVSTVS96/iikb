@@ -323,20 +323,27 @@ final class ParityShots: XCTestCase {
     }
 
     /// What XCUITest sees on the screen as it's shot, for scripts/screens: each element's identifier, label, frame in
-    /// points, and whether it takes text (where a caret blinks).
+    /// the screen's points, and whether it takes text (where a caret blinks). The keyboard's elements come in its own
+    /// window's points, under a window XCUITest puts at 0,0 with the size of the view holding it, so they're moved by
+    /// where that view sits.
     private func outline() throws -> Data {
         var elements: [[String: Any]] = []
         let inputs: Set<XCUIElement.ElementType> = [.textField, .textView, .searchField, .secureTextField]
-        func add(_ element: XCUIElementSnapshot) {
-            let frame = element.frame
-            guard !frame.isNull, !frame.isInfinite else { return element.children.forEach(add) }
+        func add(_ element: XCUIElementSnapshot, from origin: CGPoint, in parent: CGRect) {
+            var origin = origin
+            let own = element.frame
+            guard !own.isNull, !own.isInfinite else {
+                return element.children.forEach { add($0, from: origin, in: parent) }
+            }
+            if own.origin == .zero, own.size == parent.size, parent.origin != .zero { origin = parent.origin }
+            let frame = own.offsetBy(dx: origin.x, dy: origin.y)
             elements.append([
                 "id": element.identifier, "label": element.label, "input": inputs.contains(element.elementType),
                 "frame": [frame.minX, frame.minY, frame.width, frame.height].map { ($0 * 2).rounded() / 2 },
             ])
-            element.children.forEach(add)
+            element.children.forEach { add($0, from: origin, in: frame) }
         }
-        add(try XCUIApplication().snapshot())
+        add(try XCUIApplication().snapshot(), from: .zero, in: .zero)
         return try JSONSerialization.data(withJSONObject: elements, options: [.sortedKeys])
     }
 

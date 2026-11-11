@@ -6,7 +6,7 @@
 # standing in for an extension, last, since the extension it adds would show on the menu and in Settings.
 # Into shots/raw/parity/<screen>-<appearance>.png, with what XCUITest saw in <screen>-<appearance>.json for the
 # keyboard's. PARTS picks some of light (the keyboard's), dark, app and chats, so they can run side by side on several
-# Macs (.github/workflows/screens.yml).
+# Macs (.github/workflows/screens.yml), and SECTIONS some of the keyboard's (ParityShots).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
@@ -43,7 +43,7 @@ for appearance in light dark; do
   [[ $parts == *" $appearance "* ]] || continue
   step "$appearance"
   xcrun simctl ui "$ID" appearance "$appearance"
-  for section in layers typing held swipe menu emoji gif clipboard transcripts dictation-listening dictation-writing; do
+  for section in ${SECTIONS:-layers typing held swipe menu emoji gif clipboard transcripts dictation-listening dictation-writing}; do
     voice=
     if [[ $section == dictation-* ]]; then
       /usr/bin/python3 scripts/voiceapp.py "$ID" "$group" "${section#dictation-}" &

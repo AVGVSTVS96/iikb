@@ -1,10 +1,11 @@
 // Stops the wall clock in iikb's app and keyboard at IIKB_NOW (seconds since 1970), so a screen that shows a date or an
-// age ("48m", Today, a week's chart) draws the same in every run (scripts/screens). Loaded into the simulator's
-// processes through DYLD_INSERT_LIBRARIES (scripts/sim boot), it stops time only in executables inside iikb.app, so
-// the test runner, iOS's own services and certificate checks keep the real time. Monotonic clocks (animations, timers,
-// touches) keep running.
+// age ("48m", Today, a week's chart) draws the same in every run (scripts/screens.py). Loaded into the simulator's
+// processes through DYLD_INSERT_LIBRARIES (scripts/sim boot), it stops time only in executables inside iikb.app, and
+// there not for the security and networking libraries, whose certificate checks need the real date (a stopped one
+// before a server's certificate was issued fails every request). Monotonic clocks (animations, timers, touches) run on.
 
 #include <CoreFoundation/CoreFoundation.h>
+#include <dlfcn.h>
 #include <limits.h>
 #include <mach-o/dyld.h>
 #include <stdlib.h>
@@ -21,7 +22,7 @@
 static int state = -1;
 static struct timespec now;
 
-static int stopped(void) {
+static int stopped(const void *caller) {
   if (state < 0) {
     char path[PATH_MAX];
     uint32_t size = sizeof path;
@@ -33,35 +34,46 @@ static int stopped(void) {
       now.tv_nsec = (long)((seconds - (double)now.tv_sec) * 1e9);
     }
   }
-  return state;
+  if (!state) return 0;
+  static const char *const real[] = {"/Security.framework/", "/CFNetwork.framework/", "/Network.framework/",
+                                     "libboringssl", "libcoretls", "libnetwork"};
+  Dl_info image;
+  if (!caller || !dladdr(caller, &image) || !image.dli_fname) return 1;
+  for (size_t i = 0; i < sizeof real / sizeof *real; i++)
+    if (strstr(image.dli_fname, real[i])) return 0;
+  return 1;
 }
 
+#define CALLER __builtin_return_address(0)
+
 static int stopped_clock_gettime(clockid_t clock, struct timespec *out) {
-  if (clock != CLOCK_REALTIME || !stopped()) return clock_gettime(clock, out);
+  if (clock != CLOCK_REALTIME || !stopped(CALLER)) return clock_gettime(clock, out);
   *out = now;
   return 0;
 }
 
 static uint64_t stopped_clock_gettime_nsec_np(clockid_t clock) {
-  if (clock != CLOCK_REALTIME || !stopped()) return clock_gettime_nsec_np(clock);
+  if (clock != CLOCK_REALTIME || !stopped(CALLER)) return clock_gettime_nsec_np(clock);
   return (uint64_t)now.tv_sec * 1000000000ull + (uint64_t)now.tv_nsec;
 }
 
 static int stopped_gettimeofday(struct timeval *out, void *zone) {
-  if (!stopped()) return gettimeofday(out, zone);
+  if (!stopped(CALLER)) return gettimeofday(out, zone);
   if (out) *out = (struct timeval){.tv_sec = now.tv_sec, .tv_usec = (suseconds_t)(now.tv_nsec / 1000)};
   return 0;
 }
 
 static time_t stopped_time(time_t *out) {
-  if (!stopped()) return time(out);
+  if (!stopped(CALLER)) return time(out);
   if (out) *out = now.tv_sec;
   return now.tv_sec;
 }
 
+// WHY: the real CFAbsoluteTimeGetCurrent reads the clock from inside CoreFoundation, which would come back stopped.
 static CFAbsoluteTime stopped_CFAbsoluteTimeGetCurrent(void) {
-  if (!stopped()) return CFAbsoluteTimeGetCurrent();
-  return (double)now.tv_sec + (double)now.tv_nsec / 1e9 - kCFAbsoluteTimeIntervalSince1970;
+  struct timespec at = now;
+  if (!stopped(CALLER)) clock_gettime(CLOCK_REALTIME, &at);
+  return (double)at.tv_sec + (double)at.tv_nsec / 1e9 - kCFAbsoluteTimeIntervalSince1970;
 }
 
 INTERPOSE(stopped_clock_gettime, clock_gettime)
