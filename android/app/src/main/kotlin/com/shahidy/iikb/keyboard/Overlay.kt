@@ -41,7 +41,10 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
  * keys up), drawn with Compose over [KeyboardView], which keeps drawing the bar and keys around it. Sizes are dp, and
  * text is dp too, as the keys' is, whatever the phone's font size.
  */
-class Overlay(context: Context, private val actions: Actions, private val gifs: Gifs?, private val chats: Chats) {
+class Overlay(
+    context: Context, private val actions: Actions, private val gifs: Gifs?, private val chats: Chats,
+    private val photos: ChatPhotos,
+) {
     interface Actions {
         fun paste(text: String)
         /** An image clip picked, by its file (`Clips.Row.image`). */
@@ -64,8 +67,12 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         fun more()
         /** The chat's messages tapped with the keys up: they go down, so there's room to read. */
         fun browse()
-        /** The message box's send: what's in the chat's line goes. */
+        /** The message box's send: what's in the chat's line goes, with the photos attached. */
         fun send()
+        /** The paperclip beside the message box: your photos come up in the keys' place, or go back down. */
+        fun attach()
+        /** Turn On under the photo grid: iikb opens to ask for your photos. */
+        fun allowPhotos()
         /** A link in a message tapped, or Open Link picked: the phone opens it in its app for links. */
         fun openLink(url: String)
         /** Copy Link picked on a held link: it goes on the clipboard as text. */
@@ -94,6 +101,8 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
         val fresh: Set<Int> = emptySet(),
         /** The bar is compact (a short screen, landscape): a panel over the keys shows one row of results, as iOS's. */
         val compact: Boolean = false,
+        /** An open chat's photo grid is up in the keys' place, the chat over it as with the keys up. */
+        val picking: Boolean = false,
     ) {
         /** The space from the keys block's right edge to the keyboard's, which a panel keeps clear as on the left. */
         val endInset get() = width - maxX
@@ -153,6 +162,7 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
                 LocalActions provides actions,
                 LocalGifs provides gifs,
                 LocalChats provides chats,
+                LocalChatPhotos provides photos,
                 LocalHold provides { held = it },
                 LocalHeld provides holding,
             ) {
@@ -164,6 +174,19 @@ class Overlay(context: Context, private val actions: Actions, private val gifs: 
                     "transcripts" -> TranscriptsPanel(state)
                 }
             }
+        }
+    }
+
+    /** An open chat's photo grid, in the keys' place under the bar. */
+    val grid = ComposeView(context).apply {
+        setContent {
+            val state = state ?: return@setContent
+            if (!state.picking) return@setContent
+            CompositionLocalProvider(
+                LocalDensity provides Density(resources.displayMetrics.density, 1f),
+                LocalColors provides state.colors,
+                LocalActions provides actions,
+            ) { PhotoGrid(photos) }
         }
     }
 

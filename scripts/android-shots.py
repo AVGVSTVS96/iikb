@@ -6,6 +6,7 @@ as they were at the end, so other agents' runs find the emulator as they left it
 
 python3 android-shots.py <work> [section…]   (<work>/demo holds shots/demo/make.py's files)
 """
+import base64
 import html
 import json
 import os
@@ -26,7 +27,7 @@ STAGE = "/data/local/tmp/iikb-shots"
 FOUNDATION = 978307200
 PROMPT = "Type something with iikb"
 SECTIONS = ["layers", "typing", "held", "swipe", "menu", "emoji", "gif", "clipboard", "transcripts", "dictation",
-            "app", "chats", "hint", "replacement", "style"]
+            "app", "chats", "photos", "retry", "hint", "replacement", "style"]
 
 # iOS's apps in the made-up data, as the Android apps that do the same job (AppNames shows a missing one by its
 # package's last part, so each reads as its app).
@@ -702,11 +703,13 @@ CHATS = [
 
 class Extension(BaseHTTPRequestHandler):
     changed = threading.Condition()
+    dropped = False
     threads = {}
     versions = {}
 
     @classmethod
     def fresh(cls):
+        cls.dropped = False
         cls.threads = json.loads(json.dumps(THREADS))
         cls.versions = {chat: 1 for chat in THREADS}
         return cls
@@ -733,20 +736,30 @@ class Extension(BaseHTTPRequestHandler):
         with self.changed:
             if after == str(self.versions[chat]):
                 self.changed.wait(25)
+            if self.dropped:
+                self.close_connection = True
+                return
             return self.answer(200, {"version": str(self.versions[chat]), "messages": self.threads[chat]})
 
     def do_POST(self):
         chat = self.path.strip("/")
-        text = json.loads(self.rfile.read(int(self.headers["Content-Length"])))["text"]
-        self.post(chat, {"from": "me", "text": text})
-        threading.Timer(1.2, self.post, (chat, {"from": chat, "text": f"Got it: “{text}”."})).start()
+        sent = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        text, files = sent["text"], []
+        for photo in sent.get("files", []):
+            url = f"files/sent-{len(FILES)}.jpg"
+            FILES[url] = (photo["type"], base64.b64decode(photo["data"]))
+            files.append({"name": url[6:], "url": url, "type": photo["type"], "width": photo["width"], "height": photo["height"]})
+        self.post(chat, {"from": "me", "text": text, **({"files": files} if files else {})})
+        said = f"“{text}”" if text else f"{len(files)} photo{'s' if len(files) > 1 else ''}"
+        threading.Timer(1.2, self.post, (chat, {"from": chat, "text": f"Got it: {said}."})).start()
         self.answer(204)
 
-    def post(self, chat, message):
-        with self.changed:
-            self.threads[chat].append(message)
-            self.versions[chat] += 1
-            self.changed.notify_all()
+    @classmethod
+    def post(cls, chat, message):
+        with cls.changed:
+            cls.threads[chat].append(message)
+            cls.versions[chat] += 1
+            cls.changed.notify_all()
 
     def log_message(self, *args):
         pass
@@ -824,6 +837,65 @@ def chats():
     # The text node is as wide as a bubble may be, and "It's" sits at 0.41 of it on the first line, "Booked for 11. It's the one on".
     hold(x0 + (x1 - x0) * 0.41, y0 + 30)
     shot("panel-chat-select", 0.8)
+
+
+def photos():
+    """Android's own check of Chats' photos, which iOS's shots don't have yet: the grid without access, then with six
+    photos, two picked and shown in the box, and sent, each a JPEG the extension echoes back as a photo."""
+    sh(f"pm revoke {PACKAGE} android.permission.READ_MEDIA_IMAGES; pm revoke {PACKAGE} android.permission.READ_MEDIA_VISUAL_USER_SELECTED")
+    seed(extensions=json.dumps([{"name": "Notes", "url": serve(Extension.fresh())}]))
+    open_chat("Notes")
+    tap_described("Attach photos", 1.2)
+    shot("panel-chat-photos-off", 0.5)
+    folder = "/sdcard/Pictures/iikb-shots"
+    sh(f"mkdir -p {folder}")
+    for n in range(6):
+        local = os.path.join(work, f"photo-{n}.png")
+        with open(local, "wb") as file:
+            file.write(picture(1200 - 100 * n, 900 + 150 * n))
+        adb("push", local, f"{folder}/photo-{n}.png")
+        sh(f"am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file://{folder}/photo-{n}.png")
+    time.sleep(2)
+    sh(f"pm grant {PACKAGE} android.permission.READ_MEDIA_IMAGES")
+    try:
+        open_chat("Notes")
+        tap_described("Attach photos", 2)
+        shot("panel-chat-photos", 0.5)
+        grid = [bounds for _, description, bounds in nodes() if description == "Photo"]
+        if len(grid) < 2:
+            raise RuntimeError(f"the grid shows {len(grid)} photos")
+        tap(*center(grid[1]), 1.5)
+        tap(*center(grid[0]), 2.5)
+        shot("panel-chat-photos-picked", 0.5)
+        tap_described("Send", 4)
+        find(lambda text: text.startswith("Got it: 2 photos"), 10)
+        shot("panel-chat-photos-sent", 1)
+    finally:
+        sh(f"rm -rf {folder}; content delete --uri content://media/external/images/media --where \"relative_path='Pictures/iikb-shots/'\"")
+        sh(f"pm revoke {PACKAGE} android.permission.READ_MEDIA_IMAGES")
+
+
+def retry():
+    """Android's own check that a chat whose extension drops keeps trying: it says so, and the extension's next message
+    shows once it's back on the same port."""
+    url = serve(Extension.fresh())
+    server, port = servers[-1]
+    seed(extensions=json.dumps([{"name": "Notes", "url": url}]))
+    open_chat("Notes")
+    server.shutdown()
+    server.server_close()
+    with Extension.changed:
+        Extension.dropped = True
+        Extension.changed.notify_all()
+    find(lambda text: text.startswith("Can’t reach Notes"), 10)
+    shot("panel-chat-retrying", 0.5)
+    Extension.dropped = False
+    again = Quiet(("127.0.0.1", port), Extension)
+    threading.Thread(target=again.serve_forever, daemon=True).start()
+    servers.append((again, port))
+    Extension.post("notes", {"from": "notes", "text": "Back again."})
+    find("Back again.", 20)
+    shot("panel-chat-retried", 0.5)
 
 
 def hold(x, y, seconds=1.2):
@@ -922,7 +994,7 @@ def main():
             "layers": layers, "typing": typing, "held": held, "swipe": swiped, "menu": menu,
             "emoji": lambda: panel("emoji", "pizza"), "gif": lambda: panel("gif", "cat"),
             "clipboard": lambda: panel("clipboard", "sight"), "transcripts": lambda: panel("transcripts", "the"),
-            "dictation": dictation, "app": app, "chats": chats, "hint": hint, "replacement": replacement,
+            "dictation": dictation, "app": app, "chats": chats, "photos": photos, "retry": retry, "hint": hint, "replacement": replacement,
             "style": style,
         }
         failed = []

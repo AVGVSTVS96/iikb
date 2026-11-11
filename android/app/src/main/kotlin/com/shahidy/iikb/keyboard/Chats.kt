@@ -10,11 +10,13 @@ import com.shahidy.iikb.Service
 import com.shahidy.iikb.Services
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -111,29 +113,46 @@ class Chats(private val context: Context) {
         reading = null
     }
 
-    /** Sends `text` to the open chat, pending until the chat's next messages carry it; `failed` if it couldn't. */
-    fun send(text: String, failed: () -> Unit) {
-        val chat = open ?: return
-        messages = messages + Message("me", text, pending = true)
+    /**
+     * Sends `text` and `photos` to the open chat, pending until the chat's next messages carry them, the photos shown
+     * from the keyboard's own copies; `failed` if it couldn't. False with no chat open to send them to.
+     */
+    fun send(text: String, photos: List<ChatPhotos.Photo>, failed: () -> Unit): Boolean {
+        val chat = open ?: return false
+        val pending = Message(
+            "me", text, pending = true,
+            files = photos.map {
+                Message.File(it.name, it.file(context).toURI().toString(), "image/jpeg", it.width.toDouble(), it.height.toDouble())
+            }.ifEmpty { null },
+        )
+        messages = messages + pending
         work.execute {
-            val sent = post(chat, text)
+            val sent = post(chat, text, photos)
             main.post {
                 if (sent || open != chat) return@post
-                messages = messages.filterNot { it.pending == true && it.text == text }
+                messages = messages.filterNot { it === pending }
                 problem = "Not sent: ${chat.service.name} didn’t answer."
                 failed()
             }
         }
+        return true
     }
 
-    private fun follow(chat: Chat, version: String?, started: Int) {
+    /** A failed read says so and tries again, backing off from 1 s to 15 s, until the chat answers or closes. */
+    private fun follow(chat: Chat, version: String?, started: Int, wait: Long = FIRST_RETRY) {
         reading = work.submit {
             val read = read(chat, version)
             main.post {
                 if (started != generation || open != chat) return@post
                 if (read == null) {
-                    problem = "Can’t reach ${chat.service.name}. Pick the chat to try again."
-                    changed()
+                    if (problem == null) {
+                        problem = "Can’t reach ${chat.service.name}. Trying again."
+                        changed()
+                    }
+                    // timer: unlisted (a failed read has no event to wait for, so the next try backs off, 1 s up to 15 s)
+                    main.postDelayed({
+                        if (started == generation && open == chat) follow(chat, version, started, minOf(wait * 2, LAST_RETRY))
+                    }, wait)
                     return@post
                 }
                 if (read.version != version || problem != null) {
@@ -160,11 +179,12 @@ class Chats(private val context: Context) {
     /** The open chat's extension's token, which its files are fetched with. */
     val token get() = open?.service?.token
 
-    /** A file's bytes from the open chat's extension, with its token, off the main thread; `done` on it. */
+    /** A file's bytes from the open chat's extension, with its token, or a photo of yours on its way, off the main thread; `done` on it. */
     fun fetch(url: String, done: (ByteArray?) -> Unit) {
         val service = open?.service ?: return done(null)
         work.execute {
             val bytes = runCatching {
+                if (url.startsWith("file:")) return@runCatching java.io.File(java.net.URI(url)).readBytes()
                 val connection = open(service, url)
                 if (connection.responseCode in 200..299) connection.inputStream.use { it.readBytes() } else null
             }.getOrNull()
@@ -190,12 +210,28 @@ class Chats(private val context: Context) {
         return get(chat.service, url)
     }
 
-    private fun post(chat: Chat, text: String): Boolean = runCatching {
+    /** The words and the photos' JPEGs, in base64; a photo whose copy is gone goes without. */
+    private fun post(chat: Chat, text: String, photos: List<ChatPhotos.Photo>): Boolean = runCatching {
+        val files = photos.mapNotNull { photo ->
+            runCatching { photo.file(context).readBytes() }.getOrNull()?.let { jpeg ->
+                buildJsonObject {
+                    put("type", "image/jpeg")
+                    put("data", Base64.getEncoder().encodeToString(jpeg))
+                    put("width", photo.width)
+                    put("height", photo.height)
+                }
+            }
+        }
+        if (text.isEmpty() && files.isEmpty()) return@runCatching true
         val connection = open(chat.service, address(chat))
         connection.requestMethod = "POST"
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "application/json")
-        val body = buildJsonObject { put("text", text); put("id", UUID.randomUUID().toString()) }
+        val body = buildJsonObject {
+            put("text", text)
+            put("id", UUID.randomUUID().toString())
+            if (files.isNotEmpty()) put("files", JsonArray(files))
+        }
         connection.outputStream.use { it.write(body.toString().encodeToByteArray()) }
         connection.responseCode in 200..299
     }.getOrDefault(false)
@@ -219,5 +255,7 @@ class Chats(private val context: Context) {
 
     private companion object {
         val json = Json { ignoreUnknownKeys = true }
+        const val FIRST_RETRY = 1_000L
+        const val LAST_RETRY = 15_000L
     }
 }

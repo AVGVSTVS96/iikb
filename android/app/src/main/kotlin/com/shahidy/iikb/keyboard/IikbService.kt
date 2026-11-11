@@ -34,6 +34,7 @@ import androidx.core.view.inputmethod.InputContentInfoCompat
 import com.shahidy.iikb.Settings
 import com.shahidy.iikb.TypingStats
 import com.shahidy.iikb.app.MIC_ON
+import com.shahidy.iikb.app.AllowPhotos
 import com.shahidy.iikb.app.MainActivity
 import com.shahidy.iikb.app.stats.AppNames
 import com.shahidy.iikb.folds
@@ -72,6 +73,14 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     private var chatOpen = false
     /** What you'd begun in each chat you switched away from, by chat id. */
     private val drafts = mutableMapOf<String, String>()
+    /** The photos attached to the open chat's next message, and the grid they're picked in. */
+    private lateinit var photos: ChatPhotos
+    /** The photo grid is up in the keys' place, the chat over it as with the keys up. */
+    private var picking = false
+    /** The chat open when the keyboard last went away, to open again as it was if it comes back in the same field. */
+    private var keptChat: KeptChat? = null
+
+    private class KeptChat(val app: String?, val field: Int, val chat: String?, val text: String, val keysUp: Boolean)
     /** The menu's Chats shelf is following the chats' list. */
     private var listing = false
     private var feedback: Feedback? = null
@@ -125,6 +134,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         chats = Chats(this)
         seen = ChatSeen(this)
         chats.changed = ::render
+        photos = ChatPhotos(this)
         dictation = Dictation(this, this)
         dictation.onChange = ::showDictation
         dictation.onLevel = { view?.mic?.hear(it, dictation.recorded) }
@@ -192,6 +202,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         overlay?.destroy()
         gifs?.close()
         chats.close()
+        photos.close()
         sources.close()
         save()
         TypingStats.append(Native.takeTyping(typing))
@@ -240,7 +251,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             place()
             insets
         }
-        val overlay = Overlay(this, this, gifs, chats)
+        val overlay = Overlay(this, this, gifs, chats, photos)
         this.overlay = overlay
         overlay.window = window.window
         overlay.view.visibility = View.GONE
@@ -250,6 +261,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         root.clipChildren = false
         root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         root.addView(overlay.view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))
+        root.addView(overlay.grid, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))
         root.addView(overlay.peek, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))
         overlay.attach(root)
         window.window?.decorView?.let(overlay::attach)
@@ -277,10 +289,12 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         Native.documentChanged(handle)
         catchUp()
         render()
+        if (!restarting) reopenChat(info)
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         dictation.stop()
+        keepChat()
         leaveChat()
         menuOpen = false
         keysUp = false
@@ -456,13 +470,14 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         val frame = Frame.parse(Native.frame(handle))
         val chat = chatOpen
         if (frame.panel == null && !chat) keysUp = false
+        if (!chat) picking = false
         val fromMenu = chat || frame.panel in setOf("clipboard", "transcripts", "gif")
         val menuShown = menuOpen && frame.panel == null && !chat
         val inPlace = fromMenu && !keysUp
         val metrics = resources.displayMetrics
         val normal = (frame.toolbar.height + frame.height).toFloat()
         view.grown = if (menuShown || chat) maxOf(normal, metrics.heightPixels / metrics.density - ROOM_FOR_APP - HEADROOM) else 0f
-        view.keysHidden = menuShown || inPlace
+        view.keysHidden = menuShown || inPlace || picking
         view.barCovered = fromMenu && keysUp && !chat
         view.barOnKeys = chat && keysUp
         view.moreOn = menuShown || inPlace
@@ -504,6 +519,23 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
             overlay.view.layoutParams = params
         }
         overlay.state = overlayState(frame, panel, hasChats)
+        placeGrid(frame)
+    }
+
+    /** The photo grid in the keys' place, under the bar that sits on them. */
+    private fun placeGrid(frame: Frame) {
+        val grid = overlay?.grid ?: return
+        grid.visibility = if (picking) View.VISIBLE else View.GONE
+        if (!picking) return
+        val density = resources.displayMetrics.density
+        val params = grid.layoutParams as FrameLayout.LayoutParams
+        val wanted = ((frame.height - bottom).toFloat() * density).toInt()
+        val margin = ((view!!.grown - frame.height).toFloat() * density).toInt()
+        if (params.height != wanted || params.topMargin != margin) {
+            params.height = wanted
+            params.topMargin = margin
+            grid.layoutParams = params
+        }
     }
 
     private fun overlayState(frame: Frame, panel: String?, hasChats: Boolean): Overlay.State {
@@ -511,8 +543,9 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         return Overlay.State(
             Colors.of(frame.theme), bar.blockMinX.toFloat(), bar.blockMaxX.toFloat(),
             panel, frame.query, keysUp, bar.field.toFloat(), frame.width.toFloat(),
-            Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }, hasChats,
+            line, hasChats,
             dictation.phase.name, bottom.toFloat(), bar, if (chatOpen) seen.update(chats) else emptySet(), bar.compact,
+            chatOpen && picking,
         )
     }
 
@@ -547,8 +580,8 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     /** Another chat from its pill: the line you'd begun goes with the chat you left, and this chat's comes back. */
     private fun switchChat(chat: Chats.Chat) {
         if (!chatOpen || chat == chats.open) return
-        val line = Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }
-        chats.open?.let { open -> if (line?.text.isNullOrEmpty()) drafts.remove(open.id) else drafts[open.id] = line!!.text }
+        val begun = line?.text.orEmpty()
+        chats.open?.let { open -> if (begun.isEmpty()) drafts.remove(open.id) else drafts[open.id] = begun }
         Native.lineRestore(handle, (drafts.remove(chat.id) ?: "").encodeToByteArray())
         chats.pick(chat)
         render()
@@ -557,6 +590,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     /** Back to the app's field, as the keyboard found it. */
     private fun closeChat() {
         if (!chatOpen) return
+        photos.clear()
         leaveChat()
         field.forget()
         Native.documentChanged(handle)
@@ -565,6 +599,8 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
 
     private fun leaveChat() {
         if (!chatOpen) return
+        photos.dropGrid()
+        picking = false
         chats.stop()
         Native.leaveField(handle)
         Native.lineClose(handle)
@@ -573,16 +609,54 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         currentInputEditorInfo?.let(::traits)
     }
 
-    /** What return took from the line goes to the open chat; if it can't, it comes back to the line, unless you've begun another. */
+    private val line get() = Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }
+
+    /** What return took from the line goes to the open chat, with the photos attached. */
     private fun sendTaken() {
-        val text = Native.lineTake(handle)?.decodeToString()?.trim()?.takeIf { it.isNotEmpty() } ?: return
-        chats.send(text) {
-            val line = Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }
-            if (chatOpen && line?.text.isNullOrEmpty()) {
-                Native.lineRestore(handle, text.encodeToByteArray())
-                render()
-            }
+        deliver(Native.lineTake(handle)?.decodeToString()?.trim() ?: return)
+    }
+
+    /**
+     * `text` and the photos attached go to the open chat, and with photos the chat comes back down to read. If they
+     * can't, they come back to the box, the text unless you've begun another.
+     */
+    private fun deliver(text: String) {
+        val attached = photos.attached
+        if (text.isEmpty() && attached.isEmpty()) return
+        val sending = chats.send(text, attached) {
+            if (!chatOpen) return@send
+            if (text.isNotEmpty() && line?.text.isNullOrEmpty()) Native.lineRestore(handle, text.encodeToByteArray())
+            photos.restore(attached)
+            render()
         }
+        if (!sending) {
+            if (text.isNotEmpty() && line?.text.isNullOrEmpty()) Native.lineRestore(handle, text.encodeToByteArray())
+            return render()
+        }
+        photos.clear()
+        if (attached.isNotEmpty()) {
+            keysUp = false
+            picking = false
+        }
+        render()
+    }
+
+    /** The open chat as the keyboard goes away, the photo grid down, so it can open again as it was. */
+    private fun keepChat() {
+        keptChat = if (chatOpen) {
+            KeptChat(app, currentInputEditorInfo?.fieldId ?: 0, chats.open?.id, line?.text.orEmpty(), keysUp && !picking)
+        } else null
+    }
+
+    /** The chat kept when the keyboard went away opens again in the same field; elsewhere, its photos are let go. */
+    private fun reopenChat(info: EditorInfo) {
+        val kept = keptChat ?: return
+        keptChat = null
+        if (kept.app != info.packageName || kept.field != info.fieldId) return photos.clear()
+        startChat(kept.chat)
+        Native.lineRestore(handle, kept.text.encodeToByteArray())
+        keysUp = kept.keysUp
+        render()
     }
 
     /** The GIF feed follows the panel's search, and shows trending on the menu's shelf. */
@@ -812,6 +886,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         feedback(Feedback.Kind.OTHER)
         if (keysUp) {
             keysUp = false
+            picking = false
             return render()
         }
         menuOpen = true
@@ -819,10 +894,30 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     }
 
     override fun raiseKeys() {
-        if (keysUp) return
+        if (keysUp && !picking) return
         feedback(Feedback.Kind.OTHER)
         keysUp = true
+        picking = false
         render()
+    }
+
+    override fun attach() {
+        feedback(Feedback.Kind.OTHER)
+        if (picking) {
+            keysUp = false
+            picking = false
+            return render()
+        }
+        photos.show()
+        keysUp = true
+        picking = true
+        render()
+    }
+
+    /** iikb opens to ask Android for your photos, which the keyboard shares, and goes back to the app you're in. */
+    override fun allowPhotos() {
+        feedback(Feedback.Kind.OTHER)
+        startActivity(Intent(this, AllowPhotos::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     override fun appearance() {
@@ -846,6 +941,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         }
         if (chatOpen && keysUp) {
             keysUp = false
+            picking = false
             render()
         }
     }
@@ -910,11 +1006,16 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
 
     override fun browse() {
         keysUp = false
+        picking = false
         render()
     }
 
-    /** The send button sends as return does. */
+    /** The send button sends as return does; photos with nothing written go on their own. */
     override fun send() {
+        if (chatOpen && line?.text.isNullOrEmpty() && photos.attached.isNotEmpty()) {
+            feedback(Feedback.Kind.SEPARATOR)
+            return deliver("")
+        }
         val index = view?.frame?.caps?.indexOfFirst { it.action == "return" }?.takeIf { it >= 0 } ?: return
         feedback(Feedback.Kind.SEPARATOR)
         event { Native.trigger(handle, index) }

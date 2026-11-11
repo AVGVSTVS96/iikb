@@ -70,11 +70,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -111,6 +115,7 @@ import kotlin.math.min
 import kotlinx.coroutines.withTimeoutOrNull
 
 val LocalChats = staticCompositionLocalOf<Chats> { error("no chats") }
+val LocalChatPhotos = staticCompositionLocalOf<ChatPhotos> { error("no photos") }
 
 /**
  * The chats panel (docs/extensions.md), as iOS's `ChatPanel`: the open chat's messages, yours on the right, over the
@@ -157,7 +162,7 @@ fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
                 photo?.let { PhotoView(it) { photo = null } }
             }
             Spacer(Modifier.size(6.dp))
-            MessageBox(line, chats.open?.name?.let { "Message $it" } ?: "Message", caret = keysUp, backdrop)
+            MessageBox(line, chats.open?.name?.let { "Message $it" } ?: "Message", caret = keysUp && !state.picking, backdrop)
         }
         // More's glass starts where the keys and the messages do, and the tabs a key's gap after it, as iOS's.
         val top = (bar.top + (bar.bar - TABS_HEIGHT) / 2).toFloat()
@@ -516,49 +521,127 @@ fun markdown(text: String, opens: ((String) -> Unit)? = null): AnnotatedString =
  * keys typed (or the placeholder), the caret while the keys are up, growing a line at a time to five, past which it
  * scrolls. Send, solid on the glass, grows in at its end once there's something to send and shrinks away when there
  * isn't. It has no mic of its own: the keyboard's one mic dictates into it as into any field. A tap brings the keys up.
+ * Photos go with the words: a paperclip beside the box, as in Telegram, and what's attached above the words in it, each
+ * with its ✕, as in Messages. Held, it offers the system's Paste, which attaches copied photos as photos.
  */
 @Composable
 private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, backdrop: com.kyant.backdrop.Backdrop) {
     val look = LocalColors.current
     val actions = LocalActions.current
+    val photos = LocalChatPhotos.current
+    val attached = photos.attached
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val empty = line.text.isEmpty()
-    val canSend = line.text.isNotBlank()
+    val canSend = line.text.isNotBlank() || attached.isNotEmpty()
     val scroll = rememberScrollState()
     val shape = RoundedCornerShape(20.dp)
-    Box(
-        Modifier.fillMaxWidth().heightIn(min = 40.dp).glass(shape, backdrop, look.dark, under = look.card)
-            .clickable(remember { MutableInteractionSource() }, indication = null) { if (!caret) actions.raiseKeys() },
-    ) {
+    val paste = rememberBoxPaste()
+    var bounds by remember { mutableStateOf(Rect.Zero) }
+    Row(verticalAlignment = Alignment.Bottom) {
         Box(
-            Modifier.heightIn(max = (22 * 5 + 18).dp).verticalScroll(scroll)
-                .padding(start = 14.dp, end = (BUTTON + 2 * MARGIN).dp, top = 9.dp, bottom = 9.dp),
-        ) {
-            BasicText(
-                if (empty) AnnotatedString(placeholder) else AnnotatedString(line.text),
-                style = LINES.copy(color = if (empty) look.secondary else look.label),
-                maxLines = if (empty) 1 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis,
-                onTextLayout = { layout = it },
-                modifier = Modifier.fillMaxWidth().drawWithContent {
-                    drawContent()
-                    val shown = layout ?: return@drawWithContent
-                    if (!caret) return@drawWithContent
-                    val at = if (empty) 0 else line.caret.coerceIn(0, line.text.length)
-                    val rect = shown.getCursorRect(at)
-                    val height = 22.dp.toPx()
-                    drawRect(look.accent, Offset(rect.left, rect.center.y - height / 2), Size(2.dp.toPx(), height))
-                },
-            )
-        }
-        LaunchedEffect(line.text) { scroll.scrollTo(scroll.maxValue) }
-        val motion = spring<Float>(dampingRatio = 1 - BUTTON_BOUNCE, stiffness = (2 * PI / BUTTON_SPRING).let { (it * it).toFloat() })
-        val send by animateFloatAsState(if (canSend) 1f else 0f, motion, label = "send")
-        Box(
-            Modifier.align(Alignment.BottomEnd).padding(MARGIN.dp).size(BUTTON.dp).appear(send)
-                .background(look.accent, CircleShape)
-                .clickable(remember { MutableInteractionSource() }, indication = null, enabled = canSend) { actions.send() },
+            Modifier.size(ATTACH.dp).glass(CircleShape, backdrop, look.dark, under = look.card).clip(CircleShape)
+                .clickable(remember { MutableInteractionSource() }, indication = null, onClick = actions::attach)
+                .semantics { contentDescription = "Attach photos" },
             contentAlignment = Alignment.Center,
-        ) { Glyph("arrow.up", look.accentLabel, SEND_GLYPH.dp, weight = Glyphs.SEMIBOLD) }
+        ) { Glyph("paperclip", look.label, Glyphs.square(19f).dp) }
+        Spacer(Modifier.size(ATTACH_GAP.dp))
+        Box(
+            Modifier.weight(1f).heightIn(min = 40.dp).glass(shape, backdrop, look.dark, under = look.card)
+                .onGloballyPositioned { bounds = it.boundsInRoot() }
+                .pointerInput(caret) {
+                    detectTapGestures(onTap = { if (!caret) actions.raiseKeys() }, onLongPress = { paste(bounds) })
+                },
+        ) {
+            Column {
+                if (attached.isNotEmpty()) Attached(attached)
+                Box(
+                    Modifier.heightIn(max = (22 * 5 + 18).dp).verticalScroll(scroll)
+                        .padding(start = 14.dp, end = (BUTTON + 2 * MARGIN).dp, top = 9.dp, bottom = 9.dp),
+                ) {
+                    BasicText(
+                        if (empty) AnnotatedString(placeholder) else AnnotatedString(line.text),
+                        style = LINES.copy(color = if (empty) look.secondary else look.label),
+                        maxLines = if (empty) 1 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { layout = it },
+                        modifier = Modifier.fillMaxWidth().drawWithContent {
+                            drawContent()
+                            val shown = layout ?: return@drawWithContent
+                            if (!caret) return@drawWithContent
+                            val at = if (empty) 0 else line.caret.coerceIn(0, line.text.length)
+                            val rect = shown.getCursorRect(at)
+                            val height = 24.dp.toPx()
+                            drawRect(look.accent, Offset(rect.left, rect.center.y - height / 2), Size(2.dp.toPx(), height))
+                        },
+                    )
+                }
+            }
+            LaunchedEffect(line.text) { scroll.scrollTo(scroll.maxValue) }
+            val motion = spring<Float>(dampingRatio = 1 - BUTTON_BOUNCE, stiffness = (2 * PI / BUTTON_SPRING).let { (it * it).toFloat() })
+            val send by animateFloatAsState(if (canSend) 1f else 0f, motion, label = "send")
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(MARGIN.dp).size(BUTTON.dp).appear(send)
+                    .background(look.accent, CircleShape)
+                    .clickable(remember { MutableInteractionSource() }, indication = null, enabled = canSend) { actions.send() }
+                    .semantics { contentDescription = "Send" },
+                contentAlignment = Alignment.Center,
+            ) { Glyph("arrow.up", look.accentLabel, SEND_GLYPH.dp, weight = Glyphs.SEMIBOLD) }
+        }
+    }
+}
+
+/** The attached photos in a row inside the box, above the words, each rounded with its ✕; the newest scrolled into view. */
+@Composable
+private fun Attached(attached: List<ChatPhotos.Photo>) {
+    val look = LocalColors.current
+    val photos = LocalChatPhotos.current
+    val context = LocalContext.current
+    val row = rememberLazyListState()
+    LaunchedEffect(attached.size) { row.scrollToItem(attached.lastIndex.coerceAtLeast(0)) }
+    LazyRow(
+        Modifier.padding(start = STRIP_PAD.dp, top = STRIP_PAD.dp, end = STRIP_PAD.dp).height(THUMB.dp),
+        state = row, horizontalArrangement = Arrangement.spacedBy(STRIP_PAD.dp),
+    ) {
+        itemsIndexed(attached, key = { _, photo -> photo.name }) { index, photo ->
+            Box(Modifier.size(THUMB.dp)) {
+                AsyncImage(
+                    remember(photo) { ImageRequest.Builder(context).data(photo.file(context)).build() }, "Photo", imageLoader(),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(look.key),
+                )
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 4.dp).size(22.dp).clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.55f))
+                        .clickable(remember { MutableInteractionSource() }, indication = null) { photos.remove(index) }
+                        .semantics { contentDescription = "Remove photo" },
+                    contentAlignment = Alignment.Center,
+                ) { Glyph("xmark", Color.White, Glyphs.square(9f).dp, weight = Glyphs.BOLD) }
+            }
+        }
+    }
+}
+
+/**
+ * The system's text toolbar over the box, offering Paste while there's something copied: photos are attached, as the
+ * box's own Paste attaches them on iOS, and anything else is typed into the box as text.
+ */
+@Composable
+private fun rememberBoxPaste(): (Rect) -> Unit {
+    val toolbar = LocalTextToolbar.current
+    val context = LocalContext.current
+    val actions = LocalActions.current
+    val photos = LocalChatPhotos.current
+    return { bounds ->
+        val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+        val clip = runCatching { clipboard.primaryClip }.getOrNull()
+        if (clip != null && clip.itemCount > 0) {
+            toolbar.showMenu(bounds, onPasteRequested = {
+                toolbar.hide()
+                val images = (0 until clip.itemCount).mapNotNull { clip.getItemAt(it).uri }
+                    .filter { context.contentResolver.getType(it)?.startsWith("image/") == true }
+                if (images.isNotEmpty()) photos.paste(images)
+                else clip.getItemAt(0).coerceToText(context)?.toString()?.takeIf { it.isNotEmpty() }?.let(actions::paste)
+            })
+        }
     }
 }
 
@@ -605,8 +688,8 @@ fun ChatShelf() {
                         else Column(Modifier.fillMaxSize()) {
                             Box(Modifier.height(18.dp), contentAlignment = Alignment.CenterStart) { name(Modifier) }
                             Text(
-                                latest, color = look.secondary, fontSize = 12.sp, lineHeight = 15.sp,
-                                maxLines = maxOf(((inner.value - 20) / 15).toInt(), 1), overflow = TextOverflow.Ellipsis,
+                                latest, color = look.secondary, fontSize = 12.sp, lineHeight = 14.sp,
+                                maxLines = maxOf(((inner.value - 20) / 14).toInt(), 1), overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(top = 2.dp),
                             )
                         }
@@ -638,6 +721,11 @@ private const val BOTTOM_FADE = 10f
 /** As iOS's `ImageBubble`. */
 private const val PHOTO_WIDTH = 240f
 private const val PHOTO_HEIGHT = 320f
+/** As iOS's `MessageField`: the paperclip's circle and its gap to the box, the attached photos' side and spacing. */
+private const val ATTACH = 40f
+private const val ATTACH_GAP = 8f
+private const val THUMB = 76f
+private const val STRIP_PAD = 8f
 /** As iOS's `MessageField`: send's side and margin, and the spring it grows in on. */
 private const val BUTTON = 28f
 private const val MARGIN = 6f
