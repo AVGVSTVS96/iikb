@@ -1,6 +1,6 @@
 enum Words {
-    static let apostrophes: Set<Character> = ["'", "’"]
-    static let openers: Set<Character> = ["(", "[", "{", "\"", "“", "'", "‘"]
+    static let apostrophes: Set<Character> = ["'", "’", "‘"]
+    static let openers: Set<Character> = ["(", "[", "{", "\"", "“", "'", "‘", "„", "‚", "«", "‹", "¿", "¡"]
 
     static func isWordCharacter(_ character: Character) -> Bool {
         character.isLetter || character.isNumber || apostrophes.contains(character)
@@ -29,7 +29,7 @@ enum Words {
 
     /// The word with straight apostrophes, as the lexicon and what you've typed are kept.
     static func plain(_ word: String) -> String {
-        word.contains("’") ? String(word.map { $0 == "’" ? "'" : $0 }) : word
+        String(word.map { apostrophes.contains($0) ? "'" : $0 })
     }
 
     static func current(in text: String) -> Substring {

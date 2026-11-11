@@ -81,7 +81,9 @@ extension TypingEngine {
     /// A word the corrector wrote, with its apostrophes curled where punctuation is smart, as typed ones are. The
     /// corrector reads and writes them straight.
     func written(_ word: String) -> String {
-        settings.smartPunctuation && traits.smartPunctuation ? String(word.map { $0 == "'" ? "’" : $0 }) : word
+        guard settings.smartPunctuation, traits.smartPunctuation else { return word }
+        let apostrophe = Language.named(settings.language).quotes[3]
+        return word.map { $0 == "'" ? apostrophe : String($0) }.joined()
     }
 
     public var showsSuggestions: Bool {

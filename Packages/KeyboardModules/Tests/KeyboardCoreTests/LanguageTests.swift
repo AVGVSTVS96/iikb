@@ -214,8 +214,8 @@ struct LanguageTests {
         #expect(abs(german.frame(of: "a")!.x - 24) < 1 && abs(swedish.frame(of: "z")!.x - 75) < 1)
     }
 
-    /// Apple's accent keys hold the accent for the next letter: French's ’ key types ´ when shifted, and a 13-inch iPad's
-    /// accents wait, while its other keys and Italian's type straight away.
+    /// Apple's accent keys, read off them in the simulator: French's ’ key on an iPhone accents the letter before it, a
+    /// 13-inch iPad's ´ ˋ ˆ ¨ wait for the next letter, while German's ^, its other keys and Italian's type straight away.
     @Test func accentKeysWaitForTheNextLetter() {
         let key = { (character: String, language: String, device: DeviceClass) -> Key? in
             var settings = KeyboardSettings()
@@ -228,12 +228,15 @@ struct LanguageTests {
             return nil
         }
         let french = key("'", "fr", .phone)
-        #expect(french?.text(shifted: true) == "´" && french?.text(shifted: false) == "'" && french?.isDeadKey == true)
-        #expect(key("^", "de", .largePad)?.isDeadKey == true && key("´", "de", .largePad)?.isDeadKey == true)
+        #expect(french?.text(shifted: true) == "´" && french?.text(shifted: false) == "'")
+        #expect(french?.accentsLetterBefore == true && french?.isDeadKey == false)
+        #expect(key("^", "de", .largePad)?.isDeadKey == false && key("´", "de", .largePad)?.isDeadKey == true)
+        #expect(key("ˋ", "es", .largePad)?.isDeadKey == true && key("ˆ", "fr", .largePad)?.isDeadKey == true)
         #expect(key("¨", "sv", .largePad)?.isDeadKey == true && key("e", "sv", .largePad)?.isDeadKey == false)
         #expect(key("'", "fr", .largePad)?.text(shifted: true) == "4" && key("'", "fr", .largePad)?.isDeadKey == false)
         #expect(key("ì", "it", .largePad)?.isDeadKey == false)
-        #expect(Accent.compose("´", "e") == "é" && Accent.compose("^", "o") == "ô" && Accent.compose("¨", "u") == "ü")
-        #expect(Accent.compose("`", "A") == "À" && Accent.compose("´", "q") == nil && Accent.compose("´", " ") == nil)
+        #expect(Accent.compose("´", "e") == "é" && Accent.compose("ˆ", "o") == "ô" && Accent.compose("¨", "u") == "ü")
+        #expect(Accent.compose("ˋ", "A") == "À" && Accent.compose("´", "q") == nil && Accent.compose("´", " ") == nil)
+        #expect(Accent.compose("^", "o") == nil)
     }
 }

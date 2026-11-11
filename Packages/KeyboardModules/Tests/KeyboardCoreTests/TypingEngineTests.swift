@@ -178,6 +178,73 @@ struct TypingEngineTests {
         #expect(document.text == "“don’t” a—b 'x'")
     }
 
+    /// What Apple's keyboard typed for the same keys in each language, read off it in the simulator.
+    @Test func smartQuotesAreTheLanguagesOwn() {
+        let typed = { (language: String, text: String) -> String in
+            var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
+            engine.settings.language = language
+            let document = TestDocument()
+            engine.type(text, in: document)
+            return document.text
+        }
+        let typedOnApple = "\"a\" 'b' c'd x\"e\""
+        #expect(typed("de", typedOnApple) == "„a“ ‚b‘ c‘d x“e“")
+        #expect(typed("fr", typedOnApple) == "«\u{A0}a\u{A0}» ‘b’ c’d x\u{A0}»e\u{A0}»")
+        #expect(typed("sv", typedOnApple) == "”a” ’b’ c’d x”e”")
+        for language in ["en", "es", "pt", "it"] {
+            #expect(typed(language, typedOnApple) == "“a” ‘b’ c’d x”e”")
+        }
+        #expect(typed("de", "(\"so\")") == "(„so“)")
+    }
+
+    /// A 13-inch iPad's accent key, as Apple's: its accent lands on the letter typed next, ´ then e is é, while a
+    /// letter that can't take it, a space or the accent again comes after it, and a delete leaves nothing waiting.
+    @Test func aDeadKeyAccentsTheNextLetter() {
+        var accent = Key.character("´")
+        accent.isDeadKey = true
+        var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
+        let document = TestDocument()
+        let press = { (engine: inout TypingEngine) in
+            _ = engine.handle(.type(accent, Tap(x: 0, y: 0, key: "´")), in: document)
+        }
+        for typed in ["e", "a", "q", "n", " ", "´"] {
+            press(&engine)
+            if typed == "´" { press(&engine) } else { engine.type(typed, in: document) }
+            engine.type(" ", in: document)
+        }
+        press(&engine)
+        engine.perform(.shift, in: document)
+        engine.type("e ", in: document)
+        press(&engine)
+        engine.perform(.delete, in: document)
+        engine.type("e", in: document)
+        #expect(document.text == "é á ´q ń ´  ´´ É e")
+    }
+
+    /// French's ’ key on an iPhone, as Apple's: it accents the vowel before it, types ’ after any other letter and ´
+    /// anywhere else, shifted or not.
+    @Test func frenchsAccentKeyAccentsTheLetterBeforeIt() {
+        var key = Key.character("'")
+        key.shifted = "´"
+        key.accentsLetterBefore = true
+        var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
+        let document = TestDocument()
+        let press = { (engine: inout TypingEngine) in
+            _ = engine.handle(.type(key, Tap(x: 0, y: 0, key: "'")), in: document)
+        }
+        for typed in ["", "e", "a", "u", "o", "i", "c", "n", "ee", "l"] {
+            engine.type(typed, in: document)
+            press(&engine)
+            if typed == "ee" { press(&engine) }
+            if typed == "l" { engine.type("e", in: document) }
+            engine.type(" ", in: document)
+        }
+        engine.type("e", in: document)
+        engine.perform(.shift, in: document)
+        press(&engine)
+        #expect(document.text == "´ é à û ô î c’ n’ eé’ l’e é")
+    }
+
     @Test func keysActOnTheirOwnPhaseOfTheTouch() {
         var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
         let document = TestDocument("ab")

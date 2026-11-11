@@ -301,16 +301,18 @@ extension KeyboardLayout {
 }
 
 extension KeyboardLayout {
-    /// The layout's accent keys made Apple's: shift typing what `letters` says, and a key whose accent is typed, or its
-    /// pair's, waiting for the next letter.
+    /// The layout's accent keys made Apple's: shift typing what `letters` says, a key that types an accent, or whose
+    /// pair does, waiting for the next letter, and one that types an accent only when shifted, French's ’ on an iPhone,
+    /// accenting the letter before it.
     func accenting(_ letters: LetterLayout) -> KeyboardLayout {
         var layout = self
         layout.rows = rows.map { row in
             row.map { item in
                 guard case .key(var key) = item, let value = item.character else { return item }
                 if !key.isPair { key.shifted = letters.shifted[value] }
-                let typed = [value, key.shifted, key.isPair ? key.secondary : nil].compactMap { $0 }
-                key.isDeadKey = typed.contains { Accent.marks[$0] != nil }
+                let accents = { (typed: String?) in typed.map { Accent.marks[$0] != nil } ?? false }
+                key.isDeadKey = accents(value) || key.isPair && accents(key.secondary)
+                key.accentsLetterBefore = !key.isDeadKey && accents(key.shifted)
                 return .key(key)
             }
         }

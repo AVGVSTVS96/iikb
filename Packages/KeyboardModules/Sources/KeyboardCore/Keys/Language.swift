@@ -8,6 +8,9 @@ public struct Language: Sendable, Identifiable {
     public let name: String
     /// What Apple's keyboard offers it, its own first.
     public let layouts: [LetterLayout]
+    /// What smart punctuation types for " and ', as Apple's keyboard does in it: the double quotes that open and
+    /// close, then the single ones, the closing one also its apostrophe. French's hold a no-break space inside.
+    public let quotes: [String]
     /// The layout `id` names (`KeyboardSettings.layout`), or the language's own where it offers none by that name.
     public func layout(_ id: String?) -> LetterLayout {
         layouts.first { $0.id == id } ?? layouts[0]
@@ -21,19 +24,20 @@ public struct Language: Sendable, Identifiable {
     public static let all: [Language] = [english, spanish, french, german, portuguese, italian, swedish]
 
     public static let english = Language(
-        id: "en", name: "English", layouts: [.qwerty, .azerty, .qwertz])
+        id: "en", name: "English", layouts: [.qwerty, .azerty, .qwertz], quotes: ["“", "”", "‘", "’"])
     public static let spanish = Language(
-        id: "es", name: "Español", layouts: [.spanish, .qwerty, .azerty, .qwertz])
+        id: "es", name: "Español", layouts: [.spanish, .qwerty, .azerty, .qwertz], quotes: ["“", "”", "‘", "’"])
     public static let french = Language(
-        id: "fr", name: "Français", layouts: [.french, .azerty, .qwerty, .qwertz])
+        id: "fr", name: "Français", layouts: [.french, .azerty, .qwerty, .qwertz],
+        quotes: ["«\u{A0}", "\u{A0}»", "‘", "’"])
     public static let german = Language(
-        id: "de", name: "Deutsch", layouts: [.german, .qwertz, .qwerty, .azerty])
+        id: "de", name: "Deutsch", layouts: [.german, .qwertz, .qwerty, .azerty], quotes: ["„", "“", "‚", "‘"])
     public static let portuguese = Language(
-        id: "pt", name: "Português", layouts: [.qwerty, .azerty, .qwertz])
+        id: "pt", name: "Português", layouts: [.qwerty, .azerty, .qwertz], quotes: ["“", "”", "‘", "’"])
     public static let italian = Language(
-        id: "it", name: "Italiano", layouts: [.qwerty, .azerty, .qwertz])
+        id: "it", name: "Italiano", layouts: [.qwerty, .azerty, .qwertz], quotes: ["“", "”", "‘", "’"])
     public static let swedish = Language(
-        id: "sv", name: "Svenska", layouts: [.swedish])
+        id: "sv", name: "Svenska", layouts: [.swedish], quotes: ["”", "”", "’", "’"])
 }
 
 extension Language: Hashable {

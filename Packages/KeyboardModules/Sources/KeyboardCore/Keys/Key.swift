@@ -50,6 +50,9 @@ public struct Key: Hashable, Sendable {
     /// Its accents wait for the next letter and land on it, ´ then e typing é, as Apple's accent keys do
     /// (`Accent.compose`).
     public var isDeadKey = false
+    /// It accents the vowel before it instead, types ’ after any other letter and ´ anywhere else, as French's ’ key
+    /// does on Apple's iPhone keyboard, shifted or not (`Accent.before`).
+    public var accentsLetterBefore = false
 
     public init(
         _ action: KeyAction, width: KeyWidth = .input, alternates: [String] = [], secondary: String? = nil,

@@ -55,6 +55,8 @@ public struct TypingEngine {
     /// The space just before the caret, if the keyboard just put it there: one you typed, or one a pick from the bar
     /// added after its word, which punctuation typed next goes before, as on Apple's keyboard.
     var lastSpace: LastSpace?
+    /// The accent an accent key just typed (`Key.isDeadKey`), which the letter typed next takes on, as Apple's do.
+    private var accent: String?
     private var shiftHold: ShiftHold?
     /// Delete went down with text in the panel's search, so holding it empties the search and stops there.
     private var deleteHeldInSearch = false
@@ -112,19 +114,24 @@ public struct TypingEngine {
         let wasSpace = lastSpace == .typed
         let picked = lastSpace == .picked
         let revert = self.revert
+        let accent = self.accent.flatMap { text.owned >= 1 && text.before.hasSuffix($0) ? $0 : nil }
         lastSpace = nil
         self.revert = nil
+        self.accent = nil
         if wasSpace, action != .delete { corrector?.changeMemory { $0.recordAfterSpace(isSpace: action == .space) } }
 
         switch action {
         case .character(let key):
             var typed = shift.isUppercase && layer == .letters ? key.uppercased() : key
-            if settings.smartPunctuation, traits.smartPunctuation {
+            if let accent, let accented = Accent.compose(accent, typed) {
+                write("", replacing: 1, in: document)
+                typed = accented
+            } else if settings.smartPunctuation, traits.smartPunctuation {
                 if typed == "-", text.before.last == "-", text.owned >= 1 {
                     write("", replacing: 1, in: document)
                     typed = "—"
                 } else {
-                    typed = Self.smartQuote(typed, after: text.before)
+                    typed = Self.smartQuote(typed, after: text.before, in: Language.named(settings.language))
                 }
             }
             if Self.wordEnders.contains(typed) {
@@ -196,6 +203,16 @@ public struct TypingEngine {
         suggestionsChanged()
     }
 
+    private mutating func accentLetterBefore(in document: some TextDocument) {
+        attach(document)
+        guard let last = text.before.last, last.isLetter else { return perform(.character("´"), in: document) }
+        guard let accented = Accent.before(last), panel == nil else { return perform(.character("’"), in: document) }
+        tally.keys += 1
+        write(accented, replacing: 1, in: document)
+        refreshShift()
+        suggestionsChanged()
+    }
+
     /// Writes back what an undo or redo gives, as its own step, which typing next doesn't join.
     private mutating func replay(_ edit: (string: String, replacing: Int)?, in document: some TextDocument) {
         guard let edit, panel == nil else { return }
@@ -224,6 +241,11 @@ public struct TypingEngine {
             if key.action == .delete { deleteHeldInSearch = false }
             guard key.action == .shift else { return false }
             releaseShift(in: document)
+        case .type(let key, _) where key.accentsLetterBefore:
+            accentLetterBefore(in: document)
+        case .type(let key, let tap) where key.isDeadKey && Accent.marks[tap.key] != nil:
+            perform(.character(tap.key), in: document)
+            accent = tap.key
         case .type(let key, let tap):
             perform(key.action == .space ? .space : .character(tap.key), in: document, tap: tap)
         case .swipe(let path):
@@ -607,11 +629,13 @@ extension TypingEngine {
         }
     }
 
-    static func smartQuote(_ text: String, after before: String?) -> String {
+    /// The quote `language` types for " or ': one that opens at the start of the text, after a space or an opener, and
+    /// otherwise one that closes.
+    static func smartQuote(_ text: String, after before: String?, in language: Language) -> String {
         let opens = before?.last.map { $0.isWhitespace || Words.openers.contains($0) } ?? true
         switch text {
-        case "'": return opens ? "‘" : "’"
-        case "\"": return opens ? "“" : "”"
+        case "'": return language.quotes[opens ? 2 : 3]
+        case "\"": return language.quotes[opens ? 0 : 1]
         default: return text
         }
     }

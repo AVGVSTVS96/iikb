@@ -56,11 +56,11 @@ enum LargePadLayouts {
                     shifted: ["°!\"#$%&/()=?`", "           ^", "           *", ">       ;:_"])
             case (.spanish, .spanish):
                 ISO(
-                    rows: ["º1234567890'¡", "qwertyuiop`+", "asdfghjklñ´ç", "<zxcvbnm,.-"],
+                    rows: ["º1234567890'¡", "qwertyuiopˋ+", "asdfghjklñ´ç", "<zxcvbnm,.-"],
                     shifted: ["ª!\"·$%&/()=?¿", "          ^*", "          ¨ ", ">       ;:_"])
             case (.french, .french), (.french, .azerty):
                 ISO(
-                    rows: ["@&é\"'(§è!çà)-", "azertyuiop^$", "qsdfghjklmù`", "<wxcvbn,;:="],
+                    rows: ["@&é\"'(§è!çà)-", "azertyuiopˆ$", "qsdfghjklmùˋ", "<wxcvbn,;:="],
                     shifted: ["#1234567890°_", "          ¨*", "          %£", ">      ?./+"])
             case (.italian, .qwerty):
                 ISO(
