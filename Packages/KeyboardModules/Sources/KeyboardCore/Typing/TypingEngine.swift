@@ -126,6 +126,8 @@ public struct TypingEngine {
                 }
             }
             if Self.wordEnders.contains(typed) {
+                // WHY: an address goes on after a period ("john@gmail.com"), so its run stays as typed.
+                if typed == "." { typing.before = [] }
                 commitWord(in: document)
                 if picked, text.before.last == " ", text.owned >= 1 {
                     write("", replacing: 1, in: document)
@@ -133,6 +135,8 @@ public struct TypingEngine {
                 }
             } else if let tap, typed.allSatisfy(Words.isWordCharacter) {
                 recordTap(tap, for: typed.lowercased())
+            } else if let tap {
+                typing.part(at: tap)
             }
             write(typed, in: document)
             tally.characters += typed.count

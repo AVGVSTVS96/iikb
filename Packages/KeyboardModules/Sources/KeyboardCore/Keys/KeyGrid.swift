@@ -60,6 +60,9 @@ public struct KeyGrid: Sendable {
     private var metrics = GridMetrics(
         columns: 1, sideInset: 0, keyGap: 0, rowGap: 0, keyHeight: 1, numberRowHeight: 1, topInset: 0)
     private var labels: [String: [(row: Int, key: Int)]] = [:]
+    /// A space bar that a field's own keys are cut out of (Instagram's @ and #), with the stretch of the row it and they
+    /// fill: the bar as it is in every other field, which is where a thumb that means the space goes.
+    private var bars: [(frame: Rect, stretch: Rect)] = []
 
     public init() {}
 
@@ -77,18 +80,35 @@ public struct KeyGrid: Sendable {
             let fillSpan = fills > 0 ? max(available / pitch - fixed, 0) / Double(fills) : 0
             var x = metrics.margin.leading + metrics.sideInset - metrics.keyGap / 2
             var keys: [(key: Key, frame: Rect)] = []
+            var touching: [Bool] = []
+            var apart = true
             for item in row {
                 let span = (item.width.span ?? fillSpan) * pitch
                 if case .key(let key) = item {
                     keys.append(
                         (key, Rect(x: x + metrics.keyGap / 2, y: y, width: span - metrics.keyGap, height: height)))
+                    touching.append(!apart)
+                    apart = false
+                } else {
+                    apart = true
                 }
                 x += span
+            }
+            for (index, key) in keys.enumerated() where key.key.action == .space {
+                var (first, last) = (index, index)
+                func isField(_ index: Int) -> Bool { keys[index].key.text(shifted: false) != nil }
+                while first > 0, touching[first], isField(first - 1) { first -= 1 }
+                while last + 1 < keys.count, touching[last + 1], isField(last + 1) { last += 1 }
+                guard first < last else { continue }
+                let (start, end) = (keys[first].frame.x, keys[last].frame.x + keys[last].frame.width)
+                bars.append((key.frame, Rect(x: start, y: y, width: end - start, height: height)))
             }
             let top = index == 0 ? -Double.infinity : y - metrics.rowGap / 2
             let bottom = index == layout.rows.count - 1 ? Double.infinity : y + height + metrics.rowGap / 2
             for (index, key) in keys.enumerated() {
-                if let label = key.key.label { labels[label, default: []].append((rows.count, index)) }
+                if let label = key.key.label ?? key.key.text(shifted: false) {
+                    labels[label, default: []].append((rows.count, index))
+                }
             }
             rows.append(keys)
             bands.append(top...bottom)
@@ -156,12 +176,26 @@ public struct KeyGrid: Sendable {
         return dx <= pitch.x / 4 && dy <= pitch.y / 4
     }
 
+    /// Whether a key labeled `label` touches one labeled `other`, corners included: where a thumb that misses the
+    /// other lands.
+    func touches(_ label: String, _ other: String) -> Bool {
+        let cells = { (label: String) in (labels[label] ?? []).map { cell(of: rows[$0.row][$0.key].frame) } }
+        let others = cells(other)
+        return cells(label).contains { a in
+            others.contains { b in
+                max(a.x - b.x - b.width, b.x - a.x - a.width, a.y - b.y - b.height, b.y - a.y - a.height) < pitch.x
+                    / 100
+            }
+        }
+    }
+
     var pitch: (x: Double, y: Double) {
         (metrics.available(in: width) / metrics.columns, metrics.keyHeight + metrics.rowGap)
     }
 
     func cell(of frame: Rect) -> Rect {
-        Rect(
+        let frame = bars.first { $0.frame == frame }?.stretch ?? frame
+        return Rect(
             x: frame.x - metrics.keyGap / 2, y: frame.y - metrics.rowGap / 2, width: frame.width + metrics.keyGap,
             height: frame.height + metrics.rowGap)
     }

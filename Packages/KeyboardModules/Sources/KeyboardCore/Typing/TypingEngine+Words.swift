@@ -23,11 +23,20 @@ struct StraySpace: Hashable {
 }
 
 /// The taps of the word being typed, the taps backspace erased (by position), and erased taps labeled by the letter
-/// retyped over them.
+/// retyped over them; and the taps before the word in the same run, when a key that's no part of a word was hit right
+/// after a word's letters ("great@"): those letters' taps and that key's, which may have been the space.
 struct WordTaps: Hashable {
     var letters: [Tap] = []
     var erased: [Int: Tap] = [:]
     var retyped: [TapSample] = []
+    var before: [Tap] = []
+
+    /// A key that's no part of a word: it goes on a run right after a word's letters, and ends one anywhere else.
+    mutating func part(at tap: Tap) {
+        before = letters.isEmpty ? [] : before + letters + [tap]
+        letters = []
+        erased = [:]
+    }
 
     mutating func add(_ tap: Tap, for letter: String, on grid: KeyGrid?) {
         if let erased = erased.removeValue(forKey: letters.count), let grid,
@@ -39,6 +48,12 @@ struct WordTaps: Hashable {
     }
 
     mutating func eraseLast() -> Bool {
+        if letters.isEmpty, before.popLast() != nil {
+            let word = before.lastIndex { !$0.key.allSatisfy(Words.isWordCharacter) }.map { $0 + 1 } ?? 0
+            letters = Array(before[word...])
+            before.removeSubrange(word...)
+            return true
+        }
         guard let tap = letters.popLast() else { return false }
         erased[letters.count] = tap
         return true
@@ -251,6 +266,16 @@ extension TypingEngine {
         let text = self.text.before
         let word = Words.current(in: text)
         guard !word.isEmpty else { return }
+        if let run = typedRun(in: text),
+            let words = corrector.spaced(run, context: String(text.dropLast(run.text.count))).map(written)
+        {
+            let typed = String(text.suffix(run.text.count))
+            write(words, replacing: typed.count, in: document)
+            revert = Revert(original: typed, replacement: words)
+            typing.letters = run.taps
+            tally.corrected += 1
+            return settle(words, typed: typed, after: (run.previous, nil), ending: ending)
+        }
         var final = String(word)
         var typedText = final
         var context = Words.context(before: word, in: text)
@@ -296,6 +321,20 @@ extension TypingEngine {
             tally.corrected += 1
         }
         settle(final, typed: typedText, after: context, ending: ending)
+    }
+
+    /// The word in progress with what its taps typed before it in the same run ("great@day"), when the keyboard typed
+    /// all of it where a word can start and each tap typed its character.
+    private func typedRun(in text: String) -> TypedWord? {
+        let taps = typing.before + typing.letters
+        guard correcting, !typing.before.isEmpty, self.text.owned >= taps.count, text.count >= taps.count else {
+            return nil
+        }
+        let run = text.suffix(taps.count)
+        guard Words.isCorrectable(run, in: text),
+            zip(run, taps).allSatisfy({ Words.plain(String($0)).lowercased() == $1.key.lowercased() })
+        else { return nil }
+        return TypedWord(String(run), taps: taps, previous: Words.previous(before: run, in: text))
     }
 
     /// You left the word in progress as it stands, by sending it or putting the keyboard away, so it's kept as typed.

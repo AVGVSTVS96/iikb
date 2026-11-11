@@ -15,7 +15,8 @@
 /// moves, and two good taps move it back.
 ///
 /// Offsets are in key cells, so a model survives small width changes; each layout signature (device class,
-/// orientation, layer, and the iPhone Duo open or folded) keeps its own keys.
+/// orientation, layer, and the iPhone Duo open or folded) keeps its own keys. The space bar's cell takes in a field's
+/// own keys beside it (`KeyGrid.cell`), so it's the same cell in every field.
 ///
 /// `recent` keeps each key's last taps for showing you where they land. The model never reads it, and it holds no
 /// order across keys, so it can't spell out what you typed.

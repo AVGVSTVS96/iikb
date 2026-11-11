@@ -530,8 +530,9 @@ extension Corrector {
 extension Corrector {
     /// The words a run of taps spells when its spaces went astray ("freatvday" → "great day", "iloveyou" → "I love you",
     /// "ab out" → "about", "1hrbut" → "1hr but"), each word read from its own taps after the word before it, with any typo
-    /// of its own. Between two words the space may have been typed, missed, or hit as a letter on the row above the space
-    /// bar, where a thumb that misses it lands; a space tap inside a word may have meant a letter. A run led by a number
+    /// of its own. Between two words the space may have been typed, missed, or hit as a letter whose key touches the
+    /// space bar, as likely as the tap fits where your space taps land; a space tap inside a word may have meant a
+    /// letter. A run led by a number
     /// starts with it, with any letters after it a word read as typed ("1hr", "2pm"). Only the likeliest words up to each
     /// point go on, so each word is read once and stays cached as the taps after it come in. A single word is read as
     /// several only when that's likelier than every reading of its taps as one known word.
@@ -544,9 +545,7 @@ extension Corrector {
     func missedSpaces(_ typed: TypedWord, context: String? = nil) -> (words: String, odds: Double)? {
         let letters = Array(typed.text)
         let spaced = letters.contains(" ")
-        guard let lexicon, letters.count >= 3, let spaceRow = grid.index(of: " ")?.row, spaced || !isKnown(typed) else {
-            return nil
-        }
+        guard let lexicon, letters.count >= 3, grid.index(of: " ") != nil, spaced || !isKnown(typed) else { return nil }
         let taps = aligned(typed.taps, to: letters)
         let keys = memory.touches.layout(grid)
         let model = languageModel(lexicon)
@@ -593,10 +592,11 @@ extension Corrector {
             else { return best }
             return literal
         }
-        /// A space, or a letter on the row above the space bar, may have been the space between two words.
+        /// A tap on the space bar or a key touching it, where a thumb that misses it lands, may have been the space
+        /// between two words: this is how well it fits where your space taps land.
         func asSpace(_ index: Int) -> Double? {
             let label = String(letters[index]).lowercased()
-            guard label == " " || grid.index(of: label)?.row == spaceRow - 1 else { return nil }
+            guard grid.touches(label, " ") else { return nil }
             guard !taps.isEmpty else { return shares(of: label).last }
             return keys.logLikelihood(x: taps[index].x, y: taps[index].y, for: " ")
         }
@@ -639,6 +639,41 @@ extension Corrector {
             alone.map { scored(Run(words: [$0.word], likelihood: $0.logLikelihood, score: $0.logPosterior)) }
             ?? -.infinity
         return (Words.matchCase(words, to: Substring(typed.text)), score - one)
+    }
+
+    /// The words of a run with a key that's no part of a word where a space belonged ("great@day", "teh#best"), each
+    /// read as if the space had been typed, when each such key touches the space bar and for its tap that's likelier
+    /// than as typed. As typed, the tap
+    /// meant the key it hit rather than the space bar, and the key runs two words into one the lexicon doesn't know,
+    /// which you type as seldom as you've kept one (`LanguageModel.novelty`). None when what's between the keys is no
+    /// word, as in a handle, or you've kept the run.
+    func spaced(_ run: TypedWord, context: String) -> String? {
+        let letters = Array(run.text)
+        guard let lexicon, run.taps.count == letters.count, !memory.isKept(run.text) else { return nil }
+        let keys = memory.touches.layout(grid)
+        let novelty = languageModel(lexicon).novelty
+        var words: [String] = []
+        let parts = letters.indices.split(omittingEmptySubsequences: false) { !Words.isWordCharacter(letters[$0]) }
+        for part in parts {
+            if part.lowerBound > 0 {
+                let tap = run.taps[part.lowerBound - 1]
+                let stray = String(letters[part.lowerBound - 1])
+                guard grid.touches(stray, " "), let space = keys.logLikelihood(x: tap.x, y: tap.y, for: " "),
+                    let key = keys.logLikelihood(x: tap.x, y: tap.y, for: stray),
+                    space + Math.log(1 - novelty) > key + Math.log(novelty)
+                else { return nil }
+            }
+            let word = TypedWord(
+                String(letters[part]), taps: Array(run.taps[part]),
+                previous: words.last?.split(separator: " ").last?.lowercased() ?? run.previous)
+            let known = isSpelled(word.text) || memory.count(of: word.text.lowercased()) > 1
+            guard Words.isCorrectable(Substring(word.text), in: word.text),
+                let read = correction(for: word, context: context + words.map { $0 + " " }.joined())
+                    ?? (known ? word.text : nil)
+            else { return nil }
+            words.append(read)
+        }
+        return words.joined(separator: " ")
     }
 
     /// A run's taps, one per character, when its number was typed with taps or without (each digit stands in its own
