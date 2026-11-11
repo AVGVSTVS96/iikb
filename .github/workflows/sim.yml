@@ -1,5 +1,5 @@
-# A simulator check on one of GitHub's Macs: the command scripts/ci was given, or scripts/verify on each push to main,
-# where a push waits for the run before it and a newer push replaces it in the wait.
+# A simulator check on GitHub's Macs: the command scripts/ci was given on one, or scripts/verify on each push to main,
+# its parts side by side on four, where a push waits for the run before it and a newer push replaces it in the wait.
 name: sim
 run-name: ${{ inputs.run || 'scripts/verify' }}
 on:
@@ -16,6 +16,10 @@ jobs:
   sim:
     runs-on: xcode-27
     timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        parts: ${{ fromJSON(github.event_name == 'push' && '["typing", "panels", "package rest voice", "dark"]' || '[""]') }}
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/mac
@@ -24,17 +28,17 @@ jobs:
       - name: check
         run: bash -c "$RUN"
         env:
-          RUN: ${{ inputs.run || 'scripts/verify' }}
+          RUN: ${{ inputs.run || format('PARTS="{0}" scripts/verify', matrix.parts) }}
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: shots
+          name: ${{ matrix.parts && format('shots-{0}', strategy.job-index) || 'shots' }}
           path: shots/raw/
           if-no-files-found: ignore
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: logs
+          name: ${{ matrix.parts && format('logs-{0}', strategy.job-index) || 'logs' }}
           path: |
             build/uitest/*.log
             build/uitest/**/*.log

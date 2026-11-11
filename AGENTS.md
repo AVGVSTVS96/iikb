@@ -52,7 +52,7 @@ bun run fix                                     # oxlint's fixes, then oxfmt
 scripts/phone                                   # main's last commit built, signed and put on the install link for the iPhone and iPad, then the build each device has (--rebuild even when nothing changed)
 scripts/backup <udid>                           # the iPhone's iikb data copied to ~/.local/share/iikb/backup here, never deleted, replaced files kept in versions/
 scripts/restore <udid> [--at <time>|now] [name…]  # the backup put back on the iPhone, all of it or the files named, as it is or as it was at a time; leaves out a copy much smaller than one replaced in the day after an install left iikb a new, empty container (docs/backup.md)
-scripts/ci scripts/verify                       # main's last commit on one iPhone Duo simulator: package and UI tests, light and dark, shots in shots/raw/verify/ (runs on every push to main)
+scripts/ci scripts/verify                       # main's last commit on one iPhone Duo simulator: package and UI tests, light and dark, shots in shots/raw/verify/ (every push to main runs its parts side by side on four Macs; PARTS="typing dark" picks some)
 scripts/ci scripts/test                         # KeyboardCore and KeyboardUI package tests on an iOS simulator
 scripts/ci scripts/uitest                       # type through the real extension (the iPhone Duo by default)
 ```

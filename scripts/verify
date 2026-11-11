@@ -3,8 +3,9 @@
 # one build of the app and every test, KeyboardUI's package tests, every UI test with Full Access on the simulator and
 # shots/demo's made-up transcripts in the app (each test capped at 5 minutes, as GitHub's Macs need, a failure retried
 # once) but the four that need another setup, the voice test with scripts/voiceapp.py standing in for the app, and the
-# screenshot tests again in dark, into shots/raw/verify/.
-# scripts/verify ["iPhone 17"] [iPhone-17] (OPEN=1 unfolds; ORIENTATION=landscape)
+# screenshot tests again in dark, into shots/raw/verify/. PARTS names the parts to run (package typing panels rest dark
+# voice), so a push to main runs them side by side on four Macs.
+# scripts/verify ["iPhone 17"] [iPhone-17] (OPEN=1 unfolds; ORIENTATION=landscape; PARTS="typing dark")
 set -euo pipefail
 cd "$(dirname "$0")/.."
 NAME=${1:-iPhone Duo}
@@ -41,32 +42,40 @@ uitest() {
   summary "$log"
 }
 
-step "package tests"
-prefix=$shots/package
-uitest package -only-testing:KeyboardUITests -skip-testing:KeyboardUITests/Evaluation
-
 # Messages stops answering in a slim simulator once a conversation opens, before iikb comes into it.
 messages=AppUITests/ToolPanelTests/testAHeldGifDragsIntoTheMessage
-for appearance in light dark; do
+typing=(TypingTests FirstTapTests SwipeTests FastTypingTests SuggestionTests OneHandedTests)
+panels=(PanelTests ToolPanelTests)
+# The real iPhone's chats (scripts/chatdevice), Control Center with its widget services (scripts/controltest), and a
+# recording said by a macOS voice (scripts/sharetest); the voice test is its own part.
+apart=(VoiceTests ChatBoxDeviceTests MicControlTests RecordingShareTests)
+only() { printf -- '-only-testing:AppUITests/%s ' "$@"; }
+skip() { printf -- '-skip-testing:AppUITests/%s ' "$@"; }
+appearance() {
   scripts/sim boot "$ID"
-  xcrun simctl ui "$ID" appearance "$appearance"
-  prefix=$shots/$appearance/iikb
-  step "ui tests, $appearance"
-  if [ "$appearance" = light ]; then
-    # The real iPhone's chats (scripts/chatdevice), Control Center with its widget services (scripts/controltest), and a
-    # recording said by a macOS voice (scripts/sharetest).
-    uitest light -only-testing:AppUITests -skip-testing:AppUITests/VoiceTests -skip-testing:AppUITests/ChatBoxDeviceTests \
-      -skip-testing:AppUITests/MicControlTests -skip-testing:AppUITests/RecordingShareTests -skip-testing:"$messages"
-  else
-    uitest dark -only-testing:AppUITests/PanelTests -only-testing:AppUITests/ToolPanelTests -only-testing:AppUITests/SuggestionShots \
-      -skip-testing:"$messages"
-  fi
-  step "voice test, $appearance"
-  /usr/bin/python3 scripts/voiceapp.py "$ID" "$group" &
-  app=$!
-  uitest "voice-$appearance" -only-testing:AppUITests/VoiceTests
-  kill "$app" 2>/dev/null || true
-  wait "$app" 2>/dev/null || true
+  xcrun simctl ui "$ID" appearance "$1"
+  prefix=$shots/$1/iikb
+}
+
+for part in ${PARTS:-package typing panels rest dark voice}; do
+  step "$part"
+  case $part in
+    package) prefix=$shots/package; uitest package -only-testing:KeyboardUITests -skip-testing:KeyboardUITests/Evaluation ;;
+    typing) appearance light; uitest typing $(only "${typing[@]}") ;;
+    panels) appearance light; uitest panels $(only "${panels[@]}") -skip-testing:"$messages" ;;
+    rest) appearance light; uitest rest -only-testing:AppUITests $(skip "${typing[@]}" "${panels[@]}" "${apart[@]}") ;;
+    dark) appearance dark; uitest dark $(only "${panels[@]}" SuggestionShots) -skip-testing:"$messages" ;;
+    voice)
+      for look in light dark; do
+        appearance "$look"
+        /usr/bin/python3 scripts/voiceapp.py "$ID" "$group" &
+        app=$!
+        uitest "voice-$look" $(only VoiceTests)
+        kill "$app" 2>/dev/null || true
+        wait "$app" 2>/dev/null || true
+      done ;;
+    *) echo "no part $part" >&2; exit 2 ;;
+  esac
 done
 step "done, $([ -z "${failed:-}" ] && echo passed || echo failed)"
 exit "${failed:-0}"
