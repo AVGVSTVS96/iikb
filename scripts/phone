@@ -18,6 +18,9 @@
 # Before building it runs scripts/gate and then scripts/formats on that commit, and puts up nothing that fails either.
 # When main can't get onto the link (a failed check, build or signing, or the Mac not answering), Config/notify, if set
 # up, is told why once, again only if the reason changes, and once more when a build goes up.
+# It also puts the build in hangar, the app on the iPhone that installs all of Bassim's development apps on his tap,
+# when hangar is on this box (~/Developer/hangar). Each build registers the URL scheme com.shahidy.iikb-<build>, which
+# hangar opens to know that build is installed and to bring iikb back up.
 # Then it prints the build on each device the Mac reaches, which is how you know what's been tapped.
 # Usage: scripts/phone [--now] [--rebuild]
 set -e
@@ -104,6 +107,7 @@ why="changelog build $number's changelog couldn't be made"
 for plist in Config/xtool/iikb-Info.plist Config/xtool/Keyboard-Info.plist Config/xtool/Controls-Info.plist; do
   python3 -c "import plistlib, sys; p = plistlib.load(open(sys.argv[1], 'rb')); p['CFBundleVersion'] = sys.argv[2]; plistlib.dump(p, open(sys.argv[1], 'wb'))" "$build/$plist" "$number"
 done
+python3 -c "import plistlib, sys; p = plistlib.load(open(sys.argv[1], 'rb')); p['CFBundleURLTypes'].append({'CFBundleURLSchemes': ['com.shahidy.iikb-' + sys.argv[2]]}); plistlib.dump(p, open(sys.argv[1], 'wb'))" "$build/Config/xtool/iikb-Info.plist" "$number"
 python3 - "$build" "$commit" <<'PY'
 import plistlib, subprocess, sys
 build, commit = sys.argv[1], sys.argv[2]
@@ -189,5 +193,10 @@ find "$page" -name 'iikb-*.ipa' ! -name "iikb-$number.ipa" -delete
 echo "$number $(git rev-parse "$commit")" > "$stamp"
 why=
 echo "build $number (main $commit) is on the install link, $url/: tap Install there in Safari on the iPhone or iPad"
+hangar=$HOME/Developer/hangar/bin/hangar
+if [ -x "$hangar" ]; then
+  notes=$(python3 -c "import plistlib, sys; print('; '.join(r['change'] for r in plistlib.load(open(sys.argv[1], 'rb'))['IIKBChangelog'] if r['build'] > int(sys.argv[2] or 0))[:200])" Config/xtool/iikb-Info.plist "$offered")
+  "$hangar" put "$page/iikb-$number.ipa" ${notes:+--notes "$notes"} || echo "build $number couldn't be put in hangar" >&2
+fi
 unblock "build $number is on the link"
 on_devices
