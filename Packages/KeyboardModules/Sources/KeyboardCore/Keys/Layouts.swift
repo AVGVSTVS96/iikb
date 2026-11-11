@@ -253,7 +253,9 @@ public enum Layouts {
             case .pad: PadLayouts.layout(for: context)
             case .largePad: LargePadLayouts.layout(for: context)
             }
-        return context.language == .english ? layout : layout.in(context.language)
+        guard context.language != .english else { return layout }
+        let local = layout.in(context.language)
+        return context.layer == .letters && context.language != .italian ? local.accenting(context.letters) : local
     }
 }
 
@@ -291,6 +293,24 @@ extension KeyboardLayout {
                     let right = characters.firstIndex(of: value)! >= characters.count / 2
                     key.alternates = options.count > 1 ? (right ? options.reversed() : options) : []
                 }
+                return .key(key)
+            }
+        }
+        return layout
+    }
+}
+
+extension KeyboardLayout {
+    /// The layout's accent keys made Apple's: shift typing what `letters` says, and a key whose accent is typed, or its
+    /// pair's, waiting for the next letter.
+    func accenting(_ letters: LetterLayout) -> KeyboardLayout {
+        var layout = self
+        layout.rows = rows.map { row in
+            row.map { item in
+                guard case .key(var key) = item, let value = item.character else { return item }
+                if !key.isPair { key.shifted = letters.shifted[value] }
+                let typed = [value, key.shifted, key.isPair ? key.secondary : nil].compactMap { $0 }
+                key.isDeadKey = typed.contains { Accent.marks[$0] != nil }
                 return .key(key)
             }
         }

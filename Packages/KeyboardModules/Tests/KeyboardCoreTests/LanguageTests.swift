@@ -213,4 +213,27 @@ struct LanguageTests {
         #expect(germanRows == ["qwertzuiopü", "asdfghjklöä", "yxcvbnm,.ß"])
         #expect(abs(german.frame(of: "a")!.x - 24) < 1 && abs(swedish.frame(of: "z")!.x - 75) < 1)
     }
+
+    /// Apple's accent keys hold the accent for the next letter: French's ’ key types ´ when shifted, and a 13-inch iPad's
+    /// accents wait, while its other keys and Italian's type straight away.
+    @Test func accentKeysWaitForTheNextLetter() {
+        let key = { (character: String, language: String, device: DeviceClass) -> Key? in
+            var settings = KeyboardSettings()
+            settings.language = language
+            let screen = device == .largePad ? Size(width: 1032, height: 1376) : Size(width: 402, height: 874)
+            let context = LayoutContext(device: device, layer: .letters, screen: screen, settings: settings)
+            for row in Layouts.layout(for: context).rows {
+                for case .key(let key) in row where key.action == .character(character) { return key }
+            }
+            return nil
+        }
+        let french = key("'", "fr", .phone)
+        #expect(french?.text(shifted: true) == "´" && french?.text(shifted: false) == "'" && french?.isDeadKey == true)
+        #expect(key("^", "de", .largePad)?.isDeadKey == true && key("´", "de", .largePad)?.isDeadKey == true)
+        #expect(key("¨", "sv", .largePad)?.isDeadKey == true && key("e", "sv", .largePad)?.isDeadKey == false)
+        #expect(key("'", "fr", .largePad)?.text(shifted: true) == "4" && key("'", "fr", .largePad)?.isDeadKey == false)
+        #expect(key("ì", "it", .largePad)?.isDeadKey == false)
+        #expect(Accent.compose("´", "e") == "é" && Accent.compose("^", "o") == "ô" && Accent.compose("¨", "u") == "ü")
+        #expect(Accent.compose("`", "A") == "À" && Accent.compose("´", "q") == nil && Accent.compose("´", " ") == nil)
+    }
 }

@@ -45,6 +45,11 @@ public struct Key: Hashable, Sendable {
     public var alternates: [String]
     public var secondary: String?
     public var isPair: Bool
+    /// What shift types where it isn't the capital, as French's ’ key types ´ on an iPhone.
+    public var shifted: String?
+    /// Its accents wait for the next letter and land on it, ´ then e typing é, as Apple's accent keys do
+    /// (`Accent.compose`).
+    public var isDeadKey = false
 
     public init(
         _ action: KeyAction, width: KeyWidth = .input, alternates: [String] = [], secondary: String? = nil,
@@ -64,6 +69,7 @@ public struct Key: Hashable, Sendable {
     public func text(shifted: Bool, flicked: Bool = false) -> String? {
         guard case .character(let value) = action else { return nil }
         if flicked, let secondary { return secondary }
+        if shifted, let shifted = self.shifted { return shifted }
         if shifted, isPair, let secondary { return secondary }
         return value
     }

@@ -61,8 +61,9 @@ extension KeyFace {
         let edge: Alignment = corners ? (trailing ? .bottomTrailing : .bottomLeading) : .center
         switch key.action {
         case .character(let value):
+            let glyph = Self.glyphs[value, default: value]
             let shown =
-                context.shift.isUppercase && value.count == 1 ? value.uppercased() : Self.glyphs[value, default: value]
+                context.shift.isUppercase ? key.shifted ?? (value.count == 1 ? value.uppercased() : glyph) : glyph
             self.init(content: value.count == 1 ? .letter(shown) : .text(shown))
             secondary = key.secondary.map { Self.glyphs[$0, default: $0] }
             secondaryIsDimmed = !key.isPair

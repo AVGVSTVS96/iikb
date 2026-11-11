@@ -39,7 +39,7 @@ enum LargePadLayouts {
 
     /// The European layouts of Apple's 13-inch iPad keyboard, its Magic Keyboard's: a key more on the top letter row,
     /// one between shift and the first letter, and return two rows tall, here a key on each row. Each row's keys are
-    /// typed, then shifted. The accents type as themselves.
+    /// typed, then shifted. Its accents wait for the next letter (`Key.isDeadKey`).
     struct ISO {
         var rows: [String]
         var shifted: [String]
