@@ -20,8 +20,8 @@ flock -n 9 || exit 0
 seen=$state/screens-seen
 tell() { [ ! -x Config/notify ] || Config/notify "$1" || true; }
 
-runs() { gh run list -w screens.yml -b main -L 10 --json databaseId,status,headSha "$@"; }
-[ -s "$seen" ] || runs -s completed --jq '.[].databaseId' >"$seen"
+runs() { gh run list -w screens.yml -b main -L 10 --json databaseId,status,headSha "$@" 2>/dev/null || true; }
+[ -e "$seen" ] || runs -s completed --jq '.[].databaseId' >"$seen"
 
 review() {
   local run=$1 head=$2 folder=$reports/$1 before verdict
