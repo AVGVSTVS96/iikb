@@ -21,6 +21,7 @@ iikb's saved data, in the App Group the app and the keyboard extension share and
 - `TranscriptFeed`: what you dictated, copied by the app to the group's `Library/Caches` each time its transcripts change, for the keyboard's Transcripts panel; the backup leaves it out, since the app's own file is the one kept.
 - `TypingStats`: the hours the keyboard appends to the group's `Library/typing.jsonl` each time it closes or a message goes, with a Darwin notification.
 - `PersonalNetwork`, with `Network.current`.
+- `LanguageFiles`: a language's words, listed with their sizes and SHA-256 in `Resources/Languages/manifest.json` (written by `scripts/languages`), downloaded by the app into the group's `Library/Languages/<id>.lexicon`, put in place in one move once checked, and read in place by the keyboard; the backup and iCloud leave them out, since they download again. English is bundled.
 - `SourceStore`: the `Source`s you add in the app; `ExtensionStore`: the `Extension`s.
 - `UnsentStore`: what you sent in a chat that its extension hasn't answered for yet, in the extension's own container (`chat-unsent.json`), each under the id it's sent with, so a send outlives the keyboard that began it and is taken once.
 - `AppLink`: the app's links the keyboard opens.

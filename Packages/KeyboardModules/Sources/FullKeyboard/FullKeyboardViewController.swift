@@ -166,6 +166,8 @@ open class FullKeyboardViewController: UIInputViewController {
     private static let keptChat = StoredFile<KeptChat>(
         URL.applicationSupportDirectory.appending(path: "chat-kept.json"))
     private var engine = TypingEngine()
+    /// The id of the language the corrector's words are, which `useLanguage` keeps to the one picked.
+    private var typing: String?
     private var typingLog = TypingLog()
     private let memoryStore = MemoryStore()
     private lazy var toolbarHeightConstraint = toolbarView.heightAnchor.constraint(equalToConstant: 0)
@@ -290,8 +292,7 @@ open class FullKeyboardViewController: UIInputViewController {
             engine.accept(emoji: $0, in: document)
             render()
         }
-        engine.corrector = Corrector(source: Lexicon.english, network: .current)
-        engine.swipeModel = .english
+        useLanguage()
         Task { [weak self] in
             let catalog = await Task.detached(priority: .userInitiated) { EmojiCatalog.english }.value
             self?.engine.emojiCatalog = catalog
@@ -430,7 +431,29 @@ open class FullKeyboardViewController: UIInputViewController {
         keyboardView.characterPreview = engine.settings.characterPreview
         suggestionBar.stopAnimation = engine.settings.stopAnimation
         keyMic.stopAnimation = engine.settings.stopAnimation
+        useLanguage()
         engine.suggestionsChanged()
+    }
+
+    /// Corrects in the language picked in the app, with its downloaded words, or English's while they aren't here (or
+    /// can't be reached without Full Access), keeping what you've taught it. The next-word network and Slide to Type
+    /// are English's alone for now.
+    private func useLanguage() {
+        let wanted = engine.settings.language
+        let lexicon = hasFullAccess ? LanguageFiles.lexicon(wanted) : nil
+        let id = lexicon == nil ? Language.english.id : wanted
+        guard id != typing else { return }
+        typing = id
+        let corrector = Corrector(source: lexicon ?? .english, network: id == Language.english.id ? .current : nil)
+        if let old = engine.corrector {
+            corrector.changeMemory { $0 = old.memory }
+            corrector.replacements = old.replacements
+            corrector.names = old.names
+            corrector.app = old.app
+            corrector.grid = old.grid
+        }
+        engine.corrector = corrector
+        engine.swipeModel = id == Language.english.id ? .english : nil
     }
 
     /// A look picked in the menu, kept where the app reads it too, so its Appearance page shows it at once. A new theme
@@ -628,7 +651,7 @@ open class FullKeyboardViewController: UIInputViewController {
             }
         }
         if toolbarHeightConstraint.constant != ask { toolbarHeightConstraint.constant = ask }
-        keyboardView.slidesToType = engine.settings.slideToType && engine.panel == nil
+        keyboardView.slidesToType = engine.settings.slideToType && engine.panel == nil && engine.swipeModel != nil
         keyboardView.menu = (context.menuKeys(in: layout), context.menu, context.menuPick)
         keyboardView.update(
             layout: layout, signature: context.signature, metrics: metrics, faces: engine.faces(on: device),

@@ -73,8 +73,8 @@ nonisolated public enum Backup {
         AppGroup.library.map { [("group/Library", $0)] } ?? []
     }
 
-    /// Parakeet's models and the personal network, which download again, and what iOS may clear.
-    private static let skipped: Set<String> = ["FluidAudio", "Personal", "Caches"]
+    /// Parakeet's models, the personal network and the languages' words, which download again, and what iOS may clear.
+    private static let skipped: Set<String> = ["FluidAudio", "Personal", "Languages", "Caches"]
 
     /// Sends what changed in the background, letting the app or keyboard finish even as it goes away. `skip` names files
     /// not to send yet, by their name on the server.

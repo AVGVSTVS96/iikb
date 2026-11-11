@@ -26,7 +26,7 @@ let package = Package(
             ], swiftSettings: shipped),
         .target(
             name: "KeyboardStore", dependencies: ["KeyboardCore", "KeyboardEnglish"], exclude: ["AGENTS.md"],
-            resources: [.copy("Resources/Keys")], swiftSettings: onMain),
+            resources: [.copy("Resources/Keys"), .copy("Resources/Languages")], swiftSettings: onMain),
         .target(
             name: "KeyboardUI", dependencies: ["KeyboardCore", "KeyboardEnglish"], exclude: ["AGENTS.md"],
             swiftSettings: onMain),
