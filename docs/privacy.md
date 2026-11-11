@@ -17,6 +17,8 @@ Deleting iikb deletes all of it.
 
 - **Voice models.** The first time you dictate, iikb downloads its speech model from Hugging Face. Nothing you say is
   sent; the model runs on the iPhone.
+- **Languages.** A language you download in iikb's Settings › Languages comes from iikb's releases on GitHub. Nothing
+  you type is sent.
 - **GIF search.** What you type into GIF search goes to KLIPY, which returns the GIFs, with a random ID made for this
   install that KLIPY uses to rank results. Nothing else you type is sent.
 - **App names.** To show apps by name in Stats, Transcripts and Writing Style, the iikb app asks Apple's App Store
@@ -32,7 +34,7 @@ Deleting iikb deletes all of it.
 ## Full Access
 
 iOS asks you to allow Full Access for a keyboard that uses the network or shares data with its app. iikb needs it for
-haptics, voice typing, GIFs, the clipboard history, Stats and sources. Without it, iikb still types and corrects,
+haptics, voice typing, GIFs, the clipboard history, Stats, sources and languages other than English. Without it, iikb still types and corrects,
 with nothing leaving the keyboard.
 
 ## On Android

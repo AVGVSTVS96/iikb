@@ -440,7 +440,7 @@ open class FullKeyboardViewController: UIInputViewController {
     /// are English's alone for now.
     private func useLanguage() {
         let wanted = engine.settings.language
-        let lexicon = hasFullAccess ? LanguageFiles.lexicon(wanted) : nil
+        let lexicon = LanguageFiles.lexicon(wanted)
         let id = lexicon == nil ? Language.english.id : wanted
         guard id != typing else { return }
         typing = id

@@ -22,7 +22,7 @@ Few words: a heading per section, a line where one is needed, and the live keybo
 - Hero: “the best iOS keyboard in the world.”, one line on what iikb does, and Get the beta (TestFlight), Android and Source. Beside it, the keyboard drawn live in the app's current look, on an iPhone Duo that folds, opens and turns as the page scrolls, typing lines until the visitor types.
 - Then, one heading each: Themes (the five, cycling on their own; the pick also colors the footer's wordmark), Typing (the benchmark, scope beside the number, and swipe against Apple's on the same swipes), Voice (speed, free, on-device, and the six writing styles on one dictation), Menu (the menu and its shelves), Chats (the panel and the extension API), Changelog (commits from git and each build's `Changelog:` trailer, by `web/changes.ts`), Get iikb (TestFlight, Android, source).
 - Screenshots are simulator captures of the current app with made-up content, never older builds.
-- Availability: MIT, iOS 26+, TestFlight or build from source, and a sideloaded beta for Android; no App Store or Play Store download implied. English and swipe typing today; further languages not yet available.
+- Availability: MIT, iOS 26+, TestFlight or build from source, and a sideloaded beta for Android; no App Store or Play Store download implied. On iOS, English, plus Spanish, French, German, Portuguese, Italian and Swedish as downloads in iikb's Settings › Languages; swipe typing and the next-word model are English only.
 
 ## Metadata
 

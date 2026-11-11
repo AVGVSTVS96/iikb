@@ -299,6 +299,7 @@ APP_PAGES="home -iikbTab home
 typing -iikbFocus YES
 settings -iikbSettings YES
 appearance -iikbSettings appearance
+languages -iikbSettings languages
 typing-settings -iikbSettings typing
 feedback -iikbSettings feedback
 voice -iikbSettings voice

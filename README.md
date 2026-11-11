@@ -69,9 +69,9 @@ A source is a web service you plug into the keyboard. iikb sends it the text of 
 - One-handed keyboard: hold 123 and slide left or right.
 - Hold the space bar and slide to move the cursor, hold delete to erase whole words, flick down on iPad keys for their second character.
 - Return, email, URL and search fields get the keys Apple gives them.
-- Typing predictions and Parakeet speech recognition run on device. Network access covers model downloads, GIF search, app names from the App Store, copied links' site icons (only the site's name is sent), sources and extensions you add, and a backup server in builds configured with one. Sources receive field text; configured backups can include typing data, clipboard history, transcripts and recordings. See [backup behavior](docs/backup.md).
+- Typing predictions and Parakeet speech recognition run on device. Network access covers model and language downloads, GIF search, app names from the App Store, copied links' site icons (only the site's name is sent), sources and extensions you add, and a backup server in builds configured with one. Sources receive field text; configured backups can include typing data, clipboard history, transcripts and recordings. See [backup behavior](docs/backup.md).
 
-Swipe typing: slide across the letters and lift. On 400 real swipes replayed into both keyboards, its first guess was the word meant 88.2% of the time; Apple's keyboard got 88.0% on the same swipes. Languages other than English aren't available yet.
+Swipe typing: slide across the letters and lift. On 400 real swipes replayed into both keyboards, its first guess was the word meant 88.2% of the time; Apple's keyboard got 88.0% on the same swipes. On iPhone and iPad, Spanish, French, German, Portuguese, Italian and Swedish download in the iikb app's Settings › Languages, each on Apple's layout. Swipe typing and the next-word model are English only for now.
 
 ## Install
 
@@ -79,7 +79,7 @@ Join the beta on TestFlight: [testflight.apple.com/join/xSQ2sdYZ](https://testfl
 
 On Android, download the beta from [iikb-android.vercel.app](https://iikb-android.vercel.app).
 
-Then on the iPhone: Settings › General › Keyboard › Keyboards › Add New Keyboard… › iikb, and turn on Allow Full Access. iikb needs it for haptics, voice, GIFs, the clipboard, Stats, sources and chats. The clipboard also needs Settings › Apps › iikb › Paste from Other Apps set to Allow.
+Then on the iPhone: Settings › General › Keyboard › Keyboards › Add New Keyboard… › iikb, and turn on Allow Full Access. iikb needs it for haptics, voice, GIFs, the clipboard, Stats, sources, chats and languages other than English. The clipboard also needs Settings › Apps › iikb › Paste from Other Apps set to Allow.
 
 ### Build it yourself
 

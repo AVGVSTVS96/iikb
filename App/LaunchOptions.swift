@@ -93,10 +93,16 @@ enum LaunchOptions {
         MemoryStore.reset()
     }
 
-    /// `-iikbOneHanded left` and `-iikbCompactPanels YES`, `-iikbAutoCapitalization YES`, `-iikbAutoCorrection YES`,
+    /// `-iikbLanguage sv`, `-iikbOneHanded left` and `-iikbCompactPanels YES`, `-iikbAutoCapitalization YES`, `-iikbAutoCorrection YES`,
     /// `-iikbMicKey YES` or `-iikbPredictiveText NO` set those settings for a test.
     static func applySettings() {
         if let hand = defaults.string(forKey: "iikbOneHanded").flatMap(OneHanded.init) { SettingsStore.set(hand) }
+        if let language = defaults.string(forKey: "iikbLanguage") {
+            var settings = SettingsStore.load()
+            settings.language = language
+            settings.layout = nil
+            SettingsStore.save(settings)
+        }
         let toggles: [(String, WritableKeyPath<KeyboardSettings, Bool>)] = [
             ("iikbCompactPanels", \.compactPanels), ("iikbAutoCapitalization", \.autoCapitalization),
             ("iikbAutoCorrection", \.autoCorrection), ("iikbMicKey", \.micKey),

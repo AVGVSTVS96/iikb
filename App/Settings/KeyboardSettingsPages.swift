@@ -74,12 +74,12 @@ struct TryPreview: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// Wide enough to read, short enough to leave the settings in view: at most two fifths of the window's height, and
+    /// Wide enough to read, short enough to leave the settings in view: at most three tenths of the window's height, and
     /// alone in a column 520 at most, while in a pane as wide as the cards under it.
     private func maxWidth(_ screen: CGSize) -> CGFloat {
         min(
             inPane ? .infinity : 520,
-            window.height * 0.4
+            window.height * 0.3
                 / (KeyboardPreviewView.height(forWidth: 100, settings: model.settings, screen: screen) / 100))
     }
 }
