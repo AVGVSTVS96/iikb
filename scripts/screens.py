@@ -19,6 +19,9 @@ from scipy import ndimage
 CHANGED = 16  # of 255
 GLASS = 20  # points around what moves, which the glass near it picks up
 CARET = 8  # points: a narrower mark inside a text field is its caret
+# On a screen shot without an outline (the app's pages, through simctl), what the outline would place is told by size:
+# a mark this narrow is a caret, one this small each way a spinner.
+NARROW, SMALL = 3, 16
 LIVE = {'dictation-': 'iikb.mic'}
 UNHELD = ('keyboard-swipe-',)
 
@@ -91,7 +94,7 @@ def changes(before, after, box):
     return said
 
 
-def compare(before, after, screen):
+def compare(before, after, screen, width):
     """The changed regions, each its box in points and what changed in it, and the pictures; no regions when the
     screen is the same."""
     if screen.startswith(UNHELD) or filecmp.cmp(os.path.join(before, screen + '.png'), os.path.join(after, screen + '.png'), shallow=False):
@@ -101,8 +104,7 @@ def compare(before, after, screen):
     elements_a, elements_b = outline(before, screen), outline(after, screen)
     if a.shape != b.shape:
         return [((0, 0, b.shape[1], b.shape[0]), [f'size {a.shape[1]}x{a.shape[0]} to {b.shape[1]}x{b.shape[0]}px'])], None
-    root = (elements_b or elements_a or [{'frame': [0, 0, b.shape[1], 0]}])[0]['frame']
-    scale = b.shape[1] / root[2]
+    scale = b.shape[1] / (width or b.shape[1])
     differs = np.abs(a - b).max(axis=2) > CHANGED
     differs &= ~(held(screen, elements_a, scale, differs.shape) | held(screen, elements_b, scale, differs.shape))
     fields = inputs(elements_a) + inputs(elements_b)
@@ -115,17 +117,22 @@ def compare(before, after, screen):
         return [], None
     labels, _ = ndimage.label(ndimage.maximum_filter(differs, size=round(8 * scale) + 1))
     regions = []
-    for rows, columns in ndimage.find_objects(labels):
+    for found, (rows, columns) in enumerate(ndimage.find_objects(labels), 1):
         pixels = differs[rows, columns]
-        if not pixels.any():
+        own = pixels & (labels[rows, columns] == found)
+        if not own.any():
             continue
-        ys, xs = np.nonzero(pixels)
+        ys, xs = np.nonzero(own)
         box = (
             (columns.start + xs.min()) / scale,
             (rows.start + ys.min()) / scale,
             (columns.start + xs.max() + 1) / scale,
             (rows.start + ys.max() + 1) / scale,
         )
+        w, h = box[2] - box[0], box[3] - box[1]
+        if not (elements_a or elements_b) and (w <= NARROW or max(w, h) <= SMALL):
+            pixels[own] = False
+            continue
         regions.append((box, changes(elements_a, elements_b, box)))
     return regions, (a, b, differs)
 
@@ -146,8 +153,11 @@ def main(before, after, out):
     old, new = screens(before), screens(after)
     lines = [f'- {screen}: new' for screen in sorted(new - old)]
     lines += [f'- {screen}: gone' for screen in sorted(old - new)]
+    # The screen's width in points, from any shot's outline (its first element is the app's window).
+    width = next((outline(folder, name)[0]['frame'][2] for folder in (after, before) for name in sorted(screens(folder))
+                  if outline(folder, name)), None)
     for screen in sorted(old & new):
-        regions, images = compare(before, after, screen)
+        regions, images = compare(before, after, screen, width)
         if not regions:
             continue
         if images:

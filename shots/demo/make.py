@@ -3,7 +3,7 @@
 # or clipboard: touches.json (the iPhone Duo's four screens), typing.jsonl, transcripts.jsonl with recordings/<id>.wav,
 # mac.json (Keystroke's version 3 file), clipboard.json and app-names.json (AppName's answers, so no shot waits on the App
 # Store), each in the shape scripts/sim's fill copies (shots/demo/env). Everything is the same on every run but the dates, which
-# count back from now (IIKB_NOW when set, in seconds since 1970), so Today, "2h" and "Yesterday" hold whenever the shots are taken.
+# count back from now (IIKB_NOW when set, in seconds since 1970), and so do the files' own, so Today, "2h" and "Yesterday" hold whenever the shots are taken.
 # python3 shots/demo/make.py <folder>
 import json
 import math
@@ -383,6 +383,9 @@ def main(folder):
     write("clipboard.json", clipboard())
     write("mac.json", mac(rng))
     write("app-names.json", {app: name for app, name, _ in APPS if app})
+    for at, _, names in os.walk(folder):
+        for name in names:
+            os.utime(os.path.join(at, name), (NOW, NOW))
 
 
 if __name__ == "__main__":

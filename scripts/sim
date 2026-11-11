@@ -71,7 +71,8 @@ boot() {
 }
 
 # Stops the clock at IIKB_NOW for screens that never move between runs (scripts/screens): the wall clock in iikb's app
-# and keyboard (scripts/clock.c), for every process the simulator starts from here until it shuts down, and the status
+# and keyboard (scripts/clock.c), for every process the simulator starts from here until it shuts down, with Swift's
+# hashing seeded the same in each, so a dictionary's order (as among ties) holds from launch to launch, and the status
 # bar's at 9:41.
 stop() {
   local clock=$PWD/build/clock.dylib
@@ -80,6 +81,7 @@ stop() {
     codesign -f -s - "$clock" 2>/dev/null; }
   xcrun simctl spawn "$1" launchctl setenv IIKB_NOW "$IIKB_NOW"
   xcrun simctl spawn "$1" launchctl setenv DYLD_INSERT_LIBRARIES "$clock"
+  xcrun simctl spawn "$1" launchctl setenv SWIFT_DETERMINISTIC_HASHING 1
   xcrun simctl status_bar "$1" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
     --cellularMode notSupported --batteryState charged --batteryLevel 100
 }
@@ -334,19 +336,19 @@ fill() {
   for meta in "${data%/Application/*}"/PluginKitPlugin/*/.com.apple.mobile_container_manager.metadata.plist; do
     [ "$(plutil -extract MCMMetadataIdentifier raw "$meta" 2>/dev/null)" = "$BUNDLE.keyboard" ] && keyboard=$(dirname "$meta")
   done
-  [ -n "${TOUCHES:-}" ] && mkdir -p "$group/Library" && cp "$TOUCHES" "$group/Library/touches.json"
+  [ -n "${TOUCHES:-}" ] && mkdir -p "$group/Library" && cp -p "$TOUCHES" "$group/Library/touches.json"
   [ -n "${TOUCHES:-}" ] && [ -n "$keyboard" ] && mkdir -p "$keyboard/Library/Application Support" && {
     printf '{"memory":{"counts":{},"kept":[],"following":{},"total":0,"spacesAfterSpace":0,"keysAfterSpace":0,"touches":'
     cat "$TOUCHES"
     printf '}}'
   } >"$keyboard/Library/Application Support/typing-memory.json"
-  [ -n "${TYPING:-}" ] && mkdir -p "$group/Library" && cp "$TYPING" "$group/Library/typing.jsonl"
-  [ -n "${MAC:-}" ] && mkdir -p "$data/Library/Caches/computers" "$data/Library/Application Support" && cp "$MAC" "$data/Library/Caches/computers/Mac.json" &&
+  [ -n "${TYPING:-}" ] && mkdir -p "$group/Library" && cp -p "$TYPING" "$group/Library/typing.jsonl"
+  [ -n "${MAC:-}" ] && mkdir -p "$data/Library/Caches/computers" "$data/Library/Application Support" && cp -p "$MAC" "$data/Library/Caches/computers/Mac.json" &&
     echo '[{"name":"Mac","url":"http://mac.local:2593","token":"t"}]' >"$data/Library/Application Support/computers.json"
-  [ -n "${TRANSCRIPTS:-}" ] && mkdir -p "$data/Library/Application Support" && cp "$TRANSCRIPTS" "$data/Library/Application Support/transcripts.jsonl"
-  [ -n "${RECORDINGS:-}" ] && mkdir -p "$data/Library/Application Support/recordings" && cp "$RECORDINGS"/*.wav "$data/Library/Application Support/recordings/"
-  [ -n "${APPNAMES:-}" ] && mkdir -p "$data/Library/Caches" && cp "$APPNAMES" "$data/Library/Caches/app-names.json"
-  [ -n "${CLIPBOARD:-}" ] && mkdir -p "$group/Library/clipboard" && cp "$CLIPBOARD" "$group/Library/clipboard/history.json" &&
+  [ -n "${TRANSCRIPTS:-}" ] && mkdir -p "$data/Library/Application Support" && cp -p "$TRANSCRIPTS" "$data/Library/Application Support/transcripts.jsonl"
+  [ -n "${RECORDINGS:-}" ] && mkdir -p "$data/Library/Application Support/recordings" && cp -p "$RECORDINGS"/*.wav "$data/Library/Application Support/recordings/"
+  [ -n "${APPNAMES:-}" ] && mkdir -p "$data/Library/Caches" && cp -p "$APPNAMES" "$data/Library/Caches/app-names.json"
+  [ -n "${CLIPBOARD:-}" ] && mkdir -p "$group/Library/clipboard" && cp -p "$CLIPBOARD" "$group/Library/clipboard/history.json" &&
     { [ -z "$keyboard" ] || rm -rf "$keyboard/Library/Application Support/clipboard"; } && xcrun simctl pbcopy "$id" </dev/null
   return 0
 }
