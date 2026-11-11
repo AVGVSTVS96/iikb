@@ -29,6 +29,8 @@ scripts/rivals                                  # on the Mac: the cleanup bench,
 scripts/formats                                 # what dictation types for versions, decimals, percentages, domains and emails, and the "point", "dot" and "at" that stay words (scripts/formats.txt), and what Clean types for lists, questions, fillers, corrections and said punctuation (scripts/cleanup.txt); scripts/phone puts no build that fails it on the install link (seconds after scripts/gate)
 scripts/web                                     # web demo into web/dist (swift.org 6.4.0 toolchain + its Wasm SDK + binaryen; on the Mac: rsync, then run it there)
 scripts/lexicon                                 # rebuild en.lexicon (downloads ~1 GB, streams ~30 GB of 2-grams)
+scripts/lexicon es                              # a downloadable language's build/languages/es.lexicon and es.LICENSE (es fr de pt it sv; streams a ~5 GB web shard, deleted once counted, about 10 min)
+scripts/languages                               # publish build/languages/ as a GitHub release and write KeyboardStore's Resources/Languages/manifest.json beside the licenses
 scripts/personal record.jsonl [en.network [out]] # fine-tune en.network on your typing (the server does it when the record changes)
 scripts/network                                 # retrain en.network (downloads ~20 GB, about three hours on the Mac's GPU)
 scripts/ci scripts/applebar in.txt out.txt      # Apple's own suggestion bar before each word and after its first two letters, typed through the system keyboard in the simulator, for head-to-heads

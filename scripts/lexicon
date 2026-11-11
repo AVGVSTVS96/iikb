@@ -1,7 +1,17 @@
 #!/bin/sh
-# Rebuilds Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.lexicon (see scripts/lexicon.py for the sources).
+# Rebuilds a lexicon. With no argument, English's bundled en.lexicon (scripts/lexicon.py has the sources). With a
+# language's id (es fr de pt it sv), its downloadable build/languages/<id>.lexicon and <id>.LICENSE from
+# scripts/language.py's counts, the downloads cached in build/languages/<id>/ as counts; scripts/languages publishes them.
 set -e
 cd "$(dirname "$0")/.."
-mkdir -p build/lexicon
-uv run --no-project python3 scripts/lexicon.py build/lexicon > build/lexicon/words.tsv
-scripts/tool LexiconBuilder build/lexicon/words.tsv Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.lexicon
+if [ -z "$1" ]; then
+  mkdir -p build/lexicon
+  uv run --no-project python3 scripts/lexicon.py build/lexicon > build/lexicon/words.tsv
+  scripts/tool LexiconBuilder build/lexicon/words.tsv Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.lexicon
+  exit
+fi
+cache=build/languages/$1
+mkdir -p "$cache"
+uv run --no-project --with pyarrow python3 scripts/language.py words "$1" "$cache" > "$cache/words.tsv"
+uv run --no-project python3 scripts/language.py license "$1" "$cache" > "build/languages/$1.LICENSE"
+scripts/tool LexiconBuilder "$cache/words.tsv" "build/languages/$1.lexicon"

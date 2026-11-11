@@ -1,0 +1,32 @@
+#!/bin/sh
+# Publishes the languages scripts/lexicon <id> built (build/languages/<id>.lexicon) as assets of a new GitHub release
+# on AVGVSTVS96/iikb, and writes the manifest the app reads to show each one's size and check its download (id, the
+# file's format, size, sha256, url), with each language's notices beside it. A new build gets a new release, so an
+# older app's manifest keeps pointing at files that still exist.
+set -e
+cd "$(dirname "$0")/.."
+out=Packages/KeyboardModules/Sources/KeyboardStore/Resources/Languages
+tag=languages-$(date -u +%Y%m%d-%H%M)
+mkdir -p "$out"
+gh release create "$tag" -R AVGVSTVS96/iikb --title "Language data $(date -u +%Y-%m-%d)" \
+  --notes "Word lists for the languages iikb downloads, built by scripts/lexicon. Each one's sources and licenses are in its .LICENSE file." \
+  build/languages/*.lexicon build/languages/*.LICENSE
+cp build/languages/*.LICENSE "$out/"
+python3 - "$tag" "$out/manifest.json" build/languages/*.lexicon <<'PY'
+import hashlib, json, os, sys
+tag, manifest, files = sys.argv[1], sys.argv[2], sys.argv[3:]
+languages = []
+for path in files:
+    data = open(path, "rb").read()
+    languages.append({
+        "id": os.path.basename(path).removesuffix(".lexicon"),
+        "format": data[:4].decode("ascii"),
+        "size": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "url": f"https://github.com/AVGVSTVS96/iikb/releases/download/{tag}/{os.path.basename(path)}",
+    })
+with open(manifest, "w") as file:
+    json.dump({"lexicons": languages}, file, indent=2)
+    file.write("\n")
+PY
+echo "$tag: $(ls build/languages/*.lexicon | wc -l) lexicons, manifest in $out/manifest.json"
