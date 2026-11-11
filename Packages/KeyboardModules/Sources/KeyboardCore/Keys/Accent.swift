@@ -1,7 +1,9 @@
 /// The accents Apple's accent keys hold for the next letter, and what they make of it.
 public enum Accent {
     /// Each accent as it's typed, and the mark it puts on a letter.
-    public static let marks: [String: String] = ["´": "\u{301}", "`": "\u{300}", "^": "\u{302}", "¨": "\u{308}", "~": "\u{303}"]
+    public static let marks: [String: String] = [
+        "´": "\u{301}", "`": "\u{300}", "^": "\u{302}", "¨": "\u{308}", "~": "\u{303}",
+    ]
 
     /// The Latin letters that have an accent built in, each found by itself plus its mark, since Swift's strings match
     /// é to e and ◌́.
