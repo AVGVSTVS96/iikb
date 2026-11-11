@@ -1,4 +1,6 @@
-- Chats: with Full Access on, add an extension in the iikb app's Settings › Extensions, then open its chats from the menu's Chats shelf. Dictate and send without the keys. To write one: github.com/AVGVSTVS96/iikb/blob/main/docs/extensions.md
-- Messages in a chat are real text: hold to select and copy, tap links, tap a photo to see it large.
-- The menu now picks your theme and stop animation in place.
-- Fixes: lower memory use, smoother Drain and Card stop animations, and a clipboard crash when the keyboard resized.
+- Writing Style: six styles, each with a preview of its words. Pick one in iikb's Settings, or in the bar when it has room.
+- The bar is Liquid Glass. With Predictive Text off, GIFs, Transcripts and Clipboard take the suggestions' place.
+- Chats: attach photos from a grid of your newest ones. Bubbles take Messages' gray, and a chat that loses its connection keeps trying.
+- Split keyboard on the open Duo: a field's own keys, like Instagram's @ and #, sit between the hands.
+- Dictation types punctuation you say, and Clean takes out "sorry" corrections and "never mind".
+- Fixes: a crash when a suggestion finished as you left the app, screen recordings that wouldn't save with Keep Mic On, and the Clipboard's Turn On now opens iikb's page in Settings, where Paste from Other Apps is.
