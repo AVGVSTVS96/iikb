@@ -190,4 +190,27 @@ struct LanguageTests {
         #expect(rows("fr")[0] == "@&é\"'(§è!çà)-")
         #expect(rows("pt") == rows("en"))
     }
+
+    /// Apple's iPad mini keys per language, measured in the simulator: German's 11 a row 59.5 points apart, Swedish's
+    /// 57.5, English's 66.5, and a flick of the 11-inch's.
+    @Test func eachLanguagesMiniKeysAreApples() {
+        let grid = { (language: String) in
+            var settings = KeyboardSettings()
+            settings.language = language
+            let screen = Size(width: 744, height: 1133)
+            let context = LayoutContext(device: .compactPad, layer: .letters, screen: screen, settings: settings)
+            return (
+                KeyboardGeometry(context, screen: screen, style: .ios27).grid, letters(Layouts.layout(for: context))
+            )
+        }
+        let pitch = { (grid: KeyGrid) in grid.frame(of: "w")!.x - grid.frame(of: "q")!.x }
+        let (english, _) = grid("en")
+        let (german, germanRows) = grid("de")
+        let (swedish, _) = grid("sv")
+        #expect(abs(pitch(english) - 66.5) < 0.5)
+        #expect(abs(pitch(german) - 59.5) < 0.5)
+        #expect(abs(pitch(swedish) - 57.5) < 0.5)
+        #expect(germanRows == ["qwertzuiopü", "asdfghjklöä", "yxcvbnm,.ß"])
+        #expect(abs(german.frame(of: "a")!.x - 24) < 1 && abs(swedish.frame(of: "z")!.x - 75) < 1)
+    }
 }
