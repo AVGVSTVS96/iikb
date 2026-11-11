@@ -170,4 +170,24 @@ struct LanguageTests {
                 abs(a.frame.x - b.frame.x) < 0.01 && abs(a.frame.width - b.frame.width) < 0.01, "\(a.frame) \(b.frame)")
         }
     }
+
+    /// A 13-inch iPad types each language on its Magic Keyboard layout, Apple's 13-inch keyboard's.
+    @Test func eachLanguagesLargePadIsItsMagicKeyboard() {
+        let rows = { (language: String) -> [String] in
+            var settings = KeyboardSettings()
+            settings.language = language
+            let context = LayoutContext(
+                device: .largePad, layer: .letters, screen: Size(width: 1032, height: 1376), settings: settings)
+            return Layouts.layout(for: context).rows.dropLast().map { row in
+                row.compactMap { item -> String? in
+                    guard case .key(let key) = item, case .character(let value) = key.action else { return nil }
+                    return value
+                }.joined()
+            }
+        }
+        #expect(rows("de") == ["^1234567890ß´", "qwertzuiopü+", "asdfghjklöä#", "<yxcvbnm,.-"])
+        #expect(rows("it")[2] == "asdfghjklòàù")
+        #expect(rows("fr")[0] == "@&é\"'(§è!çà)-")
+        #expect(rows("pt") == rows("en"))
+    }
 }
