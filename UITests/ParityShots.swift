@@ -309,8 +309,10 @@ final class ParityShots: XCTestCase {
         }
     }
 
-    /// Leaves `<prefix>-<name>.hold` for scripts/parity, which shoots the screen `seconds` into the hold.
+    /// Leaves `<prefix>-<name>.hold` for scripts/parity, which shoots the screen `seconds` into the hold, and the
+    /// screen's outline from before the press.
     private func hold(_ name: String, at seconds: Double, _ press: () throws -> Void) rethrows {
+        try? outline().write(to: URL(fileURLWithPath: "\(prefix)-\(name).json"))
         FileManager.default.createFile(atPath: "\(prefix)-\(name).hold", contents: Data("\(seconds)".utf8))
         try press()
         Thread.sleep(forTimeInterval: 0.8)

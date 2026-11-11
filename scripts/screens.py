@@ -1,7 +1,9 @@
 # Which screens changed between two runs of scripts/parity with the clock stopped (IIKB_NOW): each <screen>.png in
 # <after> against the same in <before>, pixel for pixel but for what a run can't hold still, which each shot's outline
-# (<screen>.json, from UITests/ParityShots) places: GIF tiles, whose pictures are KLIPY's and play, and the caret
-# blinking in a text field. Each change is named by the elements whose frame or label differs where it is.
+# (<screen>.json, from UITests/ParityShots) places: GIF tiles, whose pictures are KLIPY's and play, and dictation's bar
+# mid-recording, each with the glass around it that picks up its colors (LIVE), the caret blinking in a text field, with
+# its ghost in the glass below, and the swipe shot mid-trail (UNHELD). A pixel counts as changed when a channel moves
+# more than the glass's faint tint does. Each change is named by the elements whose frame or label differs where it is.
 # Writes <out>/report.md, a line per changed screen, and <out>/<screen>.png, before | after | after with the change in
 # red; prints the report.
 # uv run --with pillow --with numpy --with scipy scripts/screens.py <before> <after> <out>
@@ -14,7 +16,11 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-CARET = 3  # points: a thinner change inside a text field is its caret
+CHANGED = 16  # of 255
+GLASS = 20  # points around what moves, which the glass near it picks up
+CARET = 8  # points: a narrower mark inside a text field is its caret
+LIVE = {'dictation-': 'iikb.mic'}
+UNHELD = ('keyboard-swipe-',)
 
 
 def outline(folder, screen):
@@ -25,12 +31,15 @@ def outline(folder, screen):
         return json.load(file)
 
 
-def held(elements, scale, shape):
+def held(screen, elements, scale, shape):
+    live = [element for start, element in LIVE.items() if screen.startswith(start)]
     mask = np.zeros(shape, bool)
     for element in elements:
-        if element['id'].startswith('iikb.gif.'):
-            x, y, w, h = (round(v * scale) for v in element['frame'])
-            mask[max(y, 0) : y + h, max(x, 0) : x + w] = True
+        if element['id'] in live or element['id'].startswith('iikb.gif.'):
+            x, y, w, h = element['frame']
+            x0, y0 = (max(round((v - GLASS) * scale), 0) for v in (x, y))
+            x1, y1 = (round((v + GLASS) * scale) for v in (x + w, y + h))
+            mask[y0:y1, x0:x1] = True
     return mask
 
 
@@ -85,7 +94,7 @@ def changes(before, after, box):
 def compare(before, after, screen):
     """The changed regions, each its box in points and what changed in it, and the pictures; no regions when the
     screen is the same."""
-    if filecmp.cmp(os.path.join(before, screen + '.png'), os.path.join(after, screen + '.png'), shallow=False):
+    if screen.startswith(UNHELD) or filecmp.cmp(os.path.join(before, screen + '.png'), os.path.join(after, screen + '.png'), shallow=False):
         return [], None
     a = np.asarray(Image.open(os.path.join(before, screen + '.png')).convert('RGB')).astype(np.int16)
     b = np.asarray(Image.open(os.path.join(after, screen + '.png')).convert('RGB')).astype(np.int16)
@@ -94,9 +103,14 @@ def compare(before, after, screen):
         return [((0, 0, b.shape[1], b.shape[0]), [f'size {a.shape[1]}x{a.shape[0]} to {b.shape[1]}x{b.shape[0]}px'])], None
     root = (elements_b or elements_a or [{'frame': [0, 0, b.shape[1], 0]}])[0]['frame']
     scale = b.shape[1] / root[2]
-    differs = np.abs(a - b).max(axis=2) > 4
-    differs &= ~(held(elements_a, scale, differs.shape) | held(elements_b, scale, differs.shape))
+    differs = np.abs(a - b).max(axis=2) > CHANGED
+    differs &= ~(held(screen, elements_a, scale, differs.shape) | held(screen, elements_b, scale, differs.shape))
     fields = inputs(elements_a) + inputs(elements_b)
+    marks, _ = ndimage.label(differs)
+    for rows, columns in ndimage.find_objects(marks):
+        box = tuple(v / scale for v in (columns.start, rows.start, columns.stop, rows.stop))
+        if box[2] - box[0] <= CARET and any(inside(box, frame) for frame in fields):
+            differs[rows, columns] = False
     if not differs.any():
         return [], None
     labels, _ = ndimage.label(ndimage.maximum_filter(differs, size=round(8 * scale) + 1))
@@ -112,9 +126,6 @@ def compare(before, after, screen):
             (columns.start + xs.max() + 1) / scale,
             (rows.start + ys.max() + 1) / scale,
         )
-        if box[2] - box[0] <= CARET and any(inside(box, frame) for frame in fields):
-            pixels[:] = False
-            continue
         regions.append((box, changes(elements_a, elements_b, box)))
     return regions, (a, b, differs)
 

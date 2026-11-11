@@ -191,7 +191,7 @@ def typing(rng):
         busy = rng.uniform(0.6, 1.4) * (0.7 if weekend else 1)
         hours = sorted(rng.sample(HOURS, rng.randint(5, 9)))
         for hour in hours:
-            for app in {pick(rng, weekend) for _ in range(rng.randint(1, 3))}:
+            for app in sorted({pick(rng, weekend) for _ in range(rng.randint(1, 3))}):
                 characters = int(rng.lognormvariate(5.6, 0.6) * busy)
                 wpm = rng.gauss(41, 7)
                 words = round(characters / 5.7)
