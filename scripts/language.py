@@ -179,20 +179,22 @@ def news(build, language):
 def english():
     """Each English word's probability, read from en.lexicon's trie (KeyboardCore's Lexicon.swift)."""
     data = open(EN_LEXICON, "rb").read()
+    length = struct.unpack_from("<I", data, 8)[0]
+    letters = data[12:12 + length].decode("utf-8").split("\n")
+    nodes = (12 + length + 7) // 8 * 8
     found = {}
     stack = [(0, "")]
     while stack:
         index, spelling = stack.pop()
-        offset = 8 + index * 8
-        letter, word, _, flags, first = struct.unpack_from("<BBBBI", data, offset)
+        letter, word, _, flags, first = struct.unpack_from("<BBBBI", data, nodes + index * 8)
         if index:
-            spelling += chr(letter)
+            spelling += letters[letter]
             if word:
                 found[spelling] = math.exp(-word / 10)
         child = first
         while child:
             stack.append((child, spelling))
-            child = 0 if data[8 + child * 8 + 3] & 1 else child + 1
+            child = 0 if data[nodes + child * 8 + 3] & 1 else child + 1
     return found
 
 

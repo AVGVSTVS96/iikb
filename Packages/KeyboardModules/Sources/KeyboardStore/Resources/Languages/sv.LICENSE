@@ -1,0 +1,17 @@
+sv.lexicon is built by scripts/lexicon sv (scripts/language.py) from three sources. iikb's own code is
+MIT (see LICENSE at the repository root); the word list and counts inside sv.lexicon carry these notices.
+
+Words: Android's keyboard word list (AOSP LatinIME), https://android.googlesource.com/platform/packages/inputmethods/LatinIME/+/refs/heads/main/dictionaries/sv_wordlist.combined.gz
+Copyright (C) The Android Open Source Project, licensed under the Apache License, Version 2.0,
+https://www.apache.org/licenses/LICENSE-2.0. Its words and their capitals are used, and its frequency classes for
+words the text below never has.
+
+Counts and newer words: FineWeb-2 by Hugging Face, swe_Latn, the first of its files,
+https://huggingface.co/datasets/HuggingFaceFW/fineweb-2, under the Open Data Commons Attribution License (ODC-By) v1.0,
+https://opendatacommons.org/licenses/by/1-0/, and subject to Common Crawl's Terms of Use,
+https://commoncrawl.org/terms-of-use. sv.lexicon contains counts derived from it.
+
+Capitals, and a check that keeps words of web spam out: Leipzig Corpora Collection, swe_news_2023_1M,
+https://wortschatz.uni-leipzig.de/en/download, © Universität Leipzig / Sächsische Akademie der Wissenschaften / InfAI,
+under Creative Commons Attribution (CC BY), https://creativecommons.org/licenses/by/4.0/. sv.lexicon contains
+counts derived from it.
