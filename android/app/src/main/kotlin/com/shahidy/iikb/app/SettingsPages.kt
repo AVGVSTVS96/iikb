@@ -35,6 +35,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -96,11 +98,9 @@ enum class SettingsPage(val title: String, val symbol: String, val hue: Hue) {
     }
 }
 
-/** "Version 0.1.900 (900)", as iOS shows its version and build. */
-private fun version(context: Context): String {
-    val info = context.packageManager.getPackageInfo(context.packageName, 0)
-    return "Version ${info.versionName} (${info.longVersionCode})"
-}
+/** "Version 0.1.900": the build is the version's last number (`build.gradle.kts`), so it isn't shown again after it, as iOS's "(1)". */
+private fun version(context: Context) =
+    "Version " + context.packageManager.getPackageInfo(context.packageName, 0).versionName
 
 /** Android's setup as MainActivity last read it, and the screens that change it. */
 class Access(val setup: Setup, val enable: () -> Unit, val pick: () -> Unit, val microphone: () -> Unit)
@@ -122,8 +122,11 @@ fun SettingsList(open: (String) -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         Glyph(page.symbol, page.hue.on(palette()))
-                        Text(page.title, color = palette().label, fontSize = Type.body, modifier = Modifier.weight(1f), maxLines = 1)
-                        page.value()?.let { Text(it, color = palette().secondary, fontSize = Type.body, maxLines = 1) }
+                        Text(page.title, color = palette().label, fontSize = Type.body, maxLines = 1)
+                        Text(
+                            page.value().orEmpty(), color = palette().secondary, fontSize = Type.body, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f),
+                        )
                         Trailing("chevron.right")
                     }
                 }

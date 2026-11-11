@@ -130,8 +130,7 @@ class KeyPainter {
                     }
                     val baseline = midY + offset - (metrics.ascent + metrics.descent) / 2
                     if (shownLabel == BULLET) {
-                        text.getTextBounds(BULLET, 0, 1, bounds)
-                        canvas.drawCircle(midX, baseline + bounds.exactCenterY(), text.textSize * BULLET_RADIUS, text)
+                        canvas.drawCircle(midX, midY + offset + text.textSize * BULLET_DROP, text.textSize * BULLET_RADIUS, text)
                     } else {
                         canvas.drawText(shownLabel, midX - width / 2, baseline, text)
                     }
@@ -183,5 +182,7 @@ class KeyPainter {
         /** Roboto's bullet is about half SF Compact's, which is 8 across at a 25.5 letter: drawn as SF's. */
         const val BULLET = "•"
         const val BULLET_RADIUS = 4f / 25.5f
+        /** SF's dot sits a tenth of its size under the label's middle (iOS's symbols keyboard, measured), lower than Roboto's. */
+        const val BULLET_DROP = 0.1f
     }
 }
