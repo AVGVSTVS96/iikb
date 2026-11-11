@@ -45,7 +45,7 @@ jobs:
           last=$(gh run list -w screens.yml -b main -s completed -L 20 --json databaseId,headSha \
             --jq ".[] | select(.databaseId != ${{ github.run_id }}) | \"\(.databaseId) \(.headSha)\"" |
             while read -r run sha; do
-              gh api "repos/{owner}/{repo}/actions/runs/$run/artifacts" --jq '.artifacts[].name' | grep -qx screens &&
+              gh api "repos/{owner}/{repo}/actions/runs/$run/artifacts" --jq '.artifacts[].name' | grep -qxE 'screens|shot-.*' &&
                 git cat-file -e "$sha^{commit}" 2>/dev/null && { echo "$run $sha"; break; }
             done || true)
           parts='["light", "dark", "app", "chats"]'
@@ -109,10 +109,14 @@ jobs:
           RUN: ${{ needs.plan.outputs.run }}
         run: |
           mkdir -p before after
-          [ -z "$RUN" ] || gh run download "$RUN" -n screens -D before
+          # The last run's screens, or its parts' shots where its compare didn't finish.
+          if [ -n "$RUN" ] && ! gh run download "$RUN" -n screens -D before; then
+            gh run download "$RUN" -p 'shot-*' -D parts && find parts -type f -exec mv {} before/ \;
+          fi
           # A screen this run didn't shoot, its part skipped or failed, is the last run's.
           kept=0
           for shot in before/*; do
+            [ -e "$shot" ] || continue
             [ -e "after/${shot#before/}" ] || { cp "$shot" after/; kept=$((kept + 1)); }
           done
           echo "KEPT=$kept" >>"$GITHUB_ENV"
