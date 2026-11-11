@@ -141,13 +141,15 @@ const changed = () => {
   }
 };
 
+const HELD_FOR_A_CHANGE = 25_000;
+
 const nextChange = async () => {
   const { promise, resolve } = Promise.withResolvers<undefined>();
 
   waiting.push(() => {
     resolve(undefined);
   });
-  await promise;
+  await Promise.race([promise, Bun.sleep(HELD_FOR_A_CHANGE)]);
 };
 
 const chatOf = (id: string, { name, line, pinned }: Thread): Chat => ({ id, name, line, pinned });
@@ -182,10 +184,9 @@ const extension = chats({
     changed();
 
     setTimeout(() => {
-      const got =
-        sent.length > 0
-          ? `${String(sent.length)} photo${sent.length === 1 ? "" : "s"}`
-          : `“${text}”`;
+      const count = `${String(sent.length)} photo${sent.length === 1 ? "" : "s"}`;
+      const words = text === "" ? [] : [`“${text}”`];
+      const got = (sent.length === 0 ? words : [count, ...words]).join(" and ");
 
       thread?.messages.push({ from: chat, text: `Got it: ${got}.` });
       changed();
@@ -193,8 +194,28 @@ const extension = chats({
   },
 });
 
-export default {
-  ...extension,
-  fetch: async (request: Request) =>
-    files.get(new URL(request.url).pathname)?.clone() ?? (await extension.fetch(request)),
+let sendsFail = false;
+
+const stand = new Map([
+  ["/stand-in/fail", () => (sendsFail = true)],
+  ["/stand-in/ok", () => (sendsFail = false)],
+]);
+
+const answered = async (request: Request) => {
+  const { pathname } = new URL(request.url);
+  const turn = stand.get(pathname);
+
+  if (turn) {
+    turn();
+
+    return new Response(null, { status: 204 });
+  }
+
+  if (sendsFail && request.method === "POST") {
+    return new Response("the stand-in is failing sends", { status: 503 });
+  }
+
+  return files.get(pathname)?.clone() ?? (await extension.fetch(request));
 };
+
+export default { ...extension, fetch: answered };
