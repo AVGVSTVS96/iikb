@@ -20,6 +20,8 @@ final class Chats {
         let from: String
         let text: String
         var pending: Bool?
+        /// Pending, and its chat's last try to send failed.
+        var failed: Bool?
         var files: [File]?
 
         var mine: Bool { from == "me" }
@@ -29,7 +31,7 @@ final class Chats {
         }
 
         /// Yours on its way, its photos read from the keyboard's own copies.
-        init(pending message: UnsentMessage) {
+        init(pending message: UnsentMessage, failed: Bool = false) {
             self.init(
                 from: "me", text: message.text, pending: true,
                 files: message.photos?.map {
@@ -37,6 +39,7 @@ final class Chats {
                         name: $0.name, url: $0.url.absoluteString, type: "image/jpeg", width: Double($0.width),
                         height: Double($0.height))
                 })
+            self.failed = failed ? true : nil
         }
 
         /// A file sent with the message, at `url` relative to the extension's address.
@@ -55,12 +58,17 @@ final class Chats {
     /// The open chat as its extension last gave it, then what you sent that the extension doesn't have yet.
     var messages: [Message] {
         guard let open else { return [] }
-        return said + unsent.filter { open.holds($0) }.map(Message.init(pending:))
+        return said
+            + unsent.filter { open.holds($0) }.map {
+                Message(pending: $0, failed: stuck.contains($0.service + $0.chat))
+            }
     }
     private var said: [Message] = []
     /// Each chat's last answer, by its extension and id, so switching back to a chat shows it at once.
     private var seen: [String: [Message]] = [:]
     private var unsent: [UnsentMessage] = []
+    /// The chats, by extension and id, whose last send failed, so what waits in them shows as not sent.
+    private var stuck: Set<String> = []
     /// Counts the open chat's answers, so a send knows whether one came while it was on its way.
     private var answers = 0
     /// The open chat's messages have come at least once.
@@ -189,9 +197,12 @@ final class Chats {
                 let answered = answers
                 guard await Self.send(next, to: service) else {
                     waiting.insert(next.service + next.chat)
+                    stuck.insert(next.service + next.chat)
                     problem = "Can’t reach \(service.name). What you sent is kept and goes again."
+                    report()
                     continue
                 }
+                stuck.remove(next.service + next.chat)
                 UnsentStore.remove(next)
                 unsent.removeAll { $0 == next }
                 if let open, open.holds(next), answers == answered {

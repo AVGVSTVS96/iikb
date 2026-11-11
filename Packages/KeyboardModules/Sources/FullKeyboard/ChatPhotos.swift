@@ -159,8 +159,8 @@ final class ChatPhotos: NSObject {
     }
 }
 
-/// Your newest photos, three or four across, drawn at the size they're shown so the grid costs the keyboard little
-/// memory; each picked one shows its number. Without access to the library it says so, and Turn On opens iikb to ask.
+/// Your newest photos, about 110 points each across the width, drawn at the size they're shown so the grid costs the
+/// keyboard little memory; each picked one shows its number. Without access to the library it says so, and Allow Photos opens iikb to ask.
 final class PhotoGrid: UIView, UICollectionViewDataSource, UICollectionViewDelegate {
     var onTap: (PHAsset) -> Void = { _ in }
     /// The picked photos' asset ids, in order.
@@ -196,25 +196,29 @@ final class PhotoGrid: UIView, UICollectionViewDataSource, UICollectionViewDeleg
     /// Reads the library again as the grid comes up, so a photo just taken is first.
     func show(theme: KeyboardTheme) {
         self.theme = theme
-        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        let allowed = status == .authorized || status == .limited
-        notice.show(
-            allowed ? nil : "Let iikb show your photos here, to send them in a chat.", turnOn: !allowed, oneRow: false,
-            theme: theme)
-        collection.isHidden = !allowed
-        guard allowed else { return }
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         options.fetchLimit = Self.newest
-        assets = PHAsset.fetchAssets(with: .image, options: options)
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        let found = PHAsset.fetchAssets(with: .image, options: options)
+        // The status a keyboard reads first stays for as long as it runs, so access given in iikb since shows in what
+        // the library gives, not in the status.
+        let allowed = status == .authorized || status == .limited || found.count > 0
+        notice.show(
+            allowed ? nil : "iOS asks once before iikb can show your photos here. Full Access doesn’t cover them.",
+            turnOn: !allowed, action: "Allow Photos", oneRow: false, theme: theme)
+        collection.isHidden = !allowed
+        guard allowed else { return }
+        assets = found
         collection.reloadData()
     }
 
     /// Redraws the numbers on the picked photos.
     func refresh() {
+        let picked = picked()
         for cell in collection.visibleCells {
             guard let cell = cell as? PhotoCell, let id = cell.asset else { continue }
-            cell.number(picked().firstIndex(of: id).map { $0 + 1 }, theme: theme)
+            cell.number(picked.firstIndex(of: id).map { $0 + 1 }, full: picked.count >= ChatPhotos.most, theme: theme)
         }
     }
 
@@ -222,7 +226,7 @@ final class PhotoGrid: UIView, UICollectionViewDataSource, UICollectionViewDeleg
         super.layoutSubviews()
         collection.frame = bounds
         notice.frame = bounds.insetBy(dx: 24, dy: 0)
-        let across: CGFloat = bounds.width > 500 ? 5 : bounds.width > 380 ? 4 : 3
+        let across = max(3, (bounds.width / 110).rounded())
         let side = ((bounds.width - Self.gap * (across - 1)) / across).rounded(.down)
         if layout.itemSize.width != side { layout.itemSize = CGSize(width: side, height: side) }
     }
@@ -238,7 +242,10 @@ final class PhotoGrid: UIView, UICollectionViewDataSource, UICollectionViewDeleg
         let size = CGSize(width: layout.itemSize.width * scale, height: layout.itemSize.height * scale)
         cell.show(asset, from: images, size: size, theme: theme)
         cell.accessibilityIdentifier = "iikb.chat.photos.\(path.item)"
-        cell.number(picked().firstIndex(of: asset.localIdentifier).map { $0 + 1 }, theme: theme)
+        let picked = picked()
+        cell.number(
+            picked.firstIndex(of: asset.localIdentifier).map { $0 + 1 }, full: picked.count >= ChatPhotos.most,
+            theme: theme)
         return cell
     }
 
@@ -298,12 +305,16 @@ private final class PhotoCell: UICollectionViewCell {
         }
     }
 
-    func number(_ number: Int?, theme: KeyboardTheme) {
+    /// Its number once picked, ringed in white like the empty circle; with `full`, ten picked, the rest dim.
+    func number(_ number: Int?, full: Bool, theme: KeyboardTheme) {
         badge.isHidden = number == nil
         badge.text = number.map(String.init)
         badge.backgroundColor = theme.prominent.ui
         badge.textColor = theme.prominentLabel.ui
-        picture.alpha = number == nil ? 1 : 0.8
+        badge.layer.borderWidth = 1.5
+        badge.layer.borderColor = UIColor.white.cgColor
+        ring.isHidden = number == nil && full
+        picture.alpha = number == nil ? (full ? 0.4 : 1) : 0.8
         accessibilityTraits = number == nil ? .button : [.button, .selected]
     }
 

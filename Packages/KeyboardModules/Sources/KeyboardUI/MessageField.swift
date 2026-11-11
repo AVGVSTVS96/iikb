@@ -45,6 +45,7 @@ public final class MessageField: UIView, UITextViewDelegate {
         var theme: KeyboardTheme
         var caret: Bool
         var photos: [URL]
+        var picking: Bool
         var canSend: Bool { !photos.isEmpty || text.contains { !$0.isWhitespace } }
     }
 
@@ -60,7 +61,9 @@ public final class MessageField: UIView, UITextViewDelegate {
     /// The attached photos' row inside the box, above the words.
     private static let thumbSize: CGFloat = 76
     private static let stripPadding: CGFloat = 8
-    private static var stripHeight: CGFloat { thumbSize + stripPadding }
+    /// The photos' side as laid out: `thumbSize`, or less where the keyboard leaves the box less room than its photos
+    /// and a line of words need, as on the folded Duo turned sideways.
+    private var thumbSide = MessageField.thumbSize
     private static let lines = {
         let style = NSMutableParagraphStyle()
         style.minimumLineHeight = lineHeight
@@ -114,7 +117,7 @@ public final class MessageField: UIView, UITextViewDelegate {
         addSubview(attach)
         strip.showsHorizontalScrollIndicator = false
         strip.alwaysBounceHorizontal = true
-        strip.clipsToBounds = false
+        strip.clipsToBounds = true
         strip.isHidden = true
         addSubview(strip)
         field.onPastePhotos = { [unowned self] in onPastePhotos($0) }
@@ -125,11 +128,14 @@ public final class MessageField: UIView, UITextViewDelegate {
     /// `caret` while the keys are up to type into it, which focuses the box as they come up and as the keys change its
     /// line, never otherwise, so text selected in a message keeps its selection while the keys stay up. The box has no
     /// mic of its own: the keyboard's one mic types into it like any field, so dictating works the same everywhere.
+    /// `picking` while your photos are up, which colors the paperclip.
     public func show(
-        _ line: LineDocument, placeholder text: String, caret: Bool, photos: [URL] = [], theme: KeyboardTheme
+        _ line: LineDocument, placeholder text: String, caret: Bool, photos: [URL] = [], picking: Bool = false,
+        theme: KeyboardTheme
     ) {
         let next = Shown(
-            text: line.text, selection: line.selection, placeholder: text, theme: theme, caret: caret, photos: photos)
+            text: line.text, selection: line.selection, placeholder: text, theme: theme, caret: caret, photos: photos,
+            picking: picking)
         guard next != shown else { return }
         let last = shown
         shown = next
@@ -147,14 +153,17 @@ public final class MessageField: UIView, UITextViewDelegate {
             )
             look.contentInsets = .zero
             send.configuration = look
+            thumbs.forEach { $0.show(theme) }
+        }
+        if next.theme != last?.theme || next.picking != last?.picking {
             var clip = UIButton.Configuration.plain()
-            clip.baseForegroundColor = theme.label.ui
+            clip.baseForegroundColor = picking ? theme.prominent.ui : theme.label.ui
             clip.image = UIImage(
-                systemName: "paperclip", withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .regular)
-            )
+                systemName: "paperclip",
+                withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: picking ? .semibold : .regular))
             clip.contentInsets = .zero
             attach.configuration = clip
-            thumbs.forEach { $0.show(theme) }
+            attach.accessibilityTraits = picking ? [.button, .selected] : .button
         }
         if next.photos != last?.photos { showPhotos(next.photos, theme: theme) }
         if next.text != field.text || next.theme != last?.theme {
@@ -189,17 +198,17 @@ public final class MessageField: UIView, UITextViewDelegate {
     /// The height the box wants at `width`, its photos' row and then its words, growing a line at a time up to
     /// `lines`, past which they scroll.
     public func height(for width: CGFloat, lines: Int) -> CGFloat {
-        let inset = textInset
+        let inset = textInset(side: Self.thumbSize)
         let box = max(width - Self.attachSize - Self.attachGap, 1)
         let content = field.sizeThatFits(CGSize(width: box, height: .greatestFiniteMagnitude)).height
         let shown = ((content - inset.top - inset.bottom) / Self.lineHeight).rounded()
         return inset.top + inset.bottom + Self.lineHeight * min(max(shown, 1), CGFloat(lines))
     }
 
-    /// The words' inset in the box, below the photos' row when there are photos.
-    private var textInset: UIEdgeInsets {
+    /// The words' inset in the box, below the photos' row, of photos `side` points, when there are photos.
+    private func textInset(side: CGFloat) -> UIEdgeInsets {
         var inset = Self.inset
-        if shown?.photos.isEmpty == false { inset.top += Self.stripHeight }
+        if shown?.photos.isEmpty == false { inset.top += side + Self.stripPadding }
         return inset
     }
 
@@ -211,7 +220,9 @@ public final class MessageField: UIView, UITextViewDelegate {
         let box = bounds.inset(by: UIEdgeInsets(top: 0, left: clip + Self.attachGap, bottom: 0, right: 0))
         glass.frame = box
         field.frame = box
-        let inset = textInset
+        let around = Self.inset.top + Self.stripPadding + Self.lineHeight + Self.inset.bottom
+        thumbSide = min(Self.thumbSize, max(bounds.height - around, 32)).rounded(.down)
+        let inset = textInset(side: thumbSide)
         if field.textContainerInset != inset { field.textContainerInset = inset }
         placeholder.frame = CGRect(
             x: box.minX + inset.left, y: inset.top, width: max(box.width - inset.left - inset.right, 0),
@@ -220,13 +231,13 @@ public final class MessageField: UIView, UITextViewDelegate {
         send.bounds.size = CGSize(width: size, height: size)
         send.center = CGPoint(x: box.maxX - Self.sendMargin - size / 2, y: box.maxY - Self.sendMargin - size / 2)
         let pad = Self.stripPadding
-        strip.frame = CGRect(x: box.minX + pad, y: pad, width: box.width - 2 * pad, height: Self.thumbSize)
+        let left = Self.inset.left
+        let side = thumbSide
+        strip.frame = CGRect(x: box.minX + left, y: pad, width: box.width - left - pad, height: side)
         for (index, thumb) in thumbs.enumerated() {
-            thumb.frame = CGRect(
-                x: CGFloat(index) * (Self.thumbSize + pad), y: 0, width: Self.thumbSize, height: Self.thumbSize)
+            thumb.frame = CGRect(x: CGFloat(index) * (side + pad), y: 0, width: side, height: side)
         }
-        strip.contentSize = CGSize(
-            width: max(CGFloat(thumbs.count) * (Self.thumbSize + pad) - pad, 0), height: Self.thumbSize)
+        strip.contentSize = CGSize(width: max(CGFloat(thumbs.count) * (side + pad) - pad, 0), height: side)
         field.scrollRangeToVisible(field.selectedRange)
     }
 
@@ -237,13 +248,14 @@ public final class MessageField: UIView, UITextViewDelegate {
         thumbs = photos.enumerated().map { index, url in
             let thumb = Thumb(url)
             thumb.accessibilityIdentifier = "iikb.chat.photo.\(index)"
+            thumb.removeIdentifier = "iikb.chat.photo.\(index).remove"
             thumb.onRemove = { [unowned self] in onRemove(index) }
             thumb.show(theme)
             strip.addSubview(thumb)
             return thumb
         }
         strip.isHidden = photos.isEmpty
-        field.textContainerInset = textInset
+        field.textContainerInset = textInset(side: thumbSide)
         superview?.setNeedsLayout()
         setNeedsLayout()
         layoutIfNeeded()
@@ -321,6 +333,10 @@ private final class Field: UITextView {
 /// An attached photo in the box: the picture, rounded, and a ✕ in its corner that takes it off.
 private final class Thumb: UIView {
     var onRemove: () -> Void = {}
+    var removeIdentifier: String? {
+        get { remove.accessibilityIdentifier }
+        set { remove.accessibilityIdentifier = newValue }
+    }
     private let picture = UIImageView()
     private let remove = UIButton(type: .custom)
     private let url: URL

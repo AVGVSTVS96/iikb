@@ -15,6 +15,8 @@ public final class ImageBubble: UIView, ChatBubble, UIContextMenuInteractionDele
     public var onTap: (ImageBubble) -> Void = { _ in }
     public private(set) var mine = false
     public var joined = (above: false, below: false) { didSet { if joined != oldValue { setNeedsLayout() } } }
+    /// One of an album's photos (`AlbumBubble`), square cornered, the album rounding the whole.
+    var tile = false
     public var drawn = false {
         didSet {
             guard drawn != oldValue else { return }
@@ -110,12 +112,21 @@ public final class ImageBubble: UIView, ChatBubble, UIContextMenuInteractionDele
         return UIImage(cgImage: image)
     }
 
-    public func size(within width: CGFloat) -> CGSize {
-        let widest = min(width, Self.widest)
-        let size =
-            came
+    /// Its width over its height, from the photo once it came, or the file's size before, or 4:3.
+    var aspect: CGFloat {
+        let size = pictureSize
+        return size.width > 0 && size.height > 0 ? size.width / size.height : 4 / 3
+    }
+
+    private var pictureSize: CGSize {
+        came
             ?? file.flatMap { file in file.width.flatMap { w in file.height.map { CGSize(width: w, height: $0) } } }
             ?? CGSize(width: 4, height: 3)
+    }
+
+    public func size(within width: CGFloat) -> CGSize {
+        let widest = min(width, Self.widest)
+        let size = pictureSize
         guard size.width > 0, size.height > 0 else { return CGSize(width: widest, height: (widest * 0.75).rounded()) }
         let scale = min(widest / size.width, Self.tallest / size.height)
         return CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
@@ -127,7 +138,8 @@ public final class ImageBubble: UIView, ChatBubble, UIContextMenuInteractionDele
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         shape.frame = bounds
-        shape.path = UIBezierPath(bubble: bounds, mine: mine, joined: joined).cgPath
+        shape.path =
+            (tile ? UIBezierPath(rect: bounds) : UIBezierPath(bubble: bounds, mine: mine, joined: joined)).cgPath
         CATransaction.commit()
     }
 

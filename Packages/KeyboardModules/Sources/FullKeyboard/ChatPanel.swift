@@ -102,7 +102,7 @@ final class ChatPanel: UIView, PanelContent {
         if let line {
             composer.show(
                 line, placeholder: chats.open.map { "Message \($0.name)" } ?? "Message",
-                caret: typing && !picking && fullAccess(), photos: photos, theme: theme)
+                caret: typing && !picking && fullAccess(), photos: photos, picking: picking, theme: theme)
         }
         bar = metrics.toolbar.bar
         glyph = metrics.toolbar.glyph
@@ -123,6 +123,7 @@ final class ChatPanel: UIView, PanelContent {
             chats.messages.suffix(40).map { message in
                 ChatMessage(
                     text: message.text, mine: message.mine, pending: message.pending == true,
+                    failed: message.failed == true,
                     files: (message.files ?? []).compactMap { file in
                         chats.url(of: file).map {
                             ChatFile(
@@ -136,8 +137,8 @@ final class ChatPanel: UIView, PanelContent {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        tabs.isHidden = !typing || chats.list.isEmpty
         let row = CGFloat(bar)
+        tabs.isHidden = !typing || chats.list.isEmpty || bounds.height < row
         more.isHidden = tabs.isHidden
         let around = (row - ChatTabs.height) / 2
         more.place(

@@ -157,6 +157,11 @@ open class FullKeyboardViewController: UIInputViewController {
         var keysUp: Bool
         var drafts: [String: String]
         var photos: [UnsentPhoto]?
+        var picking: Bool?
+        /// The app it was open in, and when iikb opened to ask iOS for the photos from it: back in that app soon after,
+        /// the chat opens again even in a field iOS now names anew, as Contacts' are on coming back.
+        var host: String?
+        var asked: Date?
     }
     private static let keptChat = StoredFile<KeptChat>(
         URL.applicationSupportDirectory.appending(path: "chat-kept.json"))
@@ -171,6 +176,8 @@ open class FullKeyboardViewController: UIInputViewController {
     private let clipboard = ClipboardStore(backup: ClipboardStore.own)
     private let sources = Sources()
     private var hostApp: String?
+    /// When iikb last opened to ask iOS for the photos, kept with the chat (`KeptChat.asked`).
+    private var asked: Date?
     /// The field the keyboard is typing in (`documentIdentifier`), so dictations end with the field they were typed in,
     /// and the next keyboard in the same field goes on following them.
     private var field: String?
@@ -262,8 +269,10 @@ open class FullKeyboardViewController: UIInputViewController {
         sources.onHint = { [unowned self] in render() }
         chats.changed = { [weak self] in self?.render() }
         photos.changed = { [weak self] in
-            self?.keepChat()
-            self?.render()
+            guard let self else { return }
+            if line != nil { engine.update(chatTraits) }
+            keepChat()
+            render()
         }
         suggestionBar.onCancel = { [unowned self] in
             feedback(.other)
@@ -325,7 +334,11 @@ open class FullKeyboardViewController: UIInputViewController {
             : line != nil
                 ? CGRect(x: 0, y: 0, width: width, height: max(room - toolbar.height, 0))
                 : CGRect(x: 0, y: max(room - bar - toolbar.panelHeight, 0), width: width, height: toolbar.panelHeight)
-        if picking { photos.shown?.frame = keyboardView.frame }
+        if picking {
+            let keys = keyboardView.frame
+            photos.shown?.frame = CGRect(
+                x: keys.minX, y: keys.minY, width: keys.width, height: view.bounds.maxY - keys.minY)
+        }
         TouchTrace.shared.layout(view)
     }
 
@@ -356,6 +369,7 @@ open class FullKeyboardViewController: UIInputViewController {
                         self.observers = []
                     },
                     Dictation.observe(.changed) { [weak self] in self?.dictationChanged() },
+                    Dictation.observe(.photos) { [weak self] in self?.photosAnswered() },
                     Dictation.observeLevel { [weak self] level, recorded in
                         self?.recorded = recorded
                         self?.suggestionBar.hear(level, recorded: recorded)
@@ -491,10 +505,15 @@ open class FullKeyboardViewController: UIInputViewController {
             keepDictations()
             if let field, let kept = Self.keptChat.read().value {
                 Self.keptChat.remove()
-                if hasFullAccess, kept.field == field {
+                updateHost()
+                let back = kept.asked.map { -$0.timeIntervalSinceNow < 300 } == true && kept.host == hostApp
+                asked = nil
+                if hasFullAccess, kept.field == field || back {
                     drafts = kept.drafts
                     photos.restore(kept.photos ?? [])
-                    return openChat(kept.text, at: kept.chat, keysUp: kept.keysUp)
+                    openChat(kept.text, at: kept.chat, keysUp: kept.keysUp)
+                    if kept.picking == true { showPhotos() }
+                    return
                 }
             }
         }
@@ -644,6 +663,7 @@ open class FullKeyboardViewController: UIInputViewController {
         panelView.open(panel)
         panelView.isHidden = panel == nil
         panelView.inKeysPlace = inPlace
+        panelView.fieldFirst = picking && !photos.attached.isEmpty
         if placed.map({ $0 != (line != nil, inPlace) }) ?? true {
             placed = (line != nil, inPlace)
             view.setNeedsLayout()
@@ -775,6 +795,11 @@ open class FullKeyboardViewController: UIInputViewController {
         render()
     }
 
+    /// iOS answered iikb's ask for access to the photos: the grid shows what it now may.
+    private func photosAnswered() {
+        if picking { photos.shown?.show(theme: theme) }
+    }
+
     /// Opens iikb to ask iOS for access to the photos, which the keyboard shares, and back to the app you're in, where
     /// the chat opens again as you left it; only from an app iikb can bring you back to.
     private func allowPhotos() {
@@ -783,6 +808,8 @@ open class FullKeyboardViewController: UIInputViewController {
             notice = "Opening iikb would close this. Turn on photos from Chats in another app."
             return render()
         }
+        asked = Date()
+        keepChat()
         open(AppLink.Photos(back: hostApp).url)
     }
 
@@ -793,6 +820,11 @@ open class FullKeyboardViewController: UIInputViewController {
             (keysUp, picking) = (false, false)
             return render()
         }
+        showPhotos()
+    }
+
+    /// Your photos in the keys' place, read again so a photo just taken, or access just given, shows.
+    private func showPhotos() {
         if photos.shown == nil {
             let grid = photos.grid
             grid.onAllow = { [unowned self] in allowPhotos() }
@@ -964,12 +996,17 @@ open class FullKeyboardViewController: UIInputViewController {
         engine.leaveField()
         let line = LineDocument(text)
         self.line = line
-        engine.update(InputTraits(returnKind: .send, returnRequiresText: true))
+        engine.update(chatTraits)
         engine.documentChanged(line)
         chats.reload()
         chats.start(at: chat)
         keepChat()
         render()
+    }
+
+    /// A chat's line sends on return, which lights up with words or a photo to send.
+    private var chatTraits: InputTraits {
+        InputTraits(returnKind: .send, returnRequiresText: photos.attached.isEmpty)
     }
 
     /// Notes the open chat where the next keyboard finds it, as it opens, as it switches and as the keyboard goes away,
@@ -979,7 +1016,7 @@ open class FullKeyboardViewController: UIInputViewController {
         Self.keptChat.save(
             KeptChat(
                 field: field, chat: chats.open?.id, text: line.text, keysUp: keysUp && !picking, drafts: drafts,
-                photos: photos.attached))
+                photos: photos.attached, picking: picking, host: hostApp, asked: asked))
     }
 
     /// Another chat from its pill, the line you'd begun kept with the chat you left and the one you'd begun in this chat

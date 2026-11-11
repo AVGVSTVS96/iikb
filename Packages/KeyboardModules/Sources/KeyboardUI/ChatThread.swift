@@ -8,17 +8,20 @@ public struct ChatMessage: Hashable, Sendable {
     public var mine: Bool
     /// Sent but not yet in the chat's own messages.
     public var pending: Bool
+    /// Pending, and its last try to go failed.
+    public var failed: Bool
     public var files: [ChatFile]
 
-    public init(text: String, mine: Bool, pending: Bool = false, files: [ChatFile] = []) {
+    public init(text: String, mine: Bool, pending: Bool = false, failed: Bool = false, files: [ChatFile] = []) {
         self.text = text
         self.mine = mine
         self.pending = pending
+        self.failed = failed
         self.files = files
     }
 }
 
-/// A file sent in a chat: a photo shows as one (`ImageBubble`), anything else as its name.
+/// A file sent in a chat: a photo shows in its message's album (`AlbumBubble`), anything else as its name.
 public struct ChatFile: Hashable, Sendable {
     public var name: String
     public var url: URL
@@ -68,6 +71,9 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate, UIScrollView
     private static let bottomFade = 10.0
     private let fade = CAGradientLayer()
     private var bubbles: [any ChatBubble] = []
+    /// The red ! beside each message that failed to go, as Telegram marks one, by its last bubble's index.
+    private var marks: [Int: UIImageView] = [:]
+    private static let markSize: CGFloat = 22
     private var photo: PhotoView?
     private var theme = KeyboardTheme.lightCurrent
     /// A line under the messages, like what went wrong.
@@ -95,7 +101,8 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate, UIScrollView
 
     required init?(coder: NSCoder) { fatalError() }
 
-    /// Each message as Messages splits one: its photos, then its other files, then its text, each a bubble.
+    /// Each message as Telegram draws one: its photos as an album with its words under them in one bubble, then its
+    /// other files, each a bubble, and its words in their own bubble when there are no photos.
     public func show(_ messages: [ChatMessage], footnote note: String?, theme: KeyboardTheme) {
         self.theme = theme
         var index = 0
@@ -112,16 +119,39 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate, UIScrollView
             scroll.addSubview(bubble)
             return bubble
         }
+        var failed: Set<Int> = []
         for message in messages {
-            for file in message.files where file.isImage {
-                next(image).show(file, mine: message.mine, pending: message.pending, theme: theme)
+            let waiting = message.pending && !message.failed
+            let photos = message.files.filter(\.isImage)
+            if !photos.isEmpty {
+                next(album).show(photos, text: message.text, mine: message.mine, pending: waiting, theme: theme)
             }
             for file in message.files where !file.isImage {
-                next(text).show(file, mine: message.mine, pending: message.pending, theme: theme)
+                next(text).show(file, mine: message.mine, pending: waiting, theme: theme)
             }
-            if !message.text.isEmpty || message.files.isEmpty { next(text).show(message, theme: theme) }
+            if photos.isEmpty, !message.text.isEmpty || message.files.isEmpty {
+                var shown = message
+                shown.pending = waiting
+                next(text).show(shown, theme: theme)
+            }
+            if message.failed { failed.insert(index - 1) }
         }
         while bubbles.count > index { bubbles.removeLast().removeFromSuperview() }
+        for (at, mark) in marks where !failed.contains(at) {
+            mark.removeFromSuperview()
+            marks[at] = nil
+        }
+        for at in failed where marks[at] == nil {
+            let mark = UIImageView(
+                image: UIImage(
+                    systemName: "exclamationmark.circle.fill",
+                    withConfiguration: UIImage.SymbolConfiguration(pointSize: Self.markSize, weight: .regular)))
+            mark.tintColor = .systemRed
+            mark.accessibilityLabel = "Not sent"
+            mark.isAccessibilityElement = true
+            scroll.addSubview(mark)
+            marks[at] = mark
+        }
         footnote.text = note
         footnote.textColor = theme.candidate.ui
         setNeedsLayout()
@@ -133,8 +163,8 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate, UIScrollView
         return bubble
     }
 
-    private func image() -> ImageBubble {
-        let bubble = ImageBubble()
+    private func album() -> AlbumBubble {
+        let bubble = AlbumBubble()
         bubble.fetch = { [unowned self] in await fetch($0) }
         bubble.onLoad = { [unowned self] in setNeedsLayout() }
         bubble.onTap = { [unowned self] in open($0) }
@@ -185,6 +215,11 @@ public final class ChatThread: UIView, UIGestureRecognizerDelegate, UIScrollView
             let size = bubble.size(within: widest)
             let x = bubble.mine ? width - Self.tail - size.width : Self.tail
             bubble.frame = CGRect(x: x, y: y, width: size.width, height: size.height)
+            if let mark = marks[index] {
+                let side = Self.markSize + 2
+                let markX = bubble.mine ? bubble.frame.minX - side - 6 : bubble.frame.maxX + 6
+                mark.frame = CGRect(x: markX, y: bubble.frame.maxY - side, width: side, height: side)
+            }
             y += size.height
         }
         if let note = footnote.text, !note.isEmpty {
@@ -225,6 +260,9 @@ public final class MessageBubble: UIView, ChatBubble, UITextViewDelegate {
     public var drawn = false {
         didSet { if drawn != oldValue { text.attributedText = drawn ? made : nil } }
     }
+
+    /// Only the words, the bubble around them drawn by what holds it, as an album's caption.
+    public var bare = false { didSet { shape.isHidden = bare } }
 
     private let shape = CAShapeLayer()
     private let text = UITextView()

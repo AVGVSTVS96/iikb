@@ -55,6 +55,8 @@ public enum Dictation {
         case edited = "com.shahidy.iikb.dictation.edited"
         /// Control Center's iikb Mic was turned off: the microphone goes off as Home's switch turns it off.
         case micOff = "com.shahidy.iikb.dictation.micoff"
+        /// iOS answered the app's ask for access to the photos, which Chats' photo grid shares.
+        case photos = "com.shahidy.iikb.photos"
     }
 
     /// How long the app may keep the microphone on after you dictate, in seconds, so the next dictation starts right

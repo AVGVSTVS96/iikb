@@ -198,9 +198,15 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     /// Asks iOS for access to the photos, which only an app in front can, for Chats on the keyboard to show them, then
-    /// reopens the app you were typing in.
+    /// reopens the app you were typing in. The keyboard goes down while iOS asks, since its question squeezed above the
+    /// keys hides its buttons, and comes back after when you were typing here.
     private func allowPhotos(back host: String?) async {
+        let typing = UIApplication.shared.connectedScenes.lazy.compactMap { ($0 as? UIWindowScene)?.keyWindow }
+            .first?.firstResponder
+        typing?.resignFirstResponder()
         _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+        typing?.becomeFirstResponder()
+        Dictation.send(.photos)
         guard let host, host != Bundle.main.bundleIdentifier else { return }
         _ = await HostApp.open(host)
     }
@@ -244,5 +250,12 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         var top = window?.rootViewController
         while let presented = top?.presentedViewController { top = presented }
         top?.present(alert, animated: true)
+    }
+}
+
+extension UIView {
+    /// The view being typed in, this one or one inside it.
+    fileprivate var firstResponder: UIView? {
+        isFirstResponder ? self : subviews.lazy.compactMap(\.firstResponder).first
     }
 }

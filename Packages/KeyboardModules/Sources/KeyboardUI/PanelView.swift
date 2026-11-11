@@ -58,6 +58,9 @@ public final class PanelView: UIView {
     public var showsBack = true { didSet { if showsBack != oldValue { setNeedsLayout() } } }
     /// Under the field in the keys' place, so it ends where the bottom row of keys would.
     public var bottomInset = PanelView.inset { didSet { if bottomInset != oldValue { setNeedsLayout() } } }
+    /// The field may take the whole panel, as a chat's box does with photos attached while they're being picked, where
+    /// the room above the keys is short.
+    public var fieldFirst = false { didSet { if fieldFirst != oldValue { setNeedsLayout() } } }
     private(set) var content: PanelContent?
     private var toolbar = KeyboardMetrics.phone(width: 390).toolbar
     private let back = UIButton(type: .custom)
@@ -136,7 +139,10 @@ public final class PanelView: UIView {
         let fieldWidth = max(block.maxX - fieldX, 0)
         let room = bottom - top - CGFloat(Toolbar.fieldGap)
         let fieldHeight =
-            own.map { min(ceil($0.sizeThatFits(CGSize(width: fieldWidth, height: room - 46)).height), room - 46) }
+            own.map {
+                let most = fieldFirst ? room : room - 46
+                return min(ceil($0.sizeThatFits(CGSize(width: fieldWidth, height: most)).height), most)
+            }
             ?? CGFloat(toolbar.field)
         let row = CGRect(x: block.minX, y: bottom - fieldHeight, width: width, height: fieldHeight)
         content?.frame = CGRect(
@@ -287,7 +293,10 @@ package final class PanelNotice: UIButton {
         didSet { alpha = isHighlighted && turnsOn ? 0.5 : 1 }
     }
 
-    package func show(_ text: String?, turnOn: Bool, oneRow: Bool, theme: KeyboardTheme) {
+    /// `action` names what a tap does, Turn On unless it's something more particular.
+    package func show(
+        _ text: String?, turnOn: Bool, action: String = "Turn On", oneRow: Bool, theme: KeyboardTheme
+    ) {
         turnsOn = turnOn && text != nil
         isHidden = text == nil
         setAttributedTitle(
@@ -298,7 +307,7 @@ package final class PanelNotice: UIButton {
                 if turnsOn {
                     title.append(
                         NSAttributedString(
-                            string: (oneRow ? " " : "\n") + "Turn On",
+                            string: (oneRow ? " " : "\n") + action,
                             attributes: [
                                 .foregroundColor: theme.prominent.ui,
                                 .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
