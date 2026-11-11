@@ -201,6 +201,11 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     /// reopens the app you were typing in. The keyboard goes down while iOS asks, since its question squeezed above the
     /// keys hides its buttons, and comes back after when you were typing here.
     private func allowPhotos(back host: String?) async {
+        guard PHPhotoLibrary.authorizationStatus(for: .readWrite) != .denied else {
+            // iOS asks only once: after Don't Allow, only Settings turns photos on.
+            _ = await UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+            return
+        }
         let typing = UIApplication.shared.connectedScenes.lazy.compactMap { ($0 as? UIWindowScene)?.keyWindow }
             .first?.firstResponder
         typing?.resignFirstResponder()

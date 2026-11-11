@@ -205,7 +205,7 @@ final class PhotoGrid: UIView, UICollectionViewDataSource, UICollectionViewDeleg
         // the library gives, not in the status.
         let allowed = status == .authorized || status == .limited || found.count > 0
         notice.show(
-            allowed ? nil : "iOS asks once before iikb can show your photos here. Full Access doesn’t cover them.",
+            allowed ? nil : "Photos need their own permission to show here. Full Access doesn’t include them.",
             turnOn: !allowed, action: "Allow Photos", oneRow: false, theme: theme)
         collection.isHidden = !allowed
         guard allowed else { return }
