@@ -17,7 +17,7 @@ EVAL noise=0.25 keyboard=baseline words=2714 raw=72.0% autocorrect=89.3% top3=91
 EVAL noise=0.25 keyboard=decoder words=2714 raw=88.2% autocorrect=97.3% top3=99.3% next3=30.2% fixed=249 broken=2 ["ides→idea", "mind→kind"]
 EVAL noise=0.25 keyboard=learning words=2714 raw=88.8% autocorrect=97.1% top3=99.0% next3=30.1% fixed=228 broken=2 ["ides→idea", "mind→kind"]
 EVAL noise=0.35 keyboard=baseline words=2714 raw=35.1% autocorrect=59.5% top3=62.8% next3=6.5% fixed=664 broken=1 ["claus→class"]
-EVAL noise=0.35 keyboard=decoder words=2714 raw=60.4% autocorrect=88.6% top3=96.0% next3=28.3% fixed=770 broken=5 ["mice→nice", "prayer→prayed", "see→are", "get→her", "so→do"]
+EVAL noise=0.35 keyboard=decoder words=2714 raw=60.4% autocorrect=88.6% top3=96.1% next3=28.3% fixed=770 broken=5 ["mice→nice", "prayer→prayed", "see→are", "get→her", "so→do"]
 EVAL noise=0.35 keyboard=learning words=2714 raw=61.0% autocorrect=91.1% top3=96.8% next3=28.9% fixed=820 broken=4 ["worm→work", "user→used", "so→do", "merger→meter"]
 EVAL predict corpus=chat user=learning words=7233 top1=22.7% top3=36.4%
 EVAL predict corpus=chat user=new words=7233 top1=19.5% top3=31.2%
