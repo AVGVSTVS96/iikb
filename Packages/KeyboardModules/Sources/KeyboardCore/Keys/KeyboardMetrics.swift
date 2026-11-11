@@ -163,13 +163,14 @@ extension KeyboardMetrics {
         return metrics
     }
 
+    /// Apple's keys and letters on a regular iPhone in landscape, measured in the iOS 27.2 simulator (docs/design.md).
     static func phoneLandscape(width: Double) -> KeyboardMetrics {
         KeyboardMetrics(
             columns: 10, sideInset: 3.75, keyGap: 6, rowGap: 8,
-            keyHeight: 27.33, numberRowHeight: 0,
-            topInset: Toolbar.gap, bottomInset: 4, cornerRadius: 9,
+            keyHeight: 32, numberRowHeight: 0,
+            topInset: Toolbar.gap, bottomInset: 2, cornerRadius: 9,
             letterSize: 20, labelSize: 15.5, secondarySize: 11, symbolSize: 19,
-            letterOffset: -1, toolbar: .compact(bar: 34)
+            letterOffset: -1, toolbar: .compact(bar: 40)
         )
     }
 
