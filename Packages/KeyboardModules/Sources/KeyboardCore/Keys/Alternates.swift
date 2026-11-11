@@ -28,4 +28,47 @@ enum Alternates {
     static func `for`(_ character: String) -> [String] {
         all[character].map { $0.map(String.init) } ?? []
     }
+
+    /// What a long press on `character` offers in `language`, as Apple's keyboard for it lists them, most likely first:
+    /// nil where it lists nothing of its own, so the key keeps English's.
+    static func `for`(_ character: String, in language: Language) -> [String]? {
+        languages[language.id]?[character]?.split(separator: " ").map(String.init)
+    }
+
+    /// From Apple's keyboard on iOS 27, its `Roman-Accent-*` lists.
+    private static let languages: [String: [String: String]] = [
+        "es": [
+            "a": "á a ª à ä â ã å ą æ ā", "c": "c ç ć č", "d": "d đ", "e": "é e è ë ê ę ė ē",
+            "i": "í i ï ì î į ī", "l": "l·l l", "n": "n ñ ń", "o": "ó o º ò ö ô õ ø œ ō", "s": "s š",
+            "u": "ú ü u ù û ū", "1": "1º 1ª 1", "2": "2º 2ª 2", "3": "3º 3ª 3", "4": "4º 4ª 4", "5": "5º 5ª 5",
+            "6": "6º 6ª 6", "7": "7º 7ª 7", "8": "8º 8ª 8", "9": "9º 9ª 9", "0": "0º 0ª 0",
+        ],
+        "fr": [
+            "\"": "» « ” “ „ \"", "a": "à â ª a æ á ä ã å ā", "c": "ç c ć č", "e": "é è ê ë e ę ė ē",
+            "i": "î ï i ì í į ī", "n": "n ñ ń", "o": "ô œ º o ö ò ó õ ø ō", "u": "û ù u ü ú ū", "y": "y ÿ",
+        ],
+        "de": [
+            "\"": "„ “ ” « » \"", "'": "‚ ‹ › ‘ '", "a": "ä a à á â æ ã å ā", "c": "c ç ć č", "e": "é e è ê ë ė",
+            "i": "i î ï í ī ì", "n": "n ñ ń", "o": "ö o ô ò ó õ œ ø ō", "s": "ß s ś š", "u": "ü u û ù ú ū",
+            "y": "y ÿ",
+        ],
+        "pt": [
+            "a": "á ã à â a ª ä å æ", "c": "ç c", "e": "é ê e è ę ė ē ë", "i": "í i î ì ï į ī",
+            "n": "n ñ", "o": "ó õ ô o ò º ö œ ø ō", "u": "ú u ü ù û ū", "1": "1º 1ª 1", "2": "2º 2ª 2",
+            "3": "3º 3ª 3", "4": "4º 4ª 4", "5": "5º 5ª 5", "6": "6º 6ª 6", "7": "7º 7ª 7", "8": "8º 8ª 8",
+            "9": "9º 9ª 9",
+        ],
+        "it": [
+            "a": "à a á ª â ä æ ã å ā", "c": "c ç ć č", "e": "è é e ə ê ë ę ė ē", "i": "ì i í î ï į ī",
+            "o": "ò ó o º ô ö õ œ ø ō", "s": "ß s ś š", "u": "ù u ú û ü ū", "1": "1º 1ª 1", "2": "2º 2ª 2",
+            "3": "3º 3ª 3", "4": "4º 4ª 4", "5": "5º 5ª 5", "6": "6º 6ª 6", "7": "7º 7ª 7", "8": "8º 8ª 8",
+            "9": "9º 9ª 9", "0": "0º 0ª 0",
+        ],
+        "sv": [
+            "a": "ä å a á à â ã ā ạ æ", "c": "c ç č ĉ", "d": "d đ ð ḓ ď", "e": "é e ë è ê ẽ ē ę ė ẹ ǝ",
+            "g": "g ǥ ǧ ģ", "i": "i ï í ì î ĩ ī ị", "k": "k ǩ ḵ ķ", "l": "l ł", "n": "n ñ ň ṋ ṉ ŋ",
+            "o": "ö œ o ó ò ô õ ō ø ȯ ọ ő", "s": "ß s ś š ŝ ṣ ș", "t": "t ŧ ț ṱ ṯ þ",
+            "u": "ü u ú ù û ũ ū ů ụ", "y": "y ÿ ý ỳ ŷ ỹ ȳ ẙ ẏ ɏ", "z": "z ž ʒ ǯ", "ä": "æ ä", "ö": "ø ö",
+        ],
+    ]
 }

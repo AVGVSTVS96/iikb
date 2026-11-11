@@ -11,15 +11,15 @@ scripts/sim use "$ID" "$KEYBOARD"
 slug=$(echo "$NAME" | tr 'A-Z ' 'a-z-')
 mkdir -p shots/raw
 xcodegen generate -q
-rm -f shots/raw/$slug-capture-$KEYBOARD-*.png
+rm -f shots/raw/$slug-capture-${KEYBOARD//[:@=;]/_}-*.png
 xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
   -derivedDataPath build/uitest >/dev/null 2>&1
-TEST_RUNNER_IIKB_CAPTURE=${CAPTURE:-1} TEST_RUNNER_IIKB_ARGS=${ARGS:-} xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
+TEST_RUNNER_IIKB_CAPTURE=${CAPTURE:-1} TEST_RUNNER_IIKB_ARGS=${ARGS:-} TEST_RUNNER_IIKB_KEYS=${KEYS:-} xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
   -derivedDataPath build/uitest -only-testing:AppUITests/CaptureTests >/dev/null 2>&1 &
 test_pid=$!
 until xcrun simctl spawn "$ID" launchctl list | grep -q "UIKitApplication:com.shahidy.iikb\["; do sleep 0.5; done
 for i in $(seq -w 1 ${FRAMES:-30}); do
   sleep 0.7
-  xcrun simctl io "$ID" screenshot "shots/raw/$slug-capture-$KEYBOARD-$i.png" >/dev/null 2>&1 || true
+  xcrun simctl io "$ID" screenshot "shots/raw/$slug-capture-${KEYBOARD//[:@=;]/_}-$i.png" >/dev/null 2>&1 || true
 done
 wait $test_pid || true

@@ -7,8 +7,17 @@ public struct Language: Sendable, Identifiable {
     public let name: String
     /// What Apple's keyboard offers it, its own first.
     public let layouts: [LetterLayout]
+    /// Its currency signs as Apple's keyboard places them: where English's $, €, £ and ¥ sit, in that order, so its own
+    /// is on the numbers layer and the others on the symbols.
+    public let currencies: [String]
+
     /// The currency key's sign on the numbers layer.
-    public let currency: String
+    public var currency: String { currencies[0] }
+
+    /// A key English's keyboard labels `english`, as this language's keyboard labels it.
+    func key(_ english: String) -> String {
+        Self.english.currencies.firstIndex(of: english).map { currencies[$0] } ?? english
+    }
 
     /// The layout `id` names (`KeyboardSettings.layout`), or the language's own where it offers none by that name.
     public func layout(_ id: String?) -> LetterLayout {
@@ -23,18 +32,19 @@ public struct Language: Sendable, Identifiable {
     public static let all: [Language] = [english, spanish, french, german, portuguese, italian, swedish]
 
     public static let english = Language(
-        id: "en", name: "English", layouts: [.qwerty, .azerty, .qwertz], currency: "$")
+        id: "en", name: "English", layouts: [.qwerty, .azerty, .qwertz], currencies: ["$", "€", "£", "¥"])
     public static let spanish = Language(
-        id: "es", name: "Español", layouts: [.spanish, .qwerty, .azerty, .qwertz], currency: "€")
+        id: "es", name: "Español", layouts: [.spanish, .qwerty, .azerty, .qwertz], currencies: ["€", "$", "£", "¥"])
     public static let french = Language(
-        id: "fr", name: "Français", layouts: [.french, .azerty, .qwerty, .qwertz], currency: "€")
+        id: "fr", name: "Français", layouts: [.french, .azerty, .qwerty, .qwertz], currencies: ["€", "$", "£", "¥"])
     public static let german = Language(
-        id: "de", name: "Deutsch", layouts: [.german, .qwertz, .qwerty, .azerty], currency: "€")
+        id: "de", name: "Deutsch", layouts: [.german, .qwertz, .qwerty, .azerty], currencies: ["€", "$", "£", "¥"])
     public static let portuguese = Language(
-        id: "pt", name: "Português", layouts: [.qwerty, .azerty, .qwertz], currency: "R$")
+        id: "pt", name: "Português", layouts: [.qwerty, .azerty, .qwertz], currencies: ["$", "€", "£", "¥"])
     public static let italian = Language(
-        id: "it", name: "Italiano", layouts: [.qwerty, .azerty, .qwertz], currency: "€")
-    public static let swedish = Language(id: "sv", name: "Svenska", layouts: [.swedish], currency: "kr")
+        id: "it", name: "Italiano", layouts: [.qwerty, .azerty, .qwertz], currencies: ["€", "$", "£", "¥"])
+    public static let swedish = Language(
+        id: "sv", name: "Svenska", layouts: [.swedish], currencies: ["kr", "€", "$", "£"])
 }
 
 extension Language: Hashable {
@@ -61,7 +71,7 @@ public struct LetterLayout: Hashable, Sendable, Identifiable {
     public static let french = LetterLayout(
         id: "french", name: "French", rows: ["azertyuiop", "qsdfghjklm", "wxcvbn'"])
     public static let german = LetterLayout(
-        id: "german", name: "German", rows: ["qwertzuiop", "asdfghjkl", "yxcvbnm"])
+        id: "german", name: "German", rows: ["qwertzuiopü", "asdfghjklöä", "yxcvbnm"])
     public static let swedish = LetterLayout(
         id: "swedish", name: "Swedish", rows: ["qwertyuiopå", "asdfghjklöä", "zxcvbnm"])
 }

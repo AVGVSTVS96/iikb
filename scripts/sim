@@ -105,6 +105,7 @@ use() {
   case $2 in
     iikb) keyboards=("com.shahidy.iikb.keyboard" "en_US@sw=QWERTY;hw=Automatic") ;;
     system) keyboards=("en_US@sw=QWERTY;hw=Automatic") ;;
+    system:*) keyboards=("${2#system:};hw=Automatic") ;;
   esac
   local current expanded
   current=$(xcrun simctl spawn "$id" defaults read .GlobalPreferences AppleKeyboards 2>/dev/null | sed '1d;$d' | tr -d ' ",\n' || true)
@@ -459,6 +460,61 @@ ipadapp() {
     done
   done 3<<<"$IPAD_WINDOWS"
   [ -n "${KEEP:-}" ] || down "$id"
+  return "${failed:-0}"
+}
+
+# Each language's letters and numbers, Apple's keyboard beside iikb's, light, on ON (phone duo mini pad11 pad13;
+# phones and iPads upright and sideways, the Duo's four screens): shots/raw/lang/<tag>/<device>-<screen>-<name>-<layer>-<keyboard>.png.
+# LANGS lines are a name, Apple's input mode and iikb's language and layout; KEYBOARDS (system iikb) and LAYERS pick.
+LANGS="en-qwerty en_US@sw=QWERTY en qwerty
+en-azerty en_US@sw=AZERTY en azerty
+en-qwertz en_US@sw=QWERTZ en qwertz
+es-spanish es_ES@sw=QWERTY-Spanish es spanish
+es_MX-spanish es_MX@sw=QWERTY-Spanish es spanish
+fr-french fr_FR@sw=AZERTY-French fr french
+fr-azerty fr_FR@sw=AZERTY fr azerty
+fr-qwerty-accents fr_FR@sw=QWERTY-Accents fr qwerty
+de-german de_DE@sw=QWERTZ-German de german
+de-qwertz de_DE@sw=QWERTZ de qwertz
+pt_BR-qwerty pt_BR@sw=QWERTY pt qwerty
+pt_PT-qwerty pt_PT@sw=QWERTY pt qwerty
+it-qwerty it_IT@sw=QWERTY it qwerty
+sv-swedish sv_SE@sw=QWERTY-Swedish-Finnish sv swedish"
+langs() {
+  local tag=$1 dev id spec keyboard name mode language layout layer screen hinge orientation display out
+  mkdir -p "shots/raw/lang/$tag"
+  for dev in ${ON:-phone duo mini pad11 pad13}; do
+    case $dev in
+      phone) spec="iPhone 17:iPhone-17" ;;
+      duo) spec="iPhone Duo:iPhone-Duo" ;;
+      mini) spec="iPad mini:iPad-mini-A17-Pro" ;;
+      pad11) spec="iPad Pro 11:iPad-Pro-11-inch-M4-8GB" ;;
+      pad13) spec="iPad Pro 13:iPad-Pro-13-inch-M4-8GB" ;;
+    esac
+    id=$(ensure "${spec%%:*}" "${spec##*:}")
+    boot "$id"
+    for keyboard in ${KEYBOARDS:-system iikb}; do
+      [ "$keyboard" = iikb ] && use "$id" iikb
+      while read -r name mode language layout; do
+        [ -n "${ONLY:-}" ] && [[ " $ONLY " != *" $name "* ]] && continue
+        [ "$keyboard" = system ] && use "$id" "system:$mode"
+        if [ "$dev" = duo ]; then screens=$DUO_SCREENS; else screens="portrait 0 portrait 1
+landscape 0 landscape 1"; fi
+        while read -r screen hinge orientation display; do
+          [[ "$screen" == *slightly* ]] && continue
+          [ "$dev" = duo ] && { unfold "$id" "$hinge"; hub "$id" orientation "$orientation"; }
+          for layer in ${LAYERS:-letters numbers}; do
+            out="shots/raw/lang/$tag/$dev-$screen-$name-$layer-$keyboard.png"
+            DISPLAY_ID=$([ "$dev" = duo ] && echo "$display") shoot "$id" "$([ "$keyboard" = system ] && echo "system:$mode" || echo iikb)" light "$out" \
+              -iikbOrientation "$([ "$orientation" = portrait ] && echo portrait || echo landscape)" \
+              -iikbLanguage "$language" -iikbLayout "$layout" \
+              $([ "$layer" = numbers ] && echo "-FullKeyboardType 2") -iikbTheme standard -iikbThemeAppearance automatic || failed=1
+          done
+        done <<<"$screens"
+      done <<<"$LANGS"
+    done
+    [ -n "${KEEP:-}" ] || down "$id"
+  done
   return "${failed:-0}"
 }
 

@@ -246,12 +246,14 @@ public enum Duo {
 
 public enum Layouts {
     public static func layout(for context: LayoutContext) -> KeyboardLayout {
-        switch context.device {
-        case .phone: PhoneLayouts.layout(for: context)
-        case .compactPad: CompactPadLayouts.layout(for: context)
-        case .pad: PadLayouts.layout(for: context)
-        case .largePad: LargePadLayouts.layout(for: context)
-        }
+        let layout =
+            switch context.device {
+            case .phone: PhoneLayouts.layout(for: context)
+            case .compactPad: CompactPadLayouts.layout(for: context)
+            case .pad: PadLayouts.layout(for: context)
+            case .largePad: LargePadLayouts.layout(for: context)
+            }
+        return context.language == .english ? layout : layout.in(context.language)
     }
 }
 
@@ -271,4 +273,54 @@ extension RowItem {
     }
 
     static let flexible = RowItem.spacer(.fill)
+}
+
+extension KeyboardLayout {
+    /// The keys as `language`'s keyboard labels them: its currency signs, and what a long press on each offers. A long
+    /// press opens on the key's own character, the language's likeliest next to it and running toward the keyboard's
+    /// middle, without letters that have keys of their own.
+    func `in`(_ language: Language) -> KeyboardLayout {
+        let keyed = Set(rows.flatMap { $0.compactMap(\.character) })
+        var layout = self
+        layout.rows = rows.map { row in
+            let characters = row.compactMap(\.character)
+            return row.map { item in
+                guard case .key(var key) = item, let english = item.character else { return item }
+                let value = language.key(english)
+                key.action = .character(value)
+                key.secondary = key.secondary.map(language.key)
+                if let listed = Alternates.for(value, in: language) {
+                    let options = [value] + listed.filter { $0 != value && !keyed.contains($0) }
+                    let right = characters.firstIndex(of: english)! >= characters.count / 2
+                    key.alternates = options.count > 1 ? (right ? options.reversed() : options) : []
+                }
+                return .key(key)
+            }
+        }
+        return layout
+    }
+}
+
+extension RowItem {
+    fileprivate var character: String? {
+        guard case .key(let key) = self, case .character(let value) = key.action else { return nil }
+        return value
+    }
+}
+
+extension [RowItem] {
+    /// Each key and gap of a set width `scale` times as many columns wide, so it keeps its size in a layout whose rows
+    /// hold more keys.
+    func widened(by scale: Double) -> [RowItem] {
+        guard scale != 1 else { return self }
+        return map { item in
+            guard case .pitch(let span) = item.width else { return item }
+            switch item {
+            case .key(var key):
+                key.width = .pitch(span * scale)
+                return .key(key)
+            case .spacer: return .spacer(.pitch(span * scale))
+            }
+        }
+    }
 }

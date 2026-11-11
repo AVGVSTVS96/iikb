@@ -108,7 +108,8 @@ enum LaunchOptions {
     }
 
     /// `-iikbTheme mechanical -iikbThemeAppearance dark -iikbCharacterPreview detached -iikbNumberRow YES -iikbSkinTone medium
-    /// -iikbKeySpacing tighter -iikbKeyRoundness rounder -iikbStopAnimation drain` set the keyboard's look for screenshots.
+    /// -iikbKeySpacing tighter -iikbKeyRoundness rounder -iikbStopAnimation drain -iikbLanguage de -iikbLayout qwertz` set
+    /// the keyboard's look for screenshots.
     static func applyLook() {
         var settings = SettingsStore.load()
         if let theme = defaults.string(forKey: "iikbTheme").flatMap(ThemeName.init) { settings.theme = theme }
@@ -131,6 +132,8 @@ enum LaunchOptions {
         if let roundness = defaults.string(forKey: "iikbKeyRoundness").flatMap(KeyRoundness.init) {
             settings.keyRoundness = roundness
         }
+        if let language = defaults.string(forKey: "iikbLanguage") { settings.language = language }
+        if let layout = defaults.string(forKey: "iikbLayout") { settings.layout = layout.isEmpty ? nil : layout }
         if settings != SettingsStore.load() { SettingsStore.save(settings) }
     }
 

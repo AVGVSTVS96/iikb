@@ -18,6 +18,17 @@ final class CaptureTests: XCTestCase {
                 forDuration: 4, thenDragTo: top, withVelocity: .slow, thenHoldForDuration: 4)
             return
         }
+        if ProcessInfo.processInfo.environment["IIKB_CAPTURE"] == "accents" {
+            for name in (ProcessInfo.processInfo.environment["IIKB_KEYS"] ?? "a e o").split(separator: " ") {
+                if name == "numbers" {
+                    key("numbers", in: app).tap()
+                    continue
+                }
+                let held = key(String(name), in: app)
+                if held.exists { held.press(forDuration: 3.5) }
+            }
+            return
+        }
         guard ProcessInfo.processInfo.environment["IIKB_CAPTURE"] == "bar" else {
             g.press(forDuration: 4)
             key("e", in: app).press(forDuration: 6)

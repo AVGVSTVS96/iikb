@@ -91,10 +91,13 @@ public enum RowItem: Hashable, Sendable {
 public struct KeyboardLayout: Hashable, Sendable {
     public var rows: [[RowItem]]
     public var hasNumberRow: Bool
+    /// Keys more than the device's usual rows hold, as Swedish's å and ä: Apple narrows every key to fit them.
+    public var extraColumns: Double
 
-    public init(rows: [[RowItem]], hasNumberRow: Bool = false) {
+    public init(rows: [[RowItem]], hasNumberRow: Bool = false, extraColumns: Double = 0) {
         self.rows = rows
         self.hasNumberRow = hasNumberRow
+        self.extraColumns = extraColumns
     }
 
     public var keys: [Key] {

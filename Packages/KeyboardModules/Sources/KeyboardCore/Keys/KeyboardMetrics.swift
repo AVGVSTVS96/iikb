@@ -102,7 +102,9 @@ extension KeyboardMetrics {
             metrics = metrics.fitted(screen: screen.width, window: window)
         }
         metrics.roundness = context.keyRoundness
-        return metrics.spaced(context.keySpacing, rows: Layouts.layout(for: context).rows.count)
+        let layout = Layouts.layout(for: context)
+        metrics.columns += layout.extraColumns
+        return metrics.spaced(context.keySpacing, rows: layout.rows.count)
     }
 
     /// The keys `spacing` apart: the outermost keys' edges and the keyboard's height stay put, and the keycaps take
