@@ -67,6 +67,26 @@ struct NetworkTests {
         #expect(engine.suggestions.first?.text == "to")
     }
 
+    @Test func predictionsFollowShiftTheMomentItChanges() {
+        var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
+        engine.corrector = Corrector(source: testLexicon, network: testNetwork)
+        let document = TestDocument()
+        engine.documentChanged(document)
+        for character in "i want " {
+            engine.perform(character == " " ? .space : .character(String(character)), in: document)
+        }
+        #expect(engine.suggestions.first?.text == "to")
+        engine.pressShift(doubleTap: false)
+        engine.releaseShift(in: document)
+        #expect(engine.suggestions.first?.text == "To")
+        engine.pressShift(doubleTap: true)
+        engine.releaseShift(in: document)
+        #expect(engine.suggestions.first?.text == "TO")
+        engine.pressShift(doubleTap: false)
+        engine.releaseShift(in: document)
+        #expect(engine.suggestions.first?.text == "to")
+    }
+
     @Test func contextReadsTwoWordsBack() {
         let text = "Hi. I want "
         let word = Words.current(in: text)

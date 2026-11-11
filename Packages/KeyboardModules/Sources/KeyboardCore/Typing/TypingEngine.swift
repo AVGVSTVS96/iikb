@@ -86,9 +86,11 @@ public struct TypingEngine {
         switch action {
         case .shift:
             shift = shift == .off ? .on : .off
+            suggestionsChanged()
             return
         case .capsLock:
             shift = shift == .locked ? .off : .locked
+            suggestionsChanged()
             return
         case .layer(let target):
             layer = target
@@ -373,6 +375,7 @@ public struct TypingEngine {
     mutating func pressShift(doubleTap: Bool) {
         shift = doubleTap && settings.capsLock ? .locked : shift == .off ? .on : .off
         shiftHold = .pressed
+        suggestionsChanged()
     }
 
     mutating func releaseShift(in document: some TextDocument) {
