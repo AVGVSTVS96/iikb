@@ -32,7 +32,8 @@ final class AlternatesView: UIView {
         theme: KeyboardTheme
     ) {
         let font = KeyboardFont.letter(metrics.letterSize)
-        let cell = CGSize(width: key.width + 4, height: key.height * 1.57)
+        let fits = (area.width - 14 - padding * 2) / CGFloat(max(options.count, 1))
+        let cell = CGSize(width: min(key.width + 4, fits), height: key.height * 1.57)
         present(
             options.map { NSAttributedString(string: $0, attributes: [.font: font]) }, selected: selected, cell: cell,
             highlightHeight: key.height + 4, over: key, in: area, metrics: metrics, theme: theme)
