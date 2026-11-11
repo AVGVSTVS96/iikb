@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.shahidy.iikb.Text
+import kotlinx.serialization.Serializable
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -64,13 +65,21 @@ import kotlin.math.roundToInt
  * Compose state.
  */
 class ChatPhotos(private val context: Context) {
+    @Serializable
     data class Photo(val name: String, val width: Int, val height: Int) {
         fun file(context: Context) = File(folder(context), name)
     }
 
+    private val shown = mutableStateOf(emptyList<Photo>())
     /** The photos attached, in the order picked, as each is ready to send. */
-    var attached by mutableStateOf(emptyList<Photo>())
-        private set
+    var attached: List<Photo>
+        get() = shown.value
+        private set(photos) {
+            shown.value = photos
+            changed()
+        }
+    /** The photos attached changed. */
+    var changed: () -> Unit = {}
     /** Your newest photos' ids, newest first, as the grid last read them; null without access to them. */
     var library by mutableStateOf<List<Long>?>(emptyList())
         private set
@@ -80,12 +89,11 @@ class ChatPhotos(private val context: Context) {
     private val work = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
 
-    init {
-        work.execute(::prune)
-    }
-
     /** A picked photo's number, from 1, in the order picked. */
     fun number(id: Long) = picked.indexOfFirst { it.first == id }.takeIf { it >= 0 }?.plus(1)
+
+    /** Ten are picked in the grid, so the rest dim. */
+    val full get() = picked.size >= MOST
 
     /** Reads the library again as the grid comes up, so a photo just taken is first. */
     fun show() {
@@ -143,11 +151,6 @@ class ChatPhotos(private val context: Context) {
         picked = emptyList()
     }
 
-    /** What failed to send goes back in the box, ahead of anything attached since. */
-    fun restore(photos: List<Photo>) {
-        attached = (photos + attached).distinct().take(MOST)
-    }
-
     /** Photos pasted into the box, after those attached, up to ten in all. */
     fun paste(uris: List<Uri>) {
         uris.take(MOST - attached.size).forEach { uri -> read(uri) { photo -> photo?.let(::attach) } }
@@ -185,11 +188,11 @@ class ChatPhotos(private val context: Context) {
         photo
     }.getOrNull()
 
-    /** Drops the photos picked over a day ago that aren't attached. */
-    private fun prune() {
+    /** Drops the photos picked over a day ago that aren't attached or `kept` by a message still to send. */
+    fun prune(kept: Set<String>) = work.execute {
         val old = System.currentTimeMillis() - DAY
-        val kept = attached.map { it.name }.toSet()
-        folder(context).listFiles()?.forEach { if (it.name !in kept && it.lastModified() < old) it.delete() }
+        val held = kept + attached.map { it.name }
+        folder(context).listFiles()?.forEach { if (it.name !in held && it.lastModified() < old) it.delete() }
     }
 
     fun close() = work.shutdownNow()
@@ -222,9 +225,9 @@ class ChatPhotos(private val context: Context) {
 }
 
 /**
- * Your newest photos, three or four across (five on a wide keyboard) with 2 between, each drawn at the size it's shown
- * so the grid costs the keyboard little memory, a picked one dimmed under its number. Without access to them it says
- * so, and Turn On opens iikb to ask.
+ * Your newest photos, about 110 across each and at least three to a row, with 2 between, each drawn at the size it's
+ * shown so the grid costs the keyboard little memory, a picked one dimmed under its number. Without access to them it
+ * says so, and Allow Photos opens iikb to ask.
  */
 @Composable
 fun PhotoGrid(photos: ChatPhotos) {
@@ -233,8 +236,8 @@ fun PhotoGrid(photos: ChatPhotos) {
     val library = photos.library
     if (library == null) {
         val notice = buildAnnotatedString {
-            append("Let iikb show your photos here, to send them in a chat.\n")
-            withStyle(SpanStyle(color = look.accent, fontWeight = FontWeight.SemiBold)) { append("Turn On") }
+            append("Photos need their own permission to show here.\n")
+            withStyle(SpanStyle(color = look.accent, fontWeight = FontWeight.SemiBold)) { append("Allow Photos") }
         }
         return Box(
             Modifier.fillMaxSize().padding(horizontal = 24.dp)
@@ -243,20 +246,23 @@ fun PhotoGrid(photos: ChatPhotos) {
         ) { Text(notice, color = look.secondary, fontSize = 15.sp, textAlign = TextAlign.Center) }
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val across = if (maxWidth > 500.dp) 5 else if (maxWidth > 380.dp) 4 else 3
+        val across = maxOf(3, (maxWidth.value / 110).roundToInt())
         val side = floor((maxWidth.value - GRID_GAP * (across - 1)) / across)
         LazyVerticalGrid(
             GridCells.Fixed(across), Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.spacedBy(GRID_GAP.dp), verticalArrangement = Arrangement.spacedBy(GRID_GAP.dp),
         ) {
-            items(library, key = { it }) { id -> PhotoCell(id, side, photos.number(id)) { photos.toggle(id) } }
+            items(library, key = { it }) { id -> PhotoCell(id, side, photos.number(id), photos.full) { photos.toggle(id) } }
         }
     }
 }
 
-/** A photo in the grid, and its number once it's picked, in a circle at its corner as Telegram's. */
+/**
+ * A photo in the grid, and its number once it's picked, in a circle ringed in white at its corner as Telegram's; with
+ * ten picked (`full`), the rest dim and lose their ring.
+ */
 @Composable
-private fun PhotoCell(id: Long, side: Float, number: Int?, tap: () -> Unit) {
+private fun PhotoCell(id: Long, side: Float, number: Int?, full: Boolean, tap: () -> Unit) {
     val look = LocalColors.current
     val context = LocalContext.current
     val pixels = with(LocalDensity.current) { side.dp.roundToPx() }
@@ -267,13 +273,13 @@ private fun PhotoCell(id: Long, side: Float, number: Int?, tap: () -> Unit) {
     ) {
         AsyncImage(
             request, "Photo", imageLoader(), contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize().alpha(if (number == null) 1f else 0.8f),
+            modifier = Modifier.fillMaxSize().alpha(if (number != null) 0.8f else if (full) 0.4f else 1f),
         )
         val badge = Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp).size(BADGE.dp).clip(CircleShape)
         if (number == null) {
-            Box(badge.background(Color.Black.copy(alpha = 0.15f)).border(1.5.dp, Color.White, CircleShape))
+            if (!full) Box(badge.background(Color.Black.copy(alpha = 0.15f)).border(1.5.dp, Color.White, CircleShape))
         } else {
-            Box(badge.background(look.accent), contentAlignment = Alignment.Center) {
+            Box(badge.background(look.accent).border(1.5.dp, Color.White, CircleShape), contentAlignment = Alignment.Center) {
                 Text("$number", color = look.accentLabel, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
         }

@@ -80,7 +80,9 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     /** The chat open when the keyboard last went away, to open again as it was if it comes back in the same field. */
     private var keptChat: KeptChat? = null
 
-    private class KeptChat(val app: String?, val field: Int, val chat: String?, val text: String, val keysUp: Boolean)
+    private class KeptChat(
+        val app: String?, val field: Int, val chat: String?, val text: String, val keysUp: Boolean, val picking: Boolean,
+    )
     /** The menu's Chats shelf is following the chats' list. */
     private var listing = false
     private var feedback: Feedback? = null
@@ -135,6 +137,11 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         seen = ChatSeen(this)
         chats.changed = ::render
         photos = ChatPhotos(this)
+        photos.changed = {
+            if (chatOpen) chatTraits()
+            render()
+        }
+        photos.prune(chats.held)
         dictation = Dictation(this, this)
         dictation.onChange = ::showDictation
         dictation.onLevel = { view?.mic?.hear(it, dictation.recorded) }
@@ -569,13 +576,19 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         keysUp = false
         Native.panel(handle, null)
         Native.leaveField(handle)
-        Native.traits(handle, "text other send sentences".encodeToByteArray(), true, requiresText = true, autocorrection = true)
+        chatTraits()
         Native.lineOpen(handle, null)
         chatOpen = true
         chats.reload()
         chats.start(id)
         render()
     }
+
+    /** A chat's line sends on return, which lights up with words or a photo to send. */
+    private fun chatTraits() = Native.traits(
+        handle, "text other send sentences".encodeToByteArray(), true, requiresText = photos.attached.isEmpty(),
+        autocorrection = true,
+    )
 
     /** Another chat from its pill: the line you'd begun goes with the chat you left, and this chat's comes back. */
     private fun switchChat(chat: Chats.Chat) {
@@ -617,19 +630,13 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     }
 
     /**
-     * `text` and the photos attached go to the open chat, and with photos the chat comes back down to read. If they
-     * can't, they come back to the box, the text unless you've begun another.
+     * `text` and the photos attached go to the open chat, which keeps them until its extension has them, and with photos
+     * the chat comes back down to read. With no chat open to keep them, the text comes back to the box.
      */
     private fun deliver(text: String) {
         val attached = photos.attached
         if (text.isEmpty() && attached.isEmpty()) return
-        val sending = chats.send(text, attached) {
-            if (!chatOpen) return@send
-            if (text.isNotEmpty() && line?.text.isNullOrEmpty()) Native.lineRestore(handle, text.encodeToByteArray())
-            photos.restore(attached)
-            render()
-        }
-        if (!sending) {
+        if (!chats.send(text, attached)) {
             if (text.isNotEmpty() && line?.text.isNullOrEmpty()) Native.lineRestore(handle, text.encodeToByteArray())
             return render()
         }
@@ -641,14 +648,17 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         render()
     }
 
-    /** The open chat as the keyboard goes away, the photo grid down, so it can open again as it was. */
+    /** The open chat as the keyboard goes away, so it can open again as it was. */
     private fun keepChat() {
         keptChat = if (chatOpen) {
-            KeptChat(app, currentInputEditorInfo?.fieldId ?: 0, chats.open?.id, line?.text.orEmpty(), keysUp && !picking)
+            KeptChat(app, currentInputEditorInfo?.fieldId ?: 0, chats.open?.id, line?.text.orEmpty(), keysUp && !picking, picking)
         } else null
     }
 
-    /** The chat kept when the keyboard went away opens again in the same field; elsewhere, its photos are let go. */
+    /**
+     * The chat kept when the keyboard went away opens again in the same field, its photos up if they were, as after
+     * Allow Photos; elsewhere, its photos are let go.
+     */
     private fun reopenChat(info: EditorInfo) {
         val kept = keptChat ?: return
         keptChat = null
@@ -656,6 +666,11 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         startChat(kept.chat)
         Native.lineRestore(handle, kept.text.encodeToByteArray())
         keysUp = kept.keysUp
+        if (kept.picking) {
+            photos.show()
+            keysUp = true
+            picking = true
+        }
         render()
     }
 

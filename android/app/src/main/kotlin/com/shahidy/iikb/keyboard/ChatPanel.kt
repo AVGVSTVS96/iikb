@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -42,6 +43,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -111,7 +113,8 @@ import com.shahidy.iikb.Tracking
 import com.shahidy.iikb.app.glass
 import kotlin.math.PI
 import kotlin.math.ceil
-import kotlin.math.min
+import kotlin.math.floor
+import kotlin.math.roundToInt
 import kotlinx.coroutines.withTimeoutOrNull
 
 val LocalChats = staticCompositionLocalOf<Chats> { error("no chats") }
@@ -143,26 +146,34 @@ fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
     var photo by remember { mutableStateOf<Opened?>(null) }
     LaunchedEffect(chats.open) { photo = null }
     val row = bar.height.toFloat()
+    val attached = LocalChatPhotos.current.attached
     Box(Modifier.fillMaxSize()) {
-        Column(
+        BoxWithConstraints(
             Modifier.fillMaxSize().padding(top = if (keysUp) 0.dp else row.dp)
                 .padding(
                     start = state.minX.dp, end = state.endInset.dp, top = if (keysUp) (row - 6).dp else 0.dp,
                     bottom = if (keysUp) 0.dp else 8.dp,
                 ),
         ) {
-            Box(
-                Modifier.weight(1f).fillMaxWidth()
-                    .clickable(remember { MutableInteractionSource() }, indication = null) { if (keysUp) actions.browse() },
-            ) {
-                Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
-                    if (empty) (chats.problem ?: quiet)?.let { Notice(it) }
-                    else Thread(chats.messages.takeLast(SHOWN), chats.problem) { photo = it }
+            // As iOS's `PanelView`: the box leaves the messages 46 unless photos are attached while you pick more.
+            val most = maxHeight - BOX_GAP.dp - if (state.picking && attached.isNotEmpty()) 0.dp else MESSAGES_LEAST.dp
+            Column(Modifier.fillMaxSize()) {
+                Box(
+                    Modifier.weight(1f).fillMaxWidth()
+                        .clickable(remember { MutableInteractionSource() }, indication = null) { if (keysUp) actions.browse() },
+                ) {
+                    Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
+                        if (empty) (chats.problem ?: quiet)?.let { Notice(it) }
+                        else Thread(chats.messages.takeLast(SHOWN), chats.problem) { photo = it }
+                    }
+                    photo?.let { PhotoView(it) { photo = null } }
                 }
-                photo?.let { PhotoView(it) { photo = null } }
+                Spacer(Modifier.size(BOX_GAP.dp))
+                MessageBox(
+                    line, chats.open?.name?.let { "Message $it" } ?: "Message", caret = keysUp && !state.picking,
+                    picking = state.picking, most, backdrop,
+                )
             }
-            Spacer(Modifier.size(6.dp))
-            MessageBox(line, chats.open?.name?.let { "Message $it" } ?: "Message", caret = keysUp && !state.picking, backdrop)
         }
         // More's glass starts where the keys and the messages do, and the tabs a key's gap after it, as iOS's.
         val top = (bar.top + (bar.bar - TABS_HEIGHT) / 2).toFloat()
@@ -202,26 +213,49 @@ private fun Notice(text: String) {
     }
 }
 
-/** One bubble of a message, as iOS's `ChatThread` splits one: its photos, then its other files, then its text. */
+/**
+ * One bubble of a message, as iOS's `ChatThread` draws one: its photos as an album with its words under them, then its
+ * other files, and its words in their own bubble when there are no photos. A message that didn't go is drawn in full
+ * color, its last bubble `failed`.
+ */
 private sealed interface Item {
     val mine: Boolean
     val pending: Boolean
+    val failed: Boolean
 
-    data class Words(val message: Chats.Message) : Item {
-        override val mine get() = message.mine
-        override val pending get() = message.pending == true
-    }
+    data class Words(
+        val text: String, override val mine: Boolean, override val pending: Boolean, override val failed: Boolean = false,
+    ) : Item
 
-    data class Photo(val file: Chats.Message.File, val url: String, override val mine: Boolean, override val pending: Boolean) : Item
-    data class Document(val file: Chats.Message.File, override val mine: Boolean, override val pending: Boolean) : Item
+    data class Album(
+        val photos: List<Picture>, val text: String, override val mine: Boolean, override val pending: Boolean,
+        override val failed: Boolean = false,
+    ) : Item
+
+    data class Document(
+        val file: Chats.Message.File, override val mine: Boolean, override val pending: Boolean, override val failed: Boolean = false,
+    ) : Item
 }
+
+/** A photo in a message, at the address its extension serves it. */
+private data class Picture(val file: Chats.Message.File, val url: String)
 
 private fun items(messages: List<Chats.Message>, url: (Chats.Message.File) -> String?) = messages.flatMap { message ->
     val files = message.files.orEmpty()
-    val pending = message.pending == true
-    files.filter { it.isImage }.mapNotNull { file -> url(file)?.let { Item.Photo(file, it, message.mine, pending) } } +
-        files.filterNot { it.isImage }.map { Item.Document(it, message.mine, pending) } +
-        if (message.text.isNotEmpty() || files.isEmpty()) listOf(Item.Words(message)) else emptyList()
+    val failed = message.failed == true
+    val waiting = message.pending == true && !failed
+    val photos = files.filter { it.isImage }.mapNotNull { file -> url(file)?.let { Picture(file, it) } }
+    val shown = buildList<Item> {
+        if (photos.isNotEmpty()) add(Item.Album(photos, message.text, message.mine, waiting))
+        files.filterNot { it.isImage }.forEach { add(Item.Document(it, message.mine, waiting)) }
+        if (photos.isEmpty() && (message.text.isNotEmpty() || files.isEmpty())) add(Item.Words(message.text, message.mine, waiting))
+    }
+    if (!failed) shown
+    else shown.dropLast(1) + when (val last = shown.last()) {
+        is Item.Words -> last.copy(failed = true)
+        is Item.Album -> last.copy(failed = true)
+        is Item.Document -> last.copy(failed = true)
+    }
 }
 
 /** A photo opened large over the messages. */
@@ -261,11 +295,15 @@ private fun Thread(messages: List<Chats.Message>, problem: String?, open: (Opene
                     Modifier.fillMaxWidth().padding(top = gap, start = TAIL.dp, end = TAIL.dp),
                     contentAlignment = if (item.mine) Alignment.CenterEnd else Alignment.CenterStart,
                 ) {
-                    val shape = BubbleShape(item.mine, above, below, tail = !below)
-                    when (item) {
-                        is Item.Words -> Bubble(item.message, shape, widest)
-                        is Item.Document -> FileBubble(item, shape, widest)
-                        is Item.Photo -> PhotoBubble(item, BubbleShape(item.mine, above, below), widest, open)
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(MARK_GAP.dp)) {
+                        if (item.failed && item.mine) NotSent()
+                        val shape = BubbleShape(item.mine, above, below, tail = !below)
+                        when (item) {
+                            is Item.Words -> Bubble(item, shape, widest)
+                            is Item.Document -> FileBubble(item, shape, widest)
+                            is Item.Album -> AlbumBubble(item, above, below, widest, open)
+                        }
+                        if (item.failed && !item.mine) NotSent()
                     }
                 }
             }
@@ -330,34 +368,40 @@ private fun Modifier.fill(mine: Boolean, pending: Boolean, shape: Shape): Modifi
  * system's handles and Copy; a link tapped opens, and held offers Open Link and Copy Link.
  */
 @Composable
-private fun Bubble(message: Chats.Message, shape: Shape, widest: Dp) {
+private fun Bubble(item: Item.Words, shape: Shape, widest: Dp) {
+    Box(Modifier.widthIn(max = widest).fill(item.mine, item.pending, shape).padding(horizontal = 12.dp, vertical = 7.dp)) {
+        Words(item.text, item.mine)
+    }
+}
+
+/** A message's words, in its bubble or under an album's photos. */
+@Composable
+private fun Words(said: String, mine: Boolean) {
     val look = LocalColors.current
-    Box(Modifier.widthIn(max = widest).fill(message.mine, message.pending == true, shape).padding(horizontal = 12.dp, vertical = 7.dp)) {
-        val actions = LocalActions.current
-        val hold = LocalHold.current
-        val text = remember { arrayOfNulls<TextLayoutResult>(1) }
-        val written = remember(message.text) { markdown(message.text, actions::openLink) }
-        var bounds by remember { mutableStateOf(Rect.Zero) }
-        SelectionContainer {
-            BasicText(
-                written,
-                style = LINES.copy(color = if (message.mine) look.accentLabel else look.label),
-                onTextLayout = { text[0] = it },
-                modifier = Modifier.onGloballyPositioned { bounds = it.boundsInWindow() }
-                    .heldLink({ position -> text[0]?.let { written.link(it, position) } }) { url ->
-                        hold(
-                            Held(
-                                bounds, Held.Shows.Text(url), listed = true,
-                                actions = listOf(
-                                    Held.Action("safari", "Open Link") { actions.openLink(url) },
-                                    Held.Action("doc.on.doc", "Copy Link") { actions.copyLink(url) },
-                                ),
+    val actions = LocalActions.current
+    val hold = LocalHold.current
+    val text = remember { arrayOfNulls<TextLayoutResult>(1) }
+    val written = remember(said) { markdown(said, actions::openLink) }
+    var bounds by remember { mutableStateOf(Rect.Zero) }
+    SelectionContainer {
+        BasicText(
+            written,
+            style = LINES.copy(color = if (mine) look.accentLabel else look.label),
+            onTextLayout = { text[0] = it },
+            modifier = Modifier.onGloballyPositioned { bounds = it.boundsInWindow() }
+                .heldLink({ position -> text[0]?.let { written.link(it, position) } }) { url ->
+                    hold(
+                        Held(
+                            bounds, Held.Shows.Text(url), listed = true,
+                            actions = listOf(
+                                Held.Action("safari", "Open Link") { actions.openLink(url) },
+                                Held.Action("doc.on.doc", "Copy Link") { actions.copyLink(url) },
                             ),
-                        )
-                    }
-                    .hugLines { text[0] },
-            )
-        }
+                        ),
+                    )
+                }
+                .hugLines { text[0] },
+        )
     }
 }
 
@@ -390,36 +434,116 @@ private fun photo(context: Context, url: String, token: String?) = ImageRequest.
 }.build()
 
 /**
- * A photo, as Messages shows one: the picture itself, rounded as a bubble, up to 240 wide and 320 tall, in its shape
- * before it comes when the file says its size. A tap opens it large; held, it shows larger above Copy.
+ * A message's photos as Telegram groups them, as iOS's `AlbumBubble`: one bubble, the photos in rows across its width
+ * 2 apart, each row as tall as its photos' shapes make it, and the words under them in the same bubble, its color a rim
+ * round the photos. One photo alone is up to 240 wide and 320 tall. Each takes its shape before it comes when the file
+ * says its size. A tap on a photo opens it large; held, it shows larger above Copy.
  */
 @Composable
-private fun PhotoBubble(item: Item.Photo, shape: Shape, widest: Dp, open: (Opened) -> Unit) {
+private fun AlbumBubble(item: Item.Album, above: Boolean, below: Boolean, widest: Dp, open: (Opened) -> Unit) {
+    val look = LocalColors.current
+    val came = remember(item.photos) { mutableStateMapOf<String, Pair<Double, Double>>() }
+    val shapes = item.photos.map { picture ->
+        val (width, height) = came[picture.url]
+            ?: picture.file.width?.let { width -> picture.file.height?.let { width to it } } ?: (4.0 to 3.0)
+        if (width > 0 && height > 0) (width / height).toFloat() else 4f / 3
+    }
+    val captioned = item.text.isNotEmpty()
+    val rim = if (captioned) ALBUM_RIM else 0f
+    val frames = albumFrames(shapes, minOf(widest.value, ALBUM_WIDTH) - 2 * rim)
+    val photos = Size(frames.maxOf { it.right }, frames.maxOf { it.bottom })
+    val photosShape = if (captioned) RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp) else BubbleShape(item.mine, above, below)
+    Column(
+        Modifier.width((photos.width + 2 * rim).dp).alpha(if (item.pending) 0.6f else 1f).then(
+            if (captioned) Modifier.background(if (item.mine) look.accent else look.chatBubble, BubbleShape(item.mine, above, below, tail = !below))
+            else Modifier,
+        ),
+    ) {
+        Box(Modifier.padding(start = rim.dp, top = rim.dp, end = rim.dp).size(photos.width.dp, photos.height.dp).clip(photosShape)) {
+            item.photos.forEachIndexed { index, picture ->
+                AlbumPhoto(picture, frames[index], open) { came[picture.url] = it }
+            }
+        }
+        if (captioned) Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp)) { Words(item.text, item.mine) }
+    }
+}
+
+/**
+ * The photos' places in a block `width` wide: one alone at its own shape, or rows of them, each row filling the width,
+ * as tall as its photos' `shapes` (width over height) make it within a quarter and three quarters of the width.
+ */
+private fun albumFrames(shapes: List<Float>, width: Float): List<Rect> {
+    if (shapes.size == 1) {
+        val wide = minOf(width, PHOTO_WIDTH)
+        val tall = minOf(wide / shapes[0], PHOTO_HEIGHT)
+        return listOf(Rect(0f, 0f, (tall * shapes[0]).roundToInt().toFloat(), tall.roundToInt().toFloat()))
+    }
+    val frames = mutableListOf<Rect>()
+    var y = 0f
+    var at = 0
+    for (count in albumRows(shapes.size)) {
+        val row = shapes.subList(at, at + count)
+        val room = width - ALBUM_GAP * (count - 1)
+        val sum = row.sum()
+        val height = (room / sum).coerceIn(width / 4, width * 0.75f).roundToInt().toFloat()
+        var x = 0f
+        row.forEachIndexed { index, shape ->
+            val tile = if (index == count - 1) width - x else (room * shape / sum).roundToInt().toFloat()
+            frames += Rect(x, y, x + tile, y + height)
+            x += tile + ALBUM_GAP
+        }
+        y += height + ALBUM_GAP
+        at += count
+    }
+    return frames
+}
+
+/** How many photos go in each row: one row for one or two, a wide one over two for three, else rows of two and three, the twos first. */
+private fun albumRows(count: Int): List<Int> {
+    if (count <= 2) return if (count == 0) emptyList() else listOf(count)
+    if (count == 3) return listOf(1, 2)
+    val rows = (count + 2) / 3
+    val base = count / rows
+    val more = count % rows
+    return List(rows - more) { base } + List(more) { base + 1 }
+}
+
+/** One of an album's photos, square cornered at `frame`, the album rounding the whole; `came` with its size once it does. */
+@Composable
+private fun AlbumPhoto(picture: Picture, frame: Rect, open: (Opened) -> Unit, came: (Pair<Double, Double>) -> Unit) {
     val look = LocalColors.current
     val context = LocalContext.current
     val chats = LocalChats.current
-    val request = remember(item.url) { photo(context, item.url, chats.token) }
-    val told = item.file.width?.let { width -> item.file.height?.let { width to it } }
-    var size by remember(item.url) { mutableStateOf(told) }
-    var loaded by remember(item.url) { mutableStateOf(false) }
+    val request = remember(picture.url) { photo(context, picture.url, chats.token) }
+    var size by remember(picture.url) { mutableStateOf(picture.file.width?.let { width -> picture.file.height?.let { width to it } }) }
+    var loaded by remember(picture.url) { mutableStateOf(false) }
     val (width, height) = size?.takeIf { it.first > 0 && it.second > 0 } ?: (4.0 to 3.0)
-    val wide = minOf(widest.value, PHOTO_WIDTH)
-    val scale = min(wide / width, PHOTO_HEIGHT / height)
-    val opened = { Opened(item.file, item.url, request, width.toInt().coerceAtLeast(1), height.toInt().coerceAtLeast(1)) }
+    val opened = { Opened(picture.file, picture.url, request, width.toInt().coerceAtLeast(1), height.toInt().coerceAtLeast(1)) }
     var bounds by remember { mutableStateOf(Rect.Zero) }
     Box(
-        Modifier.size((width * scale).toFloat().dp, (height * scale).toFloat().dp).alpha(if (item.pending) 0.6f else 1f)
-            .clip(shape).background(look.key).onGloballyPositioned { bounds = it.boundsInWindow() }.heldAway(bounds)
+        Modifier.offset(frame.left.dp, frame.top.dp).size(frame.width.dp, frame.height.dp).background(look.key)
+            .onGloballyPositioned { bounds = it.boundsInWindow() }.heldAway(bounds)
             .held(loaded, { bounds }, opened, { if (loaded) open(opened()) }),
     ) {
         AsyncImage(
-            request, item.file.name, imageLoader(), contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+            request, picture.file.name, imageLoader(), contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
             onSuccess = {
                 loaded = true
-                size = it.result.image.width.toDouble() to it.result.image.height.toDouble()
+                val shape = it.result.image.width.toDouble() to it.result.image.height.toDouble()
+                size = shape
+                came(shape)
             },
         )
     }
+}
+
+/** The red ! beside a message that didn't go, as Telegram marks one. */
+@Composable
+private fun NotSent() {
+    Glyph(
+        "exclamationmark.circle.fill", LocalColors.current.record, MARK.dp,
+        Modifier.semantics { contentDescription = "Not sent" },
+    )
 }
 
 /** A tap does `tapped`; a hold, once the photo has come, shows it larger above Copy, which copies the original file. */
@@ -525,7 +649,9 @@ fun markdown(text: String, opens: ((String) -> Unit)? = null): AnnotatedString =
  * with its ✕, as in Messages. Held, it offers the system's Paste, which attaches copied photos as photos.
  */
 @Composable
-private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, backdrop: com.kyant.backdrop.Backdrop) {
+private fun MessageBox(
+    line: Overlay.Line, placeholder: String, caret: Boolean, picking: Boolean, most: Dp, backdrop: com.kyant.backdrop.Backdrop,
+) {
     val look = LocalColors.current
     val actions = LocalActions.current
     val photos = LocalChatPhotos.current
@@ -537,13 +663,20 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, 
     val shape = RoundedCornerShape(20.dp)
     val paste = rememberBoxPaste()
     var bounds by remember { mutableStateOf(Rect.Zero) }
-    Row(verticalAlignment = Alignment.Bottom) {
+    // As iOS's `MessageField`: the photos shrink, to 32 at least, where the box has less room than they and a line need.
+    val side = floor(minOf(THUMB, maxOf(most.value - (2 * TEXT_INSET + STRIP_PAD + LINE), 32f)))
+    Row(Modifier.heightIn(max = most.coerceAtLeast(ATTACH.dp)), verticalAlignment = Alignment.Bottom) {
         Box(
             Modifier.size(ATTACH.dp).glass(CircleShape, backdrop, look.dark, under = look.card).clip(CircleShape)
                 .clickable(remember { MutableInteractionSource() }, indication = null, onClick = actions::attach)
                 .semantics { contentDescription = "Attach photos" },
             contentAlignment = Alignment.Center,
-        ) { Glyph("paperclip", look.label, Glyphs.square(19f).dp) }
+        ) {
+            Glyph(
+                "paperclip", if (picking) look.accent else look.label, Glyphs.square(19f).dp,
+                weight = if (picking) Glyphs.SEMIBOLD else Glyphs.REGULAR,
+            )
+        }
         Spacer(Modifier.size(ATTACH_GAP.dp))
         Box(
             Modifier.weight(1f).heightIn(min = 40.dp).glass(shape, backdrop, look.dark, under = look.card)
@@ -553,10 +686,10 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, 
                 },
         ) {
             Column {
-                if (attached.isNotEmpty()) Attached(attached)
+                if (attached.isNotEmpty()) Attached(attached, side)
                 Box(
                     Modifier.heightIn(max = (22 * 5 + 18).dp).verticalScroll(scroll)
-                        .padding(start = 14.dp, end = (BUTTON + 2 * MARGIN).dp, top = 9.dp, bottom = 9.dp),
+                        .padding(start = 14.dp, end = (BUTTON + 2 * MARGIN).dp, top = TEXT_INSET.dp, bottom = TEXT_INSET.dp),
                 ) {
                     BasicText(
                         if (empty) AnnotatedString(placeholder) else AnnotatedString(line.text),
@@ -589,20 +722,23 @@ private fun MessageBox(line: Overlay.Line, placeholder: String, caret: Boolean, 
     }
 }
 
-/** The attached photos in a row inside the box, above the words, each rounded with its ✕; the newest scrolled into view. */
+/**
+ * The attached photos in a row inside the box, above the words and in line with them, each `side` square, rounded,
+ * with its ✕; the newest scrolled into view.
+ */
 @Composable
-private fun Attached(attached: List<ChatPhotos.Photo>) {
+private fun Attached(attached: List<ChatPhotos.Photo>, side: Float) {
     val look = LocalColors.current
     val photos = LocalChatPhotos.current
     val context = LocalContext.current
     val row = rememberLazyListState()
     LaunchedEffect(attached.size) { row.scrollToItem(attached.lastIndex.coerceAtLeast(0)) }
     LazyRow(
-        Modifier.padding(start = STRIP_PAD.dp, top = STRIP_PAD.dp, end = STRIP_PAD.dp).height(THUMB.dp),
+        Modifier.padding(start = 14.dp, top = STRIP_PAD.dp, end = STRIP_PAD.dp).height(side.dp),
         state = row, horizontalArrangement = Arrangement.spacedBy(STRIP_PAD.dp),
     ) {
         itemsIndexed(attached, key = { _, photo -> photo.name }) { index, photo ->
-            Box(Modifier.size(THUMB.dp)) {
+            Box(Modifier.size(side.dp)) {
                 AsyncImage(
                     remember(photo) { ImageRequest.Builder(context).data(photo.file(context)).build() }, "Photo", imageLoader(),
                     contentScale = ContentScale.Crop,
@@ -718,9 +854,22 @@ private const val SHOWN = 40
 /** As iOS's `ChatThread`: messages fade out over a line and a bit under the tabs, and over less into the box. */
 private const val TOP_FADE = 28f
 private const val BOTTOM_FADE = 10f
-/** As iOS's `ImageBubble`. */
+/** As iOS's `ImageBubble`: one photo alone. */
 private const val PHOTO_WIDTH = 240f
 private const val PHOTO_HEIGHT = 320f
+/** As iOS's `AlbumBubble`: its widest, the gap between its photos, and the rim round them when words are under them. */
+private const val ALBUM_WIDTH = 300f
+private const val ALBUM_GAP = 2f
+private const val ALBUM_RIM = 2f
+/** As iOS's `ChatThread`: the mark on a message that didn't go, 22 points drawn in a 24 square, 6 from its bubble. */
+private const val MARK = 24f
+private const val MARK_GAP = 6f
+/** As iOS's `PanelView`: the box's gap above, and the messages' least room while it grows. */
+private const val BOX_GAP = 6f
+private const val MESSAGES_LEAST = 46f
+/** As iOS's `MessageField`: the words' inset above and below, and their line. */
+private const val TEXT_INSET = 9f
+private const val LINE = 22f
 /** As iOS's `MessageField`: the paperclip's circle and its gap to the box, the attached photos' side and spacing. */
 private const val ATTACH = 40f
 private const val ATTACH_GAP = 8f

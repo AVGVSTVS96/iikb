@@ -876,8 +876,8 @@ def photos():
 
 
 def retry():
-    """Android's own check that a chat whose extension drops keeps trying: it says so, and the extension's next message
-    shows once it's back on the same port."""
+    """Android's own check that a chat whose extension drops keeps trying: it says so; a message sent meanwhile stays,
+    marked as not sent; and once the extension is back on the same port, its next message shows and the kept one goes."""
     url = serve(Extension.fresh())
     server, port = servers[-1]
     seed(extensions=json.dumps([{"name": "Notes", "url": url}]))
@@ -889,12 +889,19 @@ def retry():
         Extension.changed.notify_all()
     find(lambda text: text.startswith("Can’t reach Notes"), 10)
     shot("panel-chat-retrying", 0.5)
+    tap_text("Message Notes", 1.5)
+    keys = Keys()
+    keys.type("on my way")
+    tap(*keys["return"], 1)
+    tap(keys.width / 2, keys.height * 0.3, 1.2)
+    find(lambda text: text.startswith("Can’t reach Notes. What you sent is kept"), 15)
+    shot("panel-chat-unsent", 0.5)
     Extension.dropped = False
     again = Quiet(("127.0.0.1", port), Extension)
     threading.Thread(target=again.serve_forever, daemon=True).start()
     servers.append((again, port))
     Extension.post("notes", {"from": "notes", "text": "Back again."})
-    find("Back again.", 20)
+    find(lambda text: text.startswith("Got it: “") and "my way" in text, 30)
     shot("panel-chat-retried", 0.5)
 
 

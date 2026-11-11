@@ -24,13 +24,29 @@ import java.util.concurrent.Future
 /**
  * The chats of the extensions you added (docs/extensions.md), as iOS's `Chats` keeps them: every extension's list,
  * pinned first, and the open chat's messages, asked for again as soon as each answer comes, so the extension holds the
- * request until they change and a reply shows the moment it's written. It stops when the panel closes. Compose state.
+ * request until they change and a reply shows the moment it's written. It stops when the panel closes. What you send
+ * is kept until its extension has it (`Unsent`), and goes again whenever the keyboard appears or an extension answers.
+ * Compose state.
  */
 class Chats(private val context: Context) {
-    data class Chat(val service: Service, val id: String, val name: String, val line: String?, val pinned: Boolean)
+    data class Chat(val service: Service, val id: String, val name: String, val line: String?, val pinned: Boolean) {
+        fun holds(message: Unsent) = message.service == service.url && message.chat == id
+    }
+
+    /** A message you sent that its extension doesn't have yet, as iOS's `UnsentMessage`. */
+    @Serializable
+    data class Unsent(
+        val service: String, val chat: String, val id: String, val text: String, val photos: List<ChatPhotos.Photo>? = null,
+    ) {
+        val where get() = service + "\n" + chat
+    }
 
     @Serializable
-    data class Message(val from: String, val text: String, val pending: Boolean? = null, val files: List<File>? = null) {
+    data class Message(
+        val from: String, val text: String, val pending: Boolean? = null, val files: List<File>? = null,
+        /** Pending, and its chat's last try to send failed. */
+        val failed: Boolean? = null,
+    ) {
         val mine get() = from == "me"
 
         /** A file sent with the message, at `url` relative to the extension's address; a photo (`image/…`) shows as one. */
@@ -46,8 +62,20 @@ class Chats(private val context: Context) {
         private set
     var open by mutableStateOf<Chat?>(null)
         private set
-    var messages by mutableStateOf(emptyList<Message>())
-        private set
+    /** The open chat as its extension last gave it, then what you sent that the extension doesn't have yet. */
+    val messages: List<Message>
+        get() {
+            val open = open ?: return emptyList()
+            return said + unsent.filter(open::holds).map { pending(it, failed = it.where in stuck) }
+        }
+    private var said by mutableStateOf(emptyList<Message>())
+    private val kept = java.io.File(context.noBackupFilesDir, "chat-unsent.json")
+    private var unsent by mutableStateOf(load())
+    /** The chats whose last send failed, so what waits in them shows as not sent. */
+    private var stuck by mutableStateOf(emptySet<String>())
+    /** Counts the open chat's answers, so a send knows whether one came while it was on its way. */
+    private var answers = 0
+    private var sending = false
     var loaded by mutableStateOf(false)
         private set
     var listed by mutableStateOf(false)
@@ -70,7 +98,11 @@ class Chats(private val context: Context) {
 
     fun reload() {
         services = Services.EXTENSIONS.list(context)
+        deliver()
     }
+
+    /** The photos the messages still to send hold, which mustn't be cleared away. */
+    val held get() = unsent.flatMap { it.photos.orEmpty() }.map { it.name }.toSet()
 
     /** Every extension's chats, kept on show until the new list comes; then, `opening`, `kept` open again, or the first. */
     fun start(kept: String? = null, opening: Boolean = true) {
@@ -86,6 +118,7 @@ class Chats(private val context: Context) {
                 list = all.filter { it.pinned } + all.filter { !it.pinned }
                 listed = true
                 problem = if (unreachable.isEmpty()) null else "Can’t reach ${unreachable.joinToString(", ")}."
+                deliver()
                 if (opening) pick(list.firstOrNull { it.id == kept } ?: list.firstOrNull())
                 changed()
             }
@@ -97,7 +130,7 @@ class Chats(private val context: Context) {
         generation++
         if (chat != open) {
             val last = chat?.let { seen[key(it)] }
-            messages = last ?: emptyList()
+            said = last ?: emptyList()
             loaded = last != null
         }
         open = chat
@@ -113,29 +146,71 @@ class Chats(private val context: Context) {
         reading = null
     }
 
-    /**
-     * Sends `text` and `photos` to the open chat, pending until the chat's next messages carry them, the photos shown
-     * from the keyboard's own copies; `failed` if it couldn't. False with no chat open to send them to.
-     */
-    fun send(text: String, photos: List<ChatPhotos.Photo>, failed: () -> Unit): Boolean {
+    /** Keeps `text` and `photos` for the open chat, shown as pending, and sends them. False with no chat open to keep them for. */
+    fun send(text: String, photos: List<ChatPhotos.Photo>): Boolean {
         val chat = open ?: return false
-        val pending = Message(
-            "me", text, pending = true,
-            files = photos.map {
-                Message.File(it.name, it.file(context).toURI().toString(), "image/jpeg", it.width.toDouble(), it.height.toDouble())
-            }.ifEmpty { null },
-        )
-        messages = messages + pending
+        keep(unsent + Unsent(chat.service.url, chat.id, UUID.randomUUID().toString(), text, photos.ifEmpty { null }))
+        deliver()
+        return true
+    }
+
+    /** Yours on its way, its photos read from the keyboard's own copies. */
+    private fun pending(message: Unsent, failed: Boolean = false) = Message(
+        "me", message.text, pending = true,
+        files = message.photos?.map {
+            Message.File(it.name, it.file(context).toURI().toString(), "image/jpeg", it.width.toDouble(), it.height.toDouble())
+        },
+        failed = if (failed) true else null,
+    )
+
+    /**
+     * Sends what's kept, oldest first, each to its chat's extension until the extension has it. A chat whose message
+     * can't go waits for the next send, answer or keyboard, and the other chats' go on. One the open chat's next answer
+     * hasn't shown yet stays in it as pending.
+     */
+    private fun deliver() {
+        if (sending) return
+        sending = true
+        deliver(waiting = emptySet())
+    }
+
+    private fun deliver(waiting: Set<String>) {
+        val next = unsent.firstOrNull { it.where !in waiting && service(it) != null }
+        val service = next?.let(::service)
+        if (next == null || service == null || work.isShutdown) {
+            sending = false
+            return
+        }
+        val answered = answers
         work.execute {
-            val sent = post(chat, text, photos)
+            val sent = post(service, next)
             main.post {
-                if (sent || open != chat) return@post
-                messages = messages.filterNot { it === pending }
-                problem = "Not sent: ${chat.service.name} didn’t answer."
-                failed()
+                if (!sent) {
+                    stuck = stuck + next.where
+                    problem = "Can’t reach ${service.name}. What you sent is kept and goes again."
+                    changed()
+                    return@post deliver(waiting + next.where)
+                }
+                stuck = stuck - next.where
+                keep(unsent - next)
+                if (open?.holds(next) == true && answers == answered) said = said + pending(next)
+                changed()
+                deliver(waiting)
             }
         }
-        return true
+    }
+
+    private fun service(message: Unsent) = services.firstOrNull { it.url == message.service }
+
+    private fun load(): List<Unsent> =
+        runCatching { json.decodeFromString<List<Unsent>>(kept.readText()) }.getOrNull().orEmpty()
+
+    /** Written beside, then moved over, so a keyboard killed mid-write keeps the file as it was. */
+    private fun keep(messages: List<Unsent>) {
+        unsent = messages
+        val next = java.io.File(kept.parentFile, kept.name + ".next")
+        next.writeText(json.encodeToString(messages))
+        next.renameTo(kept)
     }
 
     /** A failed read says so and tries again, backing off from 1 s to 15 s, until the chat answers or closes. */
@@ -156,11 +231,13 @@ class Chats(private val context: Context) {
                     return@post
                 }
                 if (read.version != version || problem != null) {
-                    messages = read.messages
+                    said = read.messages
                     seen[key(chat)] = read.messages
+                    answers++
                     loaded = true
                     problem = null
                     changed()
+                    deliver()
                 }
                 follow(chat, read.version, started)
             }
@@ -210,9 +287,10 @@ class Chats(private val context: Context) {
         return get(chat.service, url)
     }
 
-    /** The words and the photos' JPEGs, in base64; a photo whose copy is gone goes without. */
-    private fun post(chat: Chat, text: String, photos: List<ChatPhotos.Photo>): Boolean = runCatching {
-        val files = photos.mapNotNull { photo ->
+    /** The words and the photos' JPEGs, in base64; a photo whose copy is gone goes without, and one with nothing left counts as sent. */
+    private fun post(service: Service, message: Unsent): Boolean = runCatching {
+        val text = message.text
+        val files = message.photos.orEmpty().mapNotNull { photo ->
             runCatching { photo.file(context).readBytes() }.getOrNull()?.let { jpeg ->
                 buildJsonObject {
                     put("type", "image/jpeg")
@@ -223,13 +301,13 @@ class Chats(private val context: Context) {
             }
         }
         if (text.isEmpty() && files.isEmpty()) return@runCatching true
-        val connection = open(chat.service, address(chat))
+        val connection = open(service, address(service, message.chat))
         connection.requestMethod = "POST"
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "application/json")
         val body = buildJsonObject {
             put("text", text)
-            put("id", UUID.randomUUID().toString())
+            put("id", message.id)
             if (files.isNotEmpty()) put("files", JsonArray(files))
         }
         connection.outputStream.use { it.write(body.toString().encodeToByteArray()) }
@@ -242,7 +320,10 @@ class Chats(private val context: Context) {
         json.decodeFromString<Answer>(connection.inputStream.use { it.readBytes().decodeToString() })
     }.getOrNull()
 
-    private fun address(chat: Chat) = chat.service.url.trimEnd('/') + "/" + URLEncoder.encode(chat.id, "UTF-8").replace("+", "%20")
+    private fun address(chat: Chat) = address(chat.service, chat.id)
+
+    private fun address(service: Service, chat: String) =
+        service.url.trimEnd('/') + "/" + URLEncoder.encode(chat, "UTF-8").replace("+", "%20")
 
     /** A read waits up to about 25 seconds for a change, so the timeout leaves it room. */
     private fun open(service: Service, url: String) = (URL(url).openConnection() as HttpURLConnection).apply {
