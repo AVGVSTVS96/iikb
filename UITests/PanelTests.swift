@@ -9,7 +9,7 @@ final class PanelTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = [
             "-iikbFocus", "YES", "-iikbOrientation", orientation, "-iikbOneHanded", "off", "-iikbCompactPanels",
-            compactSetting ? "YES" : "NO",
+            compactSetting ? "YES" : "NO", "-iikbAutoCapitalization", "YES",
         ]
         app.launchWithIikb()
         for letter in "coffee at" { key(letter == " " ? "space" : String(letter), in: app).tap() }
@@ -130,7 +130,10 @@ final class PanelTests: XCTestCase {
     private func launchAndType(_ text: String) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off"]
+        app.launchArguments = [
+            "-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off", "-iikbAutoCapitalization",
+            "YES",
+        ]
         app.launchWithIikb()
         for letter in text { key(letter == " " ? "space" : String(letter), in: app).tap() }
         return app
