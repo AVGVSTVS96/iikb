@@ -98,6 +98,7 @@ if (lexicon.subarray(0, 4).toString() !== "HXL2") {
 
 const lexiconNodes =
   Math.ceil((12 + lexicon.readUInt32LE(8)) / LEXICON_ENTRY_BYTES) * LEXICON_ENTRY_BYTES;
+
 let lexiconWords = 0;
 
 for (
