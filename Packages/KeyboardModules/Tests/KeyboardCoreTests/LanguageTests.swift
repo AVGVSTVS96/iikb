@@ -71,7 +71,8 @@ struct LanguageTests {
         #expect(letters(Layouts.layout(for: context("it"))) == letters(Layouts.layout(for: context("en"))))
     }
 
-    /// Swedish's eleven keys a row narrow every letter to fit, while shift, delete and the bottom row keep their width.
+    /// Swedish's eleven keys a row narrow every letter to fit, and shift and delete with them, while the bottom row keeps
+    /// its width. German's eleven keep English's shift and delete.
     @Test func elevenKeysNarrowTheLettersAndNothingElse() {
         let grid = { (language: String) in
             KeyboardGeometry(context(language), screen: Size(width: 402, height: 874), style: .ios27).grid
@@ -87,7 +88,8 @@ struct LanguageTests {
         let bottom = { (grid: KeyGrid) in grid.rows.last!.map(\.frame) }
         #expect(bottom(english) == bottom(swedish))
         let shift = { (grid: KeyGrid) in grid.rows[2].first!.frame }
-        #expect(abs(shift(english).width - shift(swedish).width) < 0.01)
+        #expect(abs(shift(swedish).width + 6 - (shift(english).width + 6) * 10 / 11) < 0.01)
+        #expect(abs(shift(grid("de")).width - shift(english).width) < 0.01)
     }
 
     /// The open Duo's split halves each row, the key between the hands on both halves where a row is odd.

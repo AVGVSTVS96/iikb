@@ -84,6 +84,7 @@ enum PhoneLayouts {
         let letters = context.letters.rows
         let widest = letters.map(\.count).max() ?? 10
         let scale = Double(widest) / 10
+        let shift = context.letters.narrowsShift ? 1.3 : 1.3 * scale
         let keys = { (letters: String) in RowItem.keys(letters) }
         let row = { (letters: String) in
             letters.count < widest ? [.flexible] + keys(letters) + [.flexible] : keys(letters)
@@ -91,8 +92,8 @@ enum PhoneLayouts {
         let rows = [
             row(letters[0]),
             row(letters[1]),
-            [.key(Key(.shift, width: .pitch(1.3 * scale))), .flexible] + keys(letters[2]) + [
-                .flexible, .key(Key(.delete, width: .pitch(1.3 * scale))),
+            [.key(Key(.shift, width: .pitch(shift))), .flexible] + keys(letters[2]) + [
+                .flexible, .key(Key(.delete, width: .pitch(shift))),
             ],
             bottomRow(context, layerKey: .numbers).widened(by: scale),
         ]

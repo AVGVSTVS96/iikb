@@ -48,6 +48,8 @@ public struct LetterLayout: Hashable, Sendable, Identifiable {
     /// As Apple's Settings names it.
     public let name: String
     public let rows: [String]
+    /// Shift and delete narrow with the letters of a longer row, as Swedish's do on an iPhone; German's keep English's.
+    public var narrowsShift = false
 
     /// Every layout some language offers.
     public static let all: [LetterLayout] = [qwerty, qwertz, azerty, spanish, french, german, swedish]
@@ -62,5 +64,5 @@ public struct LetterLayout: Hashable, Sendable, Identifiable {
     public static let german = LetterLayout(
         id: "german", name: "German", rows: ["qwertzuiopü", "asdfghjklöä", "yxcvbnm"])
     public static let swedish = LetterLayout(
-        id: "swedish", name: "Swedish", rows: ["qwertyuiopå", "asdfghjklöä", "zxcvbnm"])
+        id: "swedish", name: "Swedish", rows: ["qwertyuiopå", "asdfghjklöä", "zxcvbnm"], narrowsShift: true)
 }
