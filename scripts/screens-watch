@@ -51,5 +51,5 @@ while :; do
     fi
   done < <(runs --jq '.[] | "\(.databaseId) \(.status) \(.headSha)"')
   [ "$pending" = 1 ] || [ $(($(date +%s) - started)) -lt 300 ] || exit 0
-  sleep 120
+  sleep 120 9>&-
 done
