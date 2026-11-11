@@ -1,5 +1,6 @@
-/// A language iikb types: its own name, the letter layouts Apple's keyboard offers it with its own first, and its
-/// currency. It's code, so every language is listed and laid out with no download; its words are the download.
+/// A language iikb types: its own name, and the letter layouts Apple's keyboard offers it with its own first. It's
+/// code, so every language is listed and laid out with no download; its words are the download. Its currency isn't
+/// its own: Apple's keyboard shows the region's whatever the language.
 public struct Language: Sendable, Identifiable {
     /// Its ISO 639-1 code, as `KeyboardSettings.language` keeps it.
     public let id: String
@@ -7,18 +8,6 @@ public struct Language: Sendable, Identifiable {
     public let name: String
     /// What Apple's keyboard offers it, its own first.
     public let layouts: [LetterLayout]
-    /// Its currency signs as Apple's keyboard places them: where English's $, €, £ and ¥ sit, in that order, so its own
-    /// is on the numbers layer and the others on the symbols.
-    public let currencies: [String]
-
-    /// The currency key's sign on the numbers layer.
-    public var currency: String { currencies[0] }
-
-    /// A key English's keyboard labels `english`, as this language's keyboard labels it.
-    func key(_ english: String) -> String {
-        Self.english.currencies.firstIndex(of: english).map { currencies[$0] } ?? english
-    }
-
     /// The layout `id` names (`KeyboardSettings.layout`), or the language's own where it offers none by that name.
     public func layout(_ id: String?) -> LetterLayout {
         layouts.first { $0.id == id } ?? layouts[0]
@@ -32,19 +21,19 @@ public struct Language: Sendable, Identifiable {
     public static let all: [Language] = [english, spanish, french, german, portuguese, italian, swedish]
 
     public static let english = Language(
-        id: "en", name: "English", layouts: [.qwerty, .azerty, .qwertz], currencies: ["$", "€", "£", "¥"])
+        id: "en", name: "English", layouts: [.qwerty, .azerty, .qwertz])
     public static let spanish = Language(
-        id: "es", name: "Español", layouts: [.spanish, .qwerty, .azerty, .qwertz], currencies: ["€", "$", "£", "¥"])
+        id: "es", name: "Español", layouts: [.spanish, .qwerty, .azerty, .qwertz])
     public static let french = Language(
-        id: "fr", name: "Français", layouts: [.french, .azerty, .qwerty, .qwertz], currencies: ["€", "$", "£", "¥"])
+        id: "fr", name: "Français", layouts: [.french, .azerty, .qwerty, .qwertz])
     public static let german = Language(
-        id: "de", name: "Deutsch", layouts: [.german, .qwertz, .qwerty, .azerty], currencies: ["€", "$", "£", "¥"])
+        id: "de", name: "Deutsch", layouts: [.german, .qwertz, .qwerty, .azerty])
     public static let portuguese = Language(
-        id: "pt", name: "Português", layouts: [.qwerty, .azerty, .qwertz], currencies: ["$", "€", "£", "¥"])
+        id: "pt", name: "Português", layouts: [.qwerty, .azerty, .qwertz])
     public static let italian = Language(
-        id: "it", name: "Italiano", layouts: [.qwerty, .azerty, .qwertz], currencies: ["€", "$", "£", "¥"])
+        id: "it", name: "Italiano", layouts: [.qwerty, .azerty, .qwertz])
     public static let swedish = Language(
-        id: "sv", name: "Svenska", layouts: [.swedish], currencies: ["kr", "€", "$", "£"])
+        id: "sv", name: "Svenska", layouts: [.swedish])
 }
 
 extension Language: Hashable {

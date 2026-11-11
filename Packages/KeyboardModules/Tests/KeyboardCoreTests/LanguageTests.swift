@@ -131,21 +131,41 @@ struct LanguageTests {
         #expect(alternates("\"", "de", layer: .numbers) == ["»", "«", "”", "“", "„", "\""])
     }
 
-    /// Each language's own currency on the numbers layer, where English has its dollar.
-    @Test func eachLanguageHasItsCurrency() {
-        let currency = { (language: String) -> Bool in
+    private func padRows(_ language: String) -> [String] {
+        var settings = KeyboardSettings()
+        settings.language = language
+        let context = LayoutContext(
+            device: .pad, layer: .letters, screen: Size(width: 834, height: 1210), settings: settings)
+        return letters(Layouts.layout(for: context))
+    }
+
+    /// An 11-inch iPad's letters per language as Apple's keyboard sets them out, punctuation and ß included.
+    @Test func eachLanguagesPadLettersAreApples() {
+        #expect(padRows("de") == ["qwertzuiopü", "asdfghjklöä", "yxcvbnm,.ß"])
+        #expect(padRows("sv") == ["qwertyuiopå", "asdfghjklöä", "zxcvbnm,."])
+        #expect(padRows("es") == ["qwertyuiop", "asdfghjklñ", "zxcvbnm,."])
+        #expect(padRows("fr") == ["azertyuiop", "qsdfghjklm", "wxcvbn',."])
+        #expect(padRows("it") == padRows("en"))
+    }
+
+    /// Apple's German iPad keys measured in the simulator: 11 a row at 60 points apart, the bottom row unchanged.
+    @Test func germanPadKeysAreApplesWidths() {
+        let grid = { (language: String) in
             var settings = KeyboardSettings()
             settings.language = language
             let context = LayoutContext(
-                device: .phone, layer: .numbers, screen: Size(width: 402, height: 874), settings: settings)
-            return Layouts.layout(for: context).rows.joined().contains {
-                if case .key(let key) = $0 {
-                    key.action == .character(Language.named(language).currency)
-                } else {
-                    false
-                }
-            }
+                device: .pad, layer: .letters, screen: Size(width: 834, height: 1210), settings: settings)
+            return KeyboardGeometry(context, screen: Size(width: 834, height: 1210), style: .ios27).grid
         }
-        #expect(["en", "es", "fr", "de", "pt", "it", "sv"].allSatisfy(currency))
+        let english = grid("en")
+        let german = grid("de")
+        let pitch = { (grid: KeyGrid) in grid.frame(of: "w")!.x - grid.frame(of: "q")!.x }
+        #expect(abs(pitch(english) - 66) < 0.5)
+        #expect(abs(pitch(german) - 60) < 0.5)
+        #expect(abs(german.frame(of: "q")!.x - 69) < 1)
+        for (a, b) in zip(english.rows.last!, german.rows.last!) {
+            #expect(
+                abs(a.frame.x - b.frame.x) < 0.01 && abs(a.frame.width - b.frame.width) < 0.01, "\(a.frame) \(b.frame)")
+        }
     }
 }

@@ -276,7 +276,7 @@ extension RowItem {
 }
 
 extension KeyboardLayout {
-    /// The keys as `language`'s keyboard labels them: its currency signs, and what a long press on each offers. A long
+    /// The keys with what a long press on each offers in `language`. A long
     /// press opens on the key's own character, the language's likeliest next to it and running toward the keyboard's
     /// middle, without letters that have keys of their own.
     func `in`(_ language: Language) -> KeyboardLayout {
@@ -285,13 +285,10 @@ extension KeyboardLayout {
         layout.rows = rows.map { row in
             let characters = row.compactMap(\.character)
             return row.map { item in
-                guard case .key(var key) = item, let english = item.character else { return item }
-                let value = language.key(english)
-                key.action = .character(value)
-                key.secondary = key.secondary.map(language.key)
+                guard case .key(var key) = item, let value = item.character else { return item }
                 if let listed = Alternates.for(value, in: language) {
                     let options = [value] + listed.filter { $0 != value && !keyed.contains($0) }
-                    let right = characters.firstIndex(of: english)! >= characters.count / 2
+                    let right = characters.firstIndex(of: value)! >= characters.count / 2
                     key.alternates = options.count > 1 ? (right ? options.reversed() : options) : []
                 }
                 return .key(key)
