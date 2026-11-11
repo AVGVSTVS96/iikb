@@ -32,6 +32,26 @@ struct MemoryStoreTests {
         #expect(await refresh(keyboard)?.counts.keys.sorted() == ["other"])
     }
 
+    @Test func aMemoryThatHasNotChangedIsNotWrittenAgain() async throws {
+        try write(words: ["their"])
+        let path = url.path(percentEncoded: false)
+        let before = Date(timeIntervalSince1970: 1_700_000_000)
+        try FileManager.default.setAttributes([.modificationDate: before], ofItemAtPath: path)
+        let modified = { try FileManager.default.attributesOfItem(atPath: path)[.modificationDate] as? Date }
+        let keyboard = MemoryStore()
+        var memory = try #require(await refresh(keyboard))
+        keyboard.save(memory, sharing: false)
+        MemoryStore.queue.sync {}
+        #expect(try modified() == before, "the keyboard going away with nothing learned leaves the file alone")
+        memory.record("there", after: nil)
+        keyboard.save(memory, sharing: false)
+        #expect(try saved() == ["their", "there"])
+        let learned = try modified()
+        keyboard.save(memory, sharing: false)
+        MemoryStore.queue.sync {}
+        #expect(try modified() == learned, "and so does saving what it just saved")
+    }
+
     @Test func aNewKeyboardInTheSameProcessReadsTheFile() async throws {
         try write(words: ["their"])
         #expect(await refresh(MemoryStore())?.counts.keys.sorted() == ["their"])

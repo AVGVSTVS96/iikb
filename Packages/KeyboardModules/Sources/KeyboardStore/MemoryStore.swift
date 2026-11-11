@@ -45,6 +45,10 @@ public final class MemoryStore {
     private var base: Version?
     /// The version this keyboard last saved, kept on `queue`.
     nonisolated(unsafe) private var written: Version?
+    /// The memory in the file as this keyboard last read or saved it, kept on `queue`: the keyboard saves each time it
+    /// goes away and each time a field empties, and Bassim's iPhone logged a gigabyte of writes in six hours from
+    /// saving what hadn't changed.
+    nonisolated(unsafe) private var stored: TypingMemory?
 
     /// Reads and writes the file in turn, off the main thread: at 20,000 words each takes a tenth of a second.
     nonisolated package static let queue = DispatchQueue(label: "com.shahidy.iikb.memory", qos: .userInitiated)
@@ -81,6 +85,7 @@ public final class MemoryStore {
                 Self.log.fault("touch model keys holding a NaN or infinity start over")
                 memory.touches = touches
             }
+            stored = memory
             Task { @MainActor [version, memory] in
                 self.base = version
                 use(memory)
@@ -94,8 +99,9 @@ public final class MemoryStore {
         let touches = sharing ? Self.touches : nil
         Self.queue.async { [self] in
             let current = Version(modified: Self.modified, resets: resets)
-            guard current == base || current == written else { return }
-            Self.file.save(Saved(resets: resets ?? 0, memory: memory))
+            guard current == base || current == written, memory != stored else { return }
+            guard Self.file.save(Saved(resets: resets ?? 0, memory: memory)) else { return }
+            stored = memory
             written = Version(modified: Self.modified, resets: resets)
             guard let touches, touches.save(memory.touches) else { return }
             notify_post(Self.touchesChanged)
