@@ -199,10 +199,11 @@ struct TapsPage: View {
 
     /// The letters of the screen the app is on now, whose taps show first.
     private var current: String {
-        LayoutContext(
+        var context = LayoutContext(
             device: device, layer: .letters, isLandscape: screen.width > screen.height,
-            isOpen: Duo.isOpen(short: min(screen.width, screen.height))
-        ).signature
+            isOpen: Duo.isOpen(short: min(screen.width, screen.height)))
+        context.letters = SettingsModel.shared.settings.letters
+        return context.signature
     }
 
     /// Keyboards this device types on: its own, and on an iPad the floating one, which is an iPhone's.
@@ -232,6 +233,7 @@ struct TapsPage: View {
                 settings: SettingsModel.shared.settings)
             (context.isLandscape, context.isOpen) = (kept.isLandscape, kept.isOpen)
             (context.oneHanded, context.isSplit) = (kept.oneHanded, kept.isSplit)
+            (context.language, context.letters) = (kept.language, kept.letters)
             return TapBoard(touches, on: context, screen: screen)
         }
         if let key = selected, board?.aims.contains(where: { $0.key == key }) != true { selected = nil }
@@ -263,6 +265,7 @@ struct TapsPage: View {
             case .off: ""
             }
         return screen + layer + hand + (context.isSplit ? ", split" : "")
+            + (context.letters == .qwerty ? "" : ", \(context.letters.name)")
     }
 }
 

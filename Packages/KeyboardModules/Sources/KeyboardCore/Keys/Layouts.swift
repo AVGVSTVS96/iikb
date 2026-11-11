@@ -37,6 +37,10 @@ public struct LayoutContext: Hashable, Sendable {
     public var keySpacing = KeySpacing.standard
     public var keyRoundness = KeyRoundness.standard
     public var keyboardMenu: KeyboardMenu
+    /// The language being typed: its long-press letters, currency and punctuation.
+    public var language = Language.english
+    /// The letters' layout, one of the language's.
+    public var letters = LetterLayout.qwerty
 
     public init(
         device: DeviceClass, layer: KeyboardLayer, kind: InputKind = .text, showsGlobe: Bool = false,
@@ -77,6 +81,8 @@ public struct LayoutContext: Hashable, Sendable {
         )
         keySpacing = settings.keySpacing
         keyRoundness = settings.keyRoundness
+        language = Language.named(settings.language)
+        letters = language.layout(settings.layout)
     }
 
     /// Like Apple's, only an iPhone in portrait narrows its keys for one hand, and on the Duo only folded.
@@ -140,14 +146,18 @@ public struct LayoutContext: Hashable, Sendable {
 
 extension LayoutContext {
     /// What a touch model is kept per: the same keys under the same hands, so the open Duo's wider keys learn apart
-    /// from its cover's.
+    /// from its cover's, and a QWERTZ z from a QWERTY z. QWERTY's letters keep the name they had before there were
+    /// others, so nothing learned on them is lost.
     public var signature: String {
         "\(device)-\(isLandscape ? "landscape" : "portrait")-\(layer)" + (isOpen ? "-open" : "")
             + (oneHanded == .off ? "" : "-\(oneHanded)") + (isSplit ? "-split" : "")
+            + (layer == .letters && letters != .qwerty ? "-\(letters.id)" : "")
     }
 
     /// The layout a touch model's signature was kept for.
     public init?(signature: String) {
+        let letters = LetterLayout.all.first { $0 != .qwerty && signature.hasSuffix("-\($0.id)") }
+        let base = letters.map { String(signature.dropLast($0.id.count + 1)) } ?? signature
         let contexts = DeviceClass.allCases.flatMap { device in
             KeyboardLayer.allCases.flatMap { layer in
                 [false, true].flatMap { landscape in
@@ -163,7 +173,12 @@ extension LayoutContext {
                 }
             }
         }
-        guard let context = contexts.first(where: { $0.signature == signature }) else { return nil }
+        guard var context = contexts.first(where: { $0.signature == base }) else { return nil }
+        if let letters, context.layer == .letters {
+            context.letters = letters
+            context.language = Language.all.first { $0.layouts.contains(letters) } ?? .english
+        }
+        guard context.signature == signature else { return nil }
         self = context
     }
 }

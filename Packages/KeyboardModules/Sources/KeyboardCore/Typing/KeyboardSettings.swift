@@ -1,4 +1,8 @@
 public struct KeyboardSettings: Hashable, Sendable {
+    /// The `Language.id` of the language being typed.
+    public var language = Language.english.id
+    /// The `LetterLayout.id` picked for it; nil, or one it doesn't offer, is its own (`Language.layout`).
+    public var layout: String?
     public var autoCapitalization = true
     public var autoCorrection = true
     public var capsLock = true
@@ -45,6 +49,9 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var dictationWords: DictationTextMode?
 
     public init() {}
+
+    /// The letters the picked language is typed on.
+    public var letters: LetterLayout { Language.named(language).layout(layout) }
 
     /// What iikb starts with before you change anything: Apple's keyboard, except that auto-capitalization and
     /// auto-correction are opt in.

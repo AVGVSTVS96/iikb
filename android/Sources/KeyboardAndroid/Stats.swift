@@ -125,6 +125,7 @@ struct TapsBoard: Encodable {
             device: device, layer: kept.layer, screen: kept.screen(on: screen), settings: settings)
         context.oneHanded = kept.oneHanded
         context.isSplit = kept.isSplit
+        (context.language, context.letters) = (kept.language, kept.letters)
         let geometry = KeyboardGeometry(context, screen: kept.screen(on: screen), style: .ios27)
         let grid = KeyGrid(geometry.layout, width: geometry.width, metrics: geometry.metrics.grid, signature: picked)
         let items = Array(grid.rows.joined())
