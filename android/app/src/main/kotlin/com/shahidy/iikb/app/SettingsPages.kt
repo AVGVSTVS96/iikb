@@ -110,7 +110,7 @@ val LocalAccess = compositionLocalOf<Access> { error("no access") }
 /** One list, as iOS Settings and Raycast's settings are: each row a glyph, a title and what it's set to. */
 @Composable
 fun SettingsList(open: (String) -> Unit) {
-    Page("Settings") {
+    Page("Settings", top = 4.dp) {
         for ((header, pages) in SettingsPage.sections) {
             Section(header) {
                 pages.forEachIndexed { index, page ->

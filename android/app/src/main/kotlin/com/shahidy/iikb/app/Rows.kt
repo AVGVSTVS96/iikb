@@ -157,20 +157,21 @@ val CardShape = RoundedCornerShape(22.dp)
  * A page: its title and buttons in a bar pinned at the top, as iOS's navigation bar holds them, over a column of
  * sections 28 apart that scrolls under it. A tab's page has a large title until it scrolls (iOS's `.inlineLarge`);
  * one opened from another (`onBack`) a small one. It makes room for the keyboard unless it lies `underKeyboard`, as
- * Home does (iOS's `.ignoresSafeArea(.keyboard)`), and leaves `end` free under its last section.
+ * Home does (iOS's `.ignoresSafeArea(.keyboard)`), and leaves `top` free under the bar and `end` under its last section:
+ * iOS's pages leave 8 at the top, Home and the Settings list 4.
  */
 @Composable
 fun Page(
     title: String, onBack: (() -> Unit)? = null, pinned: (@Composable () -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {}, underKeyboard: Boolean = false, end: Dp = 40.dp,
+    actions: @Composable RowScope.() -> Unit = {}, underKeyboard: Boolean = false, top: Dp = 8.dp, end: Dp = 40.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scroll = rememberScrollState()
     val scrolled by remember { derivedStateOf { scroll.value > 0 } }
-    Frame(title, onBack, scrolled, pinned, actions) { top ->
+    Frame(title, onBack, scrolled, pinned, actions) { bar ->
         Column(
             Modifier.fillMaxSize().let { if (underKeyboard) it else it.imePadding() }.verticalScroll(scroll)
-                .padding(start = 16.dp, end = 16.dp, top = top + if (pinned == null) 8.dp else 0.dp, bottom = end + if (underKeyboard) LocalTabBarUnderKeys.current else LocalTabBar.current),
+                .padding(start = 16.dp, end = 16.dp, top = bar + if (pinned == null) top else 0.dp, bottom = end + if (underKeyboard) LocalTabBarUnderKeys.current else LocalTabBar.current),
             verticalArrangement = Arrangement.spacedBy(28.dp),
             content = content,
         )
@@ -283,7 +284,8 @@ private fun Bar(title: String, onBack: (() -> Unit)?, scrolled: Boolean, actions
             )
             Row(Modifier.layoutId("actions"), verticalAlignment = Alignment.CenterVertically, content = actions)
         },
-        modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
+        // iOS's bar runs 1.7 further under its titles than above them (the parity shots), so pages start where its do.
+        modifier = Modifier.fillMaxWidth().heightIn(min = 61.7.dp).padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 7.7.dp),
     ) { measurables, constraints ->
         val width = constraints.maxWidth
         val loose = constraints.copy(minWidth = 0, minHeight = 0)

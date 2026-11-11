@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.sp
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.gif.AnimatedImageDecoder
-import kotlin.math.floor
+import kotlin.math.round
 import kotlin.math.roundToInt
 
 /** The GIF feed, where the build has KLIPY's key. */
@@ -150,7 +150,7 @@ fun GifPanel(state: Overlay.State) {
     ) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val rows = if (state.compact) 1 else 2
-            GifRows(gifs, rows, floor((maxHeight.value - GIF_GAP * (rows - 1)) / rows).dp, state.query)
+            GifRows(gifs, rows, round((maxHeight.value - GIF_GAP * (rows - 1)) / rows).dp, state.query)
         }
         Spacer(Modifier.height(6.dp))
         SearchRow(

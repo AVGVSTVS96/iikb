@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -396,6 +397,7 @@ private fun Misses(board: TapBoard, summary: TapSummary, selected: Int?, pick: (
             yLabel = { Format.percent(it) }, marks = niceMarks(top, 3), dim = { selected != null && shown[it].key != selected },
             rule = Rule(typical, "all letters ${Format.percent(typical)}", weight = FontWeight.Medium),
             onPick = { index -> index?.let { pick(shown[it].key) } },
+            tickStyle = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
         )
         Column {
             shown.take(3).forEachIndexed { index, it ->

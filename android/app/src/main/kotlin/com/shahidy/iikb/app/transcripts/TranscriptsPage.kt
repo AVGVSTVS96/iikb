@@ -147,9 +147,9 @@ fun TranscriptsPage(openStats: () -> Unit) {
         item { Box(Modifier.padding(top = 4.dp, bottom = 24.dp)) { SearchField(query, "Search") { query = it } } }
         if (query.isEmpty()) item { Box(Modifier.padding(bottom = 24.dp)) { Summary(all, openStats) } }
         if (shown.isEmpty()) item { Empty(Glyphs.SEARCH, "No Results", "Check the spelling or try a new search.") }
-        days.forEach { (day, transcripts) ->
+        days.forEachIndexed { index, (day, transcripts) ->
             item(key = day.toString()) {
-                Box(Modifier.padding(bottom = 24.dp)) {
+                Box(Modifier.padding(bottom = if (index < days.lastIndex) 24.dp else 0.dp)) {
                     Rows(title(day)) {
                         transcripts.forEachIndexed { index, transcript ->
                             if (index > 0) Divider()

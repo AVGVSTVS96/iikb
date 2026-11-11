@@ -40,6 +40,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Dp
+import android.os.Build
+import android.view.RoundedCorner
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,10 +98,11 @@ fun Sheet(
             }
         }
     }
+    val screenCorner = screenCorner()
     ModalBottomSheet(
         close, Modifier.imePadding().padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = RoundedCornerShape(38.dp), containerColor = palette.page,
+        shape = RoundedCornerShape(38.dp, 38.dp, screenCorner, screenCorner), containerColor = palette.page,
         scrimColor = Color.Black.copy(alpha = if (palette.isDark) 0.48f else 0.2f),
         dragHandle = null, contentWindowInsets = { WindowInsets(0) },
     ) {
@@ -149,7 +154,7 @@ fun Sheet(
                     }
                 }
                 Column(
-                    Modifier.verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 24.dp),
+                    Modifier.verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(28.dp),
                     content = content,
                 )
@@ -181,4 +186,14 @@ private fun SheetButton(title: String, enabled: Boolean, prominent: Boolean, onC
             },
         )
     }
+}
+
+/** The sheet's bottom corners follow the screen's, 8 in from them, as iOS's do; 38 on a screen that doesn't say. */
+@Composable
+private fun screenCorner(): Dp {
+    val insets = LocalView.current.rootWindowInsets
+    val radius = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        insets?.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT)?.radius ?: 0
+    } else 0
+    return with(LocalDensity.current) { maxOf(radius.toDp() - 8.dp, 38.dp) }
 }

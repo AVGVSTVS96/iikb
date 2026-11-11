@@ -79,10 +79,12 @@ fun ColumnChart(
     picked: Int? = null,
     onPick: ((Int?) -> Unit)? = null,
     annotate: (Int) -> Pair<String, Color>? = { null },
+    tickStyle: TextStyle? = null,
 ) {
     val palette = palette()
     val measurer = rememberTextMeasurer()
-    val label = TextStyle(color = palette.secondary, fontSize = 11.sp)
+    val label = TextStyle(color = palette.axis, fontSize = 11.sp)
+    val tickLabel = tickStyle?.let(label::merge) ?: label
     val count = values.size.coerceAtLeast(1)
     val shownMarks = marks ?: listOf(0.0, top / 2, top)
     val gap = with(LocalDensity.current) { 6.dp.toPx() }
@@ -152,7 +154,7 @@ fun ColumnChart(
         values.indices.forEach { index ->
             val (note, color) = annotate(index) ?: return@forEach
             val top = y(values[index].sumOf { it ?: 0.0 })
-            val layout = measurer.measure(note, label.copy(color = color, fontSize = 10.sp, fontWeight = FontWeight.SemiBold))
+            val layout = measurer.measure(note, label.copy(color = color, fontSize = 11.sp, fontWeight = FontWeight.SemiBold))
             drawText(layout, topLeft = Offset(step * (index + 0.5f) - layout.size.width / 2, top - layout.size.height - 2.dp.toPx()))
         }
         if (picked != null) {
@@ -163,13 +165,13 @@ fun ColumnChart(
             val at = y(rule.value)
             drawLine(palette.secondary.copy(alpha = 0.7f), Offset(0f, at), Offset(plot, at), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())))
             rule.note?.let {
-                val note = measurer.measure(it, label.copy(fontSize = 11.sp, fontWeight = rule.weight))
+                val note = measurer.measure(it, label.copy(color = palette.secondary, fontWeight = rule.weight))
                 drawText(note, topLeft = Offset(if (rule.leading) 0f else plot - note.size.width, at - note.size.height - 2.dp.toPx()))
             }
         }
         for (tick in ticks) {
             val x = if (tick.centered) step * (tick.index + 0.5f) else step * tick.index + (step - step * ratio) / 2
-            text(measurer, tick.text, label, Offset(x, bottom + 4.dp.toPx()), centerX = tick.centered, fit = size.width)
+            text(measurer, tick.text, tickLabel, Offset(x, bottom + 4.dp.toPx()), centerX = tick.centered, fit = size.width)
         }
     }
 }

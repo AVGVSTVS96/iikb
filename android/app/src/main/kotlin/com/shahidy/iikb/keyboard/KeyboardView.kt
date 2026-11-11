@@ -974,7 +974,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
     private fun drawAccents(canvas: Canvas, frame: Frame, accents: Accents) {
         val r = frame.look.cornerRadius.toFloat()
         fill.color = frame.theme.bubble
-        fill.setShadowLayer(4f, 0f, 1f, frame.theme.shadow)
+        fill.setShadowLayer(8f, 0f, 2f, frame.theme.shadow)
         canvas.drawRoundRect(accents.box, r * 2, r * 2, fill)
         fill.clearShadowLayer()
         val cellHeight = accents.highlight

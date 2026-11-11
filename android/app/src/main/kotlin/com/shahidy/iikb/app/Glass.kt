@@ -3,6 +3,7 @@ package com.shahidy.iikb.app
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
@@ -30,7 +31,7 @@ import com.shahidy.iikb.app.design.isDark
 /**
  * iOS 26's regular glass in `shape`: what's behind it blurred and bent toward its rim, a rim lit from above and below,
  * and a soft shadow, as `.glassEffect(.regular)` and the tab bar draw it. Over the app's pages it holds what's behind
- * back to a faint ghost (`MILK`, `DIM`), inside a gray hairline in light. On the keyboard it washes what's behind
+ * back to a faint ghost in light (`MILK`), inside a gray hairline, and in dark lifts it by a gray of 32 as on the keyboard. On the keyboard it washes what's behind
  * about 40% toward white in light, and in dark lifts it by a gray of 32, as iOS's shots measure it. Over a plain page, with
  * nothing behind to bend, it's the rim, the tint and the shadow. Android draws the blur from 12 and the bend from 13;
  * before, the tint alone stands in. The keyboard, outside the app's palette, says if it's `dark` and gives the color
@@ -66,7 +67,7 @@ fun Modifier.glass(
         },
         onDrawSurface = {
             when {
-                !under.isSpecified -> drawRect(if (dark) DIM else MILK)
+                !under.isSpecified -> if (dark) drawRect(LIFT, blendMode = BlendMode.Plus) else drawRect(MILK)
                 !dark -> drawRect(WASH)
                 else -> drawRect(lift(under))
             }
@@ -92,11 +93,10 @@ private val LIFT = Color(0xFF202020)
 private val WASH = Color.White.copy(alpha = 0.4f)
 
 /**
- * Over the app's pages, as iOS's shots of the tab bar over rows and charts measure it: what's behind keeps about 28%
- * of itself in light and about half in dark, and over the bare page reads as `WASH` and `LIFT` do there.
+ * Over the app's pages in light, as iOS's shots of the tab bar over rows and charts measure it: what's behind keeps
+ * about 28% of itself, and over the bare page reads as `WASH` does there.
  */
 private val MILK = Color(0xFFF9F9FB).copy(alpha = 0.72f)
-private val DIM = Color(0xFF434343).copy(alpha = 0.48f)
 
 /** The hairline's width outside the edge, and how far down from the top and up from the bottom it fades where lit. */
 private const val EDGE = 0.5f

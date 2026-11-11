@@ -66,7 +66,7 @@ fun Home(open: (String) -> Unit, show: (Tab, StatsSection?) -> Unit) {
     val focus = LocalFocusManager.current
     var typing by remember { mutableStateOf(false) }
     Page(
-        "iikb",
+        "iikb", top = 4.dp,
         actions = {
             if (typing) {
                 Box(

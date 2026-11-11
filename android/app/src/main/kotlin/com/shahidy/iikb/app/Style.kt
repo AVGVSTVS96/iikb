@@ -15,19 +15,21 @@ data class Palette(
     val page: Color, val card: Color, val edge: Color, val divider: Color, val label: Color, val secondary: Color,
     val accent: Color, val selected: Color, val selectedLabel: Color, val track: Color, val pressed: Color,
     val red: Color, val green: Color,
+    /** Swift Charts' axis labels, which take no color of their own on iOS: lighter than `secondary`. */
+    val axis: Color,
 ) {
     companion object {
         val dark = Palette(
             page = Color.Black, card = Color(0xFF1C1C1E), edge = Color(0x12FFFFFF), divider = Color(0xFF2C2C2E),
             label = Color.White, secondary = Color(0xFF8E8E93), accent = Color(0xFF0091FF), selected = Color.White,
             selectedLabel = Color.Black, track = Color(0xFF5A5A5E), pressed = Color(0xFF2C2C2E),
-            red = Color(0xFFFF4245), green = Color(0xFF30D158),
+            red = Color(0xFFFF4245), green = Color(0xFF30D158), axis = Color(0xFF99999F),
         )
         val light = Palette(
             page = Color(0xFFF2F2F5), card = Color.White, edge = Color(0x0F000000), divider = Color(0xFFE3E3E8),
             label = Color.Black, secondary = Color(0xFF6C6C70), accent = Color(0xFF0088FF), selected = Color.Black,
             selectedLabel = Color.White, track = Color(0xFFC5C5C7), pressed = Color(0xFFE5E5EA),
-            red = Color(0xFFFF383C), green = Color(0xFF34C759),
+            red = Color(0xFFFF383C), green = Color(0xFF34C759), axis = Color(0xFF8A8A8E),
         )
     }
 }

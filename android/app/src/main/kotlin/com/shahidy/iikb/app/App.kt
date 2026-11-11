@@ -162,7 +162,7 @@ private fun TabBar(tab: Int, backdrop: Backdrop, pick: (Int) -> Unit) {
     Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 21.dp, end = 21.dp, bottom = 4.dp)) {
         Layout(
             content = {
-                Box(Modifier.clip(capsule).background(Color.Black.copy(alpha = if (dark) 0.42f else 0.08f)))
+                Box(Modifier.clip(capsule).background(Color.Black.copy(alpha = if (dark) 0.5f else 0.08f)))
                 Tab.entries.forEachIndexed { index, item ->
                     val picked = index == tab
                     val tint = if (picked) palette.accent else palette.label

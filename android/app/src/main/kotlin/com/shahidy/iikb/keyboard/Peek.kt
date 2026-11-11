@@ -146,7 +146,7 @@ fun Peek(held: Held, bottom: Dp, behind: Behind?, close: () -> Unit) {
         Layout(
             content = {
                 Card(held, close)
-                if (menu > 0) if (held.listed) ListMenu(held.actions, behind, close) else Menu(held.actions, behind, close)
+                if (menu > 0) if (held.listed) ListMenu(held.actions, behind, held.shows is Held.Shows.Lifted, close) else Menu(held.actions, behind, close)
             },
             modifier = Modifier.fillMaxSize().graphicsLayer {
                 alpha = appear.value
@@ -160,11 +160,10 @@ fun Peek(held: Held, bottom: Dp, behind: Behind?, close: () -> Unit) {
             val natural = min(measurables[0].maxIntrinsicHeight(px(sides)) / density, height / 2)
             // Where the card and its whole menu don't fit, the top margin tightens, then the gap, and then the card
             // gives way, its text scrolling, so the menu's every action stays in view.
-            val short = if (menu == 0f) 0f else TOP + min(natural, MAX_TEXT) + GAP + menu - (height - MENU_FLOOR)
+            val short = if (menu == 0f) 0f else TOP + min(natural, MAX_TEXT) + GAP + menu - (height - BOTTOM)
             val top = TOP - short.coerceIn(0f, TOP - TIGHT_TOP)
             val gap = GAP - (short - (TOP - TIGHT_TOP)).coerceIn(0f, GAP - TIGHT_GAP)
-            val floor = if (menu > 0) height - MENU_FLOOR else height - BOTTOM
-            val room = Rect(SIDE, top, width - SIDE, floor)
+            val room = Rect(SIDE, top, width - SIDE, height - BOTTOM)
             val cardRoom = maxOf(CARD_FLOOR, room.height - if (menu > 0) gap + menu else 0f).let { if (menu > 0) min(it, height / 2) else it }
             val card = when (val shows = held.shows) {
                 is Held.Shows.Image -> {
@@ -280,7 +279,7 @@ private fun Menu(actions: List<Held.Action>, behind: Behind?, close: () -> Unit)
     val shape = RoundedCornerShape(MENU_CORNER.dp)
     Row(
         Modifier.shadow(24.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
-            .frosted(behind, shape).padding(MENU_PAD.dp),
+            .frosted(behind, shape).padding(horizontal = MENU_PAD.dp, vertical = MENU_PAD_Y.dp),
     ) {
         for (action in actions) {
             val interaction = remember { MutableInteractionSource() }
@@ -309,14 +308,14 @@ private fun Menu(actions: List<Held.Action>, behind: Behind?, close: () -> Unit)
  * checkmark, the titles in nearer with the checkmark small before the one picked (measured on iOS's held chat tabs).
  */
 @Composable
-private fun ListMenu(actions: List<Held.Action>, behind: Behind?, close: () -> Unit) {
+private fun ListMenu(actions: List<Held.Action>, behind: Behind?, lifted: Boolean, close: () -> Unit) {
     val look = LocalColors.current
     // UIKit rounds a one-row menu into a capsule.
     val shape = if (actions.size == 1) CircleShape else RoundedCornerShape(LIST_CORNER.dp)
     val checks = actions.all { it.glyph == "" || it.glyph == "checkmark" }
     Column(
         Modifier.shadow(24.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
-            .frosted(behind, shape).padding(vertical = LIST_PAD.dp),
+            .frosted(behind, shape, lifted).padding(vertical = LIST_PAD.dp),
     ) {
         for (action in actions) {
             val interaction = remember { MutableInteractionSource() }
@@ -364,8 +363,10 @@ private fun DrawScope.litFade() = (LIT_FADE.dp.toPx() / size.height).coerceAtMos
  * alone, opaque, so the rows under it never show sharp through its titles.
  */
 @Composable
-private fun Modifier.frosted(behind: Behind?, shape: Shape): Modifier {
+private fun Modifier.frosted(behind: Behind?, shape: Shape, lifted: Boolean = false): Modifier {
     val look = LocalColors.current
+    val glass = if (lifted) look.liftedGlass else look.glass
+    val tint = if (lifted) look.liftedTint else look.tint
     var at by remember { mutableStateOf(Offset.Zero) }
     val frost = rememberGraphicsLayer()
     return onGloballyPositioned { at = it.positionInWindow() }.drawBehind {
@@ -373,7 +374,7 @@ private fun Modifier.frosted(behind: Behind?, shape: Shape): Modifier {
         val edge = Brush.verticalGradient(0f to faint, litFade() to look.glassEdge, 1 - litFade() to look.glassEdge, 1f to faint)
         drawOutline(shape.createOutline(size, layoutDirection, this), edge, style = Stroke(EDGE.dp.toPx() * 2))
     }.clip(shape).drawWithContent {
-        drawRect(if (behind == null) look.glass else look.tint)
+        drawRect(if (behind == null) glass else tint)
         if (behind != null) {
             frost.renderEffect = BlurEffect(FROST.dp.toPx(), FROST.dp.toPx(), TileMode.Clamp)
             frost.alpha = if (look.dark) 0.45f else 0.3f
@@ -385,7 +386,7 @@ private fun Modifier.frosted(behind: Behind?, shape: Shape): Modifier {
                 drawRect(Color.Black.copy(alpha = if (look.dark) 0.47f else 0.2f))
             }
             drawLayer(frost)
-            drawRect(look.tint.copy(alpha = 0.35f))
+            drawRect(tint.copy(alpha = 0.35f))
         }
         drawContent()
         val outline = shape.createOutline(size, layoutDirection, this)
@@ -402,6 +403,9 @@ private val Colors.preview get() = if (dark) Color(0xFF2C2C2E) else Color(0xFFF2
 private val Colors.glass get() = if (dark) Color(0xFF353535) else Color(0xFFD6D7DB)
 /** The tint `frosted` lays under and over the frost, so that with the frost it reads as `glass`. */
 private val Colors.tint get() = if (dark) Color(0xFF444443) else Color(0xFFDEDEE3)
+/** The list under a view held without a preview (the chat tabs) reads lighter in light and darker in dark on iOS's shots. */
+private val Colors.liftedGlass get() = if (dark) Color(0xFF2C2C2C) else Color(0xFFE3E4E8)
+private val Colors.liftedTint get() = if (dark) Color(0xFF373736) else Color(0xFFEEEEF3)
 private val Colors.glassEdge get() = if (dark) Color(0xED000000) else Color(0x80000000)
 /** How much of the hairline shows where the rim is lit. */
 private val Colors.litEdge get() = if (dark) 0f else 0.4f
@@ -414,8 +418,6 @@ private val Colors.destructive get() = if (dark) Color(0xFFFF6164) else Color(0x
 private const val SIDE = 16f
 private const val TOP = 16f
 private const val BOTTOM = 16f
-/** The menu runs nearer the bottom than a card alone. */
-private const val MENU_FLOOR = 2f
 private const val GAP = 16.5f
 private const val CORNER = 32f
 private const val PHOTO_CORNER = 35f
@@ -431,12 +433,13 @@ private const val TIGHT_GAP = 10f
 private const val CARD_FLOOR = 60f
 private const val MENU_WIDTH = 250f
 private const val MENU_ROW = 77f
-private const val MENU_PAD = 4f
+private const val MENU_PAD = 8f
+private const val MENU_PAD_Y = 4f
 private const val MENU_CELL_CORNER = 20f
 private const val MENU_GLYPH = 17f
 private const val MENU_TITLE = 12f
 private const val MENU_TITLE_GAP = 6f
-private const val MENU_CORNER = 37f
+private const val MENU_CORNER = 30f
 private const val LIST_ROW = 42f
 /** A view held without a preview lifts this much larger, its top at least this far down the keyboard (iOS's held chat tabs). */
 private const val LIFT = 1.14f
@@ -444,7 +447,7 @@ private const val LIFTED_TOP = 13f
 /** A menu alone sits this far under what was held. */
 private const val MENU_UNDER = 8f
 private const val LIST_PAD = 10f
-private const val LIST_CORNER = 26f
+private const val LIST_CORNER = 33f
 /** How far the menu's glass blurs what's under it. */
 private const val FROST = 4f
 private const val EDGE = 0.5f

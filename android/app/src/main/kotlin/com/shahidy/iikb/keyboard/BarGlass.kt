@@ -16,7 +16,8 @@ import com.shahidy.iikb.app.lift
  * The bar's glass, iOS's `UIGlassEffect.bar`: iOS's regular glass tinted toward the label, 8% in light and 12% in dark,
  * so it stands off the keyboard's own glass, under More, the tools and the mic. Drawn on the keys' canvas as `app/Glass`
  * draws glass over a plain page, since the keyboard's glass under it has nothing to bend: its tint (in dark, `app/Glass`'s
- * lift of the keyboard's color), a lit rim on a hairline edge, and a soft shadow. `red` tints it toward record red, as
+ * lift of the keyboard's color, with a lit rim; in light, a shade darker than the keyboard's glass), a hairline edge,
+ * and a soft shadow. `red` tints it toward record red, as
  * the mic's glass while it listens, its rim fading at the sides and its edge darkening as they do on iOS's red glass.
  */
 class BarGlass {
@@ -38,13 +39,13 @@ class BarGlass {
         canvas.drawPath(shape, shadow)
         canvas.restore()
 
-        val glass = if (dark) lift(ComposeColor(theme.card)).toArgb() else Color.argb(184, 255, 255, 255)
-        val tinted = ColorUtils.compositeColors(ColorUtils.setAlphaComponent(theme.label, if (dark) 31 else 20), glass)
+        val glass = if (dark) lift(ComposeColor(theme.card)).toArgb() else Color.TRANSPARENT
+        val tinted = ColorUtils.compositeColors(ColorUtils.setAlphaComponent(theme.label, if (dark) 31 else 9), glass)
         fill.color = faded(ColorUtils.blendARGB(tinted, theme.record, red), opacity)
         canvas.drawPath(shape, fill)
 
         rim.strokeWidth = LIT
-        val lit = faded(Color.argb(lerp(if (dark) 40 else 230, RED_LIT, red), 255, 255, 255), opacity)
+        val lit = faded(Color.argb(lerp(if (dark) 40 else 0, RED_LIT, red), 255, 255, 255), opacity)
         rim.color = lit
         if (red > 0f) {
             val sides = ColorUtils.setAlphaComponent(lit, lerp(Color.alpha(lit), 0, red))
