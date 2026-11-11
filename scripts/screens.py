@@ -22,6 +22,7 @@ CARET = 8  # points: a narrower mark inside a text field is its caret
 # On a screen shot without an outline (the app's pages, through simctl), what the outline would place is told by size:
 # a mark this narrow is a caret, one this small each way a spinner.
 NARROW, SMALL = 3, 16
+STATUS_BAR = 54  # points: iOS's, 9:41 in every shot (scripts/sim stop), but a screenshot draws the Dynamic Island or not
 LIVE = {'dictation-': 'iikb.mic'}
 UNHELD = ('keyboard-swipe-',)
 
@@ -106,6 +107,7 @@ def compare(before, after, screen, width):
         return [((0, 0, b.shape[1], b.shape[0]), [f'size {a.shape[1]}x{a.shape[0]} to {b.shape[1]}x{b.shape[0]}px'])], None
     scale = b.shape[1] / (width or b.shape[1])
     differs = np.abs(a - b).max(axis=2) > CHANGED
+    differs[: round(STATUS_BAR * scale)] = False
     differs &= ~(held(screen, elements_a, scale, differs.shape) | held(screen, elements_b, scale, differs.shape))
     fields = inputs(elements_a) + inputs(elements_b)
     marks, _ = ndimage.label(differs)
