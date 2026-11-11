@@ -108,7 +108,8 @@ public final class EmojiPanel: UIView, PanelContent, UICollectionViewDataSource,
         onPick(shown[indexPath.item], nil)
     }
 
-    /// Holding an emoji that comes in skin tones offers them above it, picked by sliding, like a key's accents.
+    /// Holding an emoji that comes in skin tones offers them above it, picked by sliding, like a key's accents, and
+    /// inside the panel: what reaches above it is cut off flat.
     @objc private func hold(_ gesture: UILongPressGestureRecognizer) {
         let point = gesture.location(in: self)
         switch gesture.state {
@@ -125,7 +126,7 @@ public final class EmojiPanel: UIView, PanelContent, UICollectionViewDataSource,
             let key = cell.convert(cell.bounds, to: self)
             tones.show(
                 held, selected: held.firstIndex(of: shown[indexPath.item]) ?? 0, over: key,
-                in: bounds.insetBy(dx: 0, dy: -8), metrics: metrics, theme: theme)
+                in: bounds, metrics: metrics, theme: theme)
             slide = tones.selectedMidX - point.x
         case .changed:
             tones.track(CGPoint(x: point.x + slide, y: point.y))
