@@ -30,7 +30,8 @@ review() {
   before=$(cat "$folder/before")
   [ -n "$before" ] || return 0
   git fetch -q origin main
-  git log --format='%h %s%n%b' "$before..$head" -- App Keyboard Packages/KeyboardModules/Sources project.yml >"$folder/commits.txt"
+  # Every commit that can change a screen, by the paths that start a run.
+  git log --format='%h %s%n%b' "$before..$head" -- $(sed -n '/^    paths:/,/^  workflow_dispatch/s|^      - \(.*\)|\1|p' .github/workflows/screens.yml | sed 's|/\*\*$||') >"$folder/commits.txt"
   verdict=$(cd "$folder" && claude -p --model sonnet --allowedTools Read 2>/dev/null <<<"Screens of iikb, an iOS keyboard and its app, changed on main. report.md has a line per changed screen, with where it changed in points and what moved, resized or reads differently there; <screen>.png is that screen before, after, and after with the change in red. commits.txt is every commit since the run before, subject and body. Look at each changed screen's picture and decide whether a commit says it would change it that way. Answer with only a line per screen no commit accounts for, '<screen>: <what changed, in a few words>', or the single word none.") || return 0
   printf '%s\n' "$verdict" >"$folder/verdict.txt"
   [ "$verdict" = none ] && return 0

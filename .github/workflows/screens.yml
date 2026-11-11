@@ -136,7 +136,7 @@ jobs:
             echo
             cat report/report.md
             echo
-            [ -z "$BEFORE" ] || git log --format='- %h %s' "$BEFORE..$GITHUB_SHA" -- App Keyboard Packages/KeyboardModules/Sources project.yml
+            [ -z "$BEFORE" ] || git log --format='- %h %s' "$BEFORE..$GITHUB_SHA" -- $(sed -n '/^    paths:/,/^  workflow_dispatch/s|^      - \(.*\)|\1|p' .github/workflows/screens.yml | sed 's|/\*\*$||')
           } >>"$GITHUB_STEP_SUMMARY"
           echo "$BEFORE" >report/before
       - uses: actions/upload-artifact@v4
