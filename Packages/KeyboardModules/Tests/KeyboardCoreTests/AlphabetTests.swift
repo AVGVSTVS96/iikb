@@ -117,6 +117,32 @@ struct AlphabetTests {
 
     /// Words drawn by how often they're written, each typed on the keys that hold its letters with taps spread a
     /// quarter key around their centers, then a space.
+    /// French and Italian lexicons list the elided part as a word ("c'", "dell'") and the word after it, never the
+    /// pair, so "c'est" typed right stays as typed rather than splitting at the apostrophe, a typo after it is still
+    /// fixed, and one typed without its apostrophe gets it back, as Italian's letters have no key for it.
+    @Test func anElidedWordTypedRightStays() {
+        let lexicon = Lexicon(
+            counts: [
+                ("c'", 800), ("l'", 1200), ("qu'", 500), ("m'", 300), ("dell'", 400), ("est", 900), ("avenue", 40),
+                ("elle", 600), ("a", 1000), ("anno", 90), ("è", 700), ("et", 950), ("le", 1100), ("les", 1000),
+                ("cette", 300), ("avenir", 60), ("annonce", 40),
+            ].map { (word: $0.0, count: Double($0.1)) })
+        let corrector = Self.corrector(lexicon)
+        let typed = { (word: String) in
+            let letters = word.filter { $0 != "'" }.map { Self.typed(String($0)).taps[0] }
+            return corrector.correction(for: TypedWord(word, taps: letters))
+        }
+        for word in ["c'est", "l'avenue", "qu'elle", "m'a", "dell'anno", "c'è", "L'avenue"] {
+            #expect(typed(word) == nil, "\(word)")
+        }
+        #expect(typed("c'esr") == "c'est")
+        for (missing, restored) in [("dellanno", "dell'anno"), ("cest", "c'est"), ("lavenue", "l'avenue")] {
+            #expect(typed(missing) == restored)
+        }
+        for word in ["cette", "elle", "les"] { #expect(typed(word) == nil, "\(word)") }
+        #expect(typed("mle") != "m'le")
+    }
+
     @Test(arguments: ["de", "es"]) func typesWithNoisyTaps(language: String) {
         let lexicon = language == "de" ? Self.german : Self.spanish
         let counts = Self.counts(language)

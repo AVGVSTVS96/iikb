@@ -154,6 +154,10 @@ public final class Corrector {
             return word.text == name || word.text == word.text.uppercased() ? nil : name
         }
         guard guessing else { return nil }
+        if let (head, rest) = elided(word) {
+            return correction(for: rest, context: context, guessing: guessing).map { head + $0 }
+        }
+        if let restored = elision(missing: word) { return Words.matchCase(restored, to: text) }
         let named = word.text.contains(where: \.isUppercase) && word.previous != ""
         if memory.count(of: lower) == 0, !named, let split = missedSpaces(word, context: context),
             split.odds >= Self.splitLogOdds
@@ -417,12 +421,64 @@ extension Corrector {
         return added.word
     }
 
+    /// A word whose part up to an apostrophe is a word of its own, French's "c'" in "c'est" and Italian's "dell'" in
+    /// "dell'anno", split there, so the rest is read as the word it is. The lexicon lists the elided part, not every
+    /// word it goes before.
+    func elided(_ word: TypedWord) -> (head: String, rest: TypedWord)? {
+        guard let lexicon, let cut = word.text.firstIndex(of: "'"), !lexicon.isWord(word.text) else { return nil }
+        let head = String(word.text[...cut])
+        let rest = String(word.text[word.text.index(after: cut)...])
+        guard !rest.isEmpty, lexicon.isWord(head.lowercased()) else { return nil }
+        return (
+            head,
+            TypedWord(
+                rest, taps: word.taps.count >= rest.count ? word.taps.suffix(rest.count) : [], previous: word.previous)
+        )
+    }
+
     /// A word that stands on its own, which autocorrect replaces only when your touches fit the other word better: one
     /// you've kept, or a real word that, typed dead center on its keys, still reads as itself. Reading it with an
     /// apostrophe added ("its" → "it's"), or with a letter the same key holds ("schon" → "schön"), doesn't count
     /// against it, since the touches can't tell those apart.
+    /// A word typed without its elision's apostrophe, as Italian's letters have no key for it: "dellinformazione"
+    /// read as "dell'informazione", when that beats every reading of it as one word, as "dont" is read as "don't". An
+    /// elision only comes before a vowel or h, so the word after it starts with one.
+    func elision(missing word: TypedWord) -> String? {
+        let letters = Array(word.text)
+        guard let lexicon, letters.count >= 3, !letters.contains("'") else { return nil }
+        let cuts = (1..<(letters.count - 1)).filter { lexicon.isWord(String(letters[..<$0]).lowercased() + "'") }
+        guard !cuts.isEmpty, !isKnown(word), let whole = ranked(word).first(where: { !$0.isCompletion }) else {
+            return nil
+        }
+        let taps = word.taps.count == letters.count ? word.taps : []
+        let readings = cuts.compactMap { cut -> (word: String, logPosterior: Double)? in
+            let head = String(letters[..<cut]) + "'"
+            guard let prior = lexicon.logProbability(of: head.lowercased()) else { return nil }
+            let rest = TypedWord(
+                String(letters[cut...]), taps: taps.isEmpty ? [] : Array(taps[cut...]), previous: word.previous)
+            guard
+                let read = ranked(rest).first(where: {
+                    !$0.isCompletion && lexicon.isWord($0.word.lowercased()) && Self.takesElision($0.word)
+                })
+            else { return nil }
+            return (head + read.word, prior + read.logPosterior)
+        }
+        guard let best = readings.max(by: { $0.logPosterior < $1.logPosterior }), best.logPosterior > whole.logPosterior
+        else { return nil }
+        return best.word
+    }
+
+    /// Whether a word starts with a vowel or h, accented or not (é, œ), read off its first letter's Unicode name.
+    static func takesElision(_ word: String) -> Bool {
+        guard let name = word.lowercased().unicodeScalars.first?.properties.name else { return false }
+        let letter = name.split(separator: " ").dropFirst(3).first
+        return name.hasPrefix("LATIN SMALL L")
+            && letter.map { ["A", "E", "I", "O", "U", "Y", "H", "OE", "AE"].contains($0) } == true
+    }
+
     func isKnown(_ word: TypedWord) -> Bool {
         if memory.isKept(word.text) { return true }
+        if let (_, rest) = elided(word) { return isKnown(rest) }
         guard lexicon?.isWord(word.text) == true || memory.count(of: word.text) > 1 else { return false }
         guard let lexicon else { return true }
         let keys = letters(lexicon)
@@ -572,7 +628,9 @@ extension Corrector {
     func missedSpaces(_ typed: TypedWord, context: String? = nil) -> (words: String, odds: Double)? {
         let letters = Array(typed.text)
         let spaced = letters.contains(" ")
-        guard let lexicon, letters.count >= 3, grid.index(of: " ") != nil, spaced || !isKnown(typed) else { return nil }
+        guard let lexicon, letters.count >= 3, grid.index(of: " ") != nil, spaced || !isKnown(typed),
+            elided(typed) == nil
+        else { return nil }
         let taps = aligned(typed.taps, to: letters)
         let keys = memory.touches.layout(grid)
         let model = languageModel(lexicon)
