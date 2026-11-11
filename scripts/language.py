@@ -8,7 +8,8 @@ Usage: scripts/language.py words <id> <build>    the word counts, word<TAB>count
 Words: Android's keyboard word lists (AOSP LatinIME dictionaries, Apache-2.0) say which words a keyboard offers and
 how each is capitalized. FineWeb-2 (ODC-BY) adds words the lists lack ("WhatsApp", "selfie") when it uses them at
 least as often as the median listed word, unless the word is spam, is mostly another language's (English, or one of
-the other lists'), or is a worse spelling of a word kept ("etre" for "être", "daß" for "dass").
+the other lists'), or is a worse spelling of a word kept ("etre" for "être", "daß" for "dass"). A word spelled without the accents of
+one used ten times as often ("agua" for "água") is left out even when listed, so typing it gives the accented one.
 Counts: FineWeb-2's first shard, each word counted at most ten times a page so keyword-stuffed pages don't skew it.
 Leipzig's news sentences (CC BY) are the check on the web: a word the web uses far more than the news does (by more
 than all but 5% of listed words) is spam, and its count is held to what the news supports. A listed word FineWeb-2
@@ -30,6 +31,7 @@ import math
 import os
 import random
 import re
+import string
 import struct
 import sys
 import unicodedata
@@ -54,6 +56,7 @@ PER_PAGE = 10
 TOKEN = re.compile(r"[^\W\d_]+(?:['’-][^\W\d_]+)*['’]?")
 BREAK = re.compile(r"[.!?…:;\n\"«»“”„()\[\]]|^\s*$")
 EN_LEXICON = os.path.join(os.path.dirname(__file__), "../Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.lexicon")
+LANGUAGE_SWIFT = os.path.join(os.path.dirname(__file__), "../Packages/KeyboardModules/Sources/KeyboardCore/Keys/Language.swift")
 
 
 def fetch(url, path):
@@ -198,6 +201,16 @@ def english():
     return found
 
 
+def keyed(language):
+    """The letters with a key of their own on the language's own layout (KeyboardCore's Language.swift), like ñ or ö:
+    a word spelled without them is typed on purpose."""
+    with open(LANGUAGE_SWIFT, encoding="utf-8") as file:
+        swift = file.read()
+    layout = re.search(rf'id: "{language}", name: "[^"]*", layouts: \[\.(\w+)', swift)[1]
+    rows = re.search(rf'static let {layout} = LetterLayout\(\s*id: "[^"]*", name: "[^"]*", rows: \[([^\]]*)\]', swift)[1]
+    return set(rows) - set(string.ascii_lowercase) - set('", ')
+
+
 def words(build, language):
     listed = aosp(build, language)
     web = corpus(build, language)
@@ -302,9 +315,26 @@ def words(build, language):
         variants.setdefault(key(lower), []).append(lower)
         added += 1
 
+    own = keyed(language)
+
+    def bare(word):
+        return "".join(ch if ch in own or ch == "'" else key(ch) for ch in word)
+
+    groups = {}
+    for lower in counts:
+        groups.setdefault(bare(lower), []).append(lower)
+    dropped = 0
+    for lower in list(counts):
+        if lower == bare(lower) and any(
+            other != lower and counts[lower][0] * 10 < counts[other][0] and seen(press, lower) * 100 < seen(press, other)
+            for other in groups[lower]
+        ):
+            del counts[lower]
+            dropped += 1
+
     for lower, (n, capital) in sorted(counts.items(), key=lambda item: -item[1][0]):
         print(f"{lower.capitalize() if capital else lower}\t{round(n)}")
-    print(f"{language}: {len(counts)} words ({added} added), letters {''.join(sorted(alphabet))}, a word the web uses "
+    print(f"{language}: {len(counts)} words ({added} added, {dropped} accents dropped), letters {''.join(sorted(alphabet))}, a word the web uses "
           f"{1 / floor:.0f}x more than the news is spam; added from {threshold} uses; capitals kept up to {slips:.1%} lowercase", file=sys.stderr)
 
 
