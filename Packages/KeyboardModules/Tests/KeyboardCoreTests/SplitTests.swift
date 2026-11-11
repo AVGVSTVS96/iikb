@@ -66,6 +66,24 @@ struct SplitTests {
             "the halves start at the keyboard's edges, where the full keyboard's keys do")
     }
 
+    /// Instagram's @ and # took the right space bar's end, where Bassim presses space: a field's own keys sit in the
+    /// gap between the hands, and both space bars stay as wide as in any other field.
+    @Test func aFieldsOwnKeysSitBetweenTheHands() {
+        let plain = grid().rows.last!.filter { $0.key.action == .space }.map(\.frame)
+        for (kind, labels) in [
+            (InputKind.twitter, ["@", "#"]), (.email, ["@", "."]), (.url, ["/", ".com"]), (.webSearch, ["."]),
+        ] {
+            let grid = grid(kind: kind)
+            let left = grid.frame(of: "t")!
+            let right = grid.frame(of: "y")!
+            for label in labels {
+                let frame = grid.rows.last!.first { $0.key.action == .character(label) }!.frame
+                #expect(frame.x >= left.x + left.width && frame.x + frame.width <= right.x, "\(kind) \(label)")
+            }
+            #expect(grid.rows.last!.filter { $0.key.action == .space }.map(\.frame) == plain, "\(kind)")
+        }
+    }
+
     @Test func gAndVSitOnBothHalves() {
         let grid = grid()
         for label in ["g", "v"] {

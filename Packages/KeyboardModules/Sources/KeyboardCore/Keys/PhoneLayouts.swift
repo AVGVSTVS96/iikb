@@ -45,8 +45,8 @@ enum PhoneLayouts {
         ])
     }
 
-    /// Each half five keys wide: the globe or the record button, layer and emoji keys and a space bar on the left, a space bar, the field's
-    /// own keys and return on the right.
+    /// Each half five keys wide: the globe or the record button, layer and emoji keys and a space bar on the left, a space bar and return
+    /// on the right, and the field's own keys in the gap between, clear of where the thumbs press space.
     private static func splitBottomRow(_ context: LayoutContext, layerKey: KeyboardLayer) -> [RowItem] {
         let character = { (value: String) in RowItem.key(Key(.character(value))) }
         let leading =
@@ -64,9 +64,8 @@ enum PhoneLayouts {
             default: []
             }
         let space = { (span: Double) in RowItem.key(Key(.space, width: .pitch(span))) }
-        return leading.map(RowItem.key) + [space(5 - leadingSpan), .flexible, space(3.5 - Double(trailing.count))]
-            + trailing
-            + [.key(Key(.return, width: .pitch(1.5)))]
+        return leading.map(RowItem.key) + [space(5 - leadingSpan), .flexible] + trailing
+            + [.flexible, space(3.5), .key(Key(.return, width: .pitch(1.5)))]
     }
 
     private static func letters(_ context: LayoutContext) -> KeyboardLayout {
