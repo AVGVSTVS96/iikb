@@ -258,6 +258,7 @@ public final class Corrector {
         }
         let following =
             TypingMemory.contexts(typed.previous, earlier).flatMap(memory.predictions(after:))
+            .filter { $0.lowercased().hasPrefix(literal) }
             + (expected?.likeliest(24, startingWith: typed.text) ?? []).map { lexicon.canonical($0) ?? $0 }
             + names(startingWith: typed.text)
         for word in following where fits[word] == nil && word.lowercased() != literal {
