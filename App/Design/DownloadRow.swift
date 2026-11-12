@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// One of a setting's values whose data downloads, on one line: its name, and at its right what it does, in
-/// one column: Download, Cancel while a bar after the name shows how far it's come, Try Again, Remove once it's here, and
+/// one column: Download, Cancel while a bar under the name shows how far it's come, Try Again, Remove once it's here, and
 /// the check on the one picked. A tap elsewhere on the row picks it, which for one not here yet is the owner's to decide
 /// (a language downloads, then is picked). A newer copy of one that's here comes in with the bar and "Updating" while the
 /// old one stays picked. The row keeps its height through all of it.
@@ -31,7 +31,12 @@ struct DownloadRow: View {
         HStack(alignment: .center, spacing: 14) {
             HStack(spacing: 12) {
                 Text(title).foregroundStyle(.primary).lineLimit(1).layoutPriority(1)
+                Spacer(minLength: 0)
                 status
+            }
+            // Under the name in the row's own margin, so the row keeps its height while one comes in.
+            .overlay(alignment: .bottom) {
+                if let done = progress { Bar(done: done).offset(y: 8).transition(.opacity) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
@@ -49,29 +54,27 @@ struct DownloadRow: View {
         .animation(.snappy(duration: 0.2), value: picked)
     }
 
+    private var progress: Double? {
+        switch phase {
+        case .downloading(let done), .updating(let done): done
+        default: nil
+        }
+    }
+
     @ViewBuilder private var status: some View {
         switch phase {
         case .downloading(let done), .updating(let done):
-            HStack(spacing: 8) {
-                Bar(done: done)
-                // As wide as its longest, so the bar is one width however far it's come and whichever it is.
-                ZStack(alignment: .trailing) {
-                    Text("Updating · 100%").hidden().accessibilityHidden(true)
-                    Text(phase == .updating(done) ? "Updating · \(percent(done))" : percent(done))
-                        .contentTransition(.identity)
-                }
+            Text(phase == .updating(done) ? "Updating · \(percent(done))" : percent(done))
                 .monospacedDigit()
-                .fixedSize()
-            }
-            .font(.subheadline)
-            .foregroundStyle(Color.appSecondary)
-            .lineLimit(1)
+                .contentTransition(.identity)
+                .font(.subheadline)
+                .foregroundStyle(Color.appSecondary)
+                .lineLimit(1)
         case .failed(let reason):
             Text(reason)
                 .font(.subheadline)
                 .foregroundStyle(.red)
                 .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .trailing)
         default:
             EmptyView()
         }
