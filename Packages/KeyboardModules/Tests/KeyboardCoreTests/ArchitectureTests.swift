@@ -176,6 +176,29 @@ struct ArchitectureTests {
         }
     }
 
+    /// iOS tears a keyboard's text proxy down when its app goes to the background, not always with word to the keyboard,
+    /// and reading it then crashes. Sources', chats' and rankings' answers draw after that (Nov 4, 10 and 11), so only
+    /// UIKit's calls in and taps read the proxy, and drawing reads what they kept (`hostField`).
+    @Test func onlyUIKitsCallsReadTheTextProxy() throws {
+        let readers = ["syncWithDocument", "selection", "host"]
+        let folder = "Packages/KeyboardModules/Sources/FullKeyboard"
+        for file in Self.files(in: folder) where file.pathExtension == "swift" {
+            let lines = try Self.lines(of: file)
+            for (number, line) in lines.enumerated()
+            where line.contains("textDocumentProxy") && !line.trimmingCharacters(in: .whitespaces).hasPrefix("//") {
+                let declaration = lines[...number].reversed().lazy.compactMap { line in
+                    ["func ", " var "].lazy.compactMap { line.range(of: $0) }.first.map {
+                        line[$0.upperBound...].prefix { $0.isLetter || $0.isNumber || $0 == "_" }
+                    }
+                }.first
+                #expect(
+                    declaration.map { readers.contains(String($0)) } == true,
+                    "\(Self.relative(file)):\(number + 1) reads textDocumentProxy in `\(declaration ?? "")`, which a late answer can reach after iOS tore the proxy down. Read what it needs in syncWithDocument into `hostField`, and draw from that."
+                )
+            }
+        }
+    }
+
     @Test func noConflictMarkers() {
         for file in Self.files(in: ".") {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }

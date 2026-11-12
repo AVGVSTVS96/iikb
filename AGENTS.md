@@ -86,6 +86,7 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | Never a Bluetooth microphone unless one is picked in Settings › Microphone (VoiceCapture) | judgment: nothing enforces it |
 | A page opened from another in its tab has one Back, in the Duo's side bar with the tabs on every screen (App) | `backInSideBar(_:)`, `BackTests` |
 | A new use of the host app goes through `FullKeyboardViewController.hostApp` (FullKeyboard) | judgment: nothing enforces it |
+| Drawing never reads `textDocumentProxy`: only UIKit's calls in and taps do, keeping what drawing needs in `hostField`, since a late answer can draw after iOS tore the proxy down (FullKeyboard) | `ArchitectureTests` |
 | Only main's last commit reaches the phone, and only when Bassim taps Install on the link: no agent installs on his devices, a device test (`scripts/chatdevice`) included, unless he asks; never linked below iOS 27.1 (scripts) | `scripts/phone`: builds main in its own worktree and only offers it, refuses without `backup.key` or below 27.1; judgment for the rest |
 | Restore only once the device has a build from the link: an old build can't read a memory restored without its token | judgment: nothing enforces it |
 | Comments only for a decision or fact the code can't show (one `WHY:` line or a link) | `tools/oxlint/no-comments.ts` in TypeScript; judgment in Swift |

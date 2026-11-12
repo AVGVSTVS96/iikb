@@ -183,6 +183,16 @@ open class FullKeyboardViewController: UIInputViewController {
     /// The field the keyboard is typing in (`documentIdentifier`), so dictations end with the field they were typed in,
     /// and the next keyboard in the same field goes on following them.
     private var field: String?
+    /// The rest of what drawing needs of the app's field, read with `field` only as UIKit calls in (appearing, text and
+    /// selection changes). Drawing never reads `textDocumentProxy` itself: sources' and chats' answers draw when they
+    /// come, often after the app went to the background and iOS tore the proxy down, and reading it then crashes
+    /// (EXC_BAD_ACCESS in `_UITextDocumentInterface`, builds 966 to 1059, 10 and 11 November).
+    private var hostField = HostField()
+    private struct HostField {
+        var isPrivate = false
+        var appearance: UIKeyboardAppearance?
+        var selected = ""
+    }
 
     override open func loadView() {
         inputView = KeyboardInputView(frame: .zero, inputViewStyle: .default)
@@ -511,6 +521,9 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     private func syncWithDocument() {
+        let proxy = textDocumentProxy
+        hostField = HostField(
+            isPrivate: proxy.isPrivate, appearance: proxy.keyboardAppearance, selected: proxy.selectedText ?? "")
         if line != nil {
             guard textDocumentProxy.field != field else { return render() }
             return closeChat()
@@ -609,9 +622,7 @@ open class FullKeyboardViewController: UIInputViewController {
 
     /// What a source sees: the field's text as the keyboard knows it, with Full Access, outside password and code fields.
     private func tellSources(_ author: FieldUpdate.Author) {
-        guard hasFullAccess, line == nil, !textDocumentProxy.isPrivate, let field = textDocumentProxy.field else {
-            return
-        }
+        guard hasFullAccess, line == nil, !hostField.isPrivate, let field else { return }
         sources.observe(
             FieldUpdate(
                 field: field, before: engine.text.before, after: engine.text.after ?? "", by: author,
@@ -621,7 +632,7 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     private var hint: String? {
-        guard hasFullAccess, let field = textDocumentProxy.field else { return nil }
+        guard hasFullAccess, let field else { return nil }
         return sources.hint(for: field, app: hostApp)
     }
 
@@ -766,7 +777,7 @@ open class FullKeyboardViewController: UIInputViewController {
             maxX: width - CGFloat(metrics.margin.trailing + metrics.sideInset)
         )
         menuView.show(settings: context.menu.isEmpty, theme: theme, metrics: metrics, block: block)
-        let dark = textDocumentProxy.keyboardAppearance == .dark || traitCollection.userInterfaceStyle == .dark
+        let dark = hostField.appearance == .dark || traitCollection.userInterfaceStyle == .dark
         menuView.show(look: engine.settings, dark: dark, theme: theme)
     }
 
@@ -892,7 +903,7 @@ open class FullKeyboardViewController: UIInputViewController {
     /// a tap says why it can't.
     private var edits: SuggestionBar.Edits {
         guard hasFullAccess else { return .init(cut: true, copy: true, paste: true) }
-        let selected = !selection.isEmpty
+        let selected = !(hostField.selected.isEmpty && engine.text.selected.isEmpty)
         return .init(cut: selected, copy: selected, paste: UIPasteboard.general.hasStrings)
     }
 
@@ -927,14 +938,13 @@ open class FullKeyboardViewController: UIInputViewController {
 
     private var theme: KeyboardTheme {
         KeyboardTheme.current(
-            for: traitCollection, appearance: textDocumentProxy.keyboardAppearance, settings: engine.settings)
+            for: traitCollection, appearance: hostField.appearance, settings: engine.settings)
     }
 
     private var ranking = false
-    /// From viewWillAppear to viewWillDisappear, and not while the host app is in the background. Once the keyboard or
-    /// its app goes away the text document proxy is torn down while this controller lives on, and reading it then
-    /// crashes, so a ranking job or load that finishes later draws nothing. The host going to the background doesn't
-    /// always end in viewWillDisappear (crash of 10 November, build 966).
+    /// From viewWillAppear to viewWillDisappear, and not while the host app is in the background, so a ranking job or
+    /// answer that finishes then draws nothing. It saves work, not crashes: those notifications don't always come
+    /// (`hostField`).
     private var isShown: Bool { appeared && !hostAway }
     private var appeared = false
     private var hostAway = false
@@ -1141,7 +1151,7 @@ open class FullKeyboardViewController: UIInputViewController {
             switch note {
             case .heard(let text, let plain, let keyboard, let id) where keyboard == nil || keyboard == self.keyboard:
                 engine.handle(
-                    .dictated(text, plain: plain, id: textDocumentProxy.isPrivate ? nil : id?.uuidString), in: document)
+                    .dictated(text, plain: plain, id: hostField.isPrivate ? nil : id?.uuidString), in: document)
             case .heard:
                 notice = "Not typed here: it’s in iikb › Transcripts"
             case .notice(let notice):
