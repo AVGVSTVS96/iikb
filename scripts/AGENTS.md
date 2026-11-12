@@ -9,6 +9,7 @@ scripts/ci 'scripts/sim duo v8'                 # Apple's keyboard and iikb on t
 scripts/ci 'KEYBOARDS="system iikb" scripts/padshots v1'   # every keyboard state (typing, layers, tray, More, panels, floating) on iPad mini, Pro 11 and Pro 13, portrait and landscape, light and dark, Apple's beside it: shots/raw/pad/v1/ (landscape shots come out turned; key frames in each -empty.txt)
 gh workflow run screens --ref <branch>          # which screens a branch changes against main's last screens run (every push to main that changes what a screen draws runs it; scripts/screens-watch tells Config/notify what no commit accounts for)
 gh workflow run shots                           # every screen of iikb on an iPhone 17, keyboard and app, light and dark, with shots/demo's made-up data and Chats from scripts/chats.ts, on GitHub's Macs (scripts/parity): the run's parity artifact
+scripts/ci scripts/menushots                    # the keyboard's menu opening on each of the iPhone Duo's screens, light and dark: shot before and after, recorded, and checked that the bar doesn't move (UITests/MenuShots), into shots/raw/menu/
 scripts/ci 'scripts/capture "iPhone 17" iPhone-17 iikb'   # frames of held keys: pop-ups, accent panel (CAPTURE=menu: the 123 menu)
 scripts/ci 'scripts/shots "iPhone 17" iPhone-17 system light "hel:hel|helo:o"'   # type through a keyboard, screenshot each step
 scripts/ci 'scripts/sim taps "iPhone 17 Pro Max" iPhone-17-Pro-Max touches.json t1'   # the app's Stats › Taps screen with a touch model

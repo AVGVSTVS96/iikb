@@ -1,0 +1,64 @@
+#!/bin/bash
+# Runs on a Mac (scripts/ci 'scripts/menushots'). The keyboard's menu opening on each of the iPhone Duo's screens,
+# light and dark, with shots/demo's made-up data and scripts/chats.ts standing in for an extension: UITests/MenuShots
+# taps More and checks nothing moves, while the screen is recorded and shot before and after, into
+# shots/raw/menu/<screen>-<appearance>-{keys,menu}.png and <screen>-<appearance>.mov. SCREENS and APPEARANCES pick.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
+out=$PWD/shots/raw/menu
+mkdir -p "$out"
+ID=$(scripts/sim ensure "iPhone Duo" iPhone-Duo)
+xcodegen generate -q
+xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest -quiet
+touch "$APP"
+scripts/sim boot "$ID"
+scripts/sim allow "$ID" paste
+scripts/sim use "$ID" iikb
+set -a; source shots/demo/env; set +a
+scripts/sim fill "$ID"
+PORT=${PORT:-2597}
+HOST=:: PORT=$PORT bun scripts/chats.ts >build/uitest/chats.log 2>&1 &
+stand=$!
+extension="http://localhost:$PORT"
+eval "$(sed -n '/^DUO_SCREENS=/,/"$/p' scripts/sim)"
+
+# Shoots each <name>.hold MenuShots leaves, on the screen it's on, then takes the file away to say it's done.
+shutter() {
+  local hold
+  while sleep 0.05; do
+    for hold in "$out"/*.hold; do
+      [ -e "$hold" ] || continue
+      xcrun simctl io "$ID" screenshot --display="$1" "${hold%.hold}.png" >/dev/null 2>&1 || echo "no shot for $hold" >&2
+      rm "$hold"
+    done
+  done
+}
+
+while read -r screen hinge orientation display; do
+  [ -n "${SCREENS:-}" ] && [[ " $SCREENS " != *" $screen "* ]] && continue
+  scripts/sim unfold "$ID" "$hinge"
+  scripts/sim hub "$ID" orientation "$orientation"
+  for appearance in ${APPEARANCES:-dark light}; do
+    echo "== $screen $appearance $(date +%T)"
+    xcrun simctl ui "$ID" appearance "$appearance"
+    name=$out/$screen-$appearance
+    shutter "$display" &
+    shooter=$!
+    xcrun simctl io "$ID" recordVideo --display="$display" --codec=h264 --force "$name.mov" >/dev/null 2>&1 &
+    recorder=$!
+    log=build/uitest/menu-$screen-$appearance.log
+    TEST_RUNNER_IIKB_SHOTS=$name TEST_RUNNER_IIKB_EXTENSION=$extension \
+      TEST_RUNNER_IIKB_ORIENTATION=$([ "$orientation" = portrait ] && echo portrait || echo landscape) \
+      xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb \
+      -destination "id=$ID" -derivedDataPath build/uitest -only-testing:AppUITests/MenuShots >"$log" 2>&1 || failed=1
+    grep -E "error:|Test Case .*(passed|failed)" "$log" || true
+    extension=
+    kill -INT "$recorder" 2>/dev/null || true
+    kill "$shooter" 2>/dev/null || true
+    wait "$recorder" "$shooter" 2>/dev/null || true
+  done
+done <<<"$DUO_SCREENS"
+kill "$stand" 2>/dev/null || true
+ls "$out"
+exit "${failed:-0}"

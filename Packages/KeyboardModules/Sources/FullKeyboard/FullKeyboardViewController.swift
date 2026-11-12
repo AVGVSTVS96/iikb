@@ -90,11 +90,11 @@ open class FullKeyboardViewController: UIInputViewController {
     /// A panel opened from the menu fills the keys' place until you tap its field, which brings the keys up with the
     /// panel above them (docs/design.md, "Panels"). The emoji panel opens from its key, so always with the keys.
     private var keysUp = false
-    /// Where the open panel sits, so moving it lays the view out again even when no height changes, as when a chat opens
-    /// from the menu at the menu's height.
+    /// Where the open panel sits, so moving it lays the view out again even when no height changes, as when a panel opens
+    /// from the menu in the keys' place.
     private var placed: (chat: Bool, inPlace: Bool)?
     private var panelOpen: Bool { line != nil || engine.panel != nil }
-    /// The menu and a chat grow the keyboard, to all of the screen but this much left for the app (docs/extensions.md),
+    /// A chat grows the keyboard, to all of the screen but this much left for the app (docs/extensions.md),
     /// and a chat keeps that height while you read, dictate and type. On the Duo it clears the clock, battery and
     /// Wi-Fi iOS stacks at the screen's top right, which reach 167 down (measured on the phone, Nov 8).
     private var roomForApp: Double { Duo.isDuo(short: min(screenSize.width, screenSize.height)) ? 172 : 140 }
@@ -642,7 +642,7 @@ open class FullKeyboardViewController: UIInputViewController {
         let ask =
             line != nil
             ? (keysUp ? tall - height : wanted.height) : inPlace || !panelOpen ? wanted.height : wanted.panelHeight
-        let keysHeight = (line != nil && !keysUp) || (menuOpen && !panelOpen) ? tall - ask : height
+        let keysHeight = line != nil && !keysUp ? tall - ask : height
         let room = view.bounds.height
         metrics.toolbar = wanted
         if ask == toolbarHeightConstraint.constant, keysHeight == keyboardHeightConstraint.constant, room > 0 {

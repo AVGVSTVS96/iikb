@@ -3,10 +3,9 @@ import KeyboardUI
 import UIKit
 
 /// The keyboard's menu, in the keys' place while the bar's More button is on (docs/design.md, "The menu"): a shelf for
-/// each history, its name beside its newest items in one row, a tap typing one and the name opening its panel. It fills a
-/// keyboard grown as Chats' is, so the screen the keys don't need goes to what you pick from; layouts and iikb Settings
-/// stay on holding 123, where you type. Under the shelves, a scroll away with the Theme shelf's top showing, the
-/// keyboard's theme and stop animation, picked in place.
+/// each history, its name beside its newest items in one row, a tap typing one and the name opening its panel. It takes
+/// the keys' place at their height, so nothing above it moves as it opens; layouts and iikb Settings stay on holding 123,
+/// where you type. Under the shelves, a scroll away, the keyboard's theme and stop animation, picked in place.
 final class MenuView: UIView {
     var onOpen: (Panel) -> Void = { _ in }
     var onSettings: () -> Void = {}
@@ -18,7 +17,10 @@ final class MenuView: UIView {
     private var shelves: [(panel: Panel, shelf: Shelf, content: PanelResults)] = []
     private var block = (minX: CGFloat(0), maxX: CGFloat(0))
     private let scroll = ButtonScrollView()
-    /// Fades the shelves out under the bar as they scroll up, rather than cutting them off.
+    /// The menu just opened, so its scroll bar shows once laid out, saying what's a scroll away.
+    private var opened = false
+    /// Fades the shelves out under the bar as they scroll up, and the next shelf's glow at the bottom, rather than
+    /// cutting them off.
     private let fade = CAGradientLayer()
     private let themes = LookStrip(ThemeName.allCases, width: 84) { theme in
         LookTile(theme.title, id: "theme.\(theme)", art: KeycapSwatchView())
@@ -43,7 +45,7 @@ final class MenuView: UIView {
         stops.onPick = { [unowned self] in onStop($0) }
         scroll.alwaysBounceVertical = true
         layer.mask = fade
-        fade.colors = [UIColor.clear, .black].map(\.cgColor)
+        fade.colors = [UIColor.clear, .black, .black, .clear].map(\.cgColor)
         addSubview(scroll)
         [themeShelf, stopShelf].forEach(scroll.addSubview)
     }
@@ -61,6 +63,7 @@ final class MenuView: UIView {
             return (panel, shelf, content)
         }
         scroll.contentOffset = .zero
+        opened = true
         setNeedsLayout()
     }
 
@@ -113,12 +116,14 @@ final class MenuView: UIView {
     /// Every shelf, the histories then the look's, top to bottom.
     private var all: [Shelf] { shelves.map(\.shelf) + [themeShelf, stopShelf] }
 
-    /// The histories share the menu's height but for the top of the Theme shelf under them, which says the look's
-    /// shelves are a scroll away; those keep their own heights.
+    /// The histories share the menu's height in whole shelves, as many as fit `Shelf.shortest` tall, so none is cut off at
+    /// the bottom or leaves a gap under it, and the cards' text fills them; the rest, and the look's shelves at their own heights, are a scroll
+    /// away.
     private var rowHeight: Double {
-        let count = CGFloat(max(shelves.count, 1))
-        let room = bounds.height - Self.gap - Shelf.peek - (Shelf.chrome + Self.gap) * count
-        return Double(max(min(room / count, Shelf.tallest), 0).rounded(.down))
+        let room = bounds.height - Self.gap
+        let fits = Int(room / (Shelf.shortest + Shelf.chrome + Self.gap))
+        let shown = CGFloat(max(min(fits, shelves.count), 1))
+        return Double(max(room / shown - Shelf.chrome - Self.gap, 0))
     }
 
     override func layoutSubviews() {
@@ -127,7 +132,8 @@ final class MenuView: UIView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         fade.frame = bounds
-        fade.locations = [0, NSNumber(value: Self.gap / max(bounds.height, 1))]
+        let edge = Self.gap / max(bounds.height, 1)
+        fade.locations = [0, edge, 1 - edge, 1].map { NSNumber(value: $0) }
         CATransaction.commit()
         let width = block.maxX - block.minX
         var y = Self.gap
@@ -143,6 +149,10 @@ final class MenuView: UIView {
             y = settings.frame.maxY + Self.gap
         }
         scroll.contentSize = CGSize(width: bounds.width, height: y)
+        if opened, bounds.height > 0 {
+            opened = false
+            scroll.flashScrollIndicators()
+        }
     }
 }
 
@@ -160,9 +170,8 @@ private final class Shelf: UIView {
     static let inner = radius - inset
     /// A shelf's height beyond its row.
     static let chrome = 2 * inset
-    /// How much of the shelf under the histories shows, enough for its tile to say there's more.
-    static let peek = 40.0
-    static let tallest = 104.0
+    /// A row's least height: a card's line of text over its length and age, or two link badges.
+    static let shortest = 56.0
 
     convenience init(_ title: String, id: String, icon: String, color: UIColor, _ body: UIView) {
         let image = UIImage(

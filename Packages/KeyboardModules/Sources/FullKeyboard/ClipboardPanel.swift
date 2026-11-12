@@ -519,7 +519,7 @@ final class ClipRow: UICollectionViewCell {
         pin.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: compact ? 10 : 13)
         text.textColor = theme.label.ui
         text.font = Self.font(compact: compact)
-        text.numberOfLines = compact ? 2 : 1
+        text.numberOfLines = 1
         age.textColor = compact ? theme.onKeySecondary : theme.candidate.ui
         age.font = .monospacedDigitSystemFont(ofSize: compact ? 11 : 13, weight: .regular)
         age.text = detail
@@ -552,8 +552,11 @@ final class ClipRow: UICollectionViewCell {
         backdrop.backgroundColor = isHighlighted ? pressedFill : fill
         if compact {
             let inset = bounds.insetBy(dx: 10, dy: 6)
+            let room = inset.height - 15
             pin.frame = CGRect(x: inset.maxX - 14, y: inset.maxY - 13, width: 14, height: 13)
-            text.frame = CGRect(x: inset.minX, y: inset.minY, width: inset.width, height: inset.height - 13)
+            text.numberOfLines = max(Int(room / text.font.lineHeight), 1)
+            let fits = ceil(text.sizeThatFits(CGSize(width: inset.width, height: .greatestFiniteMagnitude)).height)
+            text.frame = CGRect(x: inset.minX, y: inset.minY, width: inset.width, height: min(fits, room))
             image.frame = CGRect(x: inset.minX, y: inset.minY, width: inset.height - 13, height: inset.height - 13)
             age.frame = CGRect(
                 x: inset.minX, y: inset.maxY - 13, width: inset.width - (pinned ? 16 : 0), height: 13)

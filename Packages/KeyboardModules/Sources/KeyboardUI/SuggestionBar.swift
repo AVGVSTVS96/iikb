@@ -6,7 +6,7 @@ import UIKit
 /// `BarLayout`. While the app listens, the mic grows into a red capsule over the suggestions holding the time so far and
 /// the waveform of your voice, and lets out a cancel button before it. Once you stop, dictations still waiting for the
 /// model stack as cards in its place. While the menu is out (the More button), cut, copy and paste stand over the
-/// suggestions as labeled pills, grown out of the More button.
+/// suggestions as labeled pills, fading in where they sit.
 public final class SuggestionBar: UIView {
     public enum Edit: CaseIterable, Sendable {
         case cut, copy, paste
@@ -299,7 +299,7 @@ public final class SuggestionBar: UIView {
         refresh()
     }
 
-    /// The menu's edits: out of the More button while `edits` says what they can do, tucked back in with nil.
+    /// The menu's edits: shown while `edits` says what they can do, gone with nil.
     public func update(edits: Edits?, theme: KeyboardTheme) {
         let moves = (edits == nil) != (self.edits == nil)
         if edits != self.edits { setNeedsLayout() }
@@ -490,14 +490,13 @@ public final class SuggestionBar: UIView {
         cancel.alpha = listening || mic != nil ? 1 : 0
     }
 
-    /// Out, the edits share the bar between the last tool and the mic; tucked, they shrink into the More button. The
-    /// suggestions fade under them.
+    /// The edits share the bar between the last tool and the mic, fading in and out in place, so Paste is where it'll be
+    /// from the first frame; the suggestions fade under them.
     private func placeEdits(end: CGFloat) {
-        let anchor = more.frame
         let out = edits != nil && !more.isHidden
         more.isOn = out || moreOn
         let gap: CGFloat = 8
-        let start = (tools.last?.button.frame ?? anchor).maxX + gap
+        let start = (tools.last?.button.frame ?? more.frame).maxX + gap
         let width = max((end - start - gap * CGFloat(editButtons.count - 1)) / CGFloat(editButtons.count), 0)
         let height = min(toolbar.bar - 4, toolbar.button + 8)
         for (index, (_, button)) in editButtons.enumerated() {
@@ -506,9 +505,7 @@ public final class SuggestionBar: UIView {
                 height: height)
             button.isHidden = more.isHidden
             button.transform = .identity
-            button.bounds.size = place.size
-            button.center = out ? CGPoint(x: place.midX, y: place.midY) : CGPoint(x: anchor.midX, y: anchor.midY)
-            button.transform = out ? .identity : CGAffineTransform(scaleX: 0.2, y: 0.2)
+            button.frame = place
             button.alpha = out ? 1 : 0
             button.isUserInteractionEnabled = out
         }
