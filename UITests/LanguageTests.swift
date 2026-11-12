@@ -41,15 +41,17 @@ final class LanguageTests: XCTestCase {
         XCTAssertTrue(layoutRow.label.contains("German"))
         try shot("downloaded")
 
-        top()
+        reveal(layoutRow)
         layoutRow.tap()
         app.buttons["QWERTY"].firstMatch.tap()
         XCTAssertTrue(layoutRow.label.contains("QWERTY"))
         top()
         try shot("qwerty")
+        reveal(layoutRow)
         layoutRow.tap()
         app.buttons["German"].firstMatch.tap()
 
+        top()
         row("English").tap()
         XCTAssertTrue(becomes(row("English"), selected: true, within: 5))
         XCTAssertTrue(app.buttons["Remove Deutsch"].waitForExistence(timeout: 5))

@@ -14,16 +14,6 @@ struct LanguageSettings: View {
     private var language: Language { Language.named(model.settings.language) }
 
     var body: some View {
-        Box {
-            MenuRow(
-                title: "Keyboard Layout",
-                selection: Binding {
-                    model.settings.letters
-                } set: { layout in
-                    withAnimation(.snappy) { model.update { $0.layout = layout.id } }
-                },
-                choices: language.layouts, label: \.name)
-        }
         Box(footer: footer) {
             ForEach(shown) { language in
                 DownloadRow(
@@ -49,6 +39,16 @@ struct LanguageSettings: View {
         .onAppear {
             downloads.reload()
             downloads.picked = { pick($0) }
+        }
+        Box {
+            MenuRow(
+                title: "Keyboard Layout",
+                selection: Binding {
+                    model.settings.letters
+                } set: { layout in
+                    withAnimation(.snappy) { model.update { $0.layout = layout.id } }
+                },
+                choices: language.layouts, label: \.name)
         }
         if !status.fullAccess {
             Box(footer: "The keyboard needs Full Access to use a downloaded language.") {

@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// One of a setting's values whose data downloads: its name, a line under it that says where it stands, and at its right
-/// what it does: Download, Cancel while a bar shows how far it's come, Try Again, and once it's here a radio mark as other
-/// pickers have, with Remove beside it while it isn't picked. A tap elsewhere on the row picks it, which for one not
+/// what it does, in one column: Download, Cancel while a bar shows how far it's come, Try Again, Remove once it's here,
+/// and the radio mark on the one picked and on what's built in. A tap elsewhere on the row picks it, which for one not
 /// here yet is the owner's to decide (a language downloads, then is picked). A newer copy of one that's here comes in
 /// with the bar and "Updating" while the old one stays picked. The row keeps its height through all of it.
 struct DownloadRow: View {
@@ -32,7 +32,7 @@ struct DownloadRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title).foregroundStyle(.primary)
                 status
             }
@@ -40,7 +40,10 @@ struct DownloadRow: View {
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(picked ? [.isSelected, .isButton] : .isButton)
             .accessibilityAction(.default, pick)
-            action
+            ZStack(alignment: .trailing) {
+                Pill(title: "Download", of: "", action: {}).hidden().accessibilityHidden(true)
+                action
+            }
         }
         .row()
         .onTapGesture(perform: pick)
@@ -76,16 +79,13 @@ struct DownloadRow: View {
 
     private func percent(_ done: Double) -> String { done.formatted(.percent.precision(.fractionLength(0))) }
 
-    /// What the row does at its right: a radio mark on what can be picked, and beside it Remove on a download that isn't
-    /// picked; while one comes in, Cancel, which an update has no need of.
+    /// What the row does at its right, in one column as wide as its buttons: a radio mark on what's picked and on
+    /// what's built in, Remove on a download that isn't picked, and while one comes in Cancel, which an update has no
+    /// need of.
     @ViewBuilder private var action: some View {
         switch phase {
-        case .builtIn, .updating: Radio(picked: picked)
-        case .ready:
-            HStack(spacing: 12) {
-                if !picked { Pill(title: "Remove", of: title, action: remove) }
-                Radio(picked: picked)
-            }
+        case _ where picked, .builtIn, .updating: Radio(picked: picked)
+        case .ready: Pill(title: "Remove", of: title, action: remove)
         case .absent: Pill(title: "Download", of: title, action: download)
         case .downloading: Pill(title: "Cancel", of: title, action: cancel)
         case .failed: Pill(title: "Try Again", of: title, action: download)
@@ -128,7 +128,7 @@ private struct Bar: View {
                 Capsule().fill(Color.blue).frame(width: max(proxy.size.width * done, 4))
             }
         }
-        .frame(width: 96, height: 4)
+        .frame(height: 4)
         .animation(.linear(duration: 0.15), value: done)
     }
 }
