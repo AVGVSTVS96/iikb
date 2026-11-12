@@ -12,6 +12,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         guard !VoiceProbe.asked, !RankingProbe.asked, !JudgeProbe.asked else { return true }
         if VoiceModel.hasNeuralEngine { VoiceModel.shared.prepare() }
+        LanguageDownloads.shared.reload()
         Task {
             await Transcripts.shared.recover()
             Backup.syncApp()

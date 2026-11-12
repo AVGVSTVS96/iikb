@@ -442,8 +442,9 @@ open class FullKeyboardViewController: UIInputViewController {
         let wanted = engine.settings.language
         let lexicon = LanguageFiles.lexicon(wanted)
         let id = lexicon == nil ? Language.english.id : wanted
-        guard id != typing else { return }
-        typing = id
+        let list = "\(id) \(LanguageFiles.installed(id) ?? "")"
+        guard list != typing else { return }
+        typing = list
         let corrector = Corrector(source: lexicon ?? .english, network: id == Language.english.id ? .current : nil)
         if let old = engine.corrector {
             corrector.changeMemory { $0 = old.memory }

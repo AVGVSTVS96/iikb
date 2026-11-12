@@ -23,18 +23,23 @@ import KeyboardStore
     private var picking: Set<String> = []
     var picked: (String) -> Void = { _ in }
 
-    private init() {
-        reload()
-    }
+    private init() {}
 
     func state(of id: String) -> State {
         id == "en" ? .ready : states[id] ?? .absent
     }
 
-    /// What's on disk now, keeping a download under way.
+    /// What's on disk now, keeping a download under way. A list an older build downloaded is downloaded again as this
+    /// build's manifest names it, while the keyboard goes on with the old one until it's here.
     func reload() {
-        for id in items.keys where running[id] == nil {
-            states[id] = LanguageFiles.has(id) ? .ready : states[id] == nil ? .absent : states[id]
+        for (id, item) in items where running[id] == nil {
+            if LanguageFiles.isCurrent(item) {
+                states[id] = .ready
+            } else if LanguageFiles.has(id) {
+                download(id)
+            } else if states[id] == nil || states[id] == .ready {
+                states[id] = .absent
+            }
         }
     }
 
@@ -58,12 +63,13 @@ import KeyboardStore
         running[id] = nil
         resumeData[id] = nil
         picking.remove(id)
-        states[id] = .absent
+        states[id] = LanguageFiles.has(id) ? .ready : .absent
     }
 
     func remove(_ id: String) {
         cancel(id)
         LanguageFiles.remove(id)
+        states[id] = .absent
     }
 
     private func finish(_ id: String, _ result: Result<Void, Failure>) {
@@ -88,14 +94,8 @@ import KeyboardStore
     private nonisolated static func fetch(
         _ item: LanguageFiles.Download, resumingFrom resumeData: Data?, progress: @escaping @Sendable (Double) -> Void
     ) async -> Result<Void, Failure> {
-        let watcher = Watcher(size: item.size, progress: progress)
         do {
-            let (file, response) =
-                if let resumeData {
-                    try await URLSession.shared.download(resumeFrom: resumeData, delegate: watcher)
-                } else {
-                    try await URLSession.shared.download(from: item.url, delegate: watcher)
-                }
+            let (file, response) = try await download(item, resumingFrom: resumeData, progress: progress)
             defer { try? FileManager.default.removeItem(at: file) }
             if let status = (response as? HTTPURLResponse)?.statusCode, !(200..<300).contains(status) {
                 return .failure(Failure(reason: "The download didn’t finish."))
@@ -106,7 +106,7 @@ import KeyboardStore
             guard data.count == item.size, digest == item.sha256 else {
                 return .failure(Failure(reason: "The download came through damaged."))
             }
-            try LanguageFiles.install(file, as: item.id)
+            try LanguageFiles.install(file, as: item)
             return .success(())
         } catch let error as URLError {
             return .failure(Failure(reason: error.localizedDescription, resumeData: error.downloadTaskResumeData))
@@ -115,25 +115,50 @@ import KeyboardStore
         }
     }
 
-    /// Reports how much of a file has come, against the manifest's size, since a server may not say.
-    private final class Watcher: NSObject, URLSessionDownloadDelegate, Sendable {
-        let size: Int
-        let progress: @Sendable (Double) -> Void
-
-        init(size: Int, progress: @escaping @Sendable (Double) -> Void) {
-            self.size = size
-            self.progress = progress
+    /// Downloads `item` to a temporary file of its own, saying how much has come against the manifest's size, since a
+    /// server may not say. A task's own count, not `download(from:delegate:)`, whose delegate hears nothing as it goes.
+    private nonisolated static func download(
+        _ item: LanguageFiles.Download, resumingFrom resumeData: Data?, progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> (URL, URLResponse) {
+        final class Running: @unchecked Sendable {
+            var task: URLSessionDownloadTask?
+            var watch: NSKeyValueObservation?
         }
-
-        func urlSession(
-            _ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
-            totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64
-        ) {
-            progress(min(Double(totalBytesWritten) / Double(max(size, 1)), 1))
+        let running = Running()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                let done: @Sendable (URL?, URLResponse?, (any Error)?) -> Void = { file, response, error in
+                    running.watch?.invalidate()
+                    guard let file, let response else {
+                        return continuation.resume(throwing: error ?? URLError(.unknown))
+                    }
+                    // URLSession deletes `file` once this returns.
+                    let kept = URL.temporaryDirectory.appending(path: UUID().uuidString)
+                    do {
+                        try FileManager.default.moveItem(at: file, to: kept)
+                        continuation.resume(returning: (kept, response))
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+                let task =
+                    if let resumeData {
+                        URLSession.shared.downloadTask(withResumeData: resumeData, completionHandler: done)
+                    } else {
+                        URLSession.shared.downloadTask(with: item.url, completionHandler: done)
+                    }
+                let size = Double(max(item.size, 1))
+                running.watch = task.observe(\.countOfBytesReceived) { task, _ in
+                    let left = task.countOfBytesExpectedToReceive
+                    let had = left > 0 ? size - Double(left) : 0
+                    progress(min(max((had + Double(task.countOfBytesReceived)) / size, 0), 1))
+                }
+                running.task = task
+                task.resume()
+                if Task.isCancelled { task.cancel() }
+            }
+        } onCancel: {
+            running.task?.cancel()
         }
-
-        func urlSession(
-            _ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL
-        ) {}
     }
 }
