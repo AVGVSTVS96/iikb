@@ -14,9 +14,10 @@ final class LanguageTests: XCTestCase {
         app.launch()
         let german = row("Deutsch")
         XCTAssertTrue(german.waitForExistence(timeout: 10))
-        if !app.buttons["Download Deutsch"].exists { remove(german) }
+        if app.buttons["Remove Deutsch"].exists { app.buttons["Remove Deutsch"].tap() }
         XCTAssertTrue(app.buttons["Download Deutsch"].waitForExistence(timeout: 5))
         XCTAssertTrue(row("English").isSelected)
+        top()
         try shot("languages")
 
         reveal(german)
@@ -51,12 +52,14 @@ final class LanguageTests: XCTestCase {
 
         row("English").tap()
         XCTAssertTrue(becomes(row("English"), selected: true, within: 5))
-        german.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Remove Deutsch"].waitForExistence(timeout: 5))
+        reveal(german)
         try shot("remove")
         app.buttons["Remove Deutsch"].tap()
         XCTAssertTrue(app.buttons["Download Deutsch"].waitForExistence(timeout: 5))
         XCTAssertTrue(row("English").isSelected)
+        for _ in 0..<4 { app.windows.firstMatch.swipeUp(velocity: .fast) }
+        try shot("end")
     }
 
     func testTypesTheLanguagePicked() throws {
@@ -81,11 +84,6 @@ final class LanguageTests: XCTestCase {
 
     private func row(_ name: String) -> XCUIElement {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
-    }
-
-    private func remove(_ row: XCUIElement) {
-        row.press(forDuration: 1.2)
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Remove '")).firstMatch.tap()
     }
 
     private func becomes(_ element: XCUIElement, selected: Bool, within seconds: TimeInterval) -> Bool {
