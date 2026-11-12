@@ -1,6 +1,6 @@
-- Writing Style: six styles, each with a preview of its words. Pick one in iikb's Settings, or in the bar when it has room.
-- The bar is Liquid Glass. With Predictive Text off, GIFs, Transcripts and Clipboard take the suggestions' place.
-- Chats: attach photos from a grid of your newest ones. Bubbles take Messages' gray, and a chat that loses its connection keeps trying.
-- Split keyboard on the open Duo: a field's own keys, like Instagram's @ and #, sit between the hands.
-- Dictation types punctuation you say, and Clean takes out "sorry" corrections and "never mind".
-- Fixes: a crash when a suggestion finished as you left the app, screen recordings that wouldn't save with Keep Mic On, and the Clipboard's Turn On now opens iikb's page in Settings, where Paste from Other Apps is.
+- Languages: iikb's Settings › Languages downloads Spanish, French, German, Portuguese, Italian and Swedish. Pick one to type in, with its own keys, accents and smart quotes.
+- Try French and Italian elisions like "c'est", and typing without accents: Portuguese "agua" should come out "água".
+- Chats: a message's photos show as one album with the words under them, and a message that didn't send is marked in red.
+- The menu now opens in the keys' place, so nothing on screen moves.
+- Next-word suggestions follow shift and caps lock right away, and only offer words that start with what you typed.
+- Fixes: an @ or # hit for a space ("great@day") types the space, long presses with many options fit the keyboard, and iPhone landscape keys are Apple's height again.
