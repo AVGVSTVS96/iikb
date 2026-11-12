@@ -79,7 +79,7 @@ nonisolated public enum LanguageFiles {
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
         try url.setResourceValues(values)
-        try Data(download.sha256.utf8).write(to: stamp, options: .atomic)
+        try Data(download.sha256.utf8).write(to: stamp, options: .atomic)  // file: language stamp
     }
 
     public static func remove(_ id: String, in folder: URL? = folder) {

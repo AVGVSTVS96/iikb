@@ -22,7 +22,10 @@ final class LanguageTests: XCTestCase {
 
         reveal(german)
         app.buttons["Download Deutsch"].tap()
-        XCTAssertTrue(app.buttons["Cancel Deutsch"].waitForExistence(timeout: 5))
+        // A fast network can finish it before Cancel is looked for.
+        XCTAssertTrue(
+            app.buttons["Cancel Deutsch"].waitForExistence(timeout: 5) || app.buttons["Remove Deutsch"].exists,
+            "row: \(german.label), Try Again: \(app.buttons["Try Again Deutsch"].exists)")
         let start = Date.now
         while app.buttons["Cancel Deutsch"].exists, Date.now.timeIntervalSince(start) < 20 {
             let label = german.label
