@@ -44,6 +44,8 @@ final class MenuShots: XCTestCase {
     private func shoot(_ name: String) {
         FileManager.default.createFile(atPath: "\(name).hold", contents: Data("0".utf8))
         let gone = Date().addingTimeInterval(10)
-        while FileManager.default.fileExists(atPath: "\(name).hold"), Date() < gone { Thread.sleep(forTimeInterval: 0.1) }
+        while FileManager.default.fileExists(atPath: "\(name).hold"), Date() < gone {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
     }
 }
