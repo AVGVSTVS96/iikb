@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// One of a setting's values whose data downloads: its name, a line under it that says where it stands, and at its right
-/// what it does, in one column: Download, Cancel while a bar shows how far it's come, Try Again, Remove once it's here,
-/// and the radio mark on the one picked and on what's built in. A tap elsewhere on the row picks it, which for one not
-/// here yet is the owner's to decide (a language downloads, then is picked). A newer copy of one that's here comes in
-/// with the bar and "Updating" while the old one stays picked. The row keeps its height through all of it.
+/// One of a setting's values whose data downloads, on one line: its name, and at its right what it does, in
+/// one column: Download, Cancel while a bar after the name shows how far it's come, Try Again, Remove once it's here, and
+/// the check on the one picked. A tap elsewhere on the row picks it, which for one not here yet is the owner's to decide
+/// (a language downloads, then is picked). A newer copy of one that's here comes in with the bar and "Updating" while the
+/// old one stays picked. The row keeps its height through all of it.
 struct DownloadRow: View {
     enum Phase: Equatable {
         /// Part of iikb: nothing to download or remove.
@@ -18,9 +18,8 @@ struct DownloadRow: View {
     }
 
     let title: String
+    /// What VoiceOver says after the title: the language's name in the iPhone's own, and the download's size.
     var detail: String? = nil
-    /// The download's size in bytes.
-    let size: Int
     let phase: Phase
     let picked: Bool
     let pick: () -> Void
@@ -28,16 +27,15 @@ struct DownloadRow: View {
     let cancel: () -> Void
     let remove: () -> Void
 
-    private var sizeText: String { size.formatted(.byteCount(style: .file)) }
-
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).foregroundStyle(.primary)
+            HStack(spacing: 12) {
+                Text(title).foregroundStyle(.primary).lineLimit(1).layoutPriority(1)
                 status
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
+            .accessibilityValue(detail ?? "")
             .accessibilityAddTraits(picked ? [.isSelected, .isButton] : .isButton)
             .accessibilityAction(.default, pick)
             ZStack(alignment: .trailing) {
@@ -56,10 +54,14 @@ struct DownloadRow: View {
         case .downloading(let done), .updating(let done):
             HStack(spacing: 8) {
                 Bar(done: done)
-                Text("\(phase == .updating(done) ? "Updating" : sizeText) · \(percent(done))")
-                    .monospacedDigit()
-                    .contentTransition(.identity)
-                    .fixedSize()
+                // As wide as its longest, so the bar is one width however far it's come and whichever it is.
+                ZStack(alignment: .trailing) {
+                    Text("Updating · 100%").hidden().accessibilityHidden(true)
+                    Text(phase == .updating(done) ? "Updating · \(percent(done))" : percent(done))
+                        .contentTransition(.identity)
+                }
+                .monospacedDigit()
+                .fixedSize()
             }
             .font(.subheadline)
             .foregroundStyle(Color.appSecondary)
@@ -69,22 +71,20 @@ struct DownloadRow: View {
                 .font(.subheadline)
                 .foregroundStyle(.red)
                 .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         default:
-            Text([detail, phase == .builtIn ? "Built in" : sizeText].compactMap(\.self).joined(separator: " · "))
-                .font(.subheadline)
-                .foregroundStyle(Color.appSecondary)
-                .lineLimit(1)
+            EmptyView()
         }
     }
 
     private func percent(_ done: Double) -> String { done.formatted(.percent.precision(.fractionLength(0))) }
 
-    /// What the row does at its right, in one column as wide as its buttons: a radio mark on what's picked and on
-    /// what's built in, Remove on a download that isn't picked, and while one comes in Cancel, which an update has no
-    /// need of.
+    /// What the row does at its right, in one column as wide as its buttons: the check on what's picked, Remove on a
+    /// download that isn't, and while one comes in Cancel, which an update has no need of.
     @ViewBuilder private var action: some View {
         switch phase {
-        case _ where picked, .builtIn, .updating: Radio(picked: picked)
+        case _ where picked, .updating: Radio(picked: true)
+        case .builtIn: EmptyView()
         case .ready: Pill(title: "Remove", of: title, action: remove)
         case .absent: Pill(title: "Download", of: title, action: download)
         case .downloading: Pill(title: "Cancel", of: title, action: cancel)

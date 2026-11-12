@@ -637,34 +637,23 @@ struct MenuRow<Value: Hashable>: View {
     let choices: [Value]
     let label: (Value) -> String
 
-    /// With one choice it's a value, not a menu.
     var body: some View {
-        if choices.count > 1 {
-            Menu {
-                Picker(title, selection: $selection) {
-                    ForEach(choices, id: \.self) { Text(label($0)).tag($0) }
-                }
-            } label: {
-                row(arrows: true)
+        Menu {
+            Picker(title, selection: $selection) {
+                ForEach(choices, id: \.self) { Text(label($0)).tag($0) }
             }
-            .buttonStyle(.plain)
-        } else {
-            row(arrows: false).accessibilityElement(children: .combine)
-        }
-    }
-
-    private func row(arrows: Bool) -> some View {
-        HStack {
-            Text(title).foregroundStyle(.primary)
-            Spacer()
-            Text(label(selection)).foregroundStyle(Color.appSecondary)
-            if arrows {
+        } label: {
+            HStack {
+                Text(title).foregroundStyle(.primary)
+                Spacer()
+                Text(label(selection)).foregroundStyle(Color.appSecondary)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.appSecondary)
             }
+            .row()
         }
-        .row()
+        .buttonStyle(.plain)
     }
 }
 

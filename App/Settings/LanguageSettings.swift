@@ -2,8 +2,8 @@ import KeyboardCore
 import KeyboardStore
 import SwiftUI
 
-/// The language iikb types and the layout of its letters, over the preview, which changes with a pick at once. English
-/// is part of iikb; every other language's words download here, once, and are read offline.
+/// The language iikb types and, where it has more than one, the layout of its letters, under the preview, which changes
+/// with a pick at once. English is part of iikb; every other language's words download here and are read offline.
 struct LanguageSettings: View {
     private let model = SettingsModel.shared
     private let downloads = LanguageDownloads.shared
@@ -17,8 +17,7 @@ struct LanguageSettings: View {
         Box(footer: footer) {
             ForEach(shown) { language in
                 DownloadRow(
-                    title: language.name, detail: Self.ownLanguage(language),
-                    size: downloads.items[language.id]?.size ?? 0, phase: phase(of: language),
+                    title: language.name, detail: detail(of: language), phase: phase(of: language),
                     picked: language.id == model.settings.language
                 ) {
                     if language.id == Language.english.id || LanguageFiles.has(language.id) {
@@ -35,24 +34,24 @@ struct LanguageSettings: View {
                     downloads.remove(language.id)
                 }
             }
+            if !status.fullAccess {
+                ActionRow(title: "Allow Full Access", symbol: "arrow.up.forward") { AppStatus.openSettings() }
+            }
         }
         .onAppear {
             downloads.reload()
             downloads.picked = { pick($0) }
         }
-        Box {
-            MenuRow(
-                title: "Keyboard Layout",
-                selection: Binding {
-                    model.settings.letters
-                } set: { layout in
-                    withAnimation(.snappy) { model.update { $0.layout = layout.id } }
-                },
-                choices: language.layouts, label: \.name)
-        }
-        if !status.fullAccess {
-            Box(footer: "The keyboard needs Full Access to use a downloaded language.") {
-                ActionRow(title: "Allow Full Access", symbol: "arrow.up.forward") { AppStatus.openSettings() }
+        if language.layouts.count > 1 {
+            Box {
+                MenuRow(
+                    title: "Keyboard Layout",
+                    selection: Binding {
+                        model.settings.letters
+                    } set: { layout in
+                        withAnimation(.snappy) { model.update { $0.layout = layout.id } }
+                    },
+                    choices: language.layouts, label: \.name)
             }
         }
     }
@@ -63,8 +62,10 @@ struct LanguageSettings: View {
         Language.all.filter { $0.id == picked } + Language.all.filter { $0.id != picked }
     }
 
-    private let footer =
-        "Downloaded languages work offline. Swipe typing and the next-word model are English only."
+    private var footer: String {
+        "\(status.fullAccess ? "Downloaded languages work offline." : "Downloaded languages need Allow Full Access.") "
+            + "Swipe typing is English only."
+    }
 
     private func phase(of language: Language) -> DownloadRow.Phase {
         guard language.id != Language.english.id else { return .builtIn }
@@ -86,9 +87,14 @@ struct LanguageSettings: View {
         }
     }
 
-    /// The language's name in the one this iPhone is set to, under its own: German under Deutsch.
-    private static func ownLanguage(_ language: Language) -> String? {
-        let name = Locale.current.localizedString(forLanguageCode: language.id)
-        return name == language.name ? nil : name
+    /// What VoiceOver adds to a language's name: German and 6.5 MB for Deutsch.
+    private func detail(of language: Language) -> String {
+        let name = Locale.current.localizedString(forLanguageCode: language.id).flatMap {
+            $0 == language.name ? nil : $0
+        }
+        let size =
+            language.id == Language.english.id
+            ? "Built in" : (downloads.items[language.id]?.size ?? 0).formatted(.byteCount(style: .file))
+        return [name, size].compactMap(\.self).joined(separator: ", ")
     }
 }
