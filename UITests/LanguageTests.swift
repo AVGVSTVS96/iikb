@@ -14,27 +14,44 @@ final class LanguageTests: XCTestCase {
         app.launch()
         let german = row("Deutsch")
         XCTAssertTrue(german.waitForExistence(timeout: 10))
-        if app.buttons["Remove Deutsch"].exists { app.buttons["Remove Deutsch"].tap() }
+        if !app.buttons["Download Deutsch"].exists { remove(german) }
         XCTAssertTrue(app.buttons["Download Deutsch"].waitForExistence(timeout: 5))
         XCTAssertTrue(row("English").isSelected)
-        reveal(german)
         try shot("languages")
 
+        reveal(german)
+        app.buttons["Download Deutsch"].tap()
+        XCTAssertTrue(app.buttons["Cancel Deutsch"].waitForExistence(timeout: 5))
+        let start = Date.now
+        while app.buttons["Cancel Deutsch"].exists, Date.now.timeIntervalSince(start) < 20 {
+            let label = german.label
+            if label.contains("%"), !label.contains(" 0%"), !label.hasPrefix("0%") {
+                try shot("downloading")
+                break
+            }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        XCTAssertTrue(german.label.contains("%") || !app.buttons["Cancel Deutsch"].exists, "row: \(german.label)")
+        XCTAssertFalse(german.isSelected, "Download alone doesn't pick it")
+        XCTAssertTrue(app.buttons["Cancel Deutsch"].waitForNonExistence(timeout: 120), "Deutsch didn't finish")
+
         german.tap()
-        if app.buttons["Cancel Deutsch"].waitForExistence(timeout: 2) { try shot("downloading") }
-        XCTAssertTrue(becomes(german, selected: true, within: 120), "Deutsch wasn't picked once it downloaded")
+        XCTAssertTrue(becomes(german, selected: true, within: 5))
         XCTAssertTrue(layoutRow.label.contains("German"))
+        top()
         try shot("downloaded")
 
         layoutRow.tap()
         app.buttons["QWERTY"].firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["QWERTY"].waitForExistence(timeout: 5))
+        XCTAssertTrue(layoutRow.label.contains("QWERTY"))
+        top()
         try shot("qwerty")
         layoutRow.tap()
         app.buttons["German"].firstMatch.tap()
 
         row("English").tap()
         XCTAssertTrue(becomes(row("English"), selected: true, within: 5))
+        german.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Remove Deutsch"].waitForExistence(timeout: 5))
         try shot("remove")
         app.buttons["Remove Deutsch"].tap()
@@ -66,6 +83,11 @@ final class LanguageTests: XCTestCase {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
     }
 
+    private func remove(_ row: XCUIElement) {
+        row.press(forDuration: 1.2)
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Remove '")).firstMatch.tap()
+    }
+
     private func becomes(_ element: XCUIElement, selected: Bool, within seconds: TimeInterval) -> Bool {
         let wanted = NSPredicate(format: "isSelected == %@", NSNumber(value: selected))
         return XCTWaiter.wait(
@@ -80,13 +102,21 @@ final class LanguageTests: XCTestCase {
         for character in text { key(character == " " ? "space" : String(character)).tap() }
     }
 
-    /// Scrolls until the row sits in the window's lower half, with the rows above it in view.
+    /// Drags the page up slowly, so it stops where it's let go, until the row is in view above the tab bar.
     private func reveal(_ row: XCUIElement) {
-        let window = app.windows.firstMatch.frame
-        let middle = app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
-        for _ in 0..<8 where row.frame.maxY > window.maxY - 120 {
-            middle.press(forDuration: 0.05, thenDragTo: middle.withOffset(CGVector(dx: 0, dy: -120)))
+        let window = app.windows.firstMatch
+        let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+        for _ in 0..<6 where row.frame.maxY > window.frame.maxY * 0.8 {
+            start.press(
+                forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -150)), withVelocity: .slow,
+                thenHoldForDuration: 0.3)
         }
+    }
+
+    /// Back to the top of the page, where the preview is.
+    private func top() {
+        let window = app.windows.firstMatch
+        for _ in 0..<3 { window.swipeDown(velocity: .fast) }
     }
 
     private func shot(_ name: String) throws {

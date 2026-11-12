@@ -16,8 +16,25 @@ struct KeyboardPreview: UIViewRepresentable {
     }
 
     func updateUIView(_ view: KeyboardPreviewView, context: Context) {
-        view.show(settings, dark: context.environment.colorScheme == .dark, screen: screen)
+        view.show(
+            settings, dark: context.environment.colorScheme == .dark, screen: screen,
+            words: Self.openingWords(settings.language))
         view.layer.borderColor = AppStyle.edge.resolvedColor(with: view.traitCollection).cgColor
+    }
+
+    private static var opening: [String: [String]] = [:]
+
+    /// The words a language's keyboard offers before you type, its three commonest with the commonest in the middle;
+    /// English's until the language's words are here.
+    static func openingWords(_ id: String) -> [String] {
+        let english = ["The", "I", "And"]
+        guard id != Language.english.id, LanguageFiles.has(id) else { return english }
+        let list = "\(id) \(LanguageFiles.installed(id) ?? "")"
+        if let words = opening[list] { return words }
+        guard let common = LanguageFiles.lexicon(id)?.mostFrequent(count: 3), common.count == 3 else { return english }
+        let words = [common[1], common[0], common[2]].map { $0.prefix(1).uppercased() + $0.dropFirst() }
+        opening[list] = words
+        return words
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: KeyboardPreviewView, context: Context) -> CGSize? {
@@ -74,12 +91,12 @@ struct TryPreview: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// Wide enough to read, short enough to leave the settings in view: at most three tenths of the window's height, and
-    /// alone in a column 520 at most, while in a pane as wide as the cards under it.
+    /// Wide enough to read, short enough to leave the settings in view: at most two fifths of the window's height, three
+    /// tenths in a window wider than tall, and alone in a column 520 at most, while in a pane as wide as the cards under it.
     private func maxWidth(_ screen: CGSize) -> CGFloat {
         min(
             inPane ? .infinity : 520,
-            window.height * 0.3
+            window.height * (window.width > window.height ? 0.3 : 0.4)
                 / (KeyboardPreviewView.height(forWidth: 100, settings: model.settings, screen: screen) / 100))
     }
 }

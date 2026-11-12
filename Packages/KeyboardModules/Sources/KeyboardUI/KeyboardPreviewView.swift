@@ -40,8 +40,11 @@ public final class KeyboardPreviewView: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    /// Draws the keyboard as `settings` make it on a `screen`-sized device, in a dark or light app.
-    public func show(_ settings: KeyboardSettings, dark: Bool, screen: CGSize) {
+    /// Draws the keyboard as `settings` make it on a `screen`-sized device, in a dark or light app, with `words` in its bar
+    /// as the keyboard offers them before you type.
+    public func show(
+        _ settings: KeyboardSettings, dark: Bool, screen: CGSize, words: [String] = ["The", "I", "And"]
+    ) {
         self.settings = settings
         self.dark = dark
         self.screen = Size(width: screen.width, height: screen.height)
@@ -59,7 +62,7 @@ public final class KeyboardPreviewView: UIView {
         bar.update(more: true)
         bar.update(mic: .off, recorded: 0, saved: [], waitingFor: nil, notice: nil, theme: theme)
         bar.update(
-            [Suggestion("The", .candidate), Suggestion("I", .candidate), Suggestion("And", .candidate)], emoji: [],
+            words.map { Suggestion($0, .candidate) }, emoji: [],
             enabled: true, theme: theme)
         backgroundColor = (dark ? Self.card.dark : Self.card.light).ui
         setNeedsLayout()

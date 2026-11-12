@@ -157,9 +157,11 @@ stride = (width * size + 3) // 4 * 4
 rows = [data[offset + r * stride:offset + r * stride + width * size] for r in range(abs(height))]
 if height > 0:
     rows.reverse()
-below = rows[len(rows) * 8 // 100:]
+# The status bar: across the top, or down the right edge on the open iPhone Duo in landscape.
+left = width * 92 // 100 * size
+below = [row[:left] for row in rows[len(rows) * 8 // 100:]]
 first = below[0][:size]
-sys.exit(0 if all(row == first * width for row in below) else 1)
+sys.exit(0 if all(row == first * (left // size) for row in below) else 1)
 PY
   local result=$?
   rm -f "$bmp"

@@ -1,4 +1,5 @@
 import KeyboardCore
+import KeyboardStore
 import SwiftUI
 
 /// The language iikb types and the layout of its letters, over the preview, which changes with a pick at once. English
@@ -22,13 +23,13 @@ struct LanguageSettings: View {
                 choices: language.layouts, label: \.name)
         }
         Box(footer: footer) {
-            ForEach(Language.all) { language in
+            ForEach(shown) { language in
                 DownloadRow(
                     title: language.name, detail: Self.ownLanguage(language),
                     size: downloads.items[language.id]?.size ?? 0, phase: phase(of: language),
                     picked: language.id == model.settings.language
                 ) {
-                    if downloads.state(of: language.id) == .ready {
+                    if language.id == Language.english.id || LanguageFiles.has(language.id) {
                         pick(language.id)
                     } else {
                         downloads.download(language.id, thenPick: true)
@@ -42,21 +43,28 @@ struct LanguageSettings: View {
                     downloads.remove(language.id)
                 }
             }
-            if !status.fullAccess {
-                ActionRow(title: "Allow Full Access", symbol: "arrow.up.forward") { AppStatus.openSettings() }
-            }
         }
+        .animation(.snappy, value: shown.map(\.id))
         .onAppear {
             downloads.reload()
             downloads.picked = { pick($0) }
         }
+        if !status.fullAccess {
+            Box(footer: "The keyboard needs Full Access to read a downloaded language; without it, it types English.") {
+                ActionRow(title: "Allow Full Access", symbol: "arrow.up.forward") { AppStatus.openSettings() }
+            }
+        }
     }
 
-    private var footer: String {
-        let words =
-            "iikb corrects and suggests in the language picked here. Other languages download once and work offline, for now without swipe typing and with simpler next-word suggestions."
-        return status.fullAccess ? words : words + " The keyboard needs Full Access to use a downloaded language."
+    /// English, then the languages here, then the rest, so the one picked is near the top. A language being
+    /// downloaded again for a newer list keeps its place.
+    private var shown: [Language] {
+        let here = { (language: Language) in language.id == Language.english.id || LanguageFiles.has(language.id) }
+        return Language.all.filter(here) + Language.all.filter { !here($0) }
     }
+
+    private let footer =
+        "iikb corrects and suggests in the language picked here. Other languages download, then work offline, for now without swipe typing and with simpler next-word suggestions. Touch and hold one to remove it."
 
     private func phase(of language: Language) -> DownloadRow.Phase {
         guard language.id != Language.english.id else { return .builtIn }
