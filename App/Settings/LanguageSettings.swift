@@ -51,7 +51,7 @@ struct LanguageSettings: View {
             downloads.picked = { pick($0) }
         }
         if !status.fullAccess {
-            Box(footer: "The keyboard needs Full Access to read a downloaded language; without it, it types English.") {
+            Box(footer: "The keyboard needs Full Access to use a downloaded language.") {
                 ActionRow(title: "Allow Full Access", symbol: "arrow.up.forward") { AppStatus.openSettings() }
             }
         }
@@ -64,13 +64,13 @@ struct LanguageSettings: View {
     }
 
     private let footer =
-        "iikb corrects and suggests in the language picked here. Other languages download, then work offline, for now without swipe typing and with simpler next-word suggestions."
+        "Downloaded languages work offline. Swipe typing and the next-word model are English only."
 
     private func phase(of language: Language) -> DownloadRow.Phase {
         guard language.id != Language.english.id else { return .builtIn }
         return switch downloads.state(of: language.id) {
         case .absent: .absent
-        case .downloading(let done): .downloading(done)
+        case .downloading(let done): LanguageFiles.has(language.id) ? .updating(done) : .downloading(done)
         case .failed(let reason): .failed(reason)
         case .ready: .ready
         }

@@ -39,9 +39,9 @@ final class LanguageTests: XCTestCase {
         german.tap()
         XCTAssertTrue(becomes(german, selected: true, within: 5))
         XCTAssertTrue(layoutRow.label.contains("German"))
-        top()
         try shot("downloaded")
 
+        top()
         layoutRow.tap()
         app.buttons["QWERTY"].firstMatch.tap()
         XCTAssertTrue(layoutRow.label.contains("QWERTY"))
