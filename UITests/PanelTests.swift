@@ -86,22 +86,20 @@ final class PanelTests: XCTestCase {
         app.buttons["iikb.more"].tap()
         let mechanical = app.buttons["iikb.look.theme.mechanical"]
         let drain = app.buttons["iikb.look.stop.drain"]
-        XCTAssertTrue(app.buttons["iikb.shelf.theme"].waitForExistence(timeout: 3), "the menu has the themes")
+        let clipboard = app.buttons["iikb.shelf.clipboard"]
+        XCTAssertTrue(clipboard.waitForExistence(timeout: 3), "the menu opens on the histories")
         try shot(shots, "menu-top")
         let stop = app.buttons["iikb.shelf.stop"]
-        // The Theme shelf only peeks above the screen's bottom edge, where a drag up is iOS's own, so the drag starts
-        // on the shelf above it.
-        let start = app.buttons["iikb.shelf.theme"].frame.minY - 40
         let window = app.windows.firstMatch
         let origin = window.coordinate(withNormalizedOffset: .zero)
-        origin.withOffset(CGVector(dx: window.frame.width * 0.8, dy: start))
-            .press(
-                forDuration: 0.1,
-                thenDragTo: origin.withOffset(CGVector(dx: window.frame.width * 0.8, dy: start - 300)))
+        let start = origin.withOffset(CGVector(dx: window.frame.width * 0.8, dy: clipboard.frame.midY))
+        for _ in 0..<3 where !(stop.exists && stop.frame.maxY < window.frame.maxY) {
+            start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -300)))
+        }
         try shot(shots, "menu-scrolled")
         XCTAssertTrue(
-            wait { stop.frame.maxY < app.windows.firstMatch.frame.maxY },
-            "a scroll up brings the themes and stop animations: \(stop.frame)")
+            wait { stop.exists && stop.frame.maxY < window.frame.maxY },
+            "the themes and stop animations are a scroll below the histories")
         XCTAssertTrue(app.buttons["iikb.look.theme.standard"].isSelected, "with the one in use picked")
         XCTAssertTrue(app.buttons["iikb.look.stop.squeeze"].isSelected)
         try shot(shots, "menu-look")

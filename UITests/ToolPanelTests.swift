@@ -236,13 +236,15 @@ final class ToolPanelTests: XCTestCase {
         let app = launch()
         let more = app.buttons["iikb.more"]
         XCTAssertTrue(more.waitForExistence(timeout: 3), "the bar's More button shows")
+        let (moreBefore, keysTop) = (more.frame, key("q", in: app).frame.minY)
         more.tap()
         XCTAssertTrue(
             app.buttons["iikb.shelf.clipboard"].waitForExistence(timeout: 3), "the menu has the clipboard's shelf")
         XCTAssertTrue(app.buttons["iikb.shelf.transcripts"].exists, "and Transcripts'")
         XCTAssertFalse(key("space", in: app).isHittable, "the menu is in the keys' place")
-        XCTAssertTrue(
-            wait { more.frame.minY < 200 }, "the menu grows the keyboard to all of the screen but 140 pt for the app")
+        XCTAssertEqual(more.frame, moreBefore, "the bar doesn't move as the menu opens")
+        XCTAssertGreaterThanOrEqual(
+            app.buttons["iikb.shelf.clipboard"].frame.minY, keysTop - 8, "the menu holds the keys' height")
         let footer = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'iikb.menu.' AND identifier != 'iikb.menu.settings'"))
         XCTAssertEqual(footer.count, 0, "the menu has no layout or Next Keyboard buttons")
