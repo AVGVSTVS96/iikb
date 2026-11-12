@@ -1,10 +1,9 @@
 import SwiftUI
 
 /// One of a setting's values whose data downloads: its name, a line under it that says where it stands, and at its right
-/// one control: Download, Cancel while a bar shows how far it's come, Try Again, or once it's here the radio mark other
-/// pickers have. A tap elsewhere on the row picks it, which for one not here yet is the owner's to decide (a language
-/// downloads, then is picked); one that's here is removed from its menu (touch and hold), so a row never has two
-/// controls and never changes height.
+/// one control: Download, Cancel while a bar shows how far it's come, Try Again, Remove once it's here, or the radio mark
+/// on the one picked and on what's built in. A tap elsewhere on the row picks it, which for one not here yet is the
+/// owner's to decide (a language downloads, then is picked). The control changes in place, so the row keeps its height.
 struct DownloadRow: View {
     enum Phase: Equatable {
         /// Part of iikb: nothing to download or remove.
@@ -42,11 +41,6 @@ struct DownloadRow: View {
         }
         .row()
         .onTapGesture(perform: pick)
-        .contextMenu {
-            if phase == .ready {
-                Button("Remove \(title)", systemImage: "trash", role: .destructive, action: remove)
-            }
-        }
         .animation(.snappy(duration: 0.25), value: phase)
         .animation(.snappy(duration: 0.2), value: picked)
     }
@@ -78,7 +72,8 @@ struct DownloadRow: View {
 
     @ViewBuilder private var action: some View {
         switch phase {
-        case .builtIn, .ready: Radio(picked: picked)
+        case _ where picked, .builtIn: Radio(picked: picked)
+        case .ready: Pill(title: "Remove", of: title, action: remove)
         case .absent: Pill(title: "Download", of: title, action: download)
         case .downloading: Pill(title: "Cancel", of: title, action: cancel)
         case .failed: Pill(title: "Try Again", of: title, action: download)
@@ -96,7 +91,7 @@ private struct Pill: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                ForEach(["Download", "Cancel", "Try Again"], id: \.self) { Text($0).hidden() }
+                ForEach(["Download", "Cancel", "Try Again", "Remove"], id: \.self) { Text($0).hidden() }
                 Text(title).contentTransition(.opacity)
             }
             .font(.subheadline.weight(.semibold))

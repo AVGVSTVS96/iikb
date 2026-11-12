@@ -9,6 +9,8 @@ struct LanguageSettings: View {
     private let downloads = LanguageDownloads.shared
     private let status = AppStatus.shared
 
+    @State private var shown = Self.order(picked: SettingsModel.shared.settings.language)
+
     private var language: Language { Language.named(model.settings.language) }
 
     var body: some View {
@@ -44,7 +46,6 @@ struct LanguageSettings: View {
                 }
             }
         }
-        .animation(.snappy, value: shown.map(\.id))
         .onAppear {
             downloads.reload()
             downloads.picked = { pick($0) }
@@ -56,15 +57,14 @@ struct LanguageSettings: View {
         }
     }
 
-    /// English, then the languages here, then the rest, so the one picked is near the top. A language being
-    /// downloaded again for a newer list keeps its place.
-    private var shown: [Language] {
-        let here = { (language: Language) in language.id == Language.english.id || LanguageFiles.has(language.id) }
-        return Language.all.filter(here) + Language.all.filter { !here($0) }
+    /// The picked language first, so it's in view under the preview, then the rest; set as the page opens, so no row
+    /// moves while it's open.
+    private static func order(picked: String) -> [Language] {
+        Language.all.filter { $0.id == picked } + Language.all.filter { $0.id != picked }
     }
 
     private let footer =
-        "iikb corrects and suggests in the language picked here. Other languages download, then work offline, for now without swipe typing and with simpler next-word suggestions. Touch and hold one to remove it."
+        "iikb corrects and suggests in the language picked here. Other languages download, then work offline, for now without swipe typing and with simpler next-word suggestions."
 
     private func phase(of language: Language) -> DownloadRow.Phase {
         guard language.id != Language.english.id else { return .builtIn }
