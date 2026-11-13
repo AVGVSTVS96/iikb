@@ -1,6 +1,1 @@
-- Languages: iikb's Settings › Languages downloads Spanish, French, German, Portuguese, Italian and Swedish. Pick one to type in, with its own keys, accents and smart quotes.
-- Try French and Italian elisions like "c'est", and typing without accents: Portuguese "agua" should come out "água".
-- Chats: a message's photos show as one album with the words under them, and a message that didn't send is marked in red.
-- The menu now opens in the keys' place, so nothing on screen moves.
-- Next-word suggestions follow shift and caps lock right away, and only offer words that start with what you typed.
-- Fixes: an @ or # hit for a space ("great@day") types the space, long presses with many options fit the keyboard, and iPhone landscape keys are Apple's height again.
+- Fix: the keyboard could crash if you left an app while a chat or suggestions were still loading. Type in Messages or another chat app, then switch apps or go Home right away; the keyboard should still be there when you come back.
