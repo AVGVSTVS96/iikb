@@ -14,11 +14,12 @@ final class HomeViewController: UIHostingController<AnyView>, UIGestureRecognize
     private let state: HomeState
 
     init() {
-        let field = UITextView()
+        let field = TryTextView()
         let state = HomeState()
         self.field = field
         self.state = state
         super.init(rootView: AnyView(NavigationStack { HomeView(state: state, field: field) }.readsWindow()))
+        field.host = self
         title = "iikb"
     }
 
@@ -331,7 +332,16 @@ private struct CountRow: View {
     }
 }
 
-/// The field to try iikb in: a UITextView, so launch options can set its keyboard and return key as tests ask.
+/// The field to try iikb in: a UITextView, so launch options can set its keyboard and return key as tests ask. Its
+/// responder chain goes straight to Home's controller, past SwiftUI's containers.
+private final class TryTextView: UITextView {
+    weak var host: UIViewController?
+
+    // WHY: walked through SwiftUI's containers under Core Animation's lock, it deadlocked SwiftUI's async renderer.
+    override var next: UIResponder? { host ?? super.next }
+}
+
+/// The field to try iikb in, as SwiftUI hosts it.
 private struct TryField: UIViewRepresentable {
     let view: UITextView
 
