@@ -10,6 +10,7 @@ The containing app, in Raycast's look (`AppStyle`, `Components`: black pages, ne
 - `scripts/sim ipadapp` (UITests/AppShots) screenshots the pages on iPads, turned and in windows dragged to Split View and Stage Manager sizes.
 - A page opened from another in its tab (a settings page, a transcript) takes `backInSideBar(_:)`: one Back in the Duo's side bar, under the status icons with the tabs, since the system's own Back stays in the title row on some screens; on the open Duo upright, where iOS has no side bar, the page keeps a column of its own for it at the trailing edge and its title at the leading. Swiping from the leading edge still goes back (`BackTests`).
 - `Router` opens a tab and settings page from another.
+- `UpdateToast`: a build from the install link shows a toast atop the app each time it comes forward while a newer build is there (`InstallLink`); a tap opens the link, its close button puts it away until a newer one.
 - `Settings.bundle` has the keyboard's switches in Settings › Apps › iikb.
 - `scripts/sim duoapp` screenshots every screen of it on the Duo's four screens.
 

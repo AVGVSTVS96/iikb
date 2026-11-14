@@ -43,11 +43,16 @@ struct BarLayoutTests {
         let keys = grid.rows[0].map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
         // An iPhone's emoji open from the key beside space, so its bar has two tools at most.
         return Array(0...(screen.device == .phone ? 2 : 3)).flatMap { tools in
-            [false, true].map { more in
-                let layout = BarLayout(
-                    metrics.toolbar, keys: keys, tools: tools, more: more,
-                    maximumSlot: screen.device == .phone ? .infinity : 154.5)
-                return (metrics, layout, keys, "\(screen.name), \(tools) tools\(more ? " and More" : "")")
+            [false, true].flatMap { more in
+                [false, true].map { update in
+                    let layout = BarLayout(
+                        metrics.toolbar, keys: keys, tools: tools, more: more, update: update,
+                        maximumSlot: screen.device == .phone ? .infinity : 154.5)
+                    return (
+                        metrics, layout, keys,
+                        "\(screen.name), \(update ? "the update, " : "")\(tools) tools\(more ? " and More" : "")"
+                    )
+                }
             }
         }
     }
@@ -61,7 +66,7 @@ struct BarLayoutTests {
         for screen in Self.screens {
             for (metrics, layout, keys, label) in layouts(screen) {
                 let toolbar = metrics.toolbar
-                let leading = (layout.more.map { [$0] } ?? []) + layout.tools
+                let leading = (layout.more.map { [$0] } ?? []) + layout.tools + (layout.update.map { [$0] } ?? [])
                 for button in leading + [layout.cancel] + (layout.mic.map { [$0] } ?? []) {
                     #expect(button.width == toolbar.button && button.height == toolbar.button, "\(label): one size")
                     #expect(near(button.midY, toolbar.top + toolbar.bar / 2), "\(label): centered in the bar")
@@ -118,8 +123,10 @@ struct BarLayoutTests {
     @Test func nothingOverlaps() {
         for screen in Self.screens {
             for (_, layout, keys, label) in layouts(screen) {
-                let cells = (layout.more.map { [$0] } ?? []) + layout.tools
+                let held = (layout.more.map { [$0] } ?? []) + layout.tools
+                let cells = held + (layout.update.map { [$0] } ?? [])
                 let edge = cells.last.map { $0.x + $0.width } ?? keys[0].minX
+                let toolsEdge = held.last.map { $0.x + $0.width } ?? keys[0].minX
                 #expect(layout.minX >= edge - 0.001, "\(label)")
                 for slot in layout.slots {
                     #expect(slot.x >= layout.minX - 0.001 && slot.x + slot.width <= layout.maxX + 0.001, "\(label)")
@@ -146,8 +153,8 @@ struct BarLayoutTests {
                     layout.recording.width >= 150 && layout.recording.width <= BarLayout.recordingWidth + 0.001,
                     "\(label): the recording has room, and no more (\(layout.recording.width))")
                 #expect(
-                    layout.cancel.x >= edge + layout.pitch - layout.cancel.width - 0.001,
-                    "\(label): cancel after the tools")
+                    layout.cancel.x >= toolsEdge + layout.pitch - layout.cancel.width - 0.001,
+                    "\(label): cancel after the tools, the recording over the update's button")
             }
         }
     }

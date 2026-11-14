@@ -1,0 +1,34 @@
+#!/bin/bash
+# Runs on the Mac. A newer build on the install link, served here as scripts/phone's manifest would be, offered by the
+# app's toast and the keyboard's bar, light and dark, shots in shots/raw/update/: scripts/updatetest ["iPhone Duo"] [iPhone-Duo]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+NAME=${1:-iPhone Duo}
+TYPE=${2:-iPhone-Duo}
+PORT=${PORT:-2601}
+ID=$(scripts/sim ensure "$NAME" "$TYPE")
+slug=$(echo "$NAME" | tr 'A-Z ' 'a-z-')
+link=build/uitest/link
+mkdir -p shots/raw/update "$link"
+/usr/bin/python3 -c "import plistlib, sys; plistlib.dump({'items': [{'metadata': {'bundle-version': '99999'}}]}, open(sys.argv[1], 'wb'))" "$link/manifest.plist"
+echo '<!doctype html><title>iikb 99999</title><a href="#">Install iikb 99999</a>' > "$link/index.html"
+xcodegen generate -q
+xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
+  -derivedDataPath build/uitest -quiet IIKB_INSTALL_LINK="http://localhost:$PORT/"
+scripts/sim boot "$ID"
+scripts/sim use "$ID" iikb
+scripts/sim allow "$ID"
+/usr/bin/python3 -m http.server "$PORT" --bind 127.0.0.1 --directory "$link" > build/uitest/link.log 2>&1 &
+server=$!
+trap 'kill $server 2>/dev/null || true' EXIT
+for appearance in light dark; do
+  xcrun simctl ui "$ID" appearance "$appearance"
+  xcrun simctl terminate "$ID" com.apple.mobilesafari 2>/dev/null || true
+  TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/update/$slug-$appearance" \
+    xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
+    -derivedDataPath build/uitest -only-testing:AppUITests/UpdateTests > build/uitest/update.log 2>&1 || failed=1
+  grep -E "error:|XCTAssert|Test Case .*(passed|failed)|Executed" build/uitest/update.log || true
+done
+cat build/uitest/link.log
+[ -n "${KEEP:-}" ] || xcrun simctl shutdown "$ID"
+exit "${failed:-0}"

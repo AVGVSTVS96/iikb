@@ -55,6 +55,7 @@ targets:
         CFBundleDisplayName: iikb
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        IIKBInstallLink: $(IIKB_INSTALL_LINK)
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
         UIApplicationSupportsIndirectInputEvents: true
@@ -93,6 +94,7 @@ targets:
         CFBundleDisplayName: iikb
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        IIKBInstallLink: $(IIKB_INSTALL_LINK)
         NSPhotoLibraryUsageDescription: Chats on the iikb keyboard shows your newest photos, so you can send them in a chat.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

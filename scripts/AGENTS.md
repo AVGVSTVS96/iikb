@@ -15,6 +15,7 @@ scripts/ci 'scripts/shots "iPhone 17" iPhone-17 system light "hel:hel|helo:o"'  
 scripts/ci 'scripts/sim taps "iPhone 17 Pro Max" iPhone-17-Pro-Max touches.json t1'   # the app's Stats › Taps screen with a touch model
 scripts/keystroke                               # the Mac `ssh mac` reaches shares Keystroke's typing-stats.json with Stats (mac/share, docs/computers.md) and gets the backup key for Keystroke's iPhone view
 scripts/ci scripts/sourcetest                   # a source through the real keyboard, scripts/source.py standing in for it; prints every update it was sent
+scripts/ci scripts/updatetest                   # a newer build on the install link, served as scripts/phone's manifest is: the app's toast, the bar's button, and the link it opens, light and dark, shots in shots/raw/update/
 scripts/ci scripts/chattest                     # an extension's chats through the real keyboard, scripts/chats.ts standing in for it (EXTENSION=<url> for a real one): a message typed and sent, its reply shown, light and dark, shots in shots/raw/extensions/
 scripts/ci scripts/voicetest                    # the bar's mic through the real keyboard, scripts/voiceapp.py standing in for the app; screenshots light and dark
 scripts/ci scripts/stoptest                     # each stop animation filmed from the bar's mic and the Record Key, scripts/voiceapp.py standing in for the app: shots/raw/stop/<place>-<animation>-<appearance>.mp4 (STOPS, PLACES, APPEARANCES narrow it)

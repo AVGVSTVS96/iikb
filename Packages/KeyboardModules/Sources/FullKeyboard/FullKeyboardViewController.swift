@@ -20,6 +20,8 @@ open class FullKeyboardViewController: UIInputViewController {
     /// The menu is in the keys' place (docs/design.md, "The menu"), until something in it is used or the More button is
     /// tapped again.
     private var menuOpen = false
+    /// A newer build is on the install link (`InstallLink`), as last read when the keyboard appeared.
+    private var updateOffered = false
     private let suggestionBar = SuggestionBar()
     /// The record button in the bottom row, where Settings › Layout › Record Key puts it in the globe's place.
     private let keyMic = MicButton()
@@ -254,6 +256,10 @@ open class FullKeyboardViewController: UIInputViewController {
             open(AppLink.appearance)
         }
         suggestionBar.onMore = { [unowned self] in toggleMenu() }
+        suggestionBar.onUpdate = { [unowned self] in
+            feedback(.other)
+            if let page = InstallLink.page { open(page) }
+        }
         suggestionBar.onMic = { [unowned self] in
             feedback(.other)
             toggleVoice()
@@ -393,7 +399,18 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         if hasFullAccess { sources.reload() }
         if hasFullAccess { chats.reload() }
+        if hasFullAccess { readInstallLink() }
         syncWithDocument()
+    }
+
+    private func readInstallLink() {
+        guard InstallLink.page != nil else { return }
+        Task { [weak self] in
+            let offered = await InstallLink.newer() != nil
+            guard let self, offered != updateOffered else { return }
+            updateOffered = offered
+            render()
+        }
     }
 
     override open func viewDidAppear(_ animated: Bool) {
@@ -718,6 +735,7 @@ open class FullKeyboardViewController: UIInputViewController {
             chats: line != nil && !keysUp ? chats.list.map(\.name) : nil,
             open: chats.list.firstIndex { $0 == chats.open }, fresh: fresh, theme: theme)
         suggestionBar.update(more: line == nil || !keysUp, on: menuOpen || inPlace)
+        suggestionBar.update(offered: updateOffered && !narrow)
         suggestionBar.update(edits: menuOpen && panel == nil ? edits : nil, theme: theme)
         placeMic()
         suggestionBar.update(

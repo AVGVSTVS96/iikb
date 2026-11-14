@@ -6,7 +6,8 @@ import UIKit
 /// `BarLayout`. While the app listens, the mic grows into a red capsule over the suggestions holding the time so far and
 /// the waveform of your voice, and lets out a cancel button before it. Once you stop, dictations still waiting for the
 /// model stack as cards in its place. While the menu is out (the More button), cut, copy and paste stand over the
-/// suggestions as labeled pills, fading in where they sit.
+/// suggestions as labeled pills, fading in where they sit. A build with a newer one on its install link shows the
+/// update's button after the tools, which opens the link.
 public final class SuggestionBar: UIView {
     public enum Edit: CaseIterable, Sendable {
         case cut, copy, paste
@@ -38,6 +39,7 @@ public final class SuggestionBar: UIView {
     public var onNotice: () -> Void = {}
     public var onTool: (Panel) -> Void = { _ in }
     public var onMore: () -> Void = {}
+    public var onUpdate: () -> Void = {}
     public var onEdit: (Edit) -> Void = { _ in }
     /// A chat's pill was tapped, by its index.
     public var onChat: (Int) -> Void = { _ in }
@@ -80,6 +82,9 @@ public final class SuggestionBar: UIView {
     public private(set) var chatMore = CGRect.zero
     private var tools: [(panel: Panel, button: BarButton)] = []
     private let more = BarButton("More", draw: Panel.moreGlyph)
+    private let updateButton = BarButton("Update iikb") {
+        Panel.symbol("arrow.down", $0)?.withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
+    }
     /// The tools' capsule of the bar's glass, after More's own glass circle, as the chats' tabs are.
     private let toolGlass = UIVisualEffectView(effect: UIGlassEffect.bar(.lightCurrent))
     private var glassDark: Bool?
@@ -138,6 +143,11 @@ public final class SuggestionBar: UIView {
         more.isHidden = true
         more.accessibilityIdentifier = "iikb.more"
         addSubview(more)
+        updateButton.addAction(UIAction { [unowned self] _ in onUpdate() }, for: .touchUpInside)
+        updateButton.isHidden = true
+        updateButton.glassy = true
+        updateButton.accessibilityIdentifier = "iikb.update"
+        addSubview(updateButton)
         strip.alwaysBounceHorizontal = false
         strip.accessibilityIdentifier = "iikb.suggestion.emoji"
         addSubview(strip)
@@ -198,6 +208,7 @@ public final class SuggestionBar: UIView {
         self.emoji.forEach { $0.theme = theme }
         dividers.forEach { $0.backgroundColor = theme.candidateDivider.ui }
         more.theme = theme
+        updateButton.theme = theme
         if theme.dark != glassDark {
             glassDark = theme.dark
             toolGlass.effect = UIGlassEffect.bar(theme)
@@ -327,6 +338,16 @@ public final class SuggestionBar: UIView {
         more.isHidden = !shown
         setNeedsLayout()
     }
+
+    /// Whether the update's button shows: while a newer build is on the install link (`InstallLink`).
+    public func update(offered: Bool) {
+        guard offered == updateButton.isHidden else { return }
+        updateButton.isHidden = !offered
+        setNeedsLayout()
+    }
+
+    /// The update's button has its place in the bar, which the chats' tabs take while they show.
+    private var updateShown: Bool { !updateButton.isHidden && chatNames == nil }
 
     public func hear(_ level: Float, recorded: Double) {
         heard = recorded
@@ -496,7 +517,7 @@ public final class SuggestionBar: UIView {
         let out = edits != nil && !more.isHidden
         more.isOn = out || moreOn
         let gap: CGFloat = 8
-        let start = (tools.last?.button.frame ?? more.frame).maxX + gap
+        let start = (updateShown ? updateButton.frame : tools.last?.button.frame ?? more.frame).maxX + gap
         let width = max((end - start - gap * CGFloat(editButtons.count - 1)) / CGFloat(editButtons.count), 0)
         let height = min(toolbar.bar - 4, toolbar.button + 8)
         for (index, (_, button)) in editButtons.enumerated() {
@@ -522,7 +543,7 @@ public final class SuggestionBar: UIView {
         let side = CGFloat(toolbar.button)
         let pad = (side * 0.2).rounded()
         let gap = CGFloat(layout.pitch) - side - pad
-        let end = (layout.mic.map { CGRect($0).minX } ?? CGFloat(layout.maxX)) - gap - pad
+        let end = ((layout.update ?? layout.mic).map { CGRect($0).minX } ?? CGFloat(layout.maxX)) - gap - pad
         tools.forEach { $0.button.use(glyph: CGFloat(toolbar.glyph)) }
         let widths = tools.map { $0.button.titledWidth(side) }
         let spare = (end - first.minX - widths.reduce(0, +)) / CGFloat(tools.count)
@@ -592,7 +613,7 @@ public final class SuggestionBar: UIView {
         guard !keys.isEmpty else { return }
         let layout = BarLayout(
             toolbar, keys: keys, tools: tools.count, more: !more.isHidden, mic: micInBar, style: styleNames != nil,
-            maximumSlot: maximumSlotWidth)
+            update: updateShown, maximumSlot: maximumSlotWidth)
         let micPlace = CGRect(mic.phase == .listening ? layout.recording : layout.mic ?? layout.recording)
         mic.bounds.size = micPlace.size
         mic.center = CGPoint(x: micPlace.midX, y: micPlace.midY)
@@ -604,6 +625,11 @@ public final class SuggestionBar: UIView {
         )
         placeTools(layout, reach: reach)
         if let frame = layout.more { more.place(CGRect(frame), glyph: toolbar.glyph, reach: reach) }
+        updateButton.alpha = updateShown && !recording ? 1 : 0
+        if let frame = layout.update {
+            updateButton.glassSide = CGFloat(toolbar.button)
+            updateButton.place(CGRect(frame), glyph: toolbar.glyph, reach: reach)
+        }
         let edge = CGFloat(layout.mic.map { $0.x - BarLayout.gap } ?? layout.maxX)
         placeEdits(end: recording ? min(edge, CGRect(layout.cancel).minX - 8) : edge)
         for (slot, frame) in zip(slots, layout.slots) {

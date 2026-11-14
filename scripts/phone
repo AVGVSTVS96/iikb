@@ -21,6 +21,8 @@
 # It also puts the build in hangar, the app on the iPhone that installs all of Bassim's development apps on his tap,
 # when hangar is on this box (~/Developer/hangar). Each build registers the URL scheme com.shahidy.iikb-<build>, which
 # hangar opens to know that build is installed and to bring iikb back up.
+# Its app and keyboard name the link (IIKBInstallLink), so each reads the link's manifest as it comes up and, while a
+# newer build is there, offers it: a toast in the app, a button in the keyboard's bar (KeyboardStore's InstallLink).
 # Then it prints the build on each device the Mac reaches, which is how you know what's been tapped.
 # Usage: scripts/phone [--now] [--rebuild]
 set -e
@@ -106,6 +108,9 @@ why="formats build $number fails the dictation formats check (scripts/formats)"
 why="changelog build $number's changelog couldn't be made"
 for plist in Config/xtool/iikb-Info.plist Config/xtool/Keyboard-Info.plist Config/xtool/Controls-Info.plist; do
   python3 -c "import plistlib, sys; p = plistlib.load(open(sys.argv[1], 'rb')); p['CFBundleVersion'] = sys.argv[2]; plistlib.dump(p, open(sys.argv[1], 'wb'))" "$build/$plist" "$number"
+done
+for plist in Config/xtool/iikb-Info.plist Config/xtool/Keyboard-Info.plist; do
+  python3 -c "import plistlib, sys; p = plistlib.load(open(sys.argv[1], 'rb')); p['IIKBInstallLink'] = sys.argv[2]; plistlib.dump(p, open(sys.argv[1], 'wb'))" "$build/$plist" "$url/"
 done
 python3 -c "import plistlib, sys; p = plistlib.load(open(sys.argv[1], 'rb')); p['CFBundleURLTypes'].append({'CFBundleURLSchemes': ['com.shahidy.iikb-' + sys.argv[2]]}); plistlib.dump(p, open(sys.argv[1], 'wb'))" "$build/Config/xtool/iikb-Info.plist" "$number"
 python3 - "$build" "$commit" <<'PY'

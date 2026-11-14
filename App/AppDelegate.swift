@@ -154,6 +154,10 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         return controller
     }
 
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        UpdateToast.show(in: window)
+    }
+
     func scene(_ scene: UIScene, openURLContexts contexts: Set<UIOpenURLContext>) {
         open(contexts)
     }
