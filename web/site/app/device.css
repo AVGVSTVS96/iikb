@@ -105,13 +105,36 @@
 .body:nth-child(5) {
   transform: translateZ(-10px);
   background: #0b0b0c;
-  box-shadow: 0 40px 120px -40px rgb(0 0 0 / 0.45);
 }
 @media (prefers-color-scheme: dark) {
   .body:nth-child(5) {
-    box-shadow:
-      0 0 0 1px rgb(255 255 255 / 0.1),
-      0 0 140px 10px rgb(150 160 255 / 0.1);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1);
+  }
+}
+/* WHY: on a slab, a shadow this wide grows its layer into the other half, and Chromium's 3D sort then draws the slab's grey middle over its back */
+.duo::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--wide) / -2 + 40px);
+  top: -311px;
+  width: calc(var(--wide) - 80px);
+  height: 622px;
+  border-radius: 24px;
+  translate: 0 40px;
+  rotate: var(--turn);
+  background: rgb(0 0 0 / 0.45);
+  filter: blur(60px);
+}
+@media (prefers-color-scheme: dark) {
+  .duo::before {
+    left: calc(var(--wide) / -2 - 10px);
+    top: -361px;
+    width: calc(var(--wide) + 20px);
+    height: 722px;
+    border-radius: 74px;
+    translate: none;
+    background: rgb(150 160 255 / 0.1);
+    filter: blur(70px);
   }
 }
 .glass {

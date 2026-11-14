@@ -144,6 +144,9 @@ export const Fold = () => {
       const x = mix(s.left - box.left + s.width / 2, box.width / 2, open);
       const y = mix(s.top - box.top + s.height / 2, 64 + pad + room.h / 2, open);
       duo.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+      duo.style.setProperty("--wide", `${wide}px`);
+      duo.style.setProperty("--turn", `${90 * turn}deg`);
+      duo.hidden = false;
       const narrow = innerWidth < 760;
       const rx = mix(narrow ? 6 : 9, 5, open) - lean.y * 8;
       const ry = mix(narrow ? -14 : -22, -8, open) * (1 - turn * 0.6) + lean.x * 10;
@@ -302,7 +305,7 @@ export const Fold = () => {
           </div>
         </div>
         <div className="slot" data-spot />
-        <div className="duo" data-duo>
+        <div className="duo" data-duo hidden>
           <div className="rig" data-rig>
             <div className="slab base">
               <Bodies />
