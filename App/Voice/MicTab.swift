@@ -78,8 +78,9 @@ final class MicTab: NSObject {
             UIColor.black.setFill()
             context.fill(CGRect(origin: .zero, size: size))
             let glyph = UIImage(
-                systemName: "mic.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 30, weight: .semibold))?
-                .withTintColor(.white, renderingMode: .alwaysOriginal)
+                systemName: "mic.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 30, weight: .semibold)
+            )?
+            .withTintColor(.white, renderingMode: .alwaysOriginal)
             let name = NSAttributedString(
                 string: "iikb",
                 attributes: [.font: UIFont.systemFont(ofSize: 30, weight: .semibold), .foregroundColor: UIColor.white])
