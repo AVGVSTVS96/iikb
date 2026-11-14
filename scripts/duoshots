@@ -71,7 +71,10 @@ pose=${pose:?}
 before=$(ls "$shots" | sort -n | awk -v b="$build" '$1 < b' | while read -r old; do
   [ -e "$shots/$old/keyboard-light-$pose.png" ] && echo "$old"
 done | tail -1)
-[ -n "$before" ] || exit 0
+[ -n "$before" ] || {
+  tell "The real Duo's first screenshots of iikb's keyboard $pose, build $build, the ones later builds there are compared with: $shots/$build"
+  exit 0
+}
 report=$shots/$build/report
 mkdir -p "$report/before" "$report/after"
 cp "$shots/$before/keyboard-"*"-$pose.png" "$report/before/"
