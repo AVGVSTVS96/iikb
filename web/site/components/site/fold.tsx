@@ -144,15 +144,24 @@ export const Fold = () => {
       const x = mix(s.left - box.left + s.width / 2, box.width / 2, open);
       const y = mix(s.top - box.top + s.height / 2, 64 + pad + room.h / 2, open);
       duo.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-      const shift = (W / 2) * (1 - open);
-      const left = shift - W;
-      duo.style.setProperty("--left", `${left}px`);
-      duo.style.setProperty("--wide", `${shift + Math.max(0, -W * Math.cos(Math.PI * open)) - left}px`);
-      duo.style.setProperty("--turn", `${90 * turn}deg`);
-      duo.hidden = false;
       const narrow = innerWidth < 760;
       const rx = mix(narrow ? 6 : 9, 5, open) - lean.y * 8;
       const ry = mix(narrow ? -14 : -22, -8, open) * (1 - turn * 0.6) + lean.x * 10;
+      const shift = (W / 2) * (1 - open);
+      const hinge = -Math.PI * (1 - open);
+      const toward = (Math.PI / 180) * ry;
+      const project = (px: number, pz: number) => px * Math.cos(toward) + pz * Math.sin(toward);
+
+      const seen = [
+        project(shift - W, 0),
+        project(shift, 0),
+        project(shift + W * Math.cos(hinge), -W * Math.sin(hinge)),
+      ];
+
+      duo.style.setProperty("--left", `${Math.min(...seen)}px`);
+      duo.style.setProperty("--wide", `${Math.max(...seen) - Math.min(...seen)}px`);
+      duo.style.setProperty("--turn", `${90 * turn}deg`);
+      duo.hidden = false;
       rig.style.transform = `perspective(3600px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${90 * turn}deg) translateX(${(W / 2) * (1 - open)}px)`;
       lid.style.transform = `rotateY(${-180 * (1 - open)}deg)`;
       duo.classList.toggle("whole", open > 0.999);
