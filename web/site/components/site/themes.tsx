@@ -39,9 +39,7 @@ export const Themes = () => {
   }, []);
 
   useEffect(() => {
-    if (seen) {
-      theme.send(name);
-    }
+    theme.send(seen ? name : "");
 
     const el = list.current;
     const on = el?.children[at];

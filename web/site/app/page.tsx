@@ -310,11 +310,11 @@ export default function Page() {
                   <a
                     href={g.href}
                     className={cn(
-                      buttonVariants({ variant: g.primary ? "default" : "outline", size: "lg" }),
-                      "mt-auto h-10 gap-2 self-start px-4",
+                      buttonVariants({ variant: g.primary ? "send" : "key", size: "key" }),
+                      "mt-auto self-start",
                     )}
                   >
-                    <g.icon className="size-4" />
+                    <g.icon />
                     {g.cta}
                   </a>
                 </Card>

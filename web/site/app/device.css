@@ -165,21 +165,6 @@
 .view.swap {
   opacity: 0;
 }
-.glare {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-  background: linear-gradient(
-      112deg,
-      transparent 38%,
-      rgb(255 255 255 / 0.09) 47%,
-      rgb(255 255 255 / 0.03) 53%,
-      transparent 62%
-    )
-    var(--glare, 50%) 0 / 320% 100% no-repeat;
-  mix-blend-mode: plus-lighter;
-}
 .base .inner::after {
   content: "";
   position: absolute;
@@ -194,22 +179,7 @@
     transparent 58%
   );
 }
-.duo.whole .glare {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-  background: linear-gradient(
-      112deg,
-      transparent 38%,
-      rgb(255 255 255 / 0.09) 47%,
-      rgb(255 255 255 / 0.03) 53%,
-      transparent 62%
-    )
-    var(--glare, 50%) 0 / 320% 100% no-repeat;
-  mix-blend-mode: plus-lighter;
-}
-.base .inner::after {
+.duo.whole .base .inner::after {
   right: 475.5px;
 }
 .cover {
@@ -732,6 +702,7 @@
   --face: calc(var(--l-cap) * 1.5px) calc(var(--l-cap) * 2.5px) calc(var(--l-cap) * 5px);
   position: relative;
   isolation: isolate;
+  padding-bottom: calc(var(--l-cap) * 3.5px);
   border-color: var(--border);
   background: var(--l-sides);
   box-shadow: var(--l-drop);
@@ -744,7 +715,7 @@
   content: "";
   position: absolute;
   inset: var(--face);
-  border-radius: inherit;
+  border-radius: calc(var(--kr) - 1px);
   z-index: -1;
   pointer-events: none;
 }
@@ -755,6 +726,18 @@
   border: 1px solid var(--rim);
   -webkit-mask: linear-gradient(#000, transparent var(--rim-fade));
   mask: linear-gradient(#000, transparent var(--rim-fade));
+}
+.keycap:hover::before {
+  background: linear-gradient(
+    color-mix(in srgb, var(--top) 94%, var(--l-label)),
+    color-mix(in srgb, var(--bottom) 94%, var(--l-label))
+  );
+}
+.keycap:focus-visible {
+  border-color: var(--ring);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent),
+    var(--l-drop);
 }
 .keycap:active::before {
   background: linear-gradient(var(--ptop), var(--pbottom));

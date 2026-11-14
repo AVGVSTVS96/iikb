@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { dictation, nothing, theme } from "@/lib/bus";
+import { dictation, duoTheme, nothing } from "@/lib/bus";
 import { cn } from "@/lib/utils";
 
 import { Android, GitHub, TestFlight } from "./icons";
@@ -147,7 +147,6 @@ export const Fold = () => {
       const narrow = innerWidth < 760;
       const rx = mix(narrow ? 6 : 9, 5, open) - lean.y * 8;
       const ry = mix(narrow ? -14 : -22, -8, open) * (1 - turn * 0.6) + lean.x * 10;
-      duo.style.setProperty("--glare", `${50 + ry * 2.2 - 40 * open}%`);
       rig.style.transform = `perspective(3600px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${90 * turn}deg) translateX(${(W / 2) * (1 - open)}px)`;
       lid.style.transform = `rotateY(${-180 * (1 - open)}deg)`;
       duo.classList.toggle("whole", open > 0.999);
@@ -171,7 +170,7 @@ export const Fold = () => {
         pin.dataset.kbTheme = look;
 
         if (live) {
-          theme.send(look);
+          duoTheme.send(look);
         }
 
         for (const b of dial.children) {
@@ -208,11 +207,7 @@ export const Fold = () => {
     const seen = new IntersectionObserver(([e]) => {
       live = e?.isIntersecting ?? false;
 
-      const look = pin.dataset.kbTheme;
-
-      if (live && look !== undefined) {
-        theme.send(look);
-      }
+      duoTheme.send(live ? (pin.dataset.kbTheme ?? "") : "");
 
       wake();
     });
@@ -285,14 +280,14 @@ export const Fold = () => {
           <div className="flex flex-wrap gap-2.5">
             <a
               href="https://testflight.apple.com/join/xSQ2sdYZ"
-              className={buttonVariants({ variant: "send", size: "key" })}
+              className={cn(buttonVariants({ variant: "send", size: "key" }))}
             >
               <TestFlight />
               Get the beta
             </a>
             <a
               href="https://iikb-android.vercel.app"
-              className={buttonVariants({ variant: "key", size: "key" })}
+              className={cn(buttonVariants({ variant: "key", size: "key" }))}
             >
               <Android />
               Android
@@ -317,7 +312,6 @@ export const Fold = () => {
                     <Screen first="wait, which keyboard is that?" />
                   </div>
                 </div>
-                <i className="glare" />
               </div>
             </div>
             <div className="slab lid" data-lid>
@@ -326,11 +320,9 @@ export const Fold = () => {
                 <div className="full">
                   <div className="view" data-mirror />
                 </div>
-                <i className="glare" />
               </div>
               <div className="glass cover" data-cover>
                 <Screen first="wait, which keyboard is that?" />
-                <i className="glare" />
               </div>
             </div>
           </div>

@@ -23,4 +23,6 @@ export const dictation = channel();
 
 export const theme = channel();
 
+export const duoTheme = channel();
+
 export const nothing = () => null;

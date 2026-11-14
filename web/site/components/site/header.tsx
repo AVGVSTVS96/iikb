@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { theme } from "@/lib/bus";
+import { duoTheme, theme } from "@/lib/bus";
 import { cn } from "@/lib/utils";
 
 import { GitHub, Wordmark } from "./icons";
@@ -26,9 +26,11 @@ const LINKS = [
 
 export const Header = () => {
   const [scrolled, setScrolled] = useState(false);
-  const [look, setLook] = useState("standard");
+  const [pick, setPick] = useState("");
+  const [pose, setPose] = useState("");
 
-  useEffect(() => theme.listen(setLook), []);
+  useEffect(() => theme.listen(setPick), []);
+  useEffect(() => duoTheme.listen(setPose), []);
 
   useEffect(() => {
     const onScroll = () => {
@@ -94,8 +96,8 @@ export const Header = () => {
           >
             <GitHub className="size-[18px]" />
           </a>
-          <span data-kb-theme={look} className="contents">
-            <a href="#get" className={buttonVariants({ variant: "send", size: "key-sm" })}>
+          <span data-kb-theme={pick || pose || "standard"} className="contents">
+            <a href="#get" className={cn(buttonVariants({ variant: "send", size: "key-sm" }))}>
               Get iikb
             </a>
           </span>
