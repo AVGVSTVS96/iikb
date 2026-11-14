@@ -1,5 +1,6 @@
 # A simulator check on GitHub's Macs: the command scripts/ci was given on one, or scripts/verify on each push to main,
 # its parts side by side on four, where a push waits for the run before it and a newer push replaces it in the wait.
+# The dark part runs only when something that draws changed since the last run that passed.
 name: sim
 run-name: ${{ inputs.run || 'scripts/verify' }}
 on:
@@ -13,19 +14,45 @@ on:
 concurrency:
   group: ${{ github.event_name == 'push' && 'verify' || github.run_id }}
 jobs:
+  plan:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      parts: ${{ steps.plan.outputs.parts }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          parts='["typing", "panels", "package rest voice", "dark"]'
+          last=$(gh run list -w sim.yml -b main -e push -s success -L 1 --json headSha --jq '.[0].headSha')
+          if [ -n "$last" ] && changed=$(git diff --name-only "$last" HEAD) &&
+            ! grep -qE '^(App|Keyboard|Packages/KeyboardModules/Sources|UITests)/|^(project\.yml|scripts/(verify|sim)|\.github/(actions/mac/|workflows/sim\.yml))' <<<"$changed"; then
+            parts='["typing", "panels", "package rest voice"]'
+          fi
+          echo "parts=$parts" >>"$GITHUB_OUTPUT"
+          echo "since ${last:-nothing}: $parts"
   sim:
+    needs: plan
+    if: ${{ !cancelled() && needs.plan.result != 'failure' }}
     runs-on: xcode-27
     timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:
-        parts: ${{ fromJSON(github.event_name == 'push' && '["typing", "panels", "package rest voice", "dark"]' || '[""]') }}
+        parts: ${{ fromJSON(github.event_name == 'push' && needs.plan.outputs.parts || '[""]') }}
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/mac
         with:
           klipy-key: ${{ secrets.KLIPY_KEY }}
-          save: ${{ matrix.parts == 'dark' }}
+          save: ${{ matrix.parts == 'typing' }}
       - name: check
         run: bash -c "$RUN"
         env:
