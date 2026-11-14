@@ -175,10 +175,12 @@ class Keys:
         if len(third) == 9:
             self.at.update({"shift": third[0][:2], "delete": third[-1][:2]})
             self.at.update({letter: key[:2] for letter, key in zip("zxcvbnm", third[1:-1])})
-        if len(bottom) == 4:
-            self.at.update({"numbers": bottom[0][:2], "emoji": bottom[1][:2], "space": bottom[2][:2],
-                            "return": bottom[3][:2]})
-            self.space_width = bottom[2][2]
+        if len(bottom) in (4, 6):
+            # A messaging field adds a comma and a period beside the space.
+            space = 2 if len(bottom) == 4 else 3
+            self.at.update({"numbers": bottom[0][:2], "emoji": bottom[1][:2], "space": bottom[space][:2],
+                            "return": bottom[-1][:2]})
+            self.space_width = bottom[space][2]
         missing = [key for key in "qwertyuiopasdfghjklzxcvbnm" if key not in self.at] + [
             key for key in ("shift", "delete", "numbers", "emoji", "space", "return") if key not in self.at]
         if missing:
