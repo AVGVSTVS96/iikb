@@ -134,7 +134,8 @@ enum PhoneLayouts {
     private static let raycastReturn = KeyWidth.pitch(1.4)
 
     /// The globe, as wide as Raycast's, or the record button in its place, the layer key, the emoji key in every field (it's the one Bassim taps most),
-    /// space, the field's own keys and return.
+    /// space, the field's own keys and return. Instagram's @ and # stay on 123 and #+= here: all of this row is where a
+    /// thumb lands for space, so keys beside the bar take taps meant for it.
     private static func bottomRow(_ context: LayoutContext, layerKey: KeyboardLayer) -> [RowItem] {
         let side = context.isLandscape ? 2.0 : 2.5
         let first =
@@ -152,8 +153,6 @@ enum PhoneLayouts {
             return leading + [space, character("@", .pitch(1.25)), character(".", .pitch(1.25)), returnKey]
         case .url:
             return leading + [character(".", .fill), character("/", .fill), character(".com", .fill), returnKey]
-        case .twitter:
-            return leading + [space, character("@", .pitch(1.25)), character("#", .pitch(1.25)), returnKey]
         case .webSearch:
             return leading + [space, character(".", .input), .key(Key(.return, width: .pitch(1.75)))]
         default:

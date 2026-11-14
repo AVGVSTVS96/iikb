@@ -223,6 +223,7 @@ type-email -FullKeyboardType 7
 type-url -FullKeyboardType 3
 type-numbers -FullKeyboardType 2
 type-websearch -FullKeyboardType 10
+type-twitter -FullKeyboardType 9
 landscape -iikbOrientation landscape
 VARIANTS
   done

@@ -233,19 +233,25 @@ struct Evaluation {
         }
     }
 
-    /// A thumb that means the space in a field with keys of its own by the space bar (Instagram's @ and #), and goes
-    /// where the bar is in every other field: each phrase is typed up to a word pair by someone who has typed the
-    /// corpus, the pair with the space's tap drawn around a plain field's space bar until it lands on @ or #. Counts
-    /// the pairs the space after them reads apart, of all and of those with no typo of their own, and, with that tap
-    /// aimed at the @ key instead, the pairs left as typed.
+    /// A thumb that means the space on the open Duo's split keyboard in an Instagram field, whose @ and # sit between
+    /// the space bars, and goes where the bars are in every other field: each phrase is typed up to a word pair by
+    /// someone who has typed the corpus, the pair with the space's tap drawn around either bar (spread as a key's taps
+    /// are, the bar's width for its pitch) until it lands on @ or #. Counts the pairs the space after them reads apart,
+    /// of all and of those with no typo of their own, and, with that tap aimed at the @ key instead, the pairs left as
+    /// typed.
     @Test func strayKeys() throws {
         let phrases = try Self.phrases()
-        var user = SimulatedUser(width: Self.width, noise: 0.25, seed: 2031)
-        var thumb = SimulatedUser(width: Self.width, noise: 0.4, seed: 2032)
+        var settings = KeyboardSettings()
+        settings.split = true
+        let screen = Duo.Screen.openLandscape.size
+        let field = KeyboardGeometry(
+            LayoutContext(device: .phone, layer: .letters, kind: .twitter, screen: screen, settings: settings),
+            screen: screen, style: .ios27
+        ).grid
+        var user = SimulatedUser(grid: field, noise: 0.25, seed: 2031)
+        var thumb = SplitMix64(seed: 2032)
+        let bars = field.rows.last!.map(\.frame).filter { field.key(atX: $0.midX, y: $0.midY)?.action == .space }
         var random = SplitMix64(seed: 2033)
-        let field = KeyGrid(
-            Layouts.layout(for: LayoutContext(device: .phone, layer: .letters, kind: .twitter)), width: Self.width,
-            metrics: KeyboardMetrics.phone(width: Self.width).grid, signature: "eval")
         var typed = TypingMemory()
         for phrase in phrases {
             var previous = ""
@@ -312,7 +318,15 @@ struct Evaluation {
                 }
                 return nil
             }
-            guard let missed = landing({ thumb.tap(" ") }) else { continue }
+            guard
+                let missed = landing({
+                    let bar = bars[Int(thumb.next() % UInt64(bars.count))]
+                    return (
+                        bar.midX + thumb.gaussian() * 0.4 * bar.width,
+                        bar.midY + thumb.gaussian() * 0.4 * (bar.height + 11)
+                    )
+                })
+            else { continue }
             let result = type(missed.point, missed.key)
             runs += 1
             if result.typo { mistyped += 1 }
@@ -520,7 +534,13 @@ struct SimulatedUser {
         context: LayoutContext = LayoutContext(device: .phone, layer: .letters)
     ) {
         let layout = Layouts.layout(for: context)
-        grid = KeyGrid(layout, width: width, metrics: KeyboardMetrics.phone(width: width).grid, signature: "eval")
+        self.init(
+            grid: KeyGrid(layout, width: width, metrics: KeyboardMetrics.phone(width: width).grid, signature: "eval"),
+            noise: noise, seed: seed, bias: bias)
+    }
+
+    init(grid: KeyGrid, noise: Double, seed: UInt64, bias: [Character: (x: Double, y: Double)] = [:]) {
+        self.grid = grid
         self.noise = noise
         self.bias = bias
         random = SplitMix64(seed: seed)

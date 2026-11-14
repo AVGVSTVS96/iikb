@@ -2,9 +2,9 @@ import Testing
 
 @testable import KeyboardCore
 
-/// A key that's no part of a word, hit where a space belonged ("great@day"), on the screens whose fields put keys of
-/// their own by the space bar: the space after the run reads the tap as the space when it fits where space taps land
-/// better than the key it hit (`Corrector.spaced`).
+/// A key that's no part of a word, hit where a space belonged ("great@day"), on the split keyboard, whose Instagram field
+/// puts its @ and # between the space bars: the space after the run reads the tap as the space when it fits where space
+/// taps land better than the key it hit (`Corrector.spaced`). The full keyboard keeps them off the space bar's row.
 struct StrayKeyTests {
     struct Screen: CustomTestStringConvertible, Sendable {
         var testDescription: String
@@ -28,7 +28,8 @@ struct StrayKeyTests {
         + Duo.Screen.allCases.map { Screen(testDescription: "Duo \($0.name)", size: $0.size) }
     static let split = Screen(testDescription: "Duo split", size: Duo.Screen.openLandscape.size, split: true)
 
-    /// Someone typing on a screen's Instagram keys, each key tapped at its center, who has typed fifty known words.
+    /// Someone typing on a screen's Instagram keys, each letter tapped at its center and the @ and # at the edge by the
+    /// nearer space bar, where a thumb that misses the bar lands, who has typed fifty known words.
     struct Typist {
         var engine = TypingEngine(traits: InputTraits(kind: .twitter, autocapitalization: .none))
         let corrector = Corrector(
@@ -39,6 +40,7 @@ struct StrayKeyTests {
                 ].map { (word: $0.0, count: Double($0.1)) }))
         let grid: KeyGrid
         let document = TestDocument()
+        var aimsAtKeys = false
 
         init(_ screen: Screen) {
             grid = screen.grid()
@@ -48,28 +50,41 @@ struct StrayKeyTests {
             engine.documentChanged(document)
         }
 
+        func edge(of frame: Rect) -> Double {
+            let bars = grid.rows.last!.map(\.frame).filter { grid.key(atX: $0.midX, y: $0.midY)?.action == .space }
+            let bar = bars.min { abs($0.midX - frame.midX) < abs($1.midX - frame.midX) }!
+            return bar.midX < frame.midX ? frame.x + frame.width * 0.1 : frame.x + frame.width * 0.9
+        }
+
         mutating func type(_ text: String) {
             for character in text {
                 guard let frame = grid.frame(of: String(character)) else {
                     engine.perform(.character(String(character)), in: document)
                     continue
                 }
-                let key = grid.key(atX: frame.midX, y: frame.midY)!
-                engine.handle(.type(key, Tap(x: frame.midX, y: frame.midY, key: String(character))), in: document)
+                let x = aimsAtKeys || Words.isWordCharacter(character) ? frame.midX : edge(of: frame)
+                let key = grid.key(atX: x, y: frame.midY)!
+                engine.handle(.type(key, Tap(x: x, y: frame.midY, key: String(character))), in: document)
             }
         }
     }
 
-    @Test(arguments: whole) func aKeyHitForTheSpaceBecomesTheSpace(on screen: Screen) {
+    @Test(arguments: whole) func theFullKeyboardKeepsInstagramsKeysOffTheSpaceBarsRow(on screen: Screen) {
+        let labels = { (grid: KeyGrid) in grid.rows.last!.map { "\($0.key.action) \($0.frame)" } }
+        #expect(labels(screen.grid()) == labels(screen.grid(.text)))
+        #expect(!screen.grid().rows.joined().contains { ["@", "#"].contains($0.key.text(shifted: false)) })
+    }
+
+    @Test func aKeyHitForTheSpaceBecomesTheSpace() {
         for key in ["@", "#"] {
-            var typist = Typist(screen)
+            var typist = Typist(Self.split)
             typist.type("great\(key)day ")
             #expect(typist.document.text == "great day ", "\(key)")
         }
     }
 
     @Test func eachWordIsReadAsIfTheSpaceHadBeenTyped() {
-        var typist = Typist(Self.whole[0])
+        var typist = Typist(Self.split)
         typist.type("grat@day#ok ")
         #expect(typist.document.text == "great day ok ")
     }
@@ -98,33 +113,34 @@ struct StrayKeyTests {
             bars.flatMap { bar in
                 (0..<20).map { TapSample(tap: Tap(x: bar.midX + Double($0 % 5), y: bar.midY, key: " "), intended: " ") }
             })
+        typist.aimsAtKeys = true
         typist.type("great@day ")
         #expect(typist.document.text == "great@day ")
     }
 
-    @Test(arguments: whole) func onlyAKeyTouchingTheSpaceBarCanBeTheSpace(on screen: Screen) {
-        let grid = screen.grid()
+    @Test func onlyAKeyTouchingTheSpaceBarCanBeTheSpace() {
+        let grid = Self.split.grid()
         let near = grid.rows.joined().compactMap { $0.key.text(shifted: false) }.filter { grid.touches($0, " ") }
-        #expect(near == ["x", "c", "v", "b", "n", "m", "@", "#"])
+        #expect(near == ["x", "c", "v", "v", "b", "n", "m", "@", "#"])
     }
 
     @Test func anAddressAHandleAndAMentionStay() {
         for text in ["john@gmail.com ", "thanks@qzxv ", "hey @day ", "great@ day "] {
-            var typist = Typist(Self.whole[0])
+            var typist = Typist(Self.split)
             typist.type(text)
             #expect(typist.document.text == text)
         }
     }
 
     @Test func theTapIsLearnedAsASpace() {
-        var typist = Typist(Self.whole[0])
+        var typist = Typist(Self.split)
         typist.type("great@day ok ")
         #expect(typist.corrector.memory.touches.taps(for: " ", on: typist.grid) == 2)
         #expect(typist.corrector.memory.touches.taps(for: "@", on: typist.grid) == 0)
     }
 
     @Test func takenBackItStaysAsTyped() throws {
-        var typist = Typist(Self.whole[0])
+        var typist = Typist(Self.split)
         typist.type("great@day ")
         typist.engine.perform(.delete, in: typist.document)
         let revert = try #require(typist.engine.suggestions.first { $0.kind == .revert })
@@ -136,7 +152,7 @@ struct StrayKeyTests {
     }
 
     @Test func deletingTheKeyGoesBackToTheWord() {
-        var typist = Typist(Self.whole[0])
+        var typist = Typist(Self.split)
         typist.type("great@")
         typist.engine.perform(.delete, in: typist.document)
         #expect(typist.engine.typing.letters.count == 5 && typist.engine.typing.before.isEmpty)
