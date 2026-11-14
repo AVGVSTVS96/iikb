@@ -31,10 +31,16 @@ public func lineState(env: Env, _: jclass, handle: jlong) -> jbyteArray? {
     return env.array(Json.encode(LineState(text: line.text, caret: line.caret)))
 }
 
-/// What return took from the line to send, once.
+/// All of the line, left empty, for the box's send, once the word being typed is finished as a space would finish it;
+/// nothing when no chat is open.
 @_cdecl("Java_com_shahidy_iikb_keyboard_Native_lineTake")
 public func lineTake(env: Env, _: jclass, handle: jlong) -> jbyteArray? {
-    keyboard(handle).line?.takeReturned().map { env.array($0) } ?? nil
+    let keyboard = keyboard(handle)
+    guard let line = keyboard.line else { return nil }
+    keyboard.engine.finishWord(in: line)
+    let text = line.take()
+    keyboard.engine.documentChanged(line)
+    return env.array(text)
 }
 
 /// Puts text back in the line, like a message that couldn't be sent.

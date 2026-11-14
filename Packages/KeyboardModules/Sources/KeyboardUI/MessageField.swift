@@ -187,6 +187,7 @@ public final class MessageField: UIView, UITextViewDelegate {
         }
         field.focusable = caret
         if next.canSend != last?.canSend { showSend(animated: last != nil && window != nil) }
+        if next.text != last?.text || next.photos != last?.photos { superview?.setNeedsLayout() }
         setNeedsLayout()
     }
 

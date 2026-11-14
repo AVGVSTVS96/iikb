@@ -213,6 +213,16 @@ public struct TypingEngine {
         suggestionsChanged()
     }
 
+    /// Finishes the word being typed as a space would, correcting it if it needs to be, without typing anything: what a
+    /// message's send button does before it takes the text.
+    public mutating func finishWord(in document: some TextDocument) {
+        attach(document)
+        guard panel == nil else { return }
+        commitWord(in: document)
+        history.close()
+        suggestionsChanged()
+    }
+
     /// Writes back what an undo or redo gives, as its own step, which typing next doesn't join.
     private mutating func replay(_ edit: (string: String, replacing: Int)?, in document: some TextDocument) {
         guard let edit, panel == nil else { return }

@@ -1,10 +1,9 @@
-/// A line of the keyboard's own that the keys type into in place of the app's field, like a chat's message line: the
-/// engine edits it as it edits any field, and return takes what it holds and leaves it empty.
+/// Text of the keyboard's own that the keys type into in place of the app's field, like a chat's message box: the
+/// engine edits it as it edits any field, return starting a new line, and `take` empties it to send.
 public final class LineDocument: TextDocument {
     public private(set) var text: String
     /// The selected characters, as offsets; empty is the caret, before `lowerBound` characters.
     public private(set) var selection: Range<Int>
-    private var returned: String?
 
     public init(_ text: String = "") {
         self.text = text
@@ -31,14 +30,8 @@ public final class LineDocument: TextDocument {
     }
 
     public func insert(_ string: String) {
-        guard let end = string.firstIndex(where: \.isNewline) else {
-            text.replaceSubrange(indices(selection), with: string)
-            placeCaret(at: selection.lowerBound + string.count)
-            return
-        }
-        if end != string.startIndex { insert(String(string[..<end])) }
-        returned = text
-        clear()
+        text.replaceSubrange(indices(selection), with: string)
+        placeCaret(at: selection.lowerBound + string.count)
     }
 
     /// A selection goes first and counts as one of `count`, as in a field.
@@ -59,10 +52,10 @@ public final class LineDocument: TextDocument {
         selection = 0..<0
     }
 
-    /// What the line held when return was typed, once.
-    public func takeReturned() -> String? {
-        defer { returned = nil }
-        return returned
+    /// All of the text, which is left empty, as a message's send button takes it.
+    public func take() -> String {
+        defer { clear() }
+        return text
     }
 
     private func indices(_ range: Range<Int>) -> Range<String.Index> {

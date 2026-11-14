@@ -3,20 +3,22 @@ import Testing
 @testable import KeyboardCore
 
 struct LineDocumentTests {
-    @Test func returnTakesTheLineAndEmptiesIt() {
-        var engine = TypingEngine(traits: InputTraits(returnKind: .send, returnRequiresText: true))
+    @Test func returnStartsANewLineAndTakeEmptiesIt() {
+        var engine = TypingEngine()
         let line = LineDocument()
         engine.documentChanged(line)
         engine.type("hey hex", in: line)
         #expect(line.text == "Hey hex", "the line capitalizes as a field asking for sentences does")
         engine.perform(.return, in: line)
-        #expect(line.takeReturned() == "Hey hex")
-        #expect(line.takeReturned() == nil)
+        engine.type("again", in: line)
+        #expect(line.text == "Hey hex\nAgain")
+        engine.finishWord(in: line)
+        #expect(line.take() == "Hey hex\nAgain")
         #expect(line.text.isEmpty)
         engine.documentChanged(line)
         #expect(engine.text.isEmpty)
-        engine.type("again", in: line)
-        #expect(line.text == "Again")
+        engine.type("more", in: line)
+        #expect(line.text == "More")
     }
 
     @Test func theCaretMovesAndEditsWhereItIs() {
@@ -33,11 +35,12 @@ struct LineDocumentTests {
         #expect(line.text.isEmpty)
     }
 
-    @Test func returnInTheMiddleSendsTheWholeLine() {
+    @Test func returnInTheMiddleBreaksTheLineThere() {
         let line = LineDocument("on my way")
         line.moveCursor(by: -4)
         line.insert("\n")
-        #expect(line.takeReturned() == "on my way")
+        #expect(line.text == "on my\n way")
+        #expect(line.caret == 6)
     }
 
     @Test func aSelectionIsWhatTheNextEditReplaces() {
@@ -81,7 +84,7 @@ struct LineDocumentTests {
     }
 
     @Test func theEngineTypesOverASelection() {
-        var engine = TypingEngine(traits: InputTraits(returnKind: .send, returnRequiresText: true))
+        var engine = TypingEngine()
         let line = LineDocument()
         engine.documentChanged(line)
         engine.type("meet at five ", in: line)
@@ -96,7 +99,7 @@ struct LineDocumentTests {
     }
 
     @Test func theEngineDeletesASelectionWithOneDelete() {
-        var engine = TypingEngine(traits: InputTraits(returnKind: .send, returnRequiresText: true))
+        var engine = TypingEngine()
         let line = LineDocument()
         engine.documentChanged(line)
         engine.type("call me later", in: line)
@@ -110,12 +113,11 @@ struct LineDocumentTests {
         #expect(engine.documentChanged(line) == .current)
     }
 
-    @Test func returnSendsAllOfTheLineEvenWithAWordSelected() {
+    @Test func takeSendsAllOfTheTextEvenWithAWordSelected() {
         let line = LineDocument("Can you check the build")
         line.select(0..<3)
-        line.insert("\n")
         #expect(
-            line.takeReturned() == "Can you check the build",
+            line.take() == "Can you check the build",
             "send sends the message, as Messages' does, not what typing over the word would leave")
         #expect(line.text.isEmpty)
         #expect(line.selection == 0..<0)

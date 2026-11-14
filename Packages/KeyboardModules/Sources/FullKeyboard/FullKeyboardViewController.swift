@@ -119,9 +119,10 @@ open class FullKeyboardViewController: UIInputViewController {
         panel.fullAccess = { [unowned self] in hasFullAccess }
         panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
         panel.onSend = { [unowned self] in
+            guard let line else { return }
             feedback(.separator)
-            if line?.text.isEmpty == true { return send("") }
-            handle(.trigger(Key(.return)))
+            engine.finishWord(in: line)
+            send(line.take())
         }
         panel.onFocus = { [unowned self] in raiseKeys() }
         panel.onAttach = { [unowned self] in pickPhotos() }
@@ -133,7 +134,7 @@ open class FullKeyboardViewController: UIInputViewController {
         panel.onReplace = { [unowned self] range, text in
             guard let line else { return }
             line.select(range)
-            line.insert(text.replacingOccurrences(of: "\n", with: " "))
+            line.insert(text)
             engine.documentChanged(line)
             render()
         }
@@ -288,7 +289,6 @@ open class FullKeyboardViewController: UIInputViewController {
         chats.changed = { [weak self] in self?.render() }
         photos.changed = { [weak self] in
             guard let self else { return }
-            if line != nil { engine.update(chatTraits) }
             keepChat()
             render()
         }
@@ -1035,11 +1035,10 @@ open class FullKeyboardViewController: UIInputViewController {
             break
         }
         if engine.handle(event, in: document) { render() }
-        if let text = line?.takeReturned() { send(text) }
     }
 
-    /// The chats panel opens with its line in place of the app's field, which the keys type into as into a field whose
-    /// return key sends.
+    /// The chats panel opens with its line in place of the app's field, which the keys type into as into a message box,
+    /// return starting a new line and the box's ↑ sending.
     private func openChat(_ text: String = "", at chat: String? = nil, keysUp: Bool = false) {
         guard line == nil else { return }
         menuOpen = false
@@ -1048,17 +1047,12 @@ open class FullKeyboardViewController: UIInputViewController {
         engine.leaveField()
         let line = LineDocument(text)
         self.line = line
-        engine.update(chatTraits)
+        engine.update(InputTraits())
         engine.documentChanged(line)
         chats.reload()
         chats.start(at: chat)
         keepChat()
         render()
-    }
-
-    /// A chat's line sends on return, which lights up with words or a photo to send.
-    private var chatTraits: InputTraits {
-        InputTraits(returnKind: .send, returnRequiresText: photos.attached.isEmpty)
     }
 
     /// Notes the open chat where the next keyboard finds it, as it opens, as it switches and as the keyboard goes away,
@@ -1103,7 +1097,7 @@ open class FullKeyboardViewController: UIInputViewController {
         keysUp = false
     }
 
-    /// What return took from the line goes to the open chat with the photos attached, which keeps them until its
+    /// What the box's ↑ took from the line goes to the open chat with the photos attached, which keeps them until its
     /// extension has them, and the chat comes back down to read. With no chat open to keep it, the text comes back to
     /// the line.
     private func send(_ text: String) {

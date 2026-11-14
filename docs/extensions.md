@@ -13,7 +13,7 @@ you, in any app
 │ ( Message DM               ) │
 └──────────────────────────────┘
   │ tap the box: keys come up under it, same height
-  │ the box's ↑, or send on the keys, sends to the open chat
+  │ the box's ↑ sends to the open chat; return starts a new line
   ▼
 iikb ──► your extension ──► wherever it sends
      ◄── replies show as they come

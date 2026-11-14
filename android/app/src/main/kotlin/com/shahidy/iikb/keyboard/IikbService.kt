@@ -138,10 +138,7 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         seen = ChatSeen(this)
         chats.changed = ::render
         photos = ChatPhotos(this)
-        photos.changed = {
-            if (chatOpen) chatTraits()
-            render()
-        }
+        photos.changed = ::render
         photos.prune(chats.held)
         dictation = Dictation(this, this)
         dictation.onChange = ::showDictation
@@ -568,8 +565,8 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     }
 
     /**
-     * A chat opens with its message line in place of the app's field, which the keys type into as into a field whose
-     * return key sends; `id` the chat, or the first.
+     * A chat opens with its message line in place of the app's field, which the keys type into as into a message box,
+     * return starting a new line and the box's send sending; `id` the chat, or the first.
      */
     private fun startChat(id: String?) {
         if (chatOpen) return
@@ -577,19 +574,13 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         keysUp = false
         Native.panel(handle, null)
         Native.leaveField(handle)
-        chatTraits()
+        Native.traits(handle, "text other default sentences".encodeToByteArray(), true, requiresText = false, autocorrection = true)
         Native.lineOpen(handle, null)
         chatOpen = true
         chats.reload()
         chats.start(id)
         render()
     }
-
-    /** A chat's line sends on return, which lights up with words or a photo to send. */
-    private fun chatTraits() = Native.traits(
-        handle, "text other send sentences".encodeToByteArray(), true, requiresText = photos.attached.isEmpty(),
-        autocorrection = true,
-    )
 
     /** Another chat from its pill: the line you'd begun goes with the chat you left, and this chat's comes back. */
     private fun switchChat(chat: Chats.Chat) {
@@ -624,11 +615,6 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     }
 
     private val line get() = Native.lineState(handle)?.let { Json.decodeFromString<Overlay.Line>(it.decodeToString()) }
-
-    /** What return took from the line goes to the open chat, with the photos attached. */
-    private fun sendTaken() {
-        deliver(Native.lineTake(handle)?.decodeToString()?.trim() ?: return)
-    }
 
     /**
      * `text` and the photos attached go to the open chat, which keeps them until its extension has them, and with photos
@@ -748,7 +734,6 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         body()
         noteTyping()
         connection?.endBatchEdit()
-        if (chatOpen) sendTaken()
         render()
     }
 
@@ -1030,15 +1015,11 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
         render()
     }
 
-    /** The send button sends as return does; photos with nothing written go on their own. */
+    /** The box's send: the word being typed is finished, and all of the box goes with the photos, or the photos alone. */
     override fun send() {
-        if (chatOpen && line?.text.isNullOrEmpty() && photos.attached.isNotEmpty()) {
-            feedback(Feedback.Kind.SEPARATOR)
-            return deliver("")
-        }
-        val index = view?.frame?.caps?.indexOfFirst { it.action == "return" }?.takeIf { it >= 0 } ?: return
+        val text = Native.lineTake(handle)?.decodeToString() ?: return
         feedback(Feedback.Kind.SEPARATOR)
-        event { Native.trigger(handle, index) }
+        deliver(text.trim())
     }
 
     override fun closePanel() {

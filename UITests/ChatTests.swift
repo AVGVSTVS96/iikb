@@ -1,7 +1,8 @@
 import XCTest
 
 /// An extension's chats through the real keyboard, added through its link the way a real one is: the panel opens from
-/// the bar, a message typed with the keys goes to the chat, and the reply shows (scripts/chattest).
+/// the bar, a message typed with the keys over two lines goes to the chat from the box's ↑, and the reply shows
+/// (scripts/chattest).
 final class ChatTests: XCTestCase {
     func testAMessageTypedInAChatIsSentAndItsReplyShows() throws {
         let environment = ProcessInfo.processInfo.environment.filter { !$0.value.isEmpty }
@@ -45,13 +46,17 @@ final class ChatTests: XCTestCase {
         XCTAssertTrue(key("space", in: app).waitForExistence(timeout: 5), "tapping the box brings the keys up")
         type(message, in: app)
         try shot("\(shots)-typed")
+        key("return", in: app).tap()
+        type("and the tests", in: app)
+        let answer = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", reply))
+            .firstMatch
+        XCTAssertFalse(answer.waitForExistence(timeout: 2), "return starts a new line in the box, and sends nothing")
+        try shot("\(shots)-lines")
         field.doubleTap()
         Thread.sleep(forTimeInterval: 1.5)
         try shot("\(shots)-select")
         field.tap()
-        key("return", in: app).tap()
-        let answer = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", reply))
-            .firstMatch
+        element("iikb.chat.send", in: app).tap()
         XCTAssertTrue(
             answer.waitForExistence(timeout: Double(environment["IIKB_WAIT"] ?? "20") ?? 20),
             "the reply shows in the panel")
