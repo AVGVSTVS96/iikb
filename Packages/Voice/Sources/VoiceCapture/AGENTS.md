@@ -4,7 +4,7 @@ Voice typing's microphone (`Microphone`), the `Recording` it makes, how the iPho
 
 ## The microphone
 
-- The `Microphone` records a dictation as a `Recording` the moment the keyboard asks (by opening `iikb://dictate`, or with its start signal while the microphone is kept on).
+- The `Microphone` records a dictation as a `Recording` the moment the keyboard asks (by opening `iikb://dictate`, or with its start signal while the app's tab is up or the microphone is kept on). Off, it leaves the audio session inactive in playback, the category picture in picture needs (`Microphone.rest`).
 - It's Automatic unless a microphone is picked in Settings › Microphone (`PickedMicrophone`, by port UID, or by name for Bluetooth, whose microphone has another UID than its speaker). Automatic is the iPhone's own microphones, or a plugged-in wired headset; never Bluetooth, which would put a speaker or AirPods on a call and drop music to call quality.
 - The iPhone's own microphones hear as a front cardioid (`Capture.aim`), which iOS forms from more than one of them, in `.measurement` mode: on one, the folded Duo in portrait lost seconds of speech at a time. Anything else hears in `.default` mode as iOS picks. Each transcript keeps `cardioid` or nothing in `capture`.
 - It never runs Apple's voice processing. Voice processing takes the sound from a Bluetooth speaker or AirPlay to the iPhone, pauses music apps and ducks the rest, and gave no sound at all on 19 of 436 dictations, Nov 4 to 7, against 3 of 381 without it (`scripts/voicehealth.py`); each deaf one turned the microphone off, so the next dictation opened the app. So the microphone mixes with whatever plays, wherever it plays, and changes no one's sound. Sound from the iPhone's own speaker is heard along with you.

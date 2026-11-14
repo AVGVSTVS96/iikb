@@ -83,7 +83,8 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     @ObservationIgnored public var onState: (() -> Void)?
     @ObservationIgnored private var parakeet: Task<Dictation, any Error>?
     @ObservationIgnored private var writes = 0
-    /// Whether iikb has its microphone on, which gets the Parakeet ready and keeps it for the next dictation.
+    /// Whether the keyboard can start a dictation in place (iikb's microphone on, or its tab up), which gets the Parakeet
+    /// ready and keeps it for the next dictation.
     @ObservationIgnored public var micIsOn = false { didSet { if micIsOn { prepare() } else { letGoIfIdle() } } }
 
     #if targetEnvironment(simulator)

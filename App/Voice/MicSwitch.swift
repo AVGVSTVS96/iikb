@@ -31,15 +31,16 @@ extension View {
     fileprivate func endsWithCards() -> some View { modifier(EndsWithCards()) }
 }
 
-/// The microphone, on or off, as it really is: on, the keyboard starts each dictation in place, and it stays on until
-/// you turn it off here; off, it goes off once what you're saying is written down. The keyboard can't turn it off.
+/// Whether the keyboard starts a dictation in place, as it really is: on, iikb's tab is up (`MicTab`), or where it
+/// can't be the microphone is, until you turn it off here; off, the tab goes, and the microphone once what you're
+/// saying is written down. The keyboard can't turn it off.
 struct MicSwitch: View {
     @State private var flipping: Bool?
     @State private var failure: String?
 
     var body: some View {
         let listener = Listener.shared
-        let on = flipping ?? (listener.isMicOn && !listener.isTurningMicOff)
+        let on = flipping ?? (listener.tabOpening || listener.isReady && !listener.isTurningMicOff)
         HStack(spacing: 0) {
             Image(systemName: on ? "mic.fill" : "mic.slash.fill")
                 .font(.body)
@@ -68,6 +69,7 @@ struct MicSwitch: View {
     }
 
     private func flip(_ on: Bool) {
+        if on, Listener.shared.openTab() { return }
         flipping = on
         Task {
             defer { flipping = nil }

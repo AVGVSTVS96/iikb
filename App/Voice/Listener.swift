@@ -4,17 +4,21 @@ import Observation
 import UIKit
 import VoiceCapture
 import VoiceModels
+import WidgetKit
 
 /// Voice typing, in two steps that never wait on each other: the `Microphone` records a dictation the moment you ask,
 /// and once you stop, the `VoiceModel` writes its finished `Recording` down, whatever state it was in when you started.
-/// Dictations still being written are typed in the order you said them. After you dictate the microphone stays on for
-/// as long as Keep Mic On says, so the keyboard can start the next dictation (`start`) without opening the app, which
-/// is the only place iOS lets a recording begin. Only the app turns the microphone off: Home's switch, or Keep Mic On
-/// running out. The keyboard can only start a dictation.
+/// Dictations still being written are typed in the order you said them. iOS lets a recording begin only while iikb is
+/// on screen, so after you dictate the keyboard can start the next one (`start`) without opening the app only while
+/// `MicTab` is up, which counts as on screen, or the microphone is kept on as Keep Mic On says. Only the app turns
+/// either off: Home's switch, or Keep Mic On running out. The keyboard can only start a dictation.
 @Observable @MainActor final class Listener {
     static let shared = Listener()
 
     private let microphone = Microphone()
+    private let tab = MicTab.shared
+    /// The App Group's mic lock, held while the keyboard can start a dictation in place (`isReady`).
+    private var lock: Int32?
     private var micOff: Task<Void, Never>?
     private var tokens: [Int32] = []
     private var recording: Take?
@@ -49,6 +53,11 @@ import VoiceModels
     var onLevel: ((Float, Double) -> Void)?
 
     var isMicOn: Bool { microphone.isOn }
+    /// The keyboard's mic starts a dictation without opening the app.
+    var isReady: Bool { microphone.isOn || tabUp }
+    /// `MicTab` is up, or on its way up.
+    private(set) var tabUp = false
+    private(set) var tabOpening = false
     /// Turned off, and on only till what's being said and written is done.
     var isTurningMicOff: Bool { microphone.isOn && micOffOnceWritten }
     var isListening: Bool { recording != nil && tail == nil }
@@ -66,6 +75,12 @@ import VoiceModels
     }
 
     private init() {
+        microphone.onChange = { Listener.shared.readyChanged() }
+        tab.onChange = {
+            (Listener.shared.tabUp, Listener.shared.tabOpening) = (MicTab.shared.isUp, MicTab.shared.isOpening)
+            Listener.shared.keepMicOn()
+            Listener.shared.readyChanged()
+        }
         microphone.onLost = { Task { await Listener.shared.lose() } }
         microphone.onInterrupted = { Task { await Listener.shared.lose(comingBack: true) } }
         microphone.onFreed = { Listener.shared.comeBack() }
@@ -80,7 +95,7 @@ import VoiceModels
         tokens = [
             Dictation.observe(.finish) { keyboard in Task { await Listener.shared.finish(in: keyboard) } },
             Dictation.observe(.start) {
-                guard Listener.shared.microphone.isOn else { return }
+                guard Listener.shared.isReady else { return }
                 Task { await Listener.shared.start() }
             },
             Dictation.observe(.cancel) { Listener.shared.cancel() },
@@ -122,7 +137,11 @@ import VoiceModels
         } catch {
             recording = nil
             closeMic()
-            fail("Couldn’t listen", error.localizedDescription)
+            guard tabUp, !Microphone.inFront else { return fail("Couldn’t listen", error.localizedDescription) }
+            tab.close()
+            HostApp.log.error(
+                "iOS wouldn't start the microphone with the tab up: \(error.localizedDescription, privacy: .public)")
+            fail("Couldn’t listen", "iOS wouldn’t start the microphone from here. Tap the mic again to open iikb.")
         }
     }
 
@@ -219,7 +238,7 @@ import VoiceModels
     func keepMicOn() {
         micOff?.cancel()
         guard microphone.isOn, recording == nil, writing.isEmpty else { return }
-        guard !deaf else { return closeMic() }
+        guard !deaf, !tabUp else { return closeMic() }
         let seconds = SettingsStore.keepMicOn
         guard held || (seconds > 0 && !micOffOnceWritten) else { return closeMic() }
         if screenRecorded {
@@ -242,8 +261,16 @@ import VoiceModels
         microphone.restart()  // restart: in front
     }
 
-    /// Home's switch, on: the microphone on with nothing recorded, so the keyboard starts each dictation in place, and
-    /// kept on until the switch turns it off.
+    /// Home's switch, on, where the tab can come up: up till the switch turns it off, so the keyboard starts each
+    /// dictation in place. iOS brings the tab up only from a tap, so this runs in the switch's own.
+    func openTab() -> Bool {
+        guard !microphone.isOn, AVAudioApplication.shared.recordPermission == .granted, tab.open() else { return false }
+        micOffOnceWritten = false
+        return true
+    }
+
+    /// Home's switch, on, where the tab can't come up: the microphone on with nothing recorded, so the keyboard starts
+    /// each dictation in place, and kept on until the switch turns it off.
     func turnMicOn() async throws {
         micOff?.cancel()
         micOffOnceWritten = false
@@ -253,6 +280,7 @@ import VoiceModels
             VoiceModel.shared.micIsOn = true
         }
         held = true
+        readyChanged()
     }
 
     /// Home's switch, or Control Center's iikb Mic, off: what you're saying is kept, for the next keyboard to show to type, and the microphone goes
@@ -260,6 +288,7 @@ import VoiceModels
     func turnMicOff() async {
         held = false
         heldWhenTaken = nil
+        tab.close()
         guard microphone.isOn else { return }
         micOffOnceWritten = true
         await finish()
@@ -296,6 +325,23 @@ import VoiceModels
         }
     }
 
+    /// Holds the mic lock while the keyboard can start a dictation in place, and comes up with iikb leaving the screen
+    /// while the microphone is kept on.
+    private func readyChanged() {
+        tab.armed = microphone.isOn && (held || SettingsStore.keepMicOn > 0)
+        if isReady, lock == nil {
+            lock = Dictation.lockMic() ?? -1
+        } else if !isReady, let lock {
+            if lock >= 0 { Dictation.unlockMic(lock) }
+            self.lock = nil
+        } else {
+            return
+        }
+        VoiceModel.shared.micIsOn = isReady
+        Dictation.send(.changed)
+        ControlCenter.shared.reloadControls(ofKind: Dictation.micControl)
+    }
+
     private func closeMic() {
         micOff?.cancel()
         micOff = nil
@@ -303,7 +349,7 @@ import VoiceModels
         held = false
         deaf = false
         microphone.close()
-        VoiceModel.shared.micIsOn = false
+        VoiceModel.shared.micIsOn = isReady
     }
 
     private func fail(_ title: String, _ reason: String) {
