@@ -68,6 +68,21 @@ public struct ClipLink: Hashable, Sendable {
         return String(labels[labels.count - (country ? 3 : 2)])
     }
 
+    /// Each link's `name`, and where another of the list shares it, the part of its path that first sets it apart from
+    /// them, `github/swift`, at most 16 characters with any more cut from the middle. Identical paths keep the name.
+    public static func names(_ links: [ClipLink]) -> [String] {
+        let parts = links.map { $0.path.split(separator: "/") }
+        return links.indices.map { index in
+            let name = links[index].name
+            let shared = links.indices.filter { $0 != index && links[$0].name == name }.map { other in
+                zip(parts[index], parts[other]).prefix { $0 == $1 }.count
+            }
+            guard let at = shared.max(), at < parts[index].count else { return name }
+            let part = parts[index][at]
+            return name + "/" + (part.count > 16 ? part.prefix(8) + "…" + part.suffix(7) : String(part))
+        }
+    }
+
     public init(site: String, path: String) {
         self.site = site
         self.path = path

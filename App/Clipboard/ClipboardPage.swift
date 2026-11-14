@@ -105,7 +105,8 @@ struct ClipboardPage: View {
                                 .padding(.horizontal, 20)
                                 .accessibilityAddTraits(.isHeader)
                             Flow(spacing: 8) {
-                                ForEach(links) { badge($0) }
+                                let names = ClipLink.names(links.compactMap(\.link))
+                                ForEach(Array(zip(links, names)), id: \.0.id) { badge($0, name: $1) }
                             }
                         }
                     }
@@ -194,12 +195,13 @@ struct ClipboardPage: View {
         .contextMenu { actions(item) }
     }
 
-    private func badge(_ item: ClipboardHistory.Item) -> some View {
+    private func badge(_ item: ClipboardHistory.Item, name: String) -> some View {
         Button {
             copy(item)
         } label: {
             LinkBadge(
-                item: item, copied: item.content == copied, picked: beside && item.content == shownInFull?.content)
+                item: item, name: name, copied: item.content == copied,
+                picked: beside && item.content == shownInFull?.content)
         }
         .buttonStyle(.plain)
         .hoverEffect(.highlight)
@@ -439,9 +441,11 @@ private struct ClipRow: View {
     }
 }
 
-/// A copied link in one line, as the keyboard's badge has it: its site's icon, the site's name and how long ago.
+/// A copied link in one line, as the keyboard's badge has it: its site's icon, its name among the badges
+/// (`ClipLink.names`) and how long ago.
 private struct LinkBadge: View {
     let item: ClipboardHistory.Item
+    let name: String
     let copied: Bool
     let picked: Bool
 
@@ -450,12 +454,12 @@ private struct LinkBadge: View {
             HStack(spacing: 6) {
                 SiteIcon(site: link.site, side: 18)
                 if copied {
-                    Text(link.name).fontWeight(.semibold)
+                    Text(name).fontWeight(.semibold)
                     Image(systemName: "checkmark").foregroundStyle(Color.appSecondary).accessibilityLabel("Copied")
                 } else {
                     let age = ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)
                     Text(
-                        "\(Text(link.name).fontWeight(.semibold))\(Text(" · " + age).foregroundStyle(Color.appSecondary))"
+                        "\(Text(name).fontWeight(.semibold))\(Text(" · " + age).foregroundStyle(Color.appSecondary))"
                     )
                     .monospacedDigit()
                 }
@@ -578,5 +582,6 @@ private struct SiteIcon: View {
 }
 
 extension ClipboardHistory.Item {
-    fileprivate var isLink: Bool { if case .link = content.kind { true } else { false } }
+    fileprivate var isLink: Bool { link != nil }
+    fileprivate var link: ClipLink? { if case .link(let link) = content.kind { link } else { nil } }
 }

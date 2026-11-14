@@ -6,14 +6,14 @@ import UIKit
 /// it is; a link as its site's icon and its site; an address or a phone number after its glyph; a color after a swatch
 /// of it. Nil for plain text and images, which rows show as they always have.
 enum ClipTitle {
-    /// `short` names a link's site as ChatGPT's source pills do, `ClipLink.name`, after a larger icon, as a badge has
-    /// it. A glyph stays on its text's line, and an address that wraps wraps after its `@`.
+    /// `badge` writes a link as its badge names it (`ClipLink.names`) after a larger icon. A glyph stays on its text's
+    /// line, and an address that wraps wraps after its `@`.
     static func make(
-        _ content: ClipboardHistory.Item.Content, font: UIFont, label: UIColor, secondary: UIColor, short: Bool = false
+        _ content: ClipboardHistory.Item.Content, font: UIFont, label: UIColor, secondary: UIColor, badge: String? = nil
     ) -> NSAttributedString? {
         guard case .text(let text) = content else { return nil }
         let plain = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let size = (font.pointSize * (short ? 1.3 : 1.1)).rounded()
+        let size = (font.pointSize * (badge == nil ? 1.1 : 1.3)).rounded()
         let body: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: label]
         let title = NSMutableAttributedString()
         func glyph(_ image: UIImage?) {
@@ -35,7 +35,7 @@ enum ClipTitle {
             glyph(LinkIcons.shared.cached(link.site) ?? symbol("globe"))
             title.append(
                 NSAttributedString(
-                    string: short ? link.name : link.site,
+                    string: badge ?? link.site,
                     attributes: [.font: font.withWeight(.semibold), .foregroundColor: label]))
         case .email:
             glyph(symbol("envelope"))
@@ -70,13 +70,14 @@ enum ClipTitle {
             .text("https://" + link.site), font: .systemFont(ofSize: 17), label: .label, secondary: .secondaryLabel)
     }
 
-    /// A link's badge, on one line: its icon, its site's name and how long ago, `github · 5m`, with a pin when pinned.
+    /// A link's badge, on one line: its icon, its name among the badges (`ClipLink.names`) and how long ago,
+    /// `github · 5m`, with a pin when pinned.
     static func badge(
-        _ content: ClipboardHistory.Item.Content, age: String, pinned: Bool, font: UIFont, label: UIColor,
+        _ content: ClipboardHistory.Item.Content, name: String, age: String, pinned: Bool, font: UIFont, label: UIColor,
         secondary: UIColor
     ) -> NSAttributedString? {
         guard
-            let title = make(content, font: font, label: label, secondary: secondary, short: true)?.mutableCopy()
+            let title = make(content, font: font, label: label, secondary: secondary, badge: name)?.mutableCopy()
                 as? NSMutableAttributedString
         else { return nil }
         let detail: [NSAttributedString.Key: Any] = [

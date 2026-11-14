@@ -24,7 +24,8 @@ final class Clips {
         /// When it was copied, in seconds since 1970.
         var found: Double
         var site: String?
-        /// The site as a badge names it: `github`, `x`.
+        /// The site as a badge names it, `github`, `x`, with a part of its path where another link found shares it,
+        /// `github/swift` (`ClipLink.names`).
         var name: String?
         var color: Int32?
         /// An image's file, by the name `Clips.kt` saved it under.
@@ -32,14 +33,17 @@ final class Clips {
     }
 
     func rows(matching search: String, in unit: ClipboardLength, now: Double) -> [Row] {
-        history.matching(search).map { item in
+        let found = history.matching(search)
+        let links = found.compactMap { if case .link(let link) = $0.content.kind { link } else { nil } }
+        var names = ClipLink.names(links).makeIterator()
+        return found.map { item in
             var row = Row(
                 text: item.content.preview ?? "", kind: "text",
                 length: ClipboardHistory.length(of: item.content, in: unit),
                 age: ClipboardHistory.age(of: item.found, now: now), pinned: item.pinned, found: item.found)
             switch item.content.kind {
             case .link(let link):
-                (row.kind, row.site, row.name) = ("link", link.site, link.name)
+                (row.kind, row.site, row.name) = ("link", link.site, names.next())
             case .email: row.kind = "email"
             case .phone: row.kind = "phone"
             case .color(let red, let green, let blue):

@@ -162,7 +162,8 @@ final class ToolPanelTests: XCTestCase {
         "Meet at Sightglass on 7th, 4pm?", "https://en.wikipedia.org/wiki/International_Typographic_Style", "#FF6B00",
         "https://www.youtube.com/watch?v=aircAruvnKk", "https://github.com/swiftlang/swift/pull/80000",
         "(415) 555-0132",
-        "hello@example.com", "https://x.com/vercel/status/1985000000000000001?s=46",
+        "hello@example.com", "https://github.com/apple/swift-nio", "https://x.com/jack/status/20",
+        "https://x.com/vercel/status/1985000000000000001?s=46",
     ]
 
     func testCopiedItemsShowByKind() throws {
@@ -198,6 +199,7 @@ final class ToolPanelTests: XCTestCase {
         app.buttons["iikb.shelf.clipboard"].tap()
         XCTAssertTrue(link.waitForExistence(timeout: 5), "the panel shows the link")
         XCTAssertLessThan(link.frame.height, 40, "a link is a one-line badge")
+        XCTAssertTrue(link.label.hasPrefix("x/vercel,"), "a site's links are told apart by their paths: \(link.label)")
         Thread.sleep(forTimeInterval: 2)
         try shot("clipboard-kinds")
         let list = app.collectionViews["iikb.clipboard"]
@@ -221,9 +223,9 @@ final class ToolPanelTests: XCTestCase {
         page.launchArguments = ["-iikbTab", "clipboard", "-iikbOrientation", orientation]
         page.launch()
         XCTAssertTrue(
-            page.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'x ·'")).firstMatch
+            page.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'x/vercel ·'")).firstMatch
                 .waitForExistence(timeout: 10),
-            "the app's Clipboard writes a link by its site's name")
+            "the app's Clipboard writes a link by its site's name, and its path where the site repeats")
         Thread.sleep(forTimeInterval: 2)
         try shot("app-clipboard-kinds")
         page.buttons["Links"].firstMatch.tap()

@@ -40,6 +40,8 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     private var shown: Shown?
     /// The links found, newest first, of which the first `badges` show in section 0.
     private var links: [ClipboardHistory.Item] = []
+    /// Each link's name on its badge, told apart from the others shown (`ClipLink.names`).
+    private var names: [String] = []
     private var badges = 0
     /// Everything else found, section 1.
     private var items: [ClipboardHistory.Item] = []
@@ -140,10 +142,23 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         self.links = links
         self.items = items
         layout.scrollDirection = shown.compact ? .horizontal : .vertical
-        badges = fittingBadges()
+        fitBadges()
         list.reloadData()
         if moved { list.contentOffset = .zero }
         setNeedsLayout()
+    }
+
+    /// Sets how many badges show and their names: told apart among all the links to fit them, then among those that
+    /// fit, which only narrows their badges. True when either changed.
+    @discardableResult private func fitBadges() -> Bool {
+        func told(_ links: some Collection<ClipboardHistory.Item>) -> [String] {
+            ClipLink.names(links.compactMap { if case .link(let link) = $0.content.kind { link } else { nil } })
+        }
+        let before = (badges, names)
+        names = told(links)
+        badges = fittingBadges()
+        names = told(links.prefix(badges)) + names.dropFirst(badges)
+        return before != (badges, names)
     }
 
     private func item(at path: IndexPath) -> ClipboardHistory.Item {
@@ -177,11 +192,12 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         let item = item(at: indexPath)
         if indexPath.section == 0 {
             let badge = collectionView.dequeueReusableCell(withReuseIdentifier: "link", for: indexPath) as! LinkBadge
-            configure(badge, item)
+            let name = names[indexPath.item]
+            configure(badge, item, name)
             if let site = ClipTitle.site(item.content), LinkIcons.shared.cached(site) == nil {
                 Task {
                     guard await LinkIcons.shared.icon(site) != nil, badge.shown == item.content else { return }
-                    configure(badge, item)
+                    configure(badge, item, name)
                 }
             }
             return badge
@@ -210,26 +226,26 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         row.shown = item.content
     }
 
-    private func configure(_ badge: LinkBadge, _ item: ClipboardHistory.Item) {
+    private func configure(_ badge: LinkBadge, _ item: ClipboardHistory.Item, _ name: String) {
         let theme = shown?.theme ?? .lightCurrent
-        badge.show(badgeTitle(item), theme: theme)
+        badge.show(badgeTitle(item, name), theme: theme)
         badge.shown = item.content
         badge.accessibilityIdentifier = "iikb.clip.\(item.content.label)"
-        badge.accessibilityLabel = ClipTitle.site(item.content).map {
-            "\($0), \(ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970))"
-        }
+        badge.accessibilityLabel =
+            "\(name), \(ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970))"
     }
 
-    private func badgeTitle(_ item: ClipboardHistory.Item) -> NSAttributedString? {
+    private func badgeTitle(_ item: ClipboardHistory.Item, _ name: String) -> NSAttributedString? {
         let theme = shown?.theme ?? .lightCurrent
         let age = ClipboardHistory.age(of: item.found, now: Date.now.timeIntervalSince1970)
         return ClipTitle.badge(
-            item.content, age: age, pinned: item.pinned, font: LinkBadge.font(compact: shown?.compact == true),
+            item.content, name: name, age: age, pinned: item.pinned,
+            font: LinkBadge.font(compact: shown?.compact == true),
             label: theme.label.ui, secondary: theme.onKeySecondary)
     }
 
     private func badgeWidth(_ index: Int) -> CGFloat {
-        ceil(badgeTitle(links[index])?.size().width ?? 0) + 2 * LinkBadge.padding
+        ceil(badgeTitle(links[index], names[index])?.size().width ?? 0) + 2 * LinkBadge.padding
     }
 
     /// How many badges stack in a column in one row: as many as fit at least 26 tall.
@@ -367,11 +383,7 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
         let compact = shown?.compact == true
         let found = badges > 0 || !items.isEmpty
         message.frame = found ? CGRect(x: 0, y: 0, width: bounds.width, height: compact ? bounds.height : 44) : bounds
-        let fitting = fittingBadges()
-        if fitting != badges {
-            badges = fitting
-            list.reloadData()
-        }
+        if fitBadges() { list.reloadData() }
         layout.badgeGap = compact ? stackGap : Self.gap
         layout.invalidateLayout()
     }

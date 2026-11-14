@@ -133,6 +133,19 @@ struct ClipboardKindTests {
         #expect(names == ["x", "github", "wikipedia", "ycombinator", "bbc", "t"])
     }
 
+    @Test func repeatedNamesAddThePathThatSetsEachApart() {
+        let links = [
+            "https://github.com/apple/swift", "https://github.com/apple/swift-nio", "https://github.com/vercel/next.js",
+            "https://github.com", "https://x.com/vercel/status/1985000000000000001", "https://news.ycombinator.com",
+            "https://x.com/vercel/status/1985000000000000777", "https://bbc.co.uk/news", "https://bbc.co.uk/news",
+        ].map { ClipLink($0)! }
+        #expect(
+            ClipLink.names(links) == [
+                "github/swift", "github/swift-nio", "github/vercel", "github", "x/19850000…0000001", "ycombinator",
+                "x/19850000…0000777", "bbc", "bbc",
+            ])
+    }
+
     @Test func textThatOnlyMentionsALinkStaysText() {
         #expect(kind("see https://example.com later") == .text)
         #expect(kind("example.com") == .text)
