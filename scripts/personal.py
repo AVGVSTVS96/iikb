@@ -6,9 +6,11 @@ again each time it's saved.
 
 Only the output side learns: the embedding (which also scores the next word), the projection and the output biases. The
 LSTM stays as shipped, so its int8 rows are copied byte for byte and the file stays the size it was. Learning stops at the
-pass where 10% of the lines, kept aside, are best predicted, and the output side goes halfway from the shipped network to
-that pass: all the way, it fits your words a little better but crowds out the everyday phrases Apple's bar offers. When no
-pass beats the shipped network, the output is the shipped file.
+pass where 10% of the lines, kept aside, are best predicted, and the output side goes from the shipped network toward
+that pass as far as it can, up to halfway, while every word the shipped network's bar shows for scripts/gate.txt's
+everyday phrases stays there: all the way, it fits your words a little better but crowds out the phrases Apple's bar
+offers, and how far is safe changes with each run. When no pass beats the shipped network, or no step keeps the
+phrases, the output is the shipped file.
 
 Usage: scripts/personal record.jsonl [en.network [out]]
 Defaults: the shipped network in the repo, and ~/.local/share/iikb/backup/mirror/personal/en.network, where
@@ -17,7 +19,6 @@ than both inputs, which is what the systemd path unit iikb-personal runs.
 """
 
 import json
-import math
 import os
 import re
 import struct
@@ -33,7 +34,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SHIPPED = f"{ROOT}/Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.network"
 MIRROR = os.path.expanduser("~/.local/share/iikb/backup/mirror/personal/en.network")
 KINDS = {"text", "webSearch", "twitter"}
+GATE = f"{ROOT}/scripts/gate.txt"
 WINDOW, BATCH, RATE, PASSES, HELD = 32, 32, 1e-3, 8, 0.1
+STEPS = (0.5, 0.375, 0.25, 0.125)
 
 
 def read_network(raw):
@@ -104,6 +107,19 @@ def lines(path):
     return out
 
 
+def everyday(vocabulary):
+    """scripts/gate.txt's bar cases the network can score: (the text before the word, the letters typed of it, the word)."""
+    known = set(vocabulary)
+    cases = []
+    for line in open(GATE):
+        if line.startswith(("#", "?", "=")) or "|" not in line:
+            continue
+        text, wanted = line.rstrip("\n").split("|", 1)
+        before, _, typed = text.rpartition(" ")
+        cases += [(before, typed, word) for word in wanted.split() if word in known and word.startswith(typed)]
+    return cases
+
+
 def fine_tune(net, corpus):
     import torch
     from torch import nn
@@ -166,7 +182,31 @@ def fine_tune(net, corpus):
     if best[1] is None:
         return None
     shipped = [dequantized("emb", 0).numpy(), dequantized("proj", 3).numpy(), net["proj_bias"], net["output"]]
-    return [(start + learned) / 2 for start, learned in zip(shipped, best[1])]
+    cases = everyday(net["vocabulary"])
+    candidates = {typed: np.array([i for word, i in ids.items() if word[0].isalpha() and word != typed and word.startswith(typed)])
+                  for typed in {typed for _, typed, _ in cases}}
+
+    def bar(values):
+        """The cases whose word the bar shows: of the words starting with the letters typed, the likeliest two beside
+        them, or three before a word."""
+        emb, proj, proj_bias, output = (torch.tensor(np.asarray(v), dtype=torch.float32) for v in values)
+        shown = set()
+        with torch.no_grad():
+            for before, typed, word in cases:
+                h = lstm(emb[torch.tensor([[ids.get(t, 1) for t in network.tokens(before)]])])[0][0, -1]
+                scores = ((h @ proj.T + proj_bias) @ emb[candidates[typed]].T + output[candidates[typed]]).numpy()
+                top = candidates[typed][np.argsort(-scores)[:2 if typed else 3]]
+                if ids[word] in top:
+                    shown.add((before, typed, word))
+        return shown
+
+    kept = bar(shipped)
+    for step in STEPS:
+        values = [(1 - step) * start + step * learned for start, learned in zip(shipped, best[1])]
+        if bar(values) >= kept:
+            print(f"{step} of the way to the best pass keeps the bar's {len(kept)} everyday words", file=sys.stderr)
+            return values
+    return None
 
 
 def main():
