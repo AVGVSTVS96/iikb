@@ -1,12 +1,12 @@
 name: android-proof
 
-# Runs a built iikb APK on a KVM emulator and taps a GIF into Google Messages' compose box. The APK comes from a draft
+# Runs a built iikb APK on a KVM emulator and taps a GIF into Google Messages' compose box. The APK comes from a temporary
 # release, so nothing public changes: `gh release create <tag> <apk> --draft`, then dispatch with the tag.
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Draft release holding the APK
+        description: Prerelease holding the APK
         required: true
 
 jobs:
