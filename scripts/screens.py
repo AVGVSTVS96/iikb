@@ -6,7 +6,8 @@
 # more than the glass's faint tint does. Each change is named by the elements whose frame or label differs where it is.
 # Writes <out>/report.md, a line per changed screen, and <out>/<screen>.png, before | after | after with the change in
 # red; prints the report.
-# uv run --with pillow --with numpy --with scipy scripts/screens.py <before> <after> <out>
+# uv run --with pillow --with numpy --with scipy scripts/screens.py <before> <after> <out> [width]
+# (the screen's width in points, for shots without an outline, like scripts/duoshots' from the iPhone)
 import filecmp
 import json
 import os
@@ -149,14 +150,14 @@ def picture(images, path):
     image.reduce(2).save(path)
 
 
-def main(before, after, out):
+def main(before, after, out, width=None):
     os.makedirs(out, exist_ok=True)
     screens = lambda folder: {name[:-4] for name in os.listdir(folder) if name.endswith('.png')}
     old, new = screens(before), screens(after)
     lines = [f'- {screen}: new' for screen in sorted(new - old)]
     lines += [f'- {screen}: gone' for screen in sorted(old - new)]
     # The screen's width in points, from any shot's outline (its first element is the app's window).
-    width = next((outline(folder, name)[0]['frame'][2] for folder in (after, before) for name in sorted(screens(folder))
+    width = float(width) if width else next((outline(folder, name)[0]['frame'][2] for folder in (after, before) for name in sorted(screens(folder))
                   if outline(folder, name)), None)
     for screen in sorted(old & new):
         regions, images = compare(before, after, screen, width)
@@ -175,4 +176,4 @@ def main(before, after, out):
 
 
 if __name__ == '__main__':
-    main(*sys.argv[1:4])
+    main(*sys.argv[1:5])

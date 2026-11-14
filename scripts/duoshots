@@ -1,0 +1,90 @@
+#!/bin/bash
+# Here, as the iikb-duoshots user service: each time hangar opens a new iikb build on the iPhone, so the phone is awake
+# with the build Bassim just installed, the Mac screenshots iikb's keyboard on it, light and dark, in whatever pose the
+# Duo is in, and compares each shot with the last build's in that pose. A reviewer (Sonnet) looks at what changed beside
+# the commits between the two builds, and Config/notify hears what no commit accounts for. The keyboard comes up on the
+# app's home field (-iikbFocus), which takes the screen for about ten seconds; iikb is left open on its home.
+# Shots stay in ~/.local/share/iikb/duo/<build>/, the comparison in <build>/report/.
+# scripts/duoshots watch | scripts/duoshots <build>
+set -euo pipefail
+cd "$(dirname "$0")/.."
+shots=${XDG_DATA_HOME:-$HOME/.local/share}/iikb/duo
+tell() { [ ! -x Config/notify ] || Config/notify "$1" || true; }
+
+if [ "${1:-}" = watch ]; then
+  journalctl --user -u hangar -f -n 0 -o cat | while read -r line; do
+    [[ $line =~ ^[^:]+:\ (hangar opened com\.shahidy\.iikb ([0-9]+)|iikb ([0-9]+) is running)$ ]] || continue
+    build=${BASH_REMATCH[2]}${BASH_REMATCH[3]}
+    [ -d "$shots/$build" ] || "$0" "$build" </dev/null || echo "build $build's Duo shots failed" >&2
+  done
+  exit 1
+fi
+
+build=${1:?usage: scripts/duoshots watch | scripts/duoshots <build>}
+ssh -o ConnectTimeout=20 mac true 2>/dev/null || {
+  tell "The Duo's screenshots of iikb build $build were skipped: the MacBook isn't answering, and it reaches the phone."
+  exit 0
+}
+sleep 3
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+ssh mac sh -s "$build" >"$tmp/log" 2>&1 <<'MAC' || { tell "The Duo's screenshots of iikb build $1 failed: $(tail -1 "$tmp/log")"; exit 1; }
+set -e
+phone=$(xcrun devicectl list devices --json-output /tmp/iikb-duo.json >/dev/null && /usr/bin/python3 -c "
+import json
+for d in json.load(open('/tmp/iikb-duo.json'))['result']['devices']:
+    h, c = d['hardwareProperties'], d['connectionProperties']
+    if h.get('deviceType') == 'iPhone' and h.get('reality') == 'physical' and c.get('transportType'): print(h['udid']); break")
+[ -n "$phone" ] || { echo "the Mac doesn't reach the iPhone"; exit 1; }
+xcrun devicectl device info apps --device "$phone" --bundle-id com.shahidy.iikb --json-output /tmp/iikb-duo.json >/dev/null
+installed=$(/usr/bin/python3 -c "import json; print(json.load(open('/tmp/iikb-duo.json'))['result']['apps'][0]['bundleVersion'])")
+[ "$installed" = "$1" ] || { echo "the iPhone has build $installed, not $1"; exit 1; }
+rm -rf /tmp/iikb-duo && mkdir /tmp/iikb-duo
+for appearance in light dark; do
+  xcrun devicectl device process launch --terminate-existing --device "$phone" com.shahidy.iikb -- -iikbFocus YES -iikbAppearance $appearance >/dev/null
+  sleep 4
+  # The cover is the Duo's primary display even while it's open and off, so this shoots the lit one.
+  xcrun devicectl device info displays --device "$phone" --json-output /tmp/iikb-duo.json >/dev/null
+  xcrun devicectl device capture screenshot --device "$phone" --destination /tmp/iikb-duo/$appearance.png \
+    --display-unique-id "$(/usr/bin/python3 -c "import json; print(next(d['uniqueId'] for d in json.load(open('/tmp/iikb-duo.json'))['result']['displays'] if d['active']))")" >/dev/null
+done
+xcrun devicectl device process launch --terminate-existing --device "$phone" com.shahidy.iikb >/dev/null
+MAC
+scp -q "mac:/tmp/iikb-duo/*.png" "$tmp/"
+ssh mac rm -rf /tmp/iikb-duo
+
+mkdir -p "$shots/$build"
+for appearance in light dark; do
+  read -r w h < <(magick identify -format '%w %h\n' "$tmp/$appearance.png")
+  [ "$(magick "$tmp/$appearance.png" -format '%[fx:maxima]' info:)" != 0 ] || {
+    tell "The Duo's screenshots of iikb build $build came out black: the screen went off."
+    rm -rf "${shots:?}/$build"
+    exit 1
+  }
+  # The Duo folded is 1398 px wide (466 pt); open, about 2853 by 2007, either way up.
+  pose=$([ $((w > h ? w : h)) -gt 2400 ] && echo open || echo folded)-$([ "$w" -gt "$h" ] && echo wide || echo tall)
+  mv "$tmp/$appearance.png" "$shots/$build/keyboard-$appearance-$pose.png"
+  echo "$((w / 3))" >"$shots/$build/width-$pose"
+done
+
+pose=${pose:?}
+before=$(ls "$shots" | sort -n | awk -v b="$build" '$1 < b' | while read -r old; do
+  [ -e "$shots/$old/keyboard-light-$pose.png" ] && echo "$old"
+done | tail -1)
+[ -n "$before" ] || exit 0
+report=$shots/$build/report
+mkdir -p "$report/before" "$report/after"
+cp "$shots/$before/keyboard-"*"-$pose.png" "$report/before/"
+cp "$shots/$build/keyboard-"*"-$pose.png" "$report/after/"
+uv run -q --with pillow --with numpy --with scipy scripts/screens.py "$report/before" "$report/after" "$report" \
+  "$(cat "$shots/$build/width-$pose")" >/dev/null
+grep -q '^- ' "$report/report.md" || exit 0
+git fetch -q origin main
+commit() { git rev-list --reverse origin/main | sed -n "$1p"; }
+git log --format='%h %s%n%b' "$(commit "$before")..$(commit "$build")" -- $(grep -v '^#' scripts/iphone-paths.txt) >"$report/commits.txt"
+verdict=$(cd "$report" && claude -p --model sonnet --allowedTools Read 2>/dev/null <<<"Screenshots of iikb, an iOS keyboard, on a real iPhone Duo ($pose), iikb's app with its keyboard up in light and dark, changed between build $before and build $build. report.md has a line per changed screenshot with where it changed in points; <screenshot>.png is it before, after, and after with the change in red. commits.txt is every commit between the two builds, subject and body. This is a real phone, so the clock, battery and signal in the status bar, the words the suggestion bar offers (they come from what he's typed since) and the caret blinking change on their own, and are not changes. Look at each picture and decide whether a commit says it would change it that way. Answer with only a line per screenshot no commit accounts for, '<screenshot>: <what changed, in a few words>', or the single word none.") || exit 0
+printf '%s\n' "$verdict" >"$report/verdict.txt"
+[ "$verdict" = none ] && exit 0
+tell "On the real Duo ($pose), iikb build $build looks different from build $before where no commit says it should:
+$verdict
+Before | after | change in red: $report"
