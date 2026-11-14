@@ -2,9 +2,10 @@
 # Runs on a Mac. Everything a batch of changes needs, at once, on one simulator, the iPhone Duo folded unless named:
 # one build of the app and every test, KeyboardUI's package tests, every UI test with Full Access on the simulator and
 # shots/demo's made-up transcripts in the app (each test capped at 5 minutes, as GitHub's Macs need, a failure retried
-# once, and what iikb logged in the simulator kept beside the test log) but the four that need another setup, the voice test with scripts/voiceapp.py standing in for the app, and the
+# once, and what iikb logged in the simulator kept beside the test log) but the four that need another setup, the voice
+# test with scripts/voiceapp.py standing in for the app, the update test with a newer build on the install link, and the
 # screenshot tests again in dark, into shots/raw/verify/. PARTS names the parts to run (package typing panels rest dark
-# voice), so a push to main runs them side by side on four Macs.
+# voice update), so a push to main runs them side by side on four Macs.
 # scripts/verify ["iPhone 17"] [iPhone-17] (OPEN=1 unfolds; ORIENTATION=landscape; PARTS="typing dark")
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -12,17 +13,18 @@ NAME=${1:-iPhone Duo}
 TYPE=${2:-iPhone-Duo}
 export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
 ID=$(scripts/sim ensure "$NAME" "$TYPE")
+port=2601
 shots=$PWD/shots/raw/verify
 logs=build/uitest/verify
 rm -rf "$shots" "$logs"
 mkdir -p "$shots" "$logs"
 step() { echo "== $1 $(date +%T)"; }
-summary() { grep -E "error:|✘|XCTAssert|Test [Cc]ase .*failed|Test run with|Executed .* tests" "$1" | sort -u || true; }
+summary() { grep -E "error:|✘|XCTAssert|Test [Cc]ase .*failed|Test run with|Executed .* tests?" "$1" | sort -u || true; }
 
 step build
 xcodegen generate -q
 xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
-  -derivedDataPath build/uitest -quiet
+  -derivedDataPath build/uitest -quiet IIKB_INSTALL_LINK=http://localhost:$port/
 
 scripts/sim boot "$ID"
 scripts/sim allow "$ID"
@@ -53,8 +55,8 @@ messages=AppUITests/ToolPanelTests/testAHeldGifDragsIntoTheMessage
 typing=(TypingTests FirstTapTests SwipeTests FastTypingTests SuggestionTests OneHandedTests)
 panels=(PanelTests ToolPanelTests)
 # The real iPhone's chats (scripts/chatdevice), Control Center with its widget services (scripts/controltest), and a
-# recording said by a macOS voice (scripts/sharetest); the voice test is its own part.
-apart=(VoiceTests ChatBoxDeviceTests MicControlTests RecordingShareTests)
+# recording said by a macOS voice (scripts/sharetest); the voice and update tests are parts of their own.
+apart=(VoiceTests UpdateTests ChatBoxDeviceTests MicControlTests RecordingShareTests)
 only() { printf -- '-only-testing:AppUITests/%s ' "$@"; }
 skip() { printf -- '-skip-testing:AppUITests/%s ' "$@"; }
 appearance() {
@@ -63,7 +65,7 @@ appearance() {
   prefix=$shots/$1/iikb
 }
 
-for part in ${PARTS:-package typing panels rest dark voice}; do
+for part in ${PARTS:-package typing panels rest dark voice update}; do
   step "$part"
   case $part in
     package) prefix=$shots/package; uitest package -only-testing:KeyboardUITests -skip-testing:KeyboardUITests/Evaluation ;;
@@ -80,6 +82,20 @@ for part in ${PARTS:-package typing panels rest dark voice}; do
         kill "$app" 2>/dev/null || true
         wait "$app" 2>/dev/null || true
       done ;;
+    update)
+      served=build/uitest/link
+      mkdir -p "$served"
+      /usr/bin/python3 -c "import plistlib, sys; plistlib.dump({'items': [{'metadata': {'bundle-version': '99999'}}]}, open(sys.argv[1], 'wb'))" "$served/manifest.plist"
+      echo '<!doctype html><title>iikb 99999</title><a href="#">Install iikb 99999</a>' > "$served/index.html"
+      /usr/bin/python3 -m http.server "$port" --bind 127.0.0.1 --directory "$served" > "$logs/link.log" 2>&1 &
+      server=$!
+      for look in light dark; do
+        appearance "$look"
+        xcrun simctl terminate "$ID" com.apple.mobilesafari 2>/dev/null || true
+        TEST_RUNNER_IIKB_LINK_SERVED=1 uitest "update-$look" $(only UpdateTests)
+      done
+      kill "$server" 2>/dev/null || true
+      wait "$server" 2>/dev/null || true ;;
     *) echo "no part $part" >&2; exit 2 ;;
   esac
 done

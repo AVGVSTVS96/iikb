@@ -30,11 +30,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          parts='["typing", "panels", "package rest voice", "dark"]'
+          parts='["typing", "panels", "package rest voice update", "dark"]'
           last=$(gh run list -w sim.yml -b main -e push -s success -L 1 --json headSha --jq '.[0].headSha')
           if [ -n "$last" ] && changed=$(git diff --name-only "$last" HEAD) &&
             ! grep -qE '^(App|Keyboard|Packages/KeyboardModules/Sources|UITests)/|^(project\.yml|scripts/(verify|sim)|\.github/(actions/mac/|workflows/sim\.yml))' <<<"$changed"; then
-            parts='["typing", "panels", "package rest voice"]'
+            parts='["typing", "panels", "package rest voice update"]'
           fi
           echo "parts=$parts" >>"$GITHUB_OUTPUT"
           echo "since ${last:-nothing}: $parts"

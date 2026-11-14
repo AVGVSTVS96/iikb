@@ -1,11 +1,12 @@
 import XCTest
 
-/// A newer build on the install link, `scripts/updatetest`'s stand-in for it: the app shows its toast and the
+/// A newer build on the install link, as `scripts/verify`'s update part serves it: the app shows its toast and the
 /// keyboard's bar its button, and the button opens the link.
 final class UpdateTests: XCTestCase {
     func testANewerBuildOnTheLinkIsOfferedAndTheBarOpensIt() throws {
-        guard let shots = ProcessInfo.processInfo.environment["IIKB_SHOTS"] else {
-            throw XCTSkip("Run through scripts/updatetest")
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["IIKB_LINK_SERVED"] != nil, let shots = environment["IIKB_SHOTS"] else {
+            throw XCTSkip("Run through scripts/verify's update part, which serves the link")
         }
         continueAfterFailure = false
         let app = XCUIApplication()
