@@ -111,30 +111,22 @@
     box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1);
   }
 }
-/* WHY: on a slab, a shadow this wide grows its layer into the other half, and Chromium's 3D sort then draws the slab's grey middle over its back */
+/* WHY: on a slab, a shadow this wide grows its layer into the other half, and Chromium's 3D sort then draws the slab's grey middle over its back; so it falls from the Duo's outline, outside the 3D */
 .duo::before {
   content: "";
   position: absolute;
-  left: calc(var(--wide) / -2 + 40px);
-  top: -311px;
-  width: calc(var(--wide) - 80px);
-  height: 622px;
-  border-radius: 24px;
-  translate: 0 40px;
+  left: var(--left);
+  top: -351px;
+  width: var(--wide);
+  height: 702px;
+  border-radius: 64px;
+  transform-origin: calc(0px - var(--left)) 50%;
   rotate: var(--turn);
-  background: rgb(0 0 0 / 0.45);
-  filter: blur(60px);
+  box-shadow: 0 40px 120px -40px rgb(0 0 0 / 0.45);
 }
 @media (prefers-color-scheme: dark) {
   .duo::before {
-    left: calc(var(--wide) / -2 - 10px);
-    top: -361px;
-    width: calc(var(--wide) + 20px);
-    height: 722px;
-    border-radius: 74px;
-    translate: none;
-    background: rgb(150 160 255 / 0.1);
-    filter: blur(70px);
+    box-shadow: 0 0 140px 10px rgb(150 160 255 / 0.1);
   }
 }
 .glass {
@@ -711,6 +703,26 @@
   }
   .slot {
     margin-block: 16px 8px;
+  }
+}
+@media (max-width: 760px) and (max-height: 780px) {
+  .pin {
+    padding-top: 76px;
+  }
+  .hero-copy {
+    gap: clamp(10px, 2.4svh, 28px);
+  }
+  .hero-copy h1 {
+    font-size: clamp(34px, 7svh, 44px);
+  }
+  .hero-copy p {
+    font-size: 16px;
+    line-height: 1.4;
+  }
+}
+@media (max-width: 760px) and (max-height: 620px) {
+  .news {
+    display: none;
   }
 }
 

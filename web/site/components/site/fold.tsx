@@ -144,7 +144,10 @@ export const Fold = () => {
       const x = mix(s.left - box.left + s.width / 2, box.width / 2, open);
       const y = mix(s.top - box.top + s.height / 2, 64 + pad + room.h / 2, open);
       duo.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-      duo.style.setProperty("--wide", `${wide}px`);
+      const shift = (W / 2) * (1 - open);
+      const left = shift - W;
+      duo.style.setProperty("--left", `${left}px`);
+      duo.style.setProperty("--wide", `${shift + Math.max(0, -W * Math.cos(Math.PI * open)) - left}px`);
       duo.style.setProperty("--turn", `${90 * turn}deg`);
       duo.hidden = false;
       const narrow = innerWidth < 760;
@@ -263,7 +266,7 @@ export const Fold = () => {
     <section ref={stageRef} className="stage" id="duo" aria-label="iikb on the iPhone Duo">
       <div className="pin" data-kb-theme="standard">
         <div className="hero-copy flex flex-col items-start gap-7">
-          <a href="#chats" className="group">
+          <a href="#chats" className="news group">
             <Badge
               variant="outline"
               className="h-7 gap-2 rounded-full pr-3 pl-1 font-mono text-xs font-normal text-muted-foreground"
