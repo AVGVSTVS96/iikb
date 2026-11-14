@@ -1,6 +1,7 @@
 package com.shahidy.iikb.keyboard
 
 import android.content.ClipData
+import android.net.Uri
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Handler
@@ -73,9 +74,13 @@ class Gifs(private val context: Context, private val klipy: Klipy) {
         shown = json.decodeFromString(Native.gifsShown(handle).decodeToString())
     }
 
-    /** Puts the GIF itself on the clipboard to paste, and keeps it in recents. `done` gets what to say. */
-    fun copy(gif: Gif, search: String, app: String?, done: (String) -> Unit) = send(gif, search, app) { clip ->
+    /**
+     * Puts the GIF into the app's field if `commit` takes it, else on the clipboard to paste; it's kept in recents
+     * either way. `done` gets what to say.
+     */
+    fun copy(gif: Gif, search: String, app: String?, commit: (Uri) -> Boolean, done: (String) -> Unit) = send(gif, search, app) { clip ->
         if (clip == null) return@send done("Couldn't copy that GIF.")
+        if (commit(clip.getItemAt(0).uri)) return@send done("")
         context.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
         done("Copied. Paste it, or hold a GIF to drag it in.")
     }

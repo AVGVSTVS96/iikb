@@ -18,6 +18,7 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Build
 import android.view.WindowManager
 import android.view.View
@@ -684,13 +685,13 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
 
     override fun copyGif(gif: Gif, search: String) {
         feedback(Feedback.Kind.INPUT)
-        gifs?.copy(gif, search, app) { said ->
+        gifs?.copy(gif, search, app, { commit(it, "image/gif") }) { said ->
             if (menuOpen && view?.frame?.panel == null) {
                 menuOpen = false
-                view?.notice = said
+                view?.notice = said.ifEmpty { null }
                 render()
             } else {
-                gifs?.notice = said
+                gifs?.notice = said.ifEmpty { null }
             }
         }
     }
@@ -874,20 +875,24 @@ class IikbService : InputMethodService(), KeyboardView.Actions, Overlay.Actions,
     override fun pasteImage(image: String) {
         feedback(Feedback.Kind.INPUT)
         menuOpen = false
-        val type = Clips.type(image)
-        val editor = currentInputEditorInfo
-        val connection = currentInputConnection
-        val takes = editor != null && EditorInfoCompat.getContentMimeTypes(editor).any { ClipDescription.compareMimeTypes(type, it) }
-        val sent = takes && connection != null && InputConnectionCompat.commitContent(
-            connection, editor!!, InputContentInfoCompat(clips.uri(image), ClipDescription("Image", arrayOf(type)), null),
-            InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null,
-        )
+        val sent = commit(clips.uri(image), Clips.type(image))
         if (!sent) {
             clipboard.setPrimaryClip(clips.clip(image))
             clipboard.primaryClipDescription?.timestamp?.let { settings.preferences.edit().putLong(SEEN_CLIP, it).apply() }
             view?.notice = "Copied: this field takes no images"
         }
         render()
+    }
+
+    /** The content goes into the field through `commitContent` if the app says its field takes that type. */
+    private fun commit(uri: Uri, type: String): Boolean {
+        val editor = currentInputEditorInfo ?: return false
+        val connection = currentInputConnection ?: return false
+        if (EditorInfoCompat.getContentMimeTypes(editor).none { ClipDescription.compareMimeTypes(type, it) }) return false
+        return InputConnectionCompat.commitContent(
+            connection, editor, InputContentInfoCompat(uri, ClipDescription("Image", arrayOf(type)), null),
+            InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null,
+        )
     }
 
     override fun open(panel: String) {
