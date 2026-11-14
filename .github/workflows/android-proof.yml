@@ -1,7 +1,7 @@
 name: android-proof
 
 # Runs a built iikb APK on a KVM emulator and taps a GIF into Google Messages' compose box. The APK comes from a temporary
-# release, so nothing public changes: `gh release create <tag> <apk> --draft`, then dispatch with the tag.
+# release, so nothing public changes: `gh release create <tag> <apk> --prerelease`, deleted after, then dispatch with the tag.
 on:
   workflow_dispatch:
     inputs:
@@ -30,7 +30,7 @@ jobs:
           api-level: 34
           target: google_apis_playstore
           arch: x86_64
-          profile: pixel_9
+          profile: pixel_7
           disable-animations: true
           script: python3 scripts/android-gif-proof.py iikb.apk out
       - uses: actions/upload-artifact@v4
