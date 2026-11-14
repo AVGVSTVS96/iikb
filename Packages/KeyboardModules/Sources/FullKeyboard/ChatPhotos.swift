@@ -170,7 +170,8 @@ final class PhotoGrid: UIView, UICollectionViewDataSource, UICollectionViewDeleg
     private let layout = UICollectionViewFlowLayout()
     private lazy var collection = UICollectionView(frame: .zero, collectionViewLayout: layout)
     private let notice = PanelNotice()
-    private let images = PHCachingImageManager()
+    /// Made once the photos show: any touch of Photos before iOS answers makes it ask over the app you're in.
+    private lazy var images = PHCachingImageManager()
     private var assets: PHFetchResult<PHAsset>?
     private var theme = KeyboardTheme.lightCurrent
     /// The newest this many; Telegram's sheet scrolls further, and a keyboard is for the photo you just took.
@@ -196,20 +197,26 @@ final class PhotoGrid: UIView, UICollectionViewDataSource, UICollectionViewDeleg
     /// Reads the library again as the grid comes up, so a photo just taken is first.
     func show(theme: KeyboardTheme) {
         self.theme = theme
-        let options = PHFetchOptions()
-        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        options.fetchLimit = Self.newest
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        let found = PHAsset.fetchAssets(with: .image, options: options)
-        // The status a keyboard reads first stays for as long as it runs, so access given in iikb since shows in what
-        // the library gives, not in the status.
-        let allowed = status == .authorized || status == .limited || found.count > 0
+        guard status == .notDetermined, Dictation.photosAllowed else { return fill(status) }
+        // A keyboard keeps the status it read first for as long as it runs. iOS has answered iikb since, so asking
+        // reads that answer without a question.
+        Task { fill(await PHPhotoLibrary.requestAuthorization(for: .readWrite)) }
+    }
+
+    /// The photos, or what stands in their way. Before iOS answers the library isn't touched, since touching it makes
+    /// iOS ask right over the app you're in.
+    private func fill(_ status: PHAuthorizationStatus) {
+        let allowed = status == .authorized || status == .limited
         notice.show(
             allowed ? nil : "Photos need their own permission to show here. Full Access doesn’t include them.",
             turnOn: !allowed, action: "Allow Photos", oneRow: false, theme: theme)
         collection.isHidden = !allowed
         guard allowed else { return }
-        assets = found
+        let options = PHFetchOptions()
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        options.fetchLimit = Self.newest
+        assets = PHAsset.fetchAssets(with: .image, options: options)
         collection.reloadData()
     }
 

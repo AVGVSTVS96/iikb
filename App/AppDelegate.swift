@@ -12,6 +12,8 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         guard !VoiceProbe.asked, !RankingProbe.asked, !JudgeProbe.asked else { return true }
+        let photos = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        Dictation.photosAllowed = photos == .authorized || photos == .limited
         if VoiceModel.hasNeuralEngine { VoiceModel.shared.prepare() }
         LanguageDownloads.shared.reload()
         Task {
@@ -207,7 +209,8 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     /// Asks iOS for access to the photos, which only an app in front can, for Chats on the keyboard to show them, then
     /// reopens the app you were typing in. The keyboard goes down while iOS asks, since its question squeezed above the
-    /// keys hides its buttons, and comes back after when you were typing here.
+    /// keys hides its buttons, and comes back after only when you stay here: raised on the way out, it would take the
+    /// chat the keyboard kept for the app you go back to.
     private func allowPhotos(back host: String?) async {
         guard PHPhotoLibrary.authorizationStatus(for: .readWrite) != .denied else {
             // iOS asks only once: after Don't Allow, only Settings turns photos on.
@@ -217,11 +220,11 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let typing = UIApplication.shared.connectedScenes.lazy.compactMap { ($0 as? UIWindowScene)?.keyWindow }
             .first?.firstResponder
         typing?.resignFirstResponder()
-        _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
-        typing?.becomeFirstResponder()
+        let answer = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+        Dictation.photosAllowed = answer == .authorized || answer == .limited
         Dictation.send(.photos)
-        guard let host, host != Bundle.main.bundleIdentifier else { return }
-        _ = await HostApp.open(host)
+        if let host, host != Bundle.main.bundleIdentifier, await HostApp.open(host) { return }
+        typing?.becomeFirstResponder()
     }
 
     /// An extension's link asks before its chats open from the bar.

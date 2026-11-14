@@ -560,8 +560,14 @@ open class FullKeyboardViewController: UIInputViewController {
             if let field, let kept = Self.keptChat.read().value {
                 Self.keptChat.remove()
                 updateHost()
-                let back = kept.asked.map { -$0.timeIntervalSinceNow < 300 } == true && kept.host == hostApp
-                asked = nil
+                // A keyboard that has only just started may not know its app yet, and then it's taken to be the app
+                // the chat was in.
+                let back =
+                    kept.asked.map { -$0.timeIntervalSinceNow < 300 } == true
+                    && (hostApp == nil || kept.host == hostApp)
+                // Kept while it holds, since the keyboard can come back to the app before iikb has even opened, as on
+                // the iPad, and the return after iOS answers still has to find the chat.
+                asked = back ? kept.asked : nil
                 if hasFullAccess, kept.field == field || back {
                     drafts = kept.drafts
                     photos.restore(kept.photos ?? [])
@@ -885,6 +891,7 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         photos.grid.show(theme: theme)
         (keysUp, picking) = (true, true)
+        keepChat()
         render()
         view.setNeedsLayout()
     }
