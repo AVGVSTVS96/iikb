@@ -51,13 +51,33 @@ final class ParityShots: XCTestCase {
     private func typing() throws {
         let app = launch(autoCorrection: true)
         type("Coffee at th", in: app)
+        barSettles(in: app)
         try shot("keyboard-typing")
         key("delete", in: app).tap()
         key("delete", in: app).tap()
         type("teh", in: app)
+        barSettles(in: app)
         try shot("keyboard-autocorrect")
         key("space", in: app).tap()
+        barSettles(in: app)
         try shot("keyboard-autocorrected")
+    }
+
+    /// Waits until the suggestions stop changing, since they're ranked off the main thread and a fixed wait sometimes
+    /// shoots the bar mid-ranking.
+    private func barSettles(in app: XCUIApplication) {
+        let labels = {
+            (0..<3).map {
+                app.descendants(matching: .any).matching(identifier: "iikb.suggestion.\($0)").firstMatch.label
+            }
+        }
+        var last = labels()
+        for _ in 0..<20 {
+            Thread.sleep(forTimeInterval: 0.4)
+            let now = labels()
+            if now == last { return }
+            last = now
+        }
     }
 
     /// The pop-ups that last only while a finger is down, each shot by scripts/parity mid-hold.
