@@ -3,7 +3,9 @@
 # with the build Bassim just installed, the Mac screenshots iikb's keyboard on it, light and dark, in whatever pose the
 # Duo is in, and compares each shot with the last build's in that pose. A reviewer (Sonnet) looks at what changed beside
 # the commits between the two builds, and Config/notify hears what no commit accounts for. The keyboard comes up on the
-# app's home field (-iikbFocus), which takes the screen for about ten seconds; iikb is left open on its home.
+# app's home field (-iikbFocus), which takes the screen for about ten seconds; iikb is left open on its home. iOS can
+# leave the app Bassim is using in front instead, so a shot is kept only when duoshot-check.swift reads iikb's Home with
+# iikb's keyboard up in it.
 # Shots stay in ~/.local/share/iikb/duo/<build>/, the comparison in <build>/report/.
 # scripts/duoshots watch | scripts/duoshots <build>
 set -euo pipefail
@@ -28,7 +30,9 @@ ssh -o ConnectTimeout=20 mac true 2>/dev/null || {
 sleep 3
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-ssh mac sh -s "$build" >"$tmp/log" 2>&1 <<'MAC' || { tell "The Duo's screenshots of iikb build $1 failed: $(tail -1 "$tmp/log")"; exit 1; }
+scp -q scripts/duoshot-check.swift mac:/tmp/iikb-duo-check.swift
+unkept() { tell "The Duo's screenshots of iikb build $build weren't kept: $(tail -1 "$tmp/log"). scripts/duoshots $build takes them again."; exit 1; }
+ssh mac sh -s "$build" >"$tmp/log" 2>&1 <<'MAC' || unkept
 set -e
 phone=$(xcrun devicectl list devices --json-output /tmp/iikb-duo.json >/dev/null && /usr/bin/python3 -c "
 import json
@@ -47,6 +51,7 @@ for appearance in light dark; do
   xcrun devicectl device info displays --device "$phone" --json-output /tmp/iikb-duo.json >/dev/null
   xcrun devicectl device capture screenshot --device "$phone" --destination /tmp/iikb-duo/$appearance.png \
     --display-unique-id "$(/usr/bin/python3 -c "import json; print(next(d['uniqueId'] for d in json.load(open('/tmp/iikb-duo.json'))['result']['displays'] if d['active']))")" >/dev/null
+  why=$(swift /tmp/iikb-duo-check.swift /tmp/iikb-duo/$appearance.png 2>&1) || { echo "in the $appearance one, $why"; exit 1; }
 done
 xcrun devicectl device process launch --terminate-existing --device "$phone" com.shahidy.iikb >/dev/null
 MAC
