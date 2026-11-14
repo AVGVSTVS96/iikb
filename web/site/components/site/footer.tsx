@@ -98,14 +98,14 @@ export const Footer = ({ head }: { head: { sha: string; day: string } }) => {
             <div className="flex gap-2">
               <a
                 href="https://github.com/AVGVSTVS96/iikb"
-                className={cn(buttonVariants({ variant: "outline" }), "gap-2")}
+                className={cn(buttonVariants({ variant: "key", size: "key-sm" }))}
               >
                 <GitHub className="size-4" />
                 GitHub
               </a>
               <a
                 href="https://testflight.apple.com/join/xSQ2sdYZ"
-                className={cn(buttonVariants({ variant: "outline" }), "gap-2")}
+                className={cn(buttonVariants({ variant: "key", size: "key-sm" }))}
               >
                 <TestFlight className="size-4" />
                 TestFlight

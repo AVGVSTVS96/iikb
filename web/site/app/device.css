@@ -735,9 +735,7 @@
 }
 .keycap:focus-visible {
   border-color: var(--ring);
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent),
-    var(--l-drop);
+  outline: 3px solid color-mix(in srgb, var(--ring) 50%, transparent);
 }
 .keycap:active::before {
   background: linear-gradient(var(--ptop), var(--pbottom));
