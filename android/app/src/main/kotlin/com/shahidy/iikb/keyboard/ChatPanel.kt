@@ -160,7 +160,10 @@ fun ChatPanel(state: Overlay.State, line: Overlay.Line) {
             Column(Modifier.fillMaxSize()) {
                 Box(
                     Modifier.weight(1f).fillMaxWidth()
-                        .clickable(remember { MutableInteractionSource() }, indication = null) { if (keysUp) actions.browse() },
+                        .clickable(remember { MutableInteractionSource() }, indication = null) {
+                            chats.again()
+                            if (keysUp) actions.browse()
+                        },
                 ) {
                     Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
                         if (empty) (chats.problem ?: quiet)?.let { Notice(it) }

@@ -1,6 +1,8 @@
 package com.shahidy.iikb.keyboard
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.getValue
@@ -96,9 +98,20 @@ class Chats(private val context: Context) {
     /** Counts each start and pick, so an answer for one that's gone is dropped. */
     private var generation = 0
 
+    /** The open chat's last read failed, so nothing is asking for its messages. */
+    private var dropped = false
+    private val connectivity = context.getSystemService(ConnectivityManager::class.java)
+    private var network: ConnectivityManager.NetworkCallback? = null
+
     fun reload() {
         services = Services.EXTENSIONS.list(context)
         deliver()
+        again()
+    }
+
+    /** Reads the open chat again if its last read failed: the network changed, you sent, touched the chat or the keyboard appeared. */
+    fun again() {
+        if (dropped) pick(open)
     }
 
     /** The photos the messages still to send hold, which mustn't be cleared away. */
@@ -128,6 +141,7 @@ class Chats(private val context: Context) {
     fun pick(chat: Chat?) {
         reading?.cancel(true)
         generation++
+        dropped = false
         if (chat != open) {
             val last = chat?.let { seen[key(it)] }
             said = last ?: emptyList()
@@ -136,6 +150,13 @@ class Chats(private val context: Context) {
         open = chat
         chat ?: return
         follow(chat, null, generation)
+        if (network == null) {
+            network = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    main.post(::again)
+                }
+            }.also(connectivity::registerDefaultNetworkCallback)
+        }
     }
 
     fun stop() {
@@ -144,6 +165,9 @@ class Chats(private val context: Context) {
         reading?.cancel(true)
         listing = null
         reading = null
+        dropped = false
+        network?.let(connectivity::unregisterNetworkCallback)
+        network = null
     }
 
     /** Keeps `text` and `photos` for the open chat, shown as pending, and sends them. False with no chat open to keep them for. */
@@ -151,6 +175,7 @@ class Chats(private val context: Context) {
         val chat = open ?: return false
         keep(unsent + Unsent(chat.service.url, chat.id, UUID.randomUUID().toString(), text, photos.ifEmpty { null }))
         deliver()
+        again()
         return true
     }
 
@@ -213,21 +238,16 @@ class Chats(private val context: Context) {
         next.renameTo(kept)
     }
 
-    /** A failed read says so and tries again, backing off from 1 s to 15 s, until the chat answers or closes. */
-    private fun follow(chat: Chat, version: String?, started: Int, wait: Long = FIRST_RETRY) {
+    /** A failed read says so and stops, until `again`. */
+    private fun follow(chat: Chat, version: String?, started: Int) {
         reading = work.submit {
             val read = read(chat, version)
             main.post {
                 if (started != generation || open != chat) return@post
                 if (read == null) {
-                    if (problem == null) {
-                        problem = "Can’t reach ${chat.service.name}. Trying again."
-                        changed()
-                    }
-                    // timer: unlisted (a failed read has no event to wait for, so the next try backs off, 1 s up to 15 s)
-                    main.postDelayed({
-                        if (started == generation && open == chat) follow(chat, version, started, minOf(wait * 2, LAST_RETRY))
-                    }, wait)
+                    problem = "Can’t reach ${chat.service.name}. Tap the chat to try again."
+                    dropped = true
+                    changed()
                     return@post
                 }
                 if (read.version != version || problem != null) {
@@ -336,7 +356,5 @@ class Chats(private val context: Context) {
 
     private companion object {
         val json = Json { ignoreUnknownKeys = true }
-        const val FIRST_RETRY = 1_000L
-        const val LAST_RETRY = 15_000L
     }
 }

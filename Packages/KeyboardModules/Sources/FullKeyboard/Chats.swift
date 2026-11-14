@@ -1,9 +1,11 @@
 import Foundation
 import KeyboardStore
+import Network
 
 /// The chats of the extensions you added (docs/extensions.md): every extension's list, pinned chats first, and the open
 /// chat's messages, which it asks for again as soon as each answer comes, so the extension holds the request until
-/// they change and a reply shows the moment it's written. It stops when the panel closes. What you send is kept until
+/// they change and a reply shows the moment it's written. It stops when the panel closes. A read that fails asks
+/// again when the network changes, you send, you touch the chat or the keyboard appears. What you send is kept until
 /// its extension has it (`UnsentStore`), and goes again whenever the keyboard appears or an extension answers.
 final class Chats {
     nonisolated struct Chat: Hashable, Sendable {
@@ -83,12 +85,21 @@ final class Chats {
     private var listing: Task<Void, Never>?
     private var reading: Task<Void, Never>?
     private var sending: Task<Void, Never>?
+    /// The open chat's last read failed, so nothing is asking for its messages.
+    private var dropped = false
+    private var network: Task<Void, Never>?
 
     func reload() {
         services = ExtensionStore.load()
         UnsentStore.prune()
         if list.isEmpty { restore() }
         deliver()
+        again()
+    }
+
+    /// Reads the open chat again if its last read failed.
+    func again() {
+        if dropped { pick(open) }
     }
 
     /// What the chats showed as the keyboard last went away: the list and each chat's last answer, so a new keyboard,
@@ -156,6 +167,7 @@ final class Chats {
 
     func pick(_ chat: Chat?) {
         reading?.cancel()
+        dropped = false
         if chat != open {
             let last = chat.flatMap { seen[$0.service.id + $0.id] }
             (said, loaded) = (last ?? [], last != nil)
@@ -164,12 +176,18 @@ final class Chats {
         report()
         guard let chat else { return }
         reading = Task { [weak self] in await self?.follow(chat) }
+        network =
+            network
+            ?? Task { [weak self] in
+                for await _ in NWPathMonitor() { self?.again() }
+            }
     }
 
     func stop() {
         listing?.cancel()
         reading?.cancel()
-        (listing, reading) = (nil, nil)
+        network?.cancel()
+        (listing, reading, network, dropped) = (nil, nil, nil, false)
     }
 
     /// Keeps `text` and `photos` for the open chat, shown as pending, and sends them. False with no chat open to keep
@@ -178,6 +196,7 @@ final class Chats {
         guard let chat = open else { return false }
         UnsentStore.add(UnsentMessage(service: chat.service.id, chat: chat.id, text: text, photos: photos))
         deliver()
+        again()
         return true
     }
 
@@ -225,21 +244,14 @@ final class Chats {
 
     private func follow(_ chat: Chat) async {
         var version: String?
-        var wait = Duration.seconds(1)
         while !Task.isCancelled {
             let read = await Self.read(chat, after: version)
             guard !Task.isCancelled, open == chat else { return }
             guard let read else {
-                if problem == nil {
-                    problem = "Can’t reach \(chat.service.name). Trying again."
-                    report()
-                }
-                // timer: unlisted (a failed read has no event to wait for, so the next try backs off, 1 s up to 15 s)
-                try? await Task.sleep(for: wait)
-                wait = min(wait * 2, .seconds(15))
-                continue
+                problem = "Can’t reach \(chat.service.name). Tap the chat to try again."
+                dropped = true
+                return report()
             }
-            wait = .seconds(1)
             guard read.version != version || problem != nil else { continue }
             version = read.version
             said = read.messages

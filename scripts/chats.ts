@@ -195,10 +195,20 @@ const extension = chats({
 });
 
 let sendsFail = false;
+let down = false;
 
 const stand = new Map([
   ["/stand-in/fail", () => (sendsFail = true)],
   ["/stand-in/ok", () => (sendsFail = false)],
+  [
+    "/stand-in/down",
+    () => {
+      changed();
+
+      return (down = true);
+    },
+  ],
+  ["/stand-in/up", () => (down = false)],
 ]);
 
 const answered = async (request: Request) => {
@@ -209,6 +219,10 @@ const answered = async (request: Request) => {
     turn();
 
     return new Response(null, { status: 204 });
+  }
+
+  if (down) {
+    return new Response("the stand-in is down", { status: 503 });
   }
 
   if (sendsFail && request.method === "POST") {

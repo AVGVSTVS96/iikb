@@ -64,6 +64,48 @@ final class ChatTests: XCTestCase {
         XCTAssertTrue(wait { !field.exists }, "More leaves the chat")
     }
 
+    func testAChatWhoseExtensionWentAwayReadsAgainAtATap() throws {
+        let environment = ProcessInfo.processInfo.environment.filter { !$0.value.isEmpty }
+        guard let url = environment["IIKB_EXTENSION"], environment["IIKB_CHAT"] == nil else {
+            throw XCTSkip("Run through scripts/chattest, with its stand-in")
+        }
+        continueAfterFailure = false
+        func stand(_ turn: String) {
+            var request = URLRequest(url: URL(string: url + "/stand-in/" + turn)!)
+            request.httpMethod = "POST"
+            let done = expectation(description: turn)
+            URLSession.shared.dataTask(with: request) { _, _, _ in done.fulfill() }.resume()
+            wait(for: [done], timeout: 10)
+        }
+        addTeardownBlock { stand("up") }
+
+        let linked = XCUIApplication()
+        var link = URLComponents(string: "iikb://extension")!
+        link.queryItems = [URLQueryItem(name: "name", value: "hex"), URLQueryItem(name: "url", value: url)]
+        linked.open(link.url!)
+        let add = linked.alerts.buttons["Add"]
+        if add.waitForExistence(timeout: 10) { add.tap() }
+        linked.terminate()
+
+        let app = XCUIApplication()
+        app.launchArguments = ["-iikbFocus", "YES", "-iikbOrientation", "portrait"]
+        app.launchWithIikb()
+        element("iikb.more", in: app).tap()
+        let card = element("iikb.chats.shelf.0", in: app)
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
+        card.tap()
+        let messages = element("iikb.chat.messages", in: app)
+        XCTAssertTrue(messages.waitForExistence(timeout: 10), "the chat opens")
+
+        let lost = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Can’t reach hex"))
+            .firstMatch
+        stand("down")
+        XCTAssertTrue(lost.waitForExistence(timeout: 20), "a read that fails says the extension can't be reached")
+        stand("up")
+        messages.tap()
+        XCTAssertTrue(wait { !lost.exists }, "a tap on the chat reads it again")
+    }
+
     func testAPhotoAttachedInAChatIsSentAndShows() throws {
         let environment = ProcessInfo.processInfo.environment.filter { !$0.value.isEmpty }
         guard let url = environment["IIKB_EXTENSION"], let shots = environment["IIKB_SHOTS"],

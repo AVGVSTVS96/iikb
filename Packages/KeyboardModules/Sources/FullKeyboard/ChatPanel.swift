@@ -65,10 +65,16 @@ final class ChatPanel: UIView, PanelContent {
         self.chats = chats
         super.init(frame: .zero)
         thread.onOpen = { [unowned self] in onOpen($0) }
-        thread.onRead = { [unowned self] in if typing { onBrowse() } }
+        thread.onRead = { [unowned self] in
+            chats.again()
+            if typing { onBrowse() }
+        }
         thread.fetch = { [chats] in await chats.data(at: $0) }
         composer.onSend = { [unowned self] in onSend() }
-        composer.onTap = { [unowned self] in if !typing || picking { onFocus() } }
+        composer.onTap = { [unowned self] in
+            chats.again()
+            if !typing || picking { onFocus() }
+        }
         composer.onSelect = { [unowned self] in onSelect($0) }
         composer.onReplace = { [unowned self] in onReplace($0, $1) }
         composer.onAttach = { [unowned self] in onAttach() }
