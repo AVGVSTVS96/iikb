@@ -57,6 +57,13 @@ const files = new Map([
     "/files/boarding-pass.pdf",
     new Response("%PDF-1.4\n%%EOF\n", { headers: { "Content-Type": "application/pdf" } }),
   ],
+  [
+    "/field",
+    new Response(
+      '<!doctype html><meta name="viewport" content="width=device-width"><textarea style="position:fixed;inset:0;width:100%;height:100%"></textarea>',
+      { headers: { "Content-Type": "text/html" } },
+    ),
+  ],
 ]);
 
 interface Thread {

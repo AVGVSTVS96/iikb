@@ -1,9 +1,8 @@
 import XCTest
 
 /// Photos in Chats through the real keyboard, every way you'd send them: several with a caption and one taken off, ten
-/// at most, pasted, a send that fails and goes again, and a whole library scrolled through (scripts/phototest,
-/// scripts/chats.ts standing in for the extension). Allow Photos is checked on the phone: in the simulator the keyboard
-/// in another app's field and iOS's question after a reset don't come up reliably enough to verify it.
+/// at most, pasted, with no access to the library until Allow Photos asks, a send that fails and goes again, and a whole
+/// library scrolled through (scripts/phototest, scripts/chats.ts standing in for the extension).
 final class ChatPhotoTests: XCTestCase {
     private var environment: [String: String] { ProcessInfo.processInfo.environment.filter { !$0.value.isEmpty } }
     private var shots = ""
@@ -17,9 +16,10 @@ final class ChatPhotoTests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// Each failure leaves the screen as it was.
+    /// Each failure leaves the screen as it was, and what XCUITest saw on it in the log.
     override func record(_ issue: XCTIssue) {
         try? shot("failed-\(name.split(separator: " ").last?.dropLast() ?? "")")
+        print(app.debugDescription)
         super.record(issue)
     }
 
@@ -127,8 +127,52 @@ final class ChatPhotoTests: XCTestCase {
         XCTAssertTrue(label("Got it: 1 photo").waitForExistence(timeout: 30), "and goes")
     }
 
-    /// Opens the stand-in's first chat from the menu, in iikb's own field.
-    private func openChat() throws {
+    /// Run with the library's access reset, as before you've given it. The chat is in another app's field, as it is in
+    /// Telegram: a page's box in Safari. Allow Photos opens iikb, iOS asks there, and iikb goes back to Safari, where the
+    /// chat shows the photos.
+    func testAllowPhotosAsksAndThePhotosShowBackInTheApp() throws {
+        guard environment["IIKB_NO_ACCESS"] != nil else { throw XCTSkip("Run with the library's access reset") }
+        try openChat(inSafari: true)
+        element("iikb.chat.attach").tap()
+        let notice = label("Photos need their own permission")
+        XCTAssertTrue(notice.waitForExistence(timeout: 10), "without access the grid says so")
+        try shot("no-access")
+        // XCUITest takes iOS's question for an interruption as the test taps its answer, and its own handler would
+        // answer Don't Allow first, as it does on the iPad.
+        let monitor = addUIInterruptionMonitor(withDescription: "iOS asks for the photos") { question in
+            let allow = question.buttons["Allow Full Access"]
+            guard allow.exists else { return false }
+            allow.tap()
+            return true
+        }
+        defer { removeUIInterruptionMonitor(monitor) }
+        notice.tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let allow = springboard.buttons["Allow Full Access"].firstMatch
+        XCTAssertTrue(allow.waitForExistence(timeout: 30), "Allow Photos opens iikb, and iOS asks")
+        try shot("asked")
+        allow.tap()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "iikb goes back to the app you were in")
+        if !cell(0).waitForExistence(timeout: 15) {
+            // The simulator now and then hands XCUITest a stale picture of a keyboard that came back with its app, the
+            // grid's photos on screen but not in it; the keys going down and up again show it as it is.
+            try shot("stale")
+            let done = app.buttons["Done"].firstMatch
+            if done.exists { done.tap() } else { app.keyboards.buttons["Hide keyboard"].firstMatch.tap() }
+            let box = app.webViews.textViews.firstMatch
+            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: box.frame.midX, dy: box.frame.midY))
+                .tap()
+        }
+        XCTAssertTrue(cell(0).waitForExistence(timeout: 15), "once allowed, the photos show in the chat")
+        try shot("allowed")
+        cell(0).tap()
+        XCTAssertTrue(element("iikb.chat.photo.0").waitForExistence(timeout: 15), "and one picked sits in the box")
+        element("iikb.chat.send").tap()
+        XCTAssertTrue(label("Got it: 1 photo").waitForExistence(timeout: 30), "and goes")
+    }
+
+    /// Opens the stand-in's first chat from the menu, in iikb's own field or a page's box in Safari.
+    private func openChat(inSafari: Bool = false) throws {
         var link = URLComponents(string: "iikb://extension")!
         link.queryItems = [
             URLQueryItem(name: "name", value: "hex"), URLQueryItem(name: "url", value: environment["IIKB_EXTENSION"]),
@@ -139,11 +183,34 @@ final class ChatPhotoTests: XCTestCase {
         if add.waitForExistence(timeout: 10) { add.tap() }
         linked.terminate()
         let landscape = environment["IIKB_ORIENTATION"] == "landscape"
-        app = XCUIApplication()
-        app.launchArguments = [
-            "-iikbFocus", "YES", "-iikbOrientation", landscape ? "landscape" : environment["IIKB_LAUNCH"] ?? "portrait",
-        ]
-        app.launchWithIikb()
+        if inSafari {
+            app = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+            app.launch()
+            app.open(URL(string: environment["IIKB_EXTENSION"]! + "/field")!)
+            let box = app.webViews.textViews.firstMatch
+            XCTAssertTrue(box.waitForExistence(timeout: 30), "Safari shows the page's box")
+            guard app.frame.size == XCUIScreen.main.screenshot().image.size else {
+                throw XCTSkip(
+                    "Safari opened on the open Duo's other display, where the simulator brings up no keyboard for it")
+            }
+            // A tap on the box's place, again until a keyboard comes up: while the page's process isn't answering
+            // XCUITest yet (kAXErrorServerNotFound), tapping the element itself fails and a tap can land before the
+            // box is ready.
+            let place = app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: box.frame.midX, dy: box.frame.midY))
+            for _ in 0..<3 where !app.keyboards.firstMatch.exists {
+                place.tap()
+                _ = app.keyboards.firstMatch.waitForExistence(timeout: 5)
+            }
+            XCTAssertTrue(app.showsIikb(relaunching: false), "iikb is not the active keyboard")
+        } else {
+            app = XCUIApplication()
+            app.launchArguments = [
+                "-iikbFocus", "YES", "-iikbOrientation",
+                landscape ? "landscape" : environment["IIKB_LAUNCH"] ?? "portrait",
+            ]
+            app.launchWithIikb()
+        }
         if landscape { XCUIDevice.shared.orientation = .landscapeLeft }
         XCTAssertTrue(element("iikb.more").waitForExistence(timeout: 20), "iikb's menu button shows")
         element("iikb.more").tap()

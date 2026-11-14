@@ -2,8 +2,9 @@
 # Runs on the Mac. Photos in Chats through the real keyboard, every flow (UITests/ChatPhotoTests.swift), light and dark,
 # with scripts/chats.ts standing in for the extension: scripts/phototest ["iPhone Duo"] [iPhone-Duo]. SCREEN picks one of
 # the Duo's screens in scripts/sim (folded-portrait otherwise); ORIENTATION=landscape turns any other device. LIBRARY=<n>
-# puts n photos in the library (24 otherwise). Shots go to shots/raw/photos/, taken here of the screen in use when the
-# test asks, with the keyboard's largest footprint while each appearance ran.
+# puts n photos in the library (24 otherwise). Each appearance starts with the library's access reset for the Allow
+# Photos test, then grants it for the rest; ONLY_ALLOW=1 runs just that test. Shots go to shots/raw/photos/, taken here
+# of the screen in use when the test asks, with the keyboard's largest footprint while each appearance ran.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 NAME=${1:-iPhone Duo}
@@ -49,16 +50,16 @@ while [ "$n" -lt "${LIBRARY:-24}" ]; do
 done
 find build/photos -name '*.jpg' -print0 | xargs -0 -n 50 xcrun simctl addmedia "$ID"
 
-# run <appearance> <xcodebuild's test options…>
+# run <appearance> <no access: 1 or ""> <xcodebuild's test options…>
 run() {
-  local appearance=$1
-  shift
+  local appearance=$1 none=$2
+  shift 2
   TEST_RUNNER_IIKB_EXTENSION="http://localhost:$PORT" TEST_RUNNER_IIKB_SHOTS="$PWD/$out/$slug-$appearance" \
-    TEST_RUNNER_IIKB_ORIENTATION="${ORIENTATION:-}" TEST_RUNNER_IIKB_LIBRARY="${LIBRARY:-}" \
+    TEST_RUNNER_IIKB_ORIENTATION="${ORIENTATION:-}" TEST_RUNNER_IIKB_LIBRARY="${LIBRARY:-}" TEST_RUNNER_IIKB_NO_ACCESS="$none" \
     TEST_RUNNER_IIKB_LAUNCH="$([ "${turn:-portrait}" = portrait ] && echo portrait || echo landscape)" \
     xcodebuild test-without-building -collect-test-diagnostics never -test-timeouts-enabled YES \
     -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 420 -project iikb.xcodeproj -scheme iikb \
-    -destination "id=$ID" -derivedDataPath build/uitest "$@" > "build/uitest/photos-$appearance.log" 2>&1 || failed=1
+    -destination "id=$ID" -derivedDataPath build/uitest "$@" >> "build/uitest/photos-$appearance.log" 2>&1 || failed=1
   grep -E "error:|Test Case .*(passed|failed|skipped)" "build/uitest/photos-$appearance.log" || true
 }
 
@@ -104,8 +105,17 @@ for appearance in ${APPEARANCES:-light dark}; do
   stand=$!
   watch "$out/$slug-$appearance-memory.txt" &
   watcher=$!
-  xcrun simctl privacy "$ID" grant photos com.shahidy.iikb
-  run "$appearance" -only-testing:AppUITests/ChatPhotoTests
+  rm -f "build/uitest/photos-$appearance.log"
+  # iikb and its keyboard each keep the answer they first read for as long as they run, so both go before the reset.
+  xcrun simctl terminate "$ID" com.shahidy.iikb 2>/dev/null || true
+  pgrep -f 'Keyboard.appex/Keyboard' | xargs kill 2>/dev/null || true
+  xcrun simctl privacy "$ID" reset photos com.shahidy.iikb
+  run "$appearance" 1 -only-testing:AppUITests/ChatPhotoTests/testAllowPhotosAsksAndThePhotosShowBackInTheApp
+  if [ -z "${ONLY_ALLOW:-}" ]; then
+    xcrun simctl privacy "$ID" grant photos com.shahidy.iikb
+    run "$appearance" "" -only-testing:AppUITests/ChatPhotoTests \
+      -skip-testing:AppUITests/ChatPhotoTests/testAllowPhotosAsksAndThePhotosShowBackInTheApp
+  fi
   kill "$watcher" "$stand" 2>/dev/null || true
   wait "$watcher" "$stand" 2>/dev/null || true
   echo "keyboard footprint, $appearance: $(cat "$out/$slug-$appearance-memory.txt" 2>/dev/null || echo unmeasured)"

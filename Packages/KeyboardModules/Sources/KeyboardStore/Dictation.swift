@@ -107,6 +107,8 @@ public enum Dictation {
 
     private static var hostURL: URL? { AppGroup.library?.appending(path: "dictation-host.txt") }
 
+    private static var photosURL: URL? { AppGroup.library?.appending(path: "photos-allowed") }
+
     /// The app holds this lock while its microphone is on. The kernel lets go of it when the app ends however it ends,
     /// so the lock, unlike a status the app writes, can't outlive the app.
     public static func lockMic() -> Int32? {
@@ -145,6 +147,19 @@ public enum Dictation {
         get { hostURL.flatMap { try? String(contentsOf: $0, encoding: .utf8) }.flatMap { $0.isEmpty ? nil : $0 } }
         // file: dictation channel (the app the keyboard is in)
         set { if let hostURL { try? Data((newValue ?? "").utf8).write(to: hostURL, options: .atomic) } }
+    }
+
+    /// Whether iOS let iikb show your photos when the app last asked. Only the app writes it, before it sends
+    /// `Signal.photos`. A keyboard keeps the answer it first read for as long as it runs, and touching the library while
+    /// that answer is "not asked" makes iOS ask over the app you're in, so the keyboard reads this one instead.
+    public static var photosAllowed: Bool {
+        // file: photos channel (iOS's answer to the app)
+        get { photosURL.map { FileManager.default.fileExists(atPath: $0.path) } ?? false }
+        // file: photos channel (iOS's answer to the app)
+        set {
+            guard let photosURL else { return }
+            if newValue { try? Data().write(to: photosURL) } else { try? FileManager.default.removeItem(at: photosURL) }
+        }
     }
 
     public static var status: Status {
