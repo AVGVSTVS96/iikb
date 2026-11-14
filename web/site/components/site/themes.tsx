@@ -39,14 +39,17 @@ export const Themes = () => {
   }, []);
 
   useEffect(() => {
-    theme.send(name);
+    if (seen) {
+      theme.send(name);
+    }
+
     const el = list.current;
     const on = el?.children[at];
 
     if (el && on instanceof HTMLElement && el.scrollWidth > el.clientWidth) {
       el.scrollTo({ left: on.offsetLeft - 20, behavior: "smooth" });
     }
-  }, [name, at]);
+  }, [name, at, seen]);
 
   useEffect(() => {
     if (held || !seen || matchMedia("(prefers-reduced-motion: reduce)").matches) {

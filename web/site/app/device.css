@@ -165,6 +165,21 @@
 .view.swap {
   opacity: 0;
 }
+.glare {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(
+      112deg,
+      transparent 38%,
+      rgb(255 255 255 / 0.09) 47%,
+      rgb(255 255 255 / 0.03) 53%,
+      transparent 62%
+    )
+    var(--glare, 50%) 0 / 320% 100% no-repeat;
+  mix-blend-mode: plus-lighter;
+}
 .base .inner::after {
   content: "";
   position: absolute;
@@ -179,7 +194,22 @@
     transparent 58%
   );
 }
-.duo.whole .base .inner::after {
+.duo.whole .glare {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(
+      112deg,
+      transparent 38%,
+      rgb(255 255 255 / 0.09) 47%,
+      rgb(255 255 255 / 0.03) 53%,
+      transparent 62%
+    )
+    var(--glare, 50%) 0 / 320% 100% no-repeat;
+  mix-blend-mode: plus-lighter;
+}
+.base .inner::after {
   right: 475.5px;
 }
 .cover {
@@ -689,4 +719,54 @@
   .slot {
     margin-block: 16px 8px;
   }
+}
+
+/* Buttons as keys: the keyboard's caps in the theme around them (button.tsx's key and send) */
+.keycap {
+  --top: var(--l-top);
+  --bottom: var(--l-bottom);
+  --ptop: var(--l-ptop);
+  --pbottom: var(--l-pbottom);
+  --rim: var(--l-rim);
+  --rim-fade: var(--l-rim-fade);
+  --face: calc(var(--l-cap) * 1.5px) calc(var(--l-cap) * 2.5px) calc(var(--l-cap) * 5px);
+  position: relative;
+  isolation: isolate;
+  border-color: var(--border);
+  background: var(--l-sides);
+  box-shadow: var(--l-drop);
+  color: var(--l-label);
+  text-shadow: var(--l-lshadow);
+  transition: none;
+}
+.keycap::before,
+.keycap::after {
+  content: "";
+  position: absolute;
+  inset: var(--face);
+  border-radius: inherit;
+  z-index: -1;
+  pointer-events: none;
+}
+.keycap::before {
+  background: linear-gradient(var(--top), var(--bottom));
+}
+.keycap::after {
+  border: 1px solid var(--rim);
+  -webkit-mask: linear-gradient(#000, transparent var(--rim-fade));
+  mask: linear-gradient(#000, transparent var(--rim-fade));
+}
+.keycap:active::before {
+  background: linear-gradient(var(--ptop), var(--pbottom));
+}
+.keycap-send {
+  --top: var(--blue);
+  --bottom: var(--blue);
+  --ptop: color-mix(in srgb, var(--blue) 78%, #000);
+  --pbottom: var(--ptop);
+  --rim: rgb(255 255 255 / 0.22);
+  border-color: color-mix(in srgb, var(--blue) 70%, #000);
+  background: color-mix(in srgb, var(--blue) 62%, #000);
+  color: #fff;
+  text-shadow: none;
 }

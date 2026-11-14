@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { dictation, nothing } from "@/lib/bus";
+import { dictation, nothing, theme } from "@/lib/bus";
 import { cn } from "@/lib/utils";
 
 import { Android, GitHub, TestFlight } from "./icons";
@@ -14,9 +14,9 @@ const H = 702;
 const W = 490;
 
 const POSES = [
-  { id: "folded", title: "folded", size: "466 × 678", at: 0 },
-  { id: "open", title: "open", size: "951 × 669", at: 0.5 },
-  { id: "turned", title: "turned", size: "669 × 951", at: 1 },
+  { id: "folded", title: "folded", size: "466 × 678", at: 0, theme: "standard" },
+  { id: "open", title: "open", size: "951 × 669", at: 0.5, theme: "mechanical" },
+  { id: "turned", title: "turned", size: "669 × 951", at: 1, theme: "classic" },
 ] as const;
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
@@ -147,6 +147,7 @@ export const Fold = () => {
       const narrow = innerWidth < 760;
       const rx = mix(narrow ? 6 : 9, 5, open) - lean.y * 8;
       const ry = mix(narrow ? -14 : -22, -8, open) * (1 - turn * 0.6) + lean.x * 10;
+      duo.style.setProperty("--glare", `${50 + ry * 2.2 - 40 * open}%`);
       rig.style.transform = `perspective(3600px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${90 * turn}deg) translateX(${(W / 2) * (1 - open)}px)`;
       lid.style.transform = `rotateY(${-180 * (1 - open)}deg)`;
       duo.classList.toggle("whole", open > 0.999);
@@ -166,6 +167,12 @@ export const Fold = () => {
 
       if (now !== shown) {
         shown = now;
+        const look = POSES.find((pose) => pose.id === now)?.theme ?? "standard";
+        pin.dataset.kbTheme = look;
+
+        if (live) {
+          theme.send(look);
+        }
 
         for (const b of dial.children) {
           b.setAttribute(
@@ -200,6 +207,13 @@ export const Fold = () => {
 
     const seen = new IntersectionObserver(([e]) => {
       live = e?.isIntersecting ?? false;
+
+      const look = pin.dataset.kbTheme;
+
+      if (live && look !== undefined) {
+        theme.send(look);
+      }
+
       wake();
     });
 
@@ -249,7 +263,7 @@ export const Fold = () => {
 
   return (
     <section ref={stageRef} className="stage" id="duo" aria-label="iikb on the iPhone Duo">
-      <div className="pin">
+      <div className="pin" data-kb-theme="standard">
         <div className="hero-copy flex flex-col items-start gap-7">
           <a href="#chats" className="group">
             <Badge
@@ -271,27 +285,21 @@ export const Fold = () => {
           <div className="flex flex-wrap gap-2.5">
             <a
               href="https://testflight.apple.com/join/xSQ2sdYZ"
-              className={cn(buttonVariants({ size: "lg" }), "h-11 gap-2 px-4 text-[15px]")}
+              className={buttonVariants({ variant: "send", size: "key" })}
             >
-              <TestFlight className="size-[18px]" />
+              <TestFlight />
               Get the beta
             </a>
             <a
               href="https://iikb-android.vercel.app"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "lg" }),
-                "h-11 gap-2 px-4 text-[15px]",
-              )}
+              className={buttonVariants({ variant: "key", size: "key" })}
             >
-              <Android className="size-[18px]" />
+              <Android />
               Android
             </a>
             <a
               href="https://github.com/AVGVSTVS96/iikb"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "lg" }),
-                "h-11 gap-2 px-4 text-[15px] max-sm:hidden",
-              )}
+              className={cn(buttonVariants({ variant: "key", size: "key" }), "max-sm:hidden")}
             >
               <GitHub className="size-[17px]" />
               Source
@@ -309,6 +317,7 @@ export const Fold = () => {
                     <Screen first="wait, which keyboard is that?" />
                   </div>
                 </div>
+                <i className="glare" />
               </div>
             </div>
             <div className="slab lid" data-lid>
@@ -317,9 +326,11 @@ export const Fold = () => {
                 <div className="full">
                   <div className="view" data-mirror />
                 </div>
+                <i className="glare" />
               </div>
               <div className="glass cover" data-cover>
                 <Screen first="wait, which keyboard is that?" />
+                <i className="glare" />
               </div>
             </div>
           </div>

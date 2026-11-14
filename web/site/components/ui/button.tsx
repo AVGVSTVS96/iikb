@@ -17,6 +17,8 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
+        key: "keycap",
+        send: "keycap keycap-send",
       },
       size: {
         default:
@@ -30,6 +32,8 @@ const buttonVariants = cva(
         "icon-sm":
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
+        key: "h-11 gap-2 rounded-[11px] px-4 text-[15px] font-normal [&_svg:not([class*='size-'])]:size-[18px]",
+        "key-sm": "h-9 gap-1.5 rounded-[9px] px-3 text-sm font-normal",
       },
     },
     defaultVariants: {
