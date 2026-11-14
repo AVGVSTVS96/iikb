@@ -16,9 +16,10 @@ try VNImageRequestHandler(cgImage: image).perform([request])
 let lines = (request.results ?? []).compactMap { line in
     line.topCandidates(1).first.map { (text: $0.string.trimmingCharacters(in: .whitespaces), top: 1 - line.boundingBox.maxY) }
 }
-let title = lines.contains { $0.text == "iikb" && $0.top < 0.25 }
+let iikb = { (text: String) in text.count == 4 && text.lowercased().hasSuffix("ikb") }
+let title = lines.contains { iikb($0.text) && $0.top < 0.25 }
 let space = lines.contains { label in
-    label.text == "iikb" && label.top > 0.5
+    iikb(label.text) && label.top > 0.5
         && lines.contains { $0.text.hasSuffix("123") && abs($0.top - label.top) < 0.02 }
 }
 if title && space { exit(0) }
