@@ -1,0 +1,40 @@
+name: android-proof
+
+# Runs a built iikb APK on a KVM emulator and taps a GIF into Google Messages' compose box. The APK comes from a draft
+# release, so nothing public changes: `gh release create <tag> <apk> --draft`, then dispatch with the tag.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Draft release holding the APK
+        required: true
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - name: KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ inputs.tag }}" --pattern '*.apk' --output iikb.apk
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis_playstore
+          arch: x86_64
+          profile: pixel_9
+          disable-animations: true
+          script: python3 scripts/android-gif-proof.py iikb.apk out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: proof
+          path: out
