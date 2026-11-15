@@ -1,0 +1,3 @@
+#!/bin/sh
+# A page on this server, over Tailscale, where Bassim labels a sample of his dictations by ear (scripts/voicelabel.py).
+exec python3 -B "$(dirname "$0")/voicelabel.py" "$@"

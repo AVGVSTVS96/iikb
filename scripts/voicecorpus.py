@@ -1,23 +1,33 @@
 """Builds the corpora scripts/voicebench scores from Bassim's own dictations on the backup server, into voicebench/
 beside the backup (never the repo: they're his voice and his words). Run it with
-`uv run --with numpy scripts/voicecorpus.py [out]`; it writes three:
+`uv run --with numpy scripts/voicecorpus.py [out]`; it writes three, and two more once he's given what they need:
 
 real: every dictation Parakeet v3 wrote and iikb typed, with what it finally became as the reference: its transcript's
 `field.final`, what the keyboard followed it to until its field was sent or changed, or else the span of what was sent
 in the three hours after (the record source's log) that its words line up with. typed.jsonl is what iikb
 typed, and clips.jsonl each clip's date, mic, how it was heard (its transcript's `capture`, voice processing, raw or a
 front cardioid; or else its `voiceProcessing`; or, from before iikb kept either, whether it came after voice processing
-went in), its room and speech levels (each a group voicescore splits by) and where its final came from. context.jsonl
+went in), its room and speech levels (each a group voicescore splits by), where its final came from and whether he
+edited it (`edit`: a final he left as typed is what the build of its day typed, so it scores agreement with that build,
+not accuracy, and only an edited one says what he meant). A dictation whose words line up with nothing he sent is left
+out, since it has no final; scripts/voicelabel can still pick it to be labelled. context.jsonl
 is what scripts/voiceloop replays the rest of the iPhone's path with: what the model wrote on the iPhone, the kind of
 field it went into (and its content type) and the text the keyboard saw before it there, as its transcript's `field`
 kept them, or, from before iikb kept them, the kind and the text before it from the record source's log of that field.
 
-loud: the real set's quiet dictations that went in as typed, mixed with the room of its loud ones (their stretches
-without speech) at that room's own level, the speech as loud as said there and 6, 12 and 18 dB quieter (a whisper), with
-each clean dictation's final as the reference.
+loud: the real set's quiet dictations, those he labelled by ear first and the rest picked by a hash of each id, mixed
+with the room of its loud ones (their stretches without speech) at that room's own level, the speech as loud as said
+there and 6, 12 and 18 dB quieter (a whisper), each against his label, or else its final. Any quiet dictation can be
+picked, not only ones the iPhone already got right, so the clean row is as hard as his real ones.
 
 taps: every dictation Parakeet v3 finished on the iPhone that typed nothing, as a tap with nothing said does, so a
 change that writes words there (filler such as "Yeah." or "Thank you.") shows. Its reference is the iPhone's nothing.
+
+labelled: the dictations he labelled by ear (scripts/voicelabel, `heldout/labels.jsonl` beside the backup), each
+against what he said: the one set that scores words wrong rather than words he went on to change.
+
+read: his dictations of `heldout/read.txt`'s lines (a script written blind, never seen by whoever tunes dictation),
+each against what that line should type: his voice and rooms on text nothing was fitted to.
 """
 import datetime, difflib, hashlib, json, os, random, re, shutil, sys, wave
 from pathlib import Path
@@ -27,6 +37,7 @@ HOME = Path.home()
 BACKUP = Path(os.environ.get("IIKB_BACKUP", HOME / ".local/share/iikb/backup"))
 MIRROR = BACKUP / "mirror"
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else BACKUP.parent / "voicebench"
+HELDOUT = BACKUP.parent / "heldout"
 EPOCH = datetime.datetime(2001, 1, 1, tzinfo=datetime.timezone.utc)
 VOICE_PROCESSING = datetime.datetime(2026, 11, 3, 12, 24, tzinfo=datetime.timezone.utc)
 LOUD_ROOM = -40
@@ -116,6 +127,18 @@ def final(transcript, candidates):
     return (best[1][1], best[2], best[3], best[1][0]) if best[0] >= 0.6 else (None, None, None, None)
 
 
+def said_typed(transcript):
+    """What the iPhone typed for a dictation."""
+    return (transcript.get("field") or {}).get("typed", transcript["text"])
+
+
+def labels():
+    """His labels by ear, the last for each dictation, without the ones he skipped as unclear."""
+    path = HELDOUT / "labels.jsonl"
+    kept = {r["id"]: r["text"] for r in map(json.loads, open(path))} if path.exists() else {}
+    return {id: text for id, text in kept.items() if text is not None}
+
+
 def lines(path, rows):
     path.write_text("".join(json.dumps(row) + "\n" for row in rows))
 
@@ -140,10 +163,10 @@ def real():
         room, speech = levels(samples)
         clips.append(dict(id=t["id"], audio_path=f"audio/{t['id']}.wav", date=date.isoformat(timespec="seconds"),
                           seconds=round(len(samples) / 16_000, 1), room_db=room, speech_db=speech,
-                          room="loud" if room >= LOUD_ROOM else "quiet", capture=heard,
-                          mic=t.get("mic") or "unknown", final=source))
+                          room="loud" if room >= LOUD_ROOM else "quiet", capture=heard, mic=t.get("mic") or "unknown",
+                          final=source, edit="as typed" if words(text) == words(said_typed(t)) else "edited"))
         references.append(dict(id=t["id"], text=text))
-        typed.append(dict(id=t["id"], text=(t.get("field") or {}).get("typed", t["text"])))
+        typed.append(dict(id=t["id"], text=said_typed(t)))
         context.append(dict(id=t["id"], heard=t.get("heard") or t["text"], field=kind, content=(t.get("field") or {}).get("content"), before=before))
     lines(folder / "clips.jsonl", clips)
     lines(folder / "references.jsonl", references)
@@ -151,7 +174,8 @@ def real():
     lines(folder / "context.jsonl", context)
     shutil.copy(MIRROR / "app/vocabulary.json", folder / "vocabulary.json")
     print(f"real: {len(clips)} dictations, {sum(c['room'] == 'loud' for c in clips)} in a loud room,",
-          f"finals {', '.join(f'{s} {sum(c['final'] == s for c in clips)}' for s in ('field', 'record'))}")
+          f"finals {', '.join(f'{s} {sum(c['final'] == s for c in clips)}' for s in ('field', 'record'))},",
+          f"{sum(c['edit'] == 'edited' for c in clips)} of them edited")
     return folder, clips, {r["id"]: r["text"] for r in references}, {r["id"]: r["text"] for r in typed}, {c["id"]: c for c in context}
 
 
@@ -182,10 +206,11 @@ def loud(folder, clips, references, typed, context, count=120):
     noisy = [c for c in clips if c["room"] == "loud"]
     bed = room(folder, noisy)
     said = float(np.median([c["speech_db"] for c in noisy]))
-    clean = [c for c in clips if c["room"] == "quiet" and c["capture"] == "voiceProcessing" and 3 <= c["seconds"] <= 30
-             and words(references[c["id"]]) == words(typed[c["id"]])]
+    heard = labels()
+    clean = [c for c in clips if c["room"] == "quiet" and c["capture"] == "voiceProcessing" and 3 <= c["seconds"] <= 30]
+    picked = sorted(clean, key=lambda c: (c["id"] not in heard, hashlib.sha256(c["id"].encode()).digest()))[:count]
     rows, refs, contexts = [], [], []
-    for clip in sorted(sorted(clean, key=lambda c: hashlib.sha256(c["id"].encode()).digest())[:count], key=lambda c: c["date"]):
+    for clip in sorted(picked, key=lambda c: c["date"]):
         samples = read(folder / clip["audio_path"])
         samples = samples * 10 ** ((said - clip["speech_db"]) / 20)
         start = random.Random(clip["id"]).randrange(len(bed))
@@ -196,15 +221,18 @@ def loud(folder, clips, references, typed, context, count=120):
             name = f"{clip['id']}-{'clean' if quieter is None else quieter}"
             write(out / f"audio/{name}.wav", mixed)
             room_db, speech_db = levels(mixed)
-            rows.append(dict(id=name, audio_path=f"audio/{name}.wav", source=clip["id"], room_db=room_db, speech_db=speech_db,
-                             speech="clean" if quieter is None else f"-{quieter} dB" if quieter else "as said"))
-            refs.append(dict(id=name, text=references[clip["id"]]))
+            rows.append(dict(id=name, audio_path=f"audio/{name}.wav", source=clip["id"], date=clip["date"], room_db=room_db,
+                             speech_db=speech_db, speech="clean" if quieter is None else f"-{quieter} dB" if quieter else "as said",
+                             reference="label" if clip["id"] in heard else "final", edit=clip["edit"]))
+            refs.append(dict(id=name, text=heard.get(clip["id"], references[clip["id"]])))
             contexts.append(dict(context[clip["id"]], id=name))
     lines(out / "clips.jsonl", rows)
     lines(out / "references.jsonl", refs)
+    lines(out / "typed.jsonl", [dict(id=r["id"], text=typed[r["source"]]) for r in rows])
     lines(out / "context.jsonl", contexts)
     shutil.copy(folder / "vocabulary.json", out / "vocabulary.json")
-    print(f"loud: {len(rows) // 5} of {len(clean)} clean dictations, each clean and in a {levels(bed)[0]:.0f} dBFS room",
+    print(f"loud: {len(rows) // 5} of {len(clean)} quiet dictations ({sum(c['id'] in heard for c in picked)} labelled),",
+          f"each clean and in a {levels(bed)[0]:.0f} dBFS room",
           f"({len(bed) / 16_000:.0f} s of it from {len(noisy)} dictations) said at {said:.0f} dBFS and 6, 12, 18 dB quieter")
 
 
@@ -219,7 +247,9 @@ def taps():
             continue
         os.link(recording, folder / f"audio/{t['id']}.wav")
         field = t.get("field") or {}
-        clips.append(dict(id=t["id"], audio_path=f"audio/{t['id']}.wav", seconds=round(t.get("seconds", 0), 1)))
+        date = EPOCH + datetime.timedelta(seconds=t["date"])
+        clips.append(dict(id=t["id"], audio_path=f"audio/{t['id']}.wav", date=date.isoformat(timespec="seconds"),
+                          seconds=round(t.get("seconds", 0), 1)))
         context.append(dict(id=t["id"], heard="", field=field.get("kind", "text"), content=field.get("content"),
                             before=field.get("before") or ""))
     lines(folder / "clips.jsonl", clips)
@@ -229,6 +259,72 @@ def taps():
     print(f"taps: {len(clips)} dictations that typed nothing")
 
 
+def heard_set(name, picked):
+    """A set of his dictations each against a text given for it (`picked`: transcript → reference and its labels, or
+    None), with the context the real set keeps, or for one with no final, a text field with nothing before it."""
+    folder = OUT / name
+    shutil.rmtree(folder, ignore_errors=True)
+    (folder / "audio").mkdir(parents=True)
+    candidates = sent()
+    clips, references, typed, context = [], [], [], []
+    for t in map(json.loads, open(MIRROR / "app/transcripts.jsonl")):
+        recording = MIRROR / f"app/recordings/{t['id']}.wav"
+        given = picked(t) if t["typed"] and t.get("model") == "Parakeet v3" and recording.exists() else None
+        if not given:
+            continue
+        reference, groups = given
+        samples = read(recording)
+        os.link(recording, folder / f"audio/{t['id']}.wav")
+        _, source, kind, before = final(t, candidates)
+        date = EPOCH + datetime.timedelta(seconds=t["date"])
+        room, speech = levels(samples)
+        clips.append(dict(id=t["id"], audio_path=f"audio/{t['id']}.wav", date=date.isoformat(timespec="seconds"),
+                          seconds=round(len(samples) / 16_000, 1), room_db=room, speech_db=speech,
+                          room="loud" if room >= LOUD_ROOM else "quiet", final=source or "none", **groups))
+        references.append(dict(id=t["id"], text=reference))
+        typed.append(dict(id=t["id"], text=said_typed(t)))
+        context.append(dict(id=t["id"], heard=t.get("heard") or t["text"], field=kind or "text",
+                            content=(t.get("field") or {}).get("content"), before=before or ""))
+    if not clips:
+        shutil.rmtree(folder)
+        return clips
+    lines(folder / "clips.jsonl", clips)
+    lines(folder / "references.jsonl", references)
+    lines(folder / "typed.jsonl", typed)
+    lines(folder / "context.jsonl", context)
+    shutil.copy(MIRROR / "app/vocabulary.json", folder / "vocabulary.json")
+    return clips
+
+
+def labelled():
+    heard = labels()
+    clips = heard_set("labelled", lambda t: (heard[t["id"]], {}) if t["id"] in heard else None)
+    print(f"labelled: {len(clips)} dictations he labelled by ear")
+
+
+def reading():
+    """Each dictation since heldout/read.txt was written that's one of its `say | typed` lines (its words line up with
+    that line's, said or typed, at least 0.6 of the way) against what that line should type."""
+    path = HELDOUT / "read.txt"
+    if not path.exists():
+        return
+    script = [line.split(" | ") for line in path.read_text().splitlines() if line.strip() and not line.startswith("#")]
+    since = datetime.datetime.fromtimestamp(path.stat().st_mtime, datetime.timezone.utc)
+
+    def picked(t):
+        if EPOCH + datetime.timedelta(seconds=t["date"]) < since:
+            return None
+        said = words(t.get("heard") or t["text"])
+        share, typed = max((max(difflib.SequenceMatcher(None, said, words(form), autojunk=False).ratio() for form in (say, typed)), typed)
+                           for say, typed in script)
+        return (typed, {}) if share >= 0.6 else None
+
+    clips = heard_set("read", picked)
+    print(f"read: {len(clips)} dictations of heldout/read.txt's {len(script)} lines")
+
+
 if __name__ == "__main__":
     loud(*real())
     taps()
+    labelled()
+    reading()
