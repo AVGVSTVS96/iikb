@@ -7,11 +7,13 @@ import KeyboardCore
 /// reading of a field of that kind and content type (`InputKind`'s and `InputContent`'s names, text and other by
 /// default) after `before` (`TypingEngine`'s `.dictated`),
 /// with the words the keyboard has seen typed (the keyboard's saved memory, as scripts/gate reads it).
-/// Writes `{id, typed}` lines; scripts/voiceloop runs it here on Linux, on a package of KeyboardCore alone. With a last
-/// argument `dictionary`, `typed` is `heard` through the Dictionary alone, as scripts/voiceloop reads a final.
+/// A line's own `memory`, `vocabulary` and `settings` (the four above) stand in for the arguments, so scripts/voiceloop
+/// replays each dictation with what the iPhone had then.
+/// Writes `{id, typed}` lines; scripts/voiceloop runs it here on Linux, on a package of KeyboardCore alone.
 struct Clip: Decodable {
     let id, heard: String
-    let field, content, before: String?
+    let field, content, before, memory, vocabulary: String?
+    let settings: [String]?
 }
 struct Row: Encodable { let id, typed: String }
 struct Saved: Decodable { var memory: TypingMemory }
@@ -38,38 +40,49 @@ final class Field: TextDocument {
 
 let arguments = CommandLine.arguments
 let lexicon = Lexicon(bytes: Bytes([UInt8](FileManager.default.contents(atPath: arguments[1])!)))!
-let vocabulary = try JSONDecoder().decode(Vocabulary.self, from: Data(contentsOf: URL(fileURLWithPath: arguments[2])))
-var settings = KeyboardSettings()
-settings.dictationStyle = DictationStyle(rawValue: arguments[4])!
-settings.dictationEditing = DictationEditing(rawValue: arguments[5])!
-settings.dictationLists = DictationLists(rawValue: arguments[6])!
-settings.autoCapitalization = arguments[7] == "on"
-let dictionaryOnly = arguments.count > 8 && arguments[8] == "dictionary"
-let corrector = Corrector(source: lexicon)
-if arguments[3] != "-" {
-    let decoder = JSONDecoder()
-    decoder.nonConformingFloatDecodingStrategy = .convertFromString(
-        positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
-    let memory = try decoder.decode(Saved.self, from: Data(contentsOf: URL(fileURLWithPath: arguments[3]))).memory
-    corrector.changeMemory { $0 = memory }
+
+func settings(_ knobs: [String]) -> KeyboardSettings {
+    var settings = KeyboardSettings()
+    settings.dictationStyle = DictationStyle(rawValue: knobs[0])!
+    settings.dictationEditing = DictationEditing(rawValue: knobs[1])!
+    settings.dictationLists = DictationLists(rawValue: knobs[2])!
+    settings.autoCapitalization = knobs[3] == "on"
+    return settings
 }
 
+func vocabulary(_ path: String) throws -> Vocabulary {
+    try JSONDecoder().decode(Vocabulary.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+}
+
+func corrector(_ path: String) throws -> Corrector {
+    let corrector = Corrector(source: lexicon)
+    if path != "-" {
+        let decoder = JSONDecoder()
+        decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+            positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+        let memory = try decoder.decode(Saved.self, from: Data(contentsOf: URL(fileURLWithPath: path))).memory
+        corrector.changeMemory { $0 = memory }
+    }
+    return corrector
+}
+
+var vocabularies: [String: Vocabulary] = [:]
+var correctors: [String: Corrector] = [:]
 var lines: [String] = []
 while let line = readLine() {
     let clip = try JSONDecoder().decode(Clip.self, from: Data(line.utf8))
-    if dictionaryOnly {
-        lines.append(
-            String(
-                decoding: try JSONEncoder().encode(
-                    Row(id: clip.id, typed: vocabulary.corrected(clip.heard, lexicon: lexicon))), as: UTF8.self))
-        continue
-    }
+    let settings = settings(clip.settings ?? Array(arguments[4...7]))
+    let dictionary = clip.vocabulary ?? arguments[2]
+    let memory = clip.memory ?? arguments[3]
+    if vocabularies[dictionary] == nil { vocabularies[dictionary] = try vocabulary(dictionary) }
+    if correctors[memory] == nil { correctors[memory] = try corrector(memory) }
+    let vocabulary = vocabularies[dictionary]!
     var engine = TypingEngine(
         traits: InputTraits(
             kind: clip.field.flatMap(InputKind.init) ?? .text,
             content: clip.content.flatMap(InputContent.init) ?? .other))
     engine.settings = settings
-    engine.corrector = corrector
+    engine.corrector = correctors[memory]
     let field = Field(clip.before ?? "")
     engine.handle(
         .dictated(
