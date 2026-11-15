@@ -1,5 +1,7 @@
-# The cleanup bench scripts/rivals says with macOS voices and runs through iikb, Wispr Flow and Aqua Voice: `kind | said |
-# what a good dictation types`, with other right answers after `||`. A line's \n is a line break. Made-up text only.
+# The cleanup bench's seen set, which scripts/rivals says with macOS voices and runs through iikb, Wispr Flow and Aqua
+# Voice: `kind | said | what a good dictation types`, with other right answers after `||`. A line's \n is a line break.
+# Made-up text only. Clean's rules were written against these lines (many are in scripts/cleanup.txt too), so iikb's
+# score here is how it does on what it was fitted to; the held-out set beside it says how it does on new sentences.
 
 fillers | So um I was thinking we could uh grab lunch tomorrow. | So I was thinking we could grab lunch tomorrow. || I was thinking we could grab lunch tomorrow.
 fillers | Um, can you uh send me the file when you get a chance? | Can you send me the file when you get a chance?

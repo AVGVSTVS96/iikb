@@ -1,12 +1,17 @@
-"""scripts/rivals.txt said by macOS voices, written by iikb (Parakeet v3 and its text path, as scripts/voiceloop runs
-them), Wispr Flow and Aqua Voice, and scored against what a good dictation types.
+"""Cleanup sentences said by macOS voices, written by iikb (Parakeet v3 and its text path, as scripts/voiceloop runs
+them), Wispr Flow and Aqua Voice, and scored against what a good dictation types, in two sets kept apart: seen,
+scripts/rivals.txt, which Clean's rules were written against, and held out, heldout.txt in the data folder, written
+blind (by an agent that never read iikb's code or these sentences) and never shown to whoever works on Clean, so only
+it says how Clean does on sentences nobody fitted it to. iikb's headline is Formal with Clean, picked before the
+held-out set was ever run since its answers are written formally; Casual with Clean and As Said are shown beside it.
 
 Runs on the Mac, where the voices, Parakeet and the rivals' logins are. Wispr Flow is reached through the desktop
-app's own login (github.com/mathisarends/whisprflow-re, kept in the data folder), Aqua Voice through its API
-(api.aquavoice.com/v1/dictations, its key in ~/.config/rivalbench/aqua-key), each at its default settings. Every
+app's own login (github.com/mathisarends/whisprflow-re, kept in the data folder) with that client's default options
+(Casual, Verbatim editing, no dictionary: the account's own aren't sent), Aqua Voice through its API
+(api.aquavoice.com/v1/dictations, its key in ~/.config/rivalbench/aqua-key) with the account's settings cleared. Every
 answer is kept in the data folder by the clip's sound, so a rival hears each clip once and only iikb runs again.
 
-Scores, per system and per kind: exact (the text a good dictation types, its last period and spacing aside), words
+Scores, per set, system and kind: exact (the text a good dictation types, its last period and spacing aside), words
 (the right words, case and punctuation aside) and words wrong against the nearest right answer.
 """
 
@@ -17,7 +22,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("RIVALS_DATA", Path.home() / ".local/share/iikb/rivals"))
 LEXICON = ROOT / "Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.lexicon"
 VOICES = ["Samantha", "Daniel"]
-IIKB = {"iikb": ["casual", "asSaid", "numbered", "on"], "iikb clean": ["casual", "clean", "numbered", "on"], "iikb formal": ["formal", "clean", "numbered", "on"]}
+IIKB = {"iikb": ["formal", "clean", "numbered", "on"], "iikb casual": ["casual", "clean", "numbered", "on"], "iikb as said": ["casual", "asSaid", "numbered", "on"]}
+SETS = {"seen": ROOT / "scripts/rivals.txt", "held out": DATA / "heldout.txt"}
 RIVALS = ["Wispr Flow", "Aqua Voice"]
 
 
@@ -34,10 +40,11 @@ def rows(path):
 
 def cases():
     out = []
-    for line in (ROOT / "scripts/rivals.txt").read_text().splitlines():
-        if line.strip() and not line.startswith("#"):
-            kind, said, right = line.split(" | ")
-            out.append(dict(kind=kind, said=said, right=[r.replace("\\n", "\n") for r in right.split(" || ")]))
+    for name, path in SETS.items():
+        for line in path.read_text().splitlines() if path.exists() else []:
+            if line.strip() and not line.startswith("#"):
+                kind, said, right = line.split(" | ")
+                out.append(dict(set=name, kind=kind, said=said, right=[r.replace("\\n", "\n") for r in right.split(" || ")]))
     return out
 
 
@@ -229,24 +236,26 @@ def main():
     answers["Wispr Flow"] = cached("wispr", said, wispr, workers=1)
     answers["Aqua Voice"] = aqua_defaults(said)
     systems = [*IIKB, *RIVALS]
-    results = [dict(kind=c["kind"], said=c["said"], voice=c["voice"], right=c["right"], parakeet=heard[c["sound"]],
+    results = [dict(set=c["set"], kind=c["kind"], said=c["said"], voice=c["voice"], right=c["right"], parakeet=heard[c["sound"]],
                     **{s: answers[s].get(c["sound"]) for s in systems}) for c in said]
     for r in results:
         r["scores"] = {s: scored(r[s], r["right"]) for s in systems}
     (DATA / "results.jsonl").write_text("".join(json.dumps(r) + "\n" for r in results))
 
     kinds = list(dict.fromkeys(c["kind"] for c in all_cases))
-    print(f"\n{len(all_cases)} cases x {len(VOICES)} voices; exact / right words / words wrong")
-    print(f"{'':12}" + "".join(f"{s:>22}" for s in systems))
-    for kind in [None, *kinds]:
-        line = f"{kind or 'all':12}"
-        for s in systems:
-            got = [r["scores"][s] for r in results if r["scores"][s] and kind in (None, r["kind"])]
-            if not got:
-                line += f"{'-':>22}"
-                continue
-            line += f"{sum(g['exact'] for g in got) / len(got):>8.0%}{sum(g['words'] for g in got) / len(got):>6.0%}{sum(g['wrong'] for g in got) / len(got):>8.1%}"
-        print(line)
+    for name in [n for n in SETS if any(c["set"] == n for c in all_cases)]:
+        here = [r for r in results if r["set"] == name]
+        print(f"\n{name}: {len(here) // len(VOICES)} cases x {len(VOICES)} voices; exact / right words / words wrong")
+        print(f"{'':12}" + "".join(f"{s:>22}" for s in systems))
+        for kind in [None, *kinds]:
+            line = f"{kind or 'all':12}"
+            for s in systems:
+                got = [r["scores"][s] for r in here if r["scores"][s] and kind in (None, r["kind"])]
+                if not got:
+                    line += f"{'-':>22}"
+                    continue
+                line += f"{sum(g['exact'] for g in got) / len(got):>8.0%}{sum(g['words'] for g in got) / len(got):>6.0%}{sum(g['wrong'] for g in got) / len(got):>8.1%}"
+            print(line)
 
 
 if __name__ == "__main__":
