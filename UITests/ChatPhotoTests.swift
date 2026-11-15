@@ -100,7 +100,7 @@ final class ChatPhotoTests: XCTestCase {
         try stand("ok")
         element("iikb.chat.field").tap()
         type("and this")
-        key("return").tap()
+        element("iikb.chat.send").tap()
         XCTAssertTrue(label("Got it: 1 photo").waitForExistence(timeout: 30), "the kept photo goes with the next send")
         XCTAssertTrue(label("Got it: “and this”").waitForExistence(timeout: 20), "and so do the words after it")
         XCTAssertFalse(label("Not sent").exists, "the mark goes once it's sent")
