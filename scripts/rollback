@@ -1,0 +1,15 @@
+#!/bin/sh
+# Puts the build before the latest back on the iPhone and iPad in one step: on the install link and in hangar, whose
+# automatic installs put it on. Running it again goes forward. It changes what's live, not main: revert the commit
+# too, or the next build puts it back up.
+# Usage: scripts/rollback
+set -e
+page=$HOME/.local/share/iikb/link
+[ -f "$page/previous/manifest.plist" ] || { echo "the install link holds no build before its latest" >&2; exit 1; }
+for file in manifest.plist index.html; do
+  mv "$page/$file" "$page/$file.swap"
+  mv "$page/previous/$file" "$page/$file"
+  mv "$page/$file.swap" "$page/previous/$file"
+done
+"$HOME/Developer/hangar/bin/hangar" rollback com.shahidy.iikb
+echo "scripts/rollback again goes forward"
