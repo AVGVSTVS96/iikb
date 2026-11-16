@@ -8,30 +8,23 @@ import KeyboardEnglish
 /// Beside each file, `<id>.sha256` names the manifest entry it came from, so a build whose manifest names a newer list
 /// sees the file as out of date, and the app downloads the new one while the keyboard goes on with the old.
 nonisolated public enum LanguageFiles {
-    /// A language's file as `Resources/Languages/manifest.json` lists it, which `scripts/languages` writes as it
-    /// publishes the files, so the app shows sizes and checks downloads without asking a server.
-    public struct Download: Decodable, Sendable {
-        public let id: String
-        public let size: Int
-        public let sha256: String
-        public let url: URL
-
-        public init(id: String, size: Int, sha256: String, url: URL) {
-            self.id = id
-            self.size = size
-            self.sha256 = sha256
-            self.url = url
-        }
-    }
-
-    /// The manifest's files, by language.
+    /// The files `Resources/Languages/manifest.json` lists, by language, which `scripts/languages` writes as it
+    /// publishes them, so the app shows sizes and checks downloads without asking a server.
     public static let downloads: [String: Download] = {
-        struct Manifest: Decodable { let lexicons: [Download] }
+        struct Listed: Decodable {
+            let id: String
+            let size: Int
+            let sha256: String
+            let url: URL
+        }
+        struct Manifest: Decodable { let lexicons: [Listed] }
         guard let url = Bundle.module.url(forResource: "manifest", withExtension: "json", subdirectory: "Languages"),
             let data = try? Data(contentsOf: url),  // file: bundled manifest
             let manifest = try? JSONDecoder().decode(Manifest.self, from: data)
         else { return [:] }
-        return Dictionary(manifest.lexicons.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return Dictionary(
+            manifest.lexicons.map { ($0.id, Download(url: $0.url, size: $0.size, sha256: $0.sha256)) },
+            uniquingKeysWith: { first, _ in first })
     }()
 
     public static var folder: URL? {
@@ -57,8 +50,8 @@ nonisolated public enum LanguageFiles {
     }
 
     /// Whether the file here is the one `download` names, rather than a list an older build downloaded.
-    public static func isCurrent(_ download: Download, in folder: URL? = folder) -> Bool {
-        installed(download.id, in: folder) == download.sha256
+    public static func isCurrent(_ id: String, as download: Download, in folder: URL? = folder) -> Bool {
+        installed(id, in: folder) == download.sha256
     }
 
     /// The words the keyboard types for `id`: English's for English, a downloaded language's read in place, or nil when
@@ -69,17 +62,21 @@ nonisolated public enum LanguageFiles {
         return Lexicon(bytes: bytes)
     }
 
-    /// Puts a downloaded, checked file in place in one move, so the keyboard never maps half a file, then stamps it
-    /// with the manifest entry it came from.
-    public static func install(_ file: URL, as download: Download, in folder: URL? = folder) throws {
-        guard let folder, var url = url(of: download.id, in: folder), let stamp = stamp(of: download.id, in: folder)
-        else { throw CocoaError(.fileNoSuchFile) }
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        _ = try FileManager.default.replaceItemAt(url, withItemAt: file)
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        try url.setResourceValues(values)
-        try Data(download.sha256.utf8).write(to: stamp, options: .atomic)  // file: language stamp
+    /// Downloads `id`'s file as `download` names it, which the keyboard reads only once it's whole and checked, then
+    /// stamps it with the manifest entry it came from.
+    public static func install(
+        _ id: String, from download: Download, in folder: URL? = folder, resumingFrom resumeData: Data? = nil,
+        progress: @escaping @Sendable (Double) -> Void = { _ in }
+    ) async throws(Download.Failure) {
+        guard let url = url(of: id, in: folder), let stamp = stamp(of: id, in: folder) else {
+            throw Download.Failure(reason: CocoaError(.fileNoSuchFile).localizedDescription)
+        }
+        try await download.fetch(to: url, resumingFrom: resumeData, progress: progress)
+        do {
+            try Data(download.sha256.utf8).write(to: stamp, options: .atomic)  // file: language stamp
+        } catch {
+            throw Download.Failure(reason: error.localizedDescription)
+        }
     }
 
     public static func remove(_ id: String, in folder: URL? = folder) {

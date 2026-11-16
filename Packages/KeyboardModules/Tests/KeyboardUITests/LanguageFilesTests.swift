@@ -1,33 +1,47 @@
+import CryptoKit
 import Foundation
 import KeyboardStore
 import Testing
 
 struct LanguageFilesTests {
     let folder = URL.temporaryDirectory.appending(path: "LanguageFiles \(UUID().uuidString)/Languages")
-    let old = LanguageFiles.Download(id: "de", size: 3, sha256: "old", url: URL(string: "https://example.com/de")!)
-    let new = LanguageFiles.Download(id: "de", size: 3, sha256: "new", url: URL(string: "https://example.com/de")!)
 
-    private func downloaded(_ words: String) throws -> URL {
-        let file = URL.temporaryDirectory.appending(path: "download \(UUID().uuidString)")
+    /// A list of `words`, as a manifest names it, downloaded from a file here.
+    private func list(_ words: String) throws -> Download {
+        let file = URL.temporaryDirectory.appending(path: "list \(UUID().uuidString)")
         try Data(words.utf8).write(to: file)
-        return file
+        let digest = SHA256.hash(data: Data(words.utf8)).map { String(format: "%02x", $0) }.joined()
+        return Download(url: file, size: words.utf8.count, sha256: digest)
     }
 
     private func words() throws -> String {
         try String(contentsOf: try #require(LanguageFiles.url(of: "de", in: folder)), encoding: .utf8)
     }
 
-    @Test func aListFromAnOlderManifestIsOutOfDateUntilTheNewOneIsIn() throws {
-        #expect(!LanguageFiles.isCurrent(old, in: folder))
-        try LanguageFiles.install(downloaded("ein"), as: old, in: folder)
-        #expect(LanguageFiles.isCurrent(old, in: folder))
-        #expect(!LanguageFiles.isCurrent(new, in: folder), "the build's manifest names a newer list")
+    @Test func aListFromAnOlderManifestIsOutOfDateUntilTheNewOneIsIn() async throws {
+        let old = try list("ein")
+        let new = try list("zwei")
+        #expect(!LanguageFiles.isCurrent("de", as: old, in: folder))
+        try await LanguageFiles.install("de", from: old, in: folder)
+        #expect(LanguageFiles.isCurrent("de", as: old, in: folder))
+        #expect(!LanguageFiles.isCurrent("de", as: new, in: folder), "the build's manifest names a newer list")
         #expect(LanguageFiles.has("de", in: folder), "the old list stays for the keyboard meanwhile")
 
-        try LanguageFiles.install(downloaded("zwei"), as: new, in: folder)
-        #expect(LanguageFiles.isCurrent(new, in: folder))
+        try await LanguageFiles.install("de", from: new, in: folder)
+        #expect(LanguageFiles.isCurrent("de", as: new, in: folder))
         #expect(try words() == "zwei")
-        #expect(LanguageFiles.installed("de", in: folder) == "new")
+        #expect(LanguageFiles.installed("de", in: folder) == new.sha256)
+    }
+
+    @Test func aDamagedDownloadLeavesTheListItWouldReplace() async throws {
+        let old = try list("ein")
+        try await LanguageFiles.install("de", from: old, in: folder)
+        let damaged = Download(url: try list("zwei").url, size: 4, sha256: old.sha256)
+        await #expect(throws: Download.Failure.self) {
+            try await LanguageFiles.install("de", from: damaged, in: folder)
+        }
+        #expect(try words() == "ein")
+        #expect(LanguageFiles.isCurrent("de", as: old, in: folder))
     }
 
     @Test func aFileFromBeforeStampsIsOutOfDate() throws {
@@ -35,15 +49,17 @@ struct LanguageFilesTests {
         try Data("ein".utf8).write(to: try #require(LanguageFiles.url(of: "de", in: folder)))
         #expect(LanguageFiles.has("de", in: folder))
         #expect(LanguageFiles.installed("de", in: folder) == nil)
-        #expect(!LanguageFiles.isCurrent(new, in: folder))
+        #expect(!LanguageFiles.isCurrent("de", as: try list("ein"), in: folder))
     }
 
-    @Test func removingTakesTheStampToo() throws {
-        try LanguageFiles.install(downloaded("ein"), as: new, in: folder)
+    @Test func removingTakesTheStampToo() async throws {
+        let new = try list("ein")
+        try await LanguageFiles.install("de", from: new, in: folder)
         LanguageFiles.remove("de", in: folder)
         #expect(!LanguageFiles.has("de", in: folder))
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try Data("ein".utf8).write(to: try #require(LanguageFiles.url(of: "de", in: folder)))
-        #expect(!LanguageFiles.isCurrent(new, in: folder), "a stamp left behind would vouch for the wrong file")
+        #expect(
+            !LanguageFiles.isCurrent("de", as: new, in: folder), "a stamp left behind would vouch for the wrong file")
     }
 }
