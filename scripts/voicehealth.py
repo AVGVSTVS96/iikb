@@ -3,25 +3,28 @@
 Per day: dictations, ones whose recording holds no sound at all (no sample past 100 of 32767: no real microphone is
 that quiet, and none of 628 dictations with speech came within 200), ones written down as nothing, ones recovered after
 iikb ended mid-dictation, and ones whose recording file is shorter than the dictation was. Then the same per capture,
-the microphone and whether voice processing heard it, and the last silent ones.
+the microphone and whether voice processing heard it, the last silent ones, and why the ones the iPhone's microphones
+weren't aimed for weren't (their transcript's `unaimed`, `Unaimed`), most often first.
 
 Last, each way of hearing the dictations were compared in (`Capture`), in loud rooms and quiet ones: how many, and how
 many of the words each typed were changed by the time its field was sent or left (`field.final`, leaving out the ones
-marked uncertain). A room is loud at -40 dBFS or more, measured on the recording; voice processing holds a room down,
-so one it heard takes the room of the cardioid's dictations within 15 minutes of it, and goes uncounted without one.
+marked uncertain). A room is loud within 19 dB of how loud he usually sounds heard the same way (voicecorpus.rooms),
+measured on the recording; voice processing holds a room down, so one it heard takes the room of the cardioid's
+dictations within 15 minutes of it, and goes uncounted without one.
 """
 import datetime
+import statistics
 import json
 import os
 import struct
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from voicescore import edits, words
 
 APP = os.path.expanduser("~/.local/share/iikb/backup/mirror/app")
 SILENT = 100
-LOUD_ROOM = -40
+LOUD_ROOM = -19
 NEARBY = 15 * 60
 EPOCH = datetime.datetime(2001, 1, 1, tzinfo=datetime.timezone.utc)
 
@@ -56,6 +59,7 @@ def main():
     table = defaultdict(lambda: defaultdict(int))
     captures = defaultdict(lambda: defaultdict(int))
     silent = []
+    unaimed = Counter()
     for row in sorted(rows, key=lambda r: r["date"]):
         when = (EPOCH + datetime.timedelta(seconds=row["date"])).astimezone()
         if when < since:
@@ -67,6 +71,8 @@ def main():
             captures[f"{row.get('mic') or '?'}, {processing}"][column] += 1
         if "silent" in found:
             silent.append((when, row))
+        if row.get("unaimed"):
+            unaimed[row["unaimed"]] += 1
     columns = ["dictations", "silent", "nothing written", "recovered", "recording short", "no recording"]
     print("day    " + "  ".join(columns))
     for day in sorted(table):
@@ -76,15 +82,19 @@ def main():
         print(f"{capture}: " + ", ".join(f"{captures[capture][c]} {c}" for c in columns if captures[capture][c]))
     for when, row in silent[-10:]:
         print(f"silent {when:%m-%d %H:%M:%S} {row['seconds']:5.1f}s {row.get('mic') or '?'} {row.get('app') or ''}")
+    for why, count in unaimed.most_common(10):
+        print(f"unaimed {count:>4}  {why}")
     arms(rows)
 
 
 def arms(rows):
     compared = [r for r in rows if r.get("capture") and r.get("room") is not None]
     heard = [r for r in compared if r["capture"] != "voiceProcessing"]
+    usual = {way: statistics.median(r["speech"] for r in heard if r["capture"] == way) for way in {r["capture"] for r in heard}}
     table = defaultdict(lambda: [0, 0, 0])
     for row in compared:
-        rooms = [r["room"] for r in heard if abs(r["date"] - row["date"]) <= NEARBY] if row["capture"] == "voiceProcessing" else [row["room"]]
+        near = [r for r in heard if abs(r["date"] - row["date"]) <= NEARBY] if row["capture"] == "voiceProcessing" else [row]
+        rooms = [r["room"] - usual[r["capture"]] for r in near]
         field = row.get("field")
         if not rooms or not field or field.get("uncertain"):
             continue

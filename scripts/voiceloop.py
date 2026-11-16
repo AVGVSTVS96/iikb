@@ -154,7 +154,7 @@ def spoken():
                        input="".join(f"{k}\0{v}\0{t}\0" for k, v, t in missing), text=True, check=True)
         subprocess.run(["rsync", "-a", "--remove-source-files", "mac:Developer/voicebench/said/", f"{said_dir}/"], check=True)
 
-    clips = rows(DATA / "real/clips.jsonl")
+    clips = corpus.heard_most(rows(DATA / "real/clips.jsonl"))
     folder = DATA / "real"
     noisy = [c for c in clips if c["room"] == "loud"]
     bed = corpus.room(folder, noisy)

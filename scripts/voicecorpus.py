@@ -15,8 +15,8 @@ is what scripts/voiceloop replays the rest of the iPhone's path with: what the m
 field it went into (and its content type) and the text the keyboard saw before it there, as its transcript's `field`
 kept them, or, from before iikb kept them, the kind and the text before it from the record source's log of that field.
 
-loud: the real set's quiet dictations, those he labelled by ear first and the rest picked by a hash of each id, mixed
-with the room of its loud ones (their stretches without speech) at that room's own level, the speech as loud as said
+loud: the real set's quiet dictations heard the commonest way (the front cardioid since Nov 7), those he labelled
+by ear first and the rest picked by a hash of each id, mixed with the room of its loud ones heard that way (their stretches without speech) at that room's own level, the speech as loud as said
 there and 6, 12 and 18 dB quieter (a whisper), each against his label, or else its final. Any quiet dictation can be
 picked, not only ones the iPhone already got right, so the clean row is as hard as his real ones.
 
@@ -32,7 +32,7 @@ scripts/voicebench.
 read: his dictations of `heldout/read.txt`'s lines (a script written blind, never seen by whoever tunes dictation),
 each against what that line should type: his voice and rooms on text nothing was fitted to.
 """
-import datetime, difflib, hashlib, json, os, random, re, shutil, sys, wave
+import collections, datetime, difflib, hashlib, json, os, random, re, shutil, sys, wave
 from pathlib import Path
 import numpy as np
 
@@ -43,7 +43,7 @@ OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else BACKUP.parent / "voicebench"
 HELDOUT = BACKUP.parent / "heldout"
 EPOCH = datetime.datetime(2001, 1, 1, tzinfo=datetime.timezone.utc)
 VOICE_PROCESSING = datetime.datetime(2026, 11, 3, 12, 24, tzinfo=datetime.timezone.utc)
-LOUD_ROOM = -40
+LOUD_ROOM = -19
 GATED = -90
 TOKEN = re.compile(r"[A-Za-z0-9'’]+")
 
@@ -74,6 +74,26 @@ def levels(samples):
     level = np.sort(frames(samples))
     db = lambda x: round(float(20 * np.log10(max(x, 1e-6))), 1)
     return db(level[len(level) // 10]), db(level[len(level) * 95 // 100])
+
+
+def usual(clips):
+    """How loud he usually sounds heard each way: the median speech of the clips with that `capture`."""
+    return {way: np.median([c["speech_db"] for c in clips if c["capture"] == way]) for way in {c["capture"] for c in clips}}
+
+
+def rooms(clips, voice):
+    """Labels each clip's room loud when it's within 19 dB of how loud he usually sounds heard the same way (`voice`,
+    from `usual`), which is -40 dBFS for iOS's own pick: the front cardioid adds no gain, so it hears his voice and his
+    rooms 18 dB under that, and -40 dBFS alone called 45 of its 834 dictations loud where this calls 140."""
+    for clip in clips:
+        clip["room"] = "loud" if clip["room_db"] - voice[clip["capture"]] >= LOUD_ROOM else "quiet"
+    return clips
+
+
+def heard_most(clips):
+    """The clips heard the commonest way, so a set mixed from them keeps one microphone's levels."""
+    way = collections.Counter(c["capture"] for c in clips).most_common(1)[0][0]
+    return [c for c in clips if c["capture"] == way]
 
 
 def sent():
@@ -131,6 +151,11 @@ def final(transcript, candidates):
     return (best[1][1], best[2], best[3], best[1][0]) if best[0] >= 0.6 else (None, None, None, None)
 
 
+def capture(transcript, date):
+    """How it was heard: its transcript's `capture`, or else voice processing or iOS's own pick ("raw")."""
+    return transcript.get("capture") or ("voiceProcessing" if transcript.get("voiceProcessing", date >= VOICE_PROCESSING) else "raw")
+
+
 def said_typed(transcript):
     """What the iPhone typed for a dictation."""
     return (transcript.get("field") or {}).get("typed", transcript["text"])
@@ -163,16 +188,15 @@ def real():
             continue
         os.link(recording, folder / f"audio/{t['id']}.wav")
         date = EPOCH + datetime.timedelta(seconds=t["date"])
-        heard = t.get("capture") or ("voiceProcessing" if t.get("voiceProcessing", date >= VOICE_PROCESSING) else "raw")
         room, speech = levels(samples)
         clips.append(dict(id=t["id"], audio_path=f"audio/{t['id']}.wav", date=date.isoformat(timespec="seconds"),
                           seconds=round(len(samples) / 16_000, 1), room_db=room, speech_db=speech,
-                          room="loud" if room >= LOUD_ROOM else "quiet", capture=heard, mic=t.get("mic") or "unknown",
+                          capture=capture(t, date), mic=t.get("mic") or "unknown",
                           final=source, edit="as typed" if words(text) == words(said_typed(t)) else "edited"))
         references.append(dict(id=t["id"], text=text))
         typed.append(dict(id=t["id"], text=said_typed(t)))
         context.append(dict(id=t["id"], heard=t.get("heard") or t["text"], field=kind, content=(t.get("field") or {}).get("content"), before=before))
-    lines(folder / "clips.jsonl", clips)
+    lines(folder / "clips.jsonl", rooms(clips, usual(clips)))
     lines(folder / "references.jsonl", references)
     lines(folder / "typed.jsonl", typed)
     lines(folder / "context.jsonl", context)
@@ -185,7 +209,11 @@ def real():
 
 def room(folder, clips):
     """The loud dictations' stretches without speech, each frame within 6 dB of its recording's room, in runs of half a
-    second or more less 40 ms at each end, joined end to end and brought to their rooms' middle level."""
+    second or more less 40 ms at each end, each brought to the rooms' middle level and joined end to end: one room as
+    loud as the middle one. Brought there together, the quietest rooms set the level and the cardioid's loud rooms,
+    which span 20 dB, put a tenth of the bed over his voice (Nov 15: as said 42.52% wrong, against 1.10% on his own
+    dictations in those rooms)."""
+    middle = np.median([c["room_db"] for c in clips])
     parts = []
     for clip in clips:
         samples = read(folder / clip["audio_path"])
@@ -197,21 +225,21 @@ def room(folder, clips):
                 start = at
             elif not still and start is not None:
                 if at - start >= 25:
-                    parts.append(samples[(start + 2) * 320 : (at - 2) * 320])
+                    parts.append(samples[(start + 2) * 320 : (at - 2) * 320] * 10 ** ((middle - clip["room_db"]) / 20))
                 start = None
-    bed = np.concatenate(parts)
-    return bed * 10 ** ((np.median([c["room_db"] for c in clips]) - levels(bed)[0]) / 20)
+    return np.concatenate(parts)
 
 
 def loud(folder, clips, references, typed, context, count=120):
     out = OUT / "loud"
     shutil.rmtree(out, ignore_errors=True)
     (out / "audio").mkdir(parents=True)
+    clips = heard_most(clips)
     noisy = [c for c in clips if c["room"] == "loud"]
     bed = room(folder, noisy)
     said = float(np.median([c["speech_db"] for c in noisy]))
     heard = labels()
-    clean = [c for c in clips if c["room"] == "quiet" and c["capture"] == "voiceProcessing" and 3 <= c["seconds"] <= 30]
+    clean = [c for c in clips if c["room"] == "quiet" and 3 <= c["seconds"] <= 30]
     picked = sorted(clean, key=lambda c: (c["id"] not in heard, hashlib.sha256(c["id"].encode()).digest()))[:count]
     rows, refs, contexts = [], [], []
     for clip in sorted(picked, key=lambda c: c["date"]):
@@ -311,7 +339,7 @@ def heard_set(name, picked):
         room, speech = levels(samples)
         clips.append(dict(id=t["id"], audio_path=f"audio/{t['id']}.wav", date=date.isoformat(timespec="seconds"),
                           seconds=round(len(samples) / 16_000, 1), room_db=room, speech_db=speech,
-                          room="loud" if room >= LOUD_ROOM else "quiet", final=source or "none", **groups))
+                          capture=capture(t, date), final=source or "none", **groups))
         references.append(dict(id=t["id"], text=reference))
         typed.append(dict(id=t["id"], text=said_typed(t)))
         context.append(dict(id=t["id"], heard=t.get("heard") or t["text"], field=kind or "text",
@@ -319,7 +347,7 @@ def heard_set(name, picked):
     if not clips:
         shutil.rmtree(folder)
         return clips
-    lines(folder / "clips.jsonl", clips)
+    lines(folder / "clips.jsonl", rooms(clips, usual([json.loads(line) for line in open(OUT / "real/clips.jsonl")])))
     lines(folder / "references.jsonl", references)
     lines(folder / "typed.jsonl", typed)
     lines(folder / "context.jsonl", context)
