@@ -126,6 +126,8 @@ extension Panel {
         case .snippets: .systemBlue
         case .quicklinks: .systemGreen
         case .form: .systemGray
+        case .textStyles: .systemMint
+        case .changeCase: .systemYellow
         }
     }
 }

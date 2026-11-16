@@ -86,6 +86,12 @@ Then it goes through your `Vocabulary` (`VocabularyView` in the app's Settings, 
 - The keyboard runs the same match on what it's about to type, against the field's own words (`Vocabulary.seen`: each dotted name from each part to its end, each word of four letters or more the lexicon lacks), so a name already written comes out the same when said again. A word that only adds an ending to one there, or only changes its case, stays.
 - Nov 5, on Bassim's 668 dictations: 13 words changed, each to the name meant, none wrong.
 
+## Tools/
+
+Raycast's text tools, minus its AI (docs/design.md, "The bar" and "Text Styles").
+- `Calculation`: the bar's calculator. `Calculation(before:)` reads the end of the line before the caret, never the end of something longer, as a calculation (`Token`s, then `Parser`, by precedence, with Spotlight's percentages: 80 + 20% is 96) or a conversion (`Unit`, a table of spellings and sizes), and `TypingEngine.refreshSuggestions` puts its answer alone in the bar as a `Suggestion.Kind.answer`, which `accept` types in its place. KeyboardCore has no `pow` or `log`, so powers are whole and multiplied out, and `Calculation.format` writes numbers itself.
+- `TextStyle` (Unicode's styled letters, each style a table of 62 forms; `TextStyle.plain` reads any of them back) and `LetterCase` (Change Case), which `Rewrite` wraps for the `.textStyles` and `.changeCase` panels. `KeyboardEvent.rewrite` writes one over `TypingEngine.rewriting`: the selection, else what the last rewrite wrote while the text is as it left it (`Rewritten`, which keeps the plain letters it was styled from), else the text the keyboard sees around the caret (`TextState`), the caret first moved to its end (`TypingEngine+Tools.swift`).
+
 ## Correction/
 
 `Corrector` (what to correct, text replacements, names, learned words) over a `CandidateSource`.

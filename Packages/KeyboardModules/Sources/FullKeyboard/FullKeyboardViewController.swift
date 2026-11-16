@@ -123,10 +123,13 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         return panel
     }()
+    private lazy var textStylesPanel = rewritePanel(.textStyles, placeholder: "Search styles")
+    private lazy var changeCasePanel = rewritePanel(.changeCase, placeholder: "Search cases")
     /// The panels this keyboard has, in the tools' order. GIFs need a KLIPY key built in.
     private lazy var panels: [Panel: PanelContent] = [
         .emoji: emojiPanel, .gif: gifPanel, .clipboard: clipboardPanel, .transcripts: transcriptsPanel,
         .snippets: snippetsPanel, .quicklinks: quicklinksPanel, .form: formPanel,
+        .textStyles: textStylesPanel, .changeCase: changeCasePanel,
     ].compactMapValues { $0 }
     private lazy var host = ProxyDocument { [unowned self] in textDocumentProxy }
     /// The chats panel's message line while it's open, which the keys type into in place of the app's field.
@@ -921,7 +924,7 @@ open class FullKeyboardViewController: UIInputViewController {
                 menuView.open(
                     ([Panel.clipboard, .transcripts, .gif] + kept).compactMap { panel in
                         panels[panel].map { (panel, $0) }
-                    } + chats)
+                    } + chats + [(.textStyles, textStylesPanel), (.changeCase, changeCasePanel)])
             }
         }
         guard open else { return }
@@ -1049,6 +1052,19 @@ open class FullKeyboardViewController: UIInputViewController {
     private func open(_ panel: Panel, backToMenu: Bool = true) {
         feedback(.other)
         show(panel, backToMenu: backToMenu)
+    }
+
+    /// Text Styles or Change Case: a pick rewrites the text they act on, and the menu gives the keys back.
+    private func rewritePanel(_ panel: Panel, placeholder: String) -> RewritePanel {
+        let content = RewritePanel(panel, placeholder: placeholder)
+        content.target = { [unowned self] in engine.rewriting }
+        content.preview = { [unowned self] in engine.preview($0) }
+        content.onPick = { [unowned self] in
+            feedback(.input)
+            menuOpen = false
+            handle(.rewrite($0))
+        }
+        return content
     }
 
     /// Opens a panel without a tap of its own to feel, for a key that already played one as it went down. Its Back

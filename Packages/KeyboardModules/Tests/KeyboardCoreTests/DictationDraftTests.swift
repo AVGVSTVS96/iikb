@@ -3,19 +3,6 @@ import Testing
 
 @testable import KeyboardCore
 
-/// A field that shows the keyboard only `window` characters on each side of the caret, as iOS does.
-private final class ClippedDocument: TestDocument {
-    let window: Int
-
-    init(_ text: String = "", window: Int = 40) {
-        self.window = window
-        super.init(text)
-    }
-
-    override var textBeforeInput: String? { String(text.prefix(cursor).suffix(window)) }
-    override var textAfterInput: String? { String(text.dropFirst(cursor + selection).prefix(window)) }
-}
-
 /// A field that shows the keyboard `before` characters before the caret and `after` after it, as iOS does, each side
 /// with a length of its own.
 private final class LopsidedDocument: TestDocument {

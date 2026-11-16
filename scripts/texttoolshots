@@ -1,0 +1,50 @@
+#!/bin/bash
+# Runs on a Mac (scripts/ci scripts/texttoolshots). The bar's calculator, Text Styles and Change Case through the real
+# keyboard on each of the iPhone Duo's screens, light and dark (UITests/TextToolsShots), shot at each step into
+# shots/raw/texttools/<screen>-<appearance>-<step>.png. SCREENS and APPEARANCES pick.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
+out=$PWD/shots/raw/texttools
+mkdir -p "$out"
+ID=$(scripts/sim ensure "iPhone Duo" iPhone-Duo)
+xcodegen generate -q
+xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest -quiet
+touch "$APP"
+scripts/sim boot "$ID"
+scripts/sim use "$ID" iikb
+eval "$(sed -n '/^DUO_SCREENS=/,/"$/p' scripts/sim)"
+
+# Shoots each <name>.hold the test leaves, on the screen it's on, then takes the file away to say it's done.
+shutter() {
+  local hold
+  while sleep 0.05; do
+    for hold in "$out"/*.hold; do
+      [ -e "$hold" ] || continue
+      xcrun simctl io "$ID" screenshot --display="$1" "${hold%.hold}.png" >/dev/null 2>&1 || echo "no shot for $hold" >&2
+      rm "$hold"
+    done
+  done
+}
+
+while read -r screen hinge orientation display; do
+  [ -n "${SCREENS:-}" ] && [[ " $SCREENS " != *" $screen "* ]] && continue
+  scripts/sim unfold "$ID" "$hinge"
+  scripts/sim hub "$ID" orientation "$orientation"
+  for appearance in ${APPEARANCES:-dark light}; do
+    echo "== $screen $appearance $(date +%T)"
+    xcrun simctl ui "$ID" appearance "$appearance"
+    shutter "$display" &
+    shooter=$!
+    log=build/uitest/texttools-$screen-$appearance.log
+    TEST_RUNNER_IIKB_SHOTS=$out/$screen-$appearance \
+      TEST_RUNNER_IIKB_ORIENTATION=$([ "$orientation" = portrait ] && echo portrait || echo landscape) \
+      xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb \
+      -destination "id=$ID" -derivedDataPath build/uitest -only-testing:AppUITests/TextToolsShots >"$log" 2>&1 || failed=1
+    grep -E "error:|XCTAssert|Test Case .*(passed|failed)" "$log" || true
+    kill "$shooter" 2>/dev/null || true
+    wait "$shooter" 2>/dev/null || true
+  done
+done <<<"$DUO_SCREENS"
+ls "$out"
+exit "${failed:-0}"

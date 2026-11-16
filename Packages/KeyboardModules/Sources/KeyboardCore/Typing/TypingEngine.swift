@@ -85,6 +85,8 @@ public struct TypingEngine {
     var pending: PendingWord?
     var stray: StraySpace?
     var revert: Revert?
+    /// What Text Styles or Change Case last wrote, which the next one rewrites while the text is still as it left it.
+    var rewritten: Rewritten?
 
     private enum ShiftHold { case pressed, typedWhileHeld }
     enum LastSpace { case typed, picked }
@@ -351,6 +353,8 @@ public struct TypingEngine {
             insertWhole(emoji, in: document)
         case .paste(let text):
             insertWhole(text, in: document)
+        case .rewrite(let rewrite):
+            self.rewrite(rewrite, in: document)
         case .dictated(let heard, let plain, let id):
             let lexicon = corrector?.lexicon
             let capitals = settings.dictation(in: app).capitals(in: traits.autocapitalization)
@@ -722,7 +726,7 @@ public struct TypingEngine {
         return dictations
     }
 
-    private mutating func forgetWord() {
+    mutating func forgetWord() {
         lastSpace = nil
         pending = nil
         typing = WordTaps()

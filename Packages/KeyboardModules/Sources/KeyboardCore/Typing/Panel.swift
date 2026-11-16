@@ -16,9 +16,14 @@ public enum Panel: String, Hashable, Sendable, CaseIterable {
     /// A snippet's or quicklink's arguments, or a new snippet's name, keyword and tag, typed one field at a time
     /// (`TypingEngine.fill`). It opens over the panel it came from, or over the keys when a keyword you typed opened it.
     case form
+    /// Text Styles and Change Case: what you wrote in Unicode's styles or another case (`Rewrite`).
+    case textStyles
+    case changeCase
 
     /// Every tool, in the order Customize Actions lists them: the actions you can pick for the action row and the bar.
-    public static let tools: [Panel] = [.emoji, .gif, .transcripts, .clipboard, .snippets, .quicklinks]
+    public static let tools: [Panel] = [
+        .emoji, .gif, .transcripts, .clipboard, .snippets, .quicklinks, .textStyles, .changeCase,
+    ]
 
     /// The actions before you pick any: the menu's panels, the emoji key being where emoji are.
     public static let standardActions: [Panel] = [.gif, .transcripts, .clipboard]

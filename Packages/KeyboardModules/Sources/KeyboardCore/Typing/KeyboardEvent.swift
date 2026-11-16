@@ -31,6 +31,8 @@ public enum KeyboardEvent: Hashable, Sendable {
     case emoji(String, base: String?)
     /// Text from the clipboard panel, typed as it is.
     case paste(String)
+    /// A text style or case picked in its panel, for the text it acts on (`TypingEngine.rewriting`).
+    case rewrite(Rewrite)
     /// Text that dictation heard in its style, and as the model wrote it with the person's vocabulary (`plain`, which
     /// the field's reading takes: `DictationReading`), the same when nil. One with its transcript's `id` is followed
     /// until its field is sent or left, for what it became (`TypingEngine.takeDictations`).

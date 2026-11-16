@@ -191,6 +191,8 @@ extension Panel {
         case .snippets: "Snippets"
         case .quicklinks: "Quicklinks"
         case .form: ""
+        case .textStyles: "Text Styles"
+        case .changeCase: "Change Case"
         }
     }
 
@@ -205,6 +207,8 @@ extension Panel {
         case .snippets: Self.symbol("text.quote", side)
         case .quicklinks: Self.symbol("link", side)
         case .form: nil
+        case .textStyles: Self.symbol("bold.italic.underline", side)
+        case .changeCase: Self.symbol("textformat", side)
         }
     }
 
@@ -219,6 +223,8 @@ extension Panel {
         case .snippets: Self.symbol("text.quote", side)
         case .quicklinks: Self.symbol("link", side)
         case .form: nil
+        case .textStyles: Self.symbol("bold.italic.underline", side)
+        case .changeCase: Self.symbol("textformat", side)
         }
     }
 
