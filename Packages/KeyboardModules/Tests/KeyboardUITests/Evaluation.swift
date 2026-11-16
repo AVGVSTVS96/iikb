@@ -59,8 +59,8 @@ struct Evaluation {
         let lexicon = try #require(Lexicon(bytes: [UInt8](Data(contentsOf: file))))
         let phrases = try Self.phrases("phrases.\(language.id)")
         var context = LayoutContext(device: .phone, layer: .letters)
-        context.language = language
-        context.letters = language.layout(nil)
+        context.languages = [language]
+        context.letters = language.layouts[0]
         for keyboard in Keyboard.scored where keyboard != .baseline {
             for noise in Self.noiseLevels {
                 var user = SimulatedUser(width: Self.width, noise: noise, seed: 2026, context: context)

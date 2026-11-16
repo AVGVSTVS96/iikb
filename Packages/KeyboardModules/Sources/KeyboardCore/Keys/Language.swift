@@ -2,7 +2,7 @@
 /// code, so every language is listed and laid out with no download; its words are the download. Its currency isn't
 /// its own: Apple's keyboard shows the region's whatever the language.
 public struct Language: Sendable, Identifiable {
-    /// Its ISO 639-1 code, as `KeyboardSettings.language` keeps it.
+    /// Its ISO 639-1 code, as settings keep it.
     public let id: String
     /// As it calls itself: Deutsch, Svenska.
     public let name: String
@@ -11,11 +11,6 @@ public struct Language: Sendable, Identifiable {
     /// What smart punctuation types for " and ', as Apple's keyboard does in it: the double quotes that open and
     /// close, then the single ones, the closing one also its apostrophe. French's hold a no-break space inside.
     public let quotes: [String]
-    /// The layout `id` names (`KeyboardSettings.layout`), or the language's own where it offers none by that name.
-    public func layout(_ id: String?) -> LetterLayout {
-        layouts.first { $0.id == id } ?? layouts[0]
-    }
-
     /// The language `id` names, or English for one iikb doesn't have.
     public static func named(_ id: String) -> Language {
         all.first { $0.id == id } ?? .english
@@ -71,4 +66,11 @@ public struct LetterLayout: Hashable, Sendable, Identifiable {
         id: "german", name: "German", rows: ["qwertzuiopü", "asdfghjklöä", "yxcvbnm"])
     public static let swedish = LetterLayout(
         id: "swedish", name: "Swedish", rows: ["qwertyuiopå", "asdfghjklöä", "zxcvbnm"], narrowsShift: true)
+}
+
+extension Sequence where Element: Equatable {
+    /// Each element once, where it first comes.
+    var uniqued: [Element] {
+        reduce(into: []) { if !$0.contains($1) { $0.append($1) } }
+    }
 }

@@ -99,7 +99,7 @@ enum LaunchOptions {
         if let hand = defaults.string(forKey: "iikbOneHanded").flatMap(OneHanded.init) { SettingsStore.set(hand) }
         if let language = defaults.string(forKey: "iikbLanguage") {
             var settings = SettingsStore.load()
-            settings.language = language
+            settings.languages = [.named(language)]
             settings.layout = nil
             SettingsStore.save(settings)
         }
@@ -138,7 +138,7 @@ enum LaunchOptions {
         if let roundness = defaults.string(forKey: "iikbKeyRoundness").flatMap(KeyRoundness.init) {
             settings.keyRoundness = roundness
         }
-        if let language = defaults.string(forKey: "iikbLanguage") { settings.language = language }
+        if let language = defaults.string(forKey: "iikbLanguage") { settings.languages = [.named(language)] }
         if let layout = defaults.string(forKey: "iikbLayout") { settings.layout = layout.isEmpty ? nil : layout }
         if settings != SettingsStore.load() { SettingsStore.save(settings) }
     }

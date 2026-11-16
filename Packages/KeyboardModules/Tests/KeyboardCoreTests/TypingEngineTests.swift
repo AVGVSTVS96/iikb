@@ -182,7 +182,7 @@ struct TypingEngineTests {
     @Test func smartQuotesAreTheLanguagesOwn() {
         let typed = { (language: String, text: String) -> String in
             var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
-            engine.settings.language = language
+            engine.settings.languages = [.named(language)]
             let document = TestDocument()
             engine.type(text, in: document)
             return document.text

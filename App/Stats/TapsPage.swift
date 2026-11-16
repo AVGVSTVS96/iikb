@@ -233,7 +233,7 @@ struct TapsPage: View {
                 settings: SettingsModel.shared.settings)
             (context.isLandscape, context.isOpen) = (kept.isLandscape, kept.isOpen)
             (context.oneHanded, context.isSplit) = (kept.oneHanded, kept.isSplit)
-            (context.language, context.letters) = (kept.language, kept.letters)
+            (context.languages, context.letters) = (kept.languages, kept.letters)
             return TapBoard(touches, on: context, screen: screen)
         }
         if let key = selected, board?.aims.contains(where: { $0.key == key }) != true { selected = nil }

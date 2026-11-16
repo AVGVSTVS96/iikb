@@ -169,7 +169,7 @@ open class FullKeyboardViewController: UIInputViewController {
     private static let keptChat = StoredFile<KeptChat>(
         URL.applicationSupportDirectory.appending(path: "chat-kept.json"))
     private var engine = TypingEngine()
-    /// The id of the language the corrector's words are, which `useLanguage` keeps to the one picked.
+    /// The languages the corrector's words are, and the list each came from, which `useLanguages` keeps to those picked.
     private var typing: String?
     private var typingLog = TypingLog()
     private let memoryStore = MemoryStore()
@@ -308,7 +308,7 @@ open class FullKeyboardViewController: UIInputViewController {
             engine.accept(emoji: $0, in: document)
             render()
         }
-        useLanguage()
+        useLanguages()
         Task { [weak self] in
             let catalog = await Task.detached(priority: .userInitiated) { EmojiCatalog.english }.value
             self?.engine.emojiCatalog = catalog
@@ -458,21 +458,23 @@ open class FullKeyboardViewController: UIInputViewController {
         keyboardView.characterPreview = engine.settings.characterPreview
         suggestionBar.stopAnimation = engine.settings.stopAnimation
         keyMic.stopAnimation = engine.settings.stopAnimation
-        useLanguage()
+        useLanguages()
         engine.suggestionsChanged()
     }
 
-    /// Corrects in the language picked in the app, with its downloaded words, or English's while they aren't here (or
-    /// can't be reached without Full Access), keeping what you've taught it. The next-word network and Slide to Type
-    /// are English's alone for now.
-    private func useLanguage() {
-        let wanted = engine.settings.language
-        let lexicon = LanguageFiles.lexicon(wanted)
-        let id = lexicon == nil ? Language.english.id : wanted
-        let list = "\(id) \(LanguageFiles.installed(id) ?? "")"
+    /// Corrects in the languages picked in the app, each with its downloaded words, leaving out one whose words aren't
+    /// here (or can't be reached without Full Access) and typing English when none are, keeping what you've taught it.
+    /// For now it types the first of them alone, and the next-word network and Slide to Type are English's.
+    private func useLanguages() {
+        let here = engine.settings.languages.compactMap { language in
+            LanguageFiles.lexicon(language.id).map { (language, $0) }
+        }
+        let typed = here.isEmpty ? [(Language.english, Lexicon.english)] : here
+        let list = typed.map { "\($0.0.id) \(LanguageFiles.installed($0.0.id) ?? "")" }.joined(separator: ",")
         guard list != typing else { return }
         typing = list
-        let corrector = Corrector(source: lexicon ?? .english, network: id == Language.english.id ? .current : nil)
+        let english = typed[0].0 == .english
+        let corrector = Corrector(source: typed[0].1, network: english ? .current : nil)
         if let old = engine.corrector {
             corrector.changeMemory { $0 = old.memory }
             corrector.replacements = old.replacements
@@ -481,7 +483,7 @@ open class FullKeyboardViewController: UIInputViewController {
             corrector.grid = old.grid
         }
         engine.corrector = corrector
-        engine.swipeModel = id == Language.english.id ? .english : nil
+        engine.swipeModel = english ? .english : nil
     }
 
     /// A look picked in the menu, kept where the app reads it too, so its Appearance page shows it at once. A new theme

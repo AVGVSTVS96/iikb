@@ -6,24 +6,55 @@ struct LanguageTests {
     /// With nothing picked, iikb types English on QWERTY, and its touch models keep the names they had before languages.
     @Test func theDefaultsAreEnglishOnQwerty() {
         let settings = KeyboardSettings()
-        #expect(settings.language == "en" && settings.layout == nil && settings.letters == .qwerty)
+        #expect(settings.languages == [.english] && settings.layout == nil && settings.letters == .qwerty)
         let context = LayoutContext(
             device: .phone, layer: .letters, screen: Size(width: 466, height: 678), settings: settings)
-        #expect(context.language == .english && context.letters == .qwerty)
+        #expect(context.languages == [.english] && context.letters == .qwerty)
         #expect(context.signature == "phone-portrait-letters")
+    }
+
+    /// Several languages at once: the keys are the first's until a layout of any of them is picked, the language that
+    /// layout is laid out for leads its long presses, and each key offers what any of them writes.
+    @Test func severalLanguagesShareOneKeyboard() {
+        var settings = KeyboardSettings()
+        settings.languages = [.english, .german, .english]
+        #expect(settings.languages == [.english, .german])
+        #expect(settings.letters == .qwerty)
+        #expect(settings.layouts == [.qwerty, .azerty, .qwertz, .german])
+        let context = {
+            LayoutContext(device: .phone, layer: .letters, screen: Size(width: 402, height: 874), settings: settings)
+        }
+        #expect(context().languages == [.english, .german])
+        let alone = Layouts.layout(for: LayoutContext(device: .phone, layer: .letters))
+        let both = Layouts.layout(for: context())
+        let alternates = { (layout: KeyboardLayout, key: String) in
+            layout.rows.flatMap { $0 }.compactMap { item -> [String]? in
+                guard case .key(let found) = item, found.label == key else { return nil }
+                return found.alternates
+            }.first ?? []
+        }
+        #expect(alternates(both, "a") == alternates(alone, "a"))
+        #expect(alternates(both, "u").contains("ü") && alternates(both, "s").contains("ß"))
+        settings.languages = [.english, .swedish]
+        #expect(alternates(Layouts.layout(for: context()), "k") == ["k", "ǩ", "ḵ", "ķ"])
+        settings.languages = [.english, .german]
+        settings.layout = "german"
+        #expect(settings.letters == .german && context().languages == [.german, .english])
+        settings.languages = []
+        #expect(settings.languages == [.english])
     }
 
     /// A language's own layout comes first, and a layout it doesn't offer falls back to it.
     @Test func aLanguageOffersApplesLayoutsItsOwnFirst() {
         var settings = KeyboardSettings()
-        settings.language = "de"
+        settings.languages = [.named("de")]
         #expect(settings.letters == .german)
         settings.layout = "qwerty"
         #expect(settings.letters == .qwerty)
-        settings.language = "sv"
+        settings.languages = [.named("sv")]
         #expect(settings.letters == .swedish)
-        settings.language = "xx"
-        #expect(Language.named(settings.language) == .english)
+        settings.languages = [.named("xx")]
+        #expect(settings.languages == [.english])
         #expect(
             Language.all.map(\.name) == [
                 "English", "Español", "Français", "Deutsch", "Português", "Italiano", "Svenska",
@@ -33,14 +64,14 @@ struct LanguageTests {
     /// Taps learned on one layout's letters stay with it: a QWERTZ z never takes a QWERTY z's aim.
     @Test func eachLayoutsLettersLearnApart() {
         var settings = KeyboardSettings()
-        settings.language = "de"
+        settings.languages = [.named("de")]
         let context = { (layer: KeyboardLayer) in
             LayoutContext(device: .phone, layer: layer, screen: Size(width: 402, height: 874), settings: settings)
         }
         #expect(context(.letters).signature == "phone-portrait-letters-german")
         #expect(context(.numbers).signature == "phone-portrait-numbers")
         let kept = LayoutContext(signature: context(.letters).signature)
-        #expect(kept?.letters == .german && kept?.language == .german)
+        #expect(kept?.letters == .german && kept?.languages == [.german])
         #expect(LayoutContext(signature: "phone-portrait-letters")?.letters == .qwerty)
     }
 
@@ -57,7 +88,7 @@ struct LanguageTests {
         -> LayoutContext
     {
         var settings = KeyboardSettings()
-        settings.language = language
+        settings.languages = [.named(language)]
         settings.layout = layout
         return LayoutContext(device: .phone, layer: .letters, screen: screen, settings: settings)
     }
@@ -96,16 +127,16 @@ struct LanguageTests {
     @Test func theSplitHalvesEachLanguagesRows() {
         var settings = KeyboardSettings()
         settings.split = true
-        settings.language = "sv"
+        settings.languages = [.named("sv")]
         let open = LayoutContext(
             device: .phone, layer: .letters, screen: Duo.Screen.openLandscape.size, settings: settings)
         #expect(open.isSplit)
         #expect(letters(Layouts.layout(for: open)) == ["qwertyyuiopå", "asdfghhjklöä", "zxcvvbnm"])
-        settings.language = "es"
+        settings.languages = [.named("es")]
         let spanish = LayoutContext(
             device: .phone, layer: .letters, screen: Duo.Screen.openLandscape.size, settings: settings)
         #expect(letters(Layouts.layout(for: spanish)) == ["qwertyuiop", "asdfghjklñ", "zxcvvbnm"])
-        settings.language = "en"
+        settings.languages = [.named("en")]
         let english = LayoutContext(
             device: .phone, layer: .letters, screen: Duo.Screen.openLandscape.size, settings: settings)
         #expect(letters(Layouts.layout(for: english)) == ["qwertyuiop", "asdfgghjkl", "zxcvvbnm"])
@@ -113,7 +144,7 @@ struct LanguageTests {
 
     private func alternates(_ character: String, _ language: String, layer: KeyboardLayer = .letters) -> [String] {
         var settings = KeyboardSettings()
-        settings.language = language
+        settings.languages = [.named(language)]
         let context = LayoutContext(
             device: .phone, layer: layer, screen: Size(width: 402, height: 874), settings: settings)
         for row in Layouts.layout(for: context).rows {
@@ -135,7 +166,7 @@ struct LanguageTests {
 
     private func padRows(_ language: String) -> [String] {
         var settings = KeyboardSettings()
-        settings.language = language
+        settings.languages = [.named(language)]
         let context = LayoutContext(
             device: .pad, layer: .letters, screen: Size(width: 834, height: 1210), settings: settings)
         return letters(Layouts.layout(for: context))
@@ -154,7 +185,7 @@ struct LanguageTests {
     @Test func germanPadKeysAreApplesWidths() {
         let grid = { (language: String) in
             var settings = KeyboardSettings()
-            settings.language = language
+            settings.languages = [.named(language)]
             let context = LayoutContext(
                 device: .pad, layer: .letters, screen: Size(width: 834, height: 1210), settings: settings)
             return KeyboardGeometry(context, screen: Size(width: 834, height: 1210), style: .ios27).grid
@@ -175,7 +206,7 @@ struct LanguageTests {
     @Test func eachLanguagesLargePadIsItsMagicKeyboard() {
         let rows = { (language: String) -> [String] in
             var settings = KeyboardSettings()
-            settings.language = language
+            settings.languages = [.named(language)]
             let context = LayoutContext(
                 device: .largePad, layer: .letters, screen: Size(width: 1032, height: 1376), settings: settings)
             return Layouts.layout(for: context).rows.dropLast().map { row in
@@ -196,7 +227,7 @@ struct LanguageTests {
     @Test func eachLanguagesMiniKeysAreApples() {
         let grid = { (language: String) in
             var settings = KeyboardSettings()
-            settings.language = language
+            settings.languages = [.named(language)]
             let screen = Size(width: 744, height: 1133)
             let context = LayoutContext(device: .compactPad, layer: .letters, screen: screen, settings: settings)
             return (
@@ -219,7 +250,7 @@ struct LanguageTests {
     @Test func accentKeysWaitForTheNextLetter() {
         let key = { (character: String, language: String, device: DeviceClass) -> Key? in
             var settings = KeyboardSettings()
-            settings.language = language
+            settings.languages = [.named(language)]
             let screen = device == .largePad ? Size(width: 1032, height: 1376) : Size(width: 402, height: 874)
             let context = LayoutContext(device: device, layer: .letters, screen: screen, settings: settings)
             for row in Layouts.layout(for: context).rows {

@@ -18,7 +18,7 @@ struct KeyboardPreview: UIViewRepresentable {
     func updateUIView(_ view: KeyboardPreviewView, context: Context) {
         view.show(
             settings, dark: context.environment.colorScheme == .dark, screen: screen,
-            words: Self.openingWords(settings.language))
+            words: Self.openingWords(settings.languages[0].id))
         view.layer.borderColor = AppStyle.edge.resolvedColor(with: view.traitCollection).cgColor
     }
 

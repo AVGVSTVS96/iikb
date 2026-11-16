@@ -56,6 +56,8 @@ public enum SettingsStore {
     private static let textModeKey = "textMode"
 
     private static let oneHandedKey = "oneHanded"
+    private static let languagesKey = "languages"
+    /// The one language picked, as builds before several kept it.
     private static let languageKey = "language"
     private static let layoutKey = "layout"
     private static let keepMicOnKey = "keepMicOn"
@@ -70,7 +72,10 @@ public enum SettingsStore {
             if let value = value(forKey: key, sharing: sharing) as? Bool { settings[keyPath: path] = value }
         }
         settings.oneHanded = (value(forKey: oneHandedKey, sharing: sharing) as? String).flatMap(OneHanded.init) ?? .off
-        if let language = value(forKey: languageKey, sharing: sharing) as? String { settings.language = language }
+        let ids =
+            value(forKey: languagesKey, sharing: sharing) as? [String]
+            ?? (value(forKey: languageKey, sharing: sharing) as? String).map { [$0] } ?? []
+        settings.languages = ids.compactMap { id in Language.all.first { $0.id == id } }
         settings.layout = (value(forKey: layoutKey, sharing: sharing) as? String).flatMap { $0.isEmpty ? nil : $0 }
         for choice in choices { choice.load(into: &settings, sharing: sharing) }
         settings.skinTone = (value(forKey: skinToneKey, sharing: sharing) as? String).flatMap(SkinTone.init)
@@ -91,7 +96,7 @@ public enum SettingsStore {
         defer { notify_post(changed) }
         for (key, path) in toggles { set(settings[keyPath: path], forKey: key) }
         set(settings.oneHanded)
-        set(settings.language, forKey: languageKey)
+        set(settings.languages.map(\.id), forKey: languagesKey)
         set(settings.layout ?? "", forKey: layoutKey)
         for choice in choices { choice.save(settings) }
         set(settings.skinTone?.rawValue ?? "", forKey: skinToneKey)

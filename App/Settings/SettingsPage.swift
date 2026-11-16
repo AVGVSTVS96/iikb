@@ -61,7 +61,7 @@ struct SettingsPage: View {
             let words = VoiceVocabulary.shared.vocabulary.terms.count
             return switch self {
             case .appearance: settings.theme.title
-            case .languages: Language.named(settings.language).name
+            case .languages: settings.languages.map(\.name).joined(separator: ", ")
             case .typing: settings.autoCorrection ? "Auto-Correction On" : "Auto-Correction Off"
             case .privacy, .changelog: nil
             case .feedback: ThisDevice.hasHaptics ? settings.haptics.title : settings.sound ? "On" : "Off"

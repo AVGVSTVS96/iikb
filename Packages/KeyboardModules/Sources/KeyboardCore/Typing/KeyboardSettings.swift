@@ -1,7 +1,13 @@
 public struct KeyboardSettings: Hashable, Sendable {
-    /// The `Language.id` of the language being typed.
-    public var language = Language.english.id
-    /// The `LetterLayout.id` picked for it; nil, or one it doesn't offer, is its own (`Language.layout`).
+    /// The languages being typed, in the order picked, each once and never none: a word of any of them is a word. The
+    /// keys are laid out for the first until `layout` picks another's.
+    public var languages = [Language.english] {
+        didSet {
+            let picked = languages.uniqued
+            if picked != languages || picked.isEmpty { languages = picked.isEmpty ? [.english] : picked }
+        }
+    }
+    /// The `LetterLayout.id` picked among `layouts`; nil, or one none of them offers, is the first language's own.
     public var layout: String?
     public var autoCapitalization = true
     public var autoCorrection = true
@@ -50,8 +56,13 @@ public struct KeyboardSettings: Hashable, Sendable {
 
     public init() {}
 
-    /// The letters the picked language is typed on.
-    public var letters: LetterLayout { Language.named(language).layout(layout) }
+    /// Every layout the languages offer, the first language's first, each once.
+    public var layouts: [LetterLayout] {
+        languages.flatMap(\.layouts).uniqued
+    }
+
+    /// The letters the languages are typed on.
+    public var letters: LetterLayout { layouts.first { $0.id == layout } ?? languages[0].layouts[0] }
 
     /// What iikb starts with before you change anything: Apple's keyboard, except that auto-capitalization and
     /// auto-correction are opt in.

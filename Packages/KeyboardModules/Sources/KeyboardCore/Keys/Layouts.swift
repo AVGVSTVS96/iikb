@@ -37,9 +37,10 @@ public struct LayoutContext: Hashable, Sendable {
     public var keySpacing = KeySpacing.standard
     public var keyRoundness = KeyRoundness.standard
     public var keyboardMenu: KeyboardMenu
-    /// The language being typed: its long-press letters, currency and punctuation.
-    public var language = Language.english
-    /// The letters' layout, one of the language's.
+    /// The languages being typed, the one the keys are laid out for first: a long press offers its letters, then the
+    /// others'.
+    public var languages = [Language.english]
+    /// The letters' layout, one of the languages'.
     public var letters = LetterLayout.qwerty
 
     public init(
@@ -81,8 +82,9 @@ public struct LayoutContext: Hashable, Sendable {
         )
         keySpacing = settings.keySpacing
         keyRoundness = settings.keyRoundness
-        language = Language.named(settings.language)
-        letters = language.layout(settings.layout)
+        letters = settings.letters
+        languages = settings.languages.filter { $0.layouts.contains(letters) }
+        languages += settings.languages.filter { !languages.contains($0) }
     }
 
     /// Like Apple's, only an iPhone in portrait narrows its keys for one hand, and on the Duo only folded.
@@ -176,7 +178,7 @@ extension LayoutContext {
         guard var context = contexts.first(where: { $0.signature == base }) else { return nil }
         if let letters, context.layer == .letters {
             context.letters = letters
-            context.language = Language.all.first { $0.layouts.contains(letters) } ?? .english
+            context.languages = [Language.all.first { $0.layouts.contains(letters) } ?? .english]
         }
         guard context.signature == signature else { return nil }
         self = context
@@ -253,9 +255,9 @@ public enum Layouts {
             case .pad: PadLayouts.layout(for: context)
             case .largePad: LargePadLayouts.layout(for: context)
             }
-        guard context.language != .english else { return layout }
-        let local = layout.in(context.language)
-        return context.layer == .letters && context.language != .italian ? local.accenting(context.letters) : local
+        guard context.languages != [.english] else { return layout }
+        let local = layout.in(context.languages)
+        return context.layer == .letters && context.languages[0] != .italian ? local.accenting(context.letters) : local
     }
 }
 
@@ -278,20 +280,25 @@ extension RowItem {
 }
 
 extension KeyboardLayout {
-    /// The keys with what a long press on each offers in `language`. A long
-    /// press opens on the key's own character, the language's likeliest next to it and running toward the keyboard's
-    /// middle, without letters that have keys of their own.
-    func `in`(_ language: Language) -> KeyboardLayout {
+    /// The keys with what a long press on each offers in `languages`. A long press opens on the key's own character,
+    /// the first language's likeliest next to it and running toward the keyboard's middle, then what the other
+    /// languages add, without letters that have keys of their own. A key the first language lists nothing for keeps
+    /// English's, with the others' after them.
+    func `in`(_ languages: [Language]) -> KeyboardLayout {
         let keyed = Set(rows.flatMap { $0.compactMap(\.character) })
         var layout = self
         layout.rows = rows.map { row in
             let characters = row.compactMap(\.character)
             return row.map { item in
                 guard case .key(var key) = item, let value = item.character else { return item }
-                if let listed = Alternates.for(value, in: language) {
-                    let options = [value] + listed.filter { $0 != value && !keyed.contains($0) }
+                let lists = languages.map { Alternates.for(value, in: $0) }
+                let added = lists.dropFirst().flatMap { $0 ?? [] }.filter { $0 != value && !keyed.contains($0) }
+                if let listed = lists[0] {
+                    let options = ([value] + listed.filter { $0 != value && !keyed.contains($0) } + added).uniqued
                     let right = characters.firstIndex(of: value)! >= characters.count / 2
                     key.alternates = options.count > 1 ? (right ? options.reversed() : options) : []
+                } else if !added.isEmpty {
+                    key.alternates = ((key.alternates.isEmpty ? [value] : key.alternates) + added).uniqued
                 }
                 return .key(key)
             }

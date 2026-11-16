@@ -82,7 +82,7 @@ extension TypingEngine {
     /// corrector reads and writes them straight.
     func written(_ word: String) -> String {
         guard settings.smartPunctuation, traits.smartPunctuation else { return word }
-        let apostrophe = Language.named(settings.language).quotes[3]
+        let apostrophe = settings.languages[0].quotes[3]
         return word.map { $0 == "'" ? apostrophe : String($0) }.joined()
     }
 

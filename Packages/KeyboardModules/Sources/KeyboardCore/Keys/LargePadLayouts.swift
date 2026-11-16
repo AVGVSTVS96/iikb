@@ -2,7 +2,7 @@ enum LargePadLayouts {
     static func layout(for context: LayoutContext) -> KeyboardLayout {
         switch context.layer {
         case .letters:
-            if let iso = ISO.of(context.language, context.letters) { return letters(context, iso) }
+            if let iso = ISO.of(context.languages[0], context.letters) { return letters(context, iso) }
             return KeyboardLayout(
                 rows: [
                     numberRow,
