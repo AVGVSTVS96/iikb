@@ -47,6 +47,9 @@ enum Probe {
     var stats = LaunchOptions.statsSection ?? .overview
     /// The computer Stats shows (docs/computers.md), or nil for the iPhone.
     var statsComputer = LaunchOptions.statsComputer
+    /// The snippet's or quicklink's editor open over Settings, kept here so it stays open when Settings changes from one
+    /// column to two and builds its page again.
+    var editor: SettingsEditor?
     @ObservationIgnored weak var tabs: UITabBarController?
 
     func show(_ destination: Destination, settings page: SettingsPage.Page? = nil) {
@@ -57,6 +60,31 @@ enum Probe {
     func show(_ section: StatsPage.Section) {
         stats = section
         show(.stats)
+    }
+
+    func show(_ link: EditLink) {
+        let model = SettingsModel.shared
+        editor =
+            switch link.page {
+            case .quicklinks: model.quicklinks.first { $0.id == link.id }.map(SettingsEditor.quicklink)
+            default: model.snippets.first { $0.id == link.id }.map(SettingsEditor.snippet)
+            }
+        show(.settings, settings: link.page)
+    }
+}
+
+/// `iikb://snippets/<id>` or `iikb://quicklinks/<id>` (`AppLink`), from Edit on one held in the keyboard: its page in
+/// Settings, with its editor open when the link names it.
+struct EditLink {
+    let page: SettingsPage.Page
+    let id: String?
+
+    init?(_ link: URL) {
+        guard link.scheme == "iikb", let page = SettingsPage.Page(rawValue: link.host() ?? ""),
+            page == .snippets || page == .quicklinks
+        else { return nil }
+        self.page = page
+        id = link.pathComponents.dropFirst().first
     }
 }
 
@@ -107,6 +135,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         LaunchOptions.resetSettingsIfAsked()
         LaunchOptions.applySettings()
         LaunchOptions.applyLook()
+        LaunchOptions.applySnippets()
         AppStyle.applyTitles()
         VoiceProbe.runIfAsked(then: Probe.end)
         RankingProbe.runIfAsked()
@@ -171,6 +200,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             return Router.shared.show(.stats)
         }
         if contexts.contains(where: { $0.url == AppLink.settings }) { return AppStatus.openPasteSetting() }
+        if let edit = contexts.lazy.compactMap({ EditLink($0.url) }).first { return Router.shared.show(edit) }
         if contexts.contains(where: { $0.url == AppLink.keyboard }) { return Router.shared.show(.settings) }
         if contexts.contains(where: { $0.url == AppLink.appearance }) {
             return Router.shared.show(.settings, settings: .appearance)

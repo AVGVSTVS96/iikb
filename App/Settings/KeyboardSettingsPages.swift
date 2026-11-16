@@ -111,6 +111,8 @@ struct TryPreview: View {
     private(set) var sources = SourceStore.load()
     private(set) var extensions = ExtensionStore.load()
     private(set) var keepMicOn = SettingsStore.keepMicOn
+    private(set) var snippets = SnippetStore.snippets()
+    private(set) var quicklinks = SnippetStore.quicklinks()
 
     private init() {
         NotificationCenter.default.addObserver(
@@ -127,6 +129,8 @@ struct TryPreview: View {
         sources = SourceStore.load()
         extensions = ExtensionStore.load()
         keepMicOn = SettingsStore.keepMicOn
+        snippets = SnippetStore.snippets()
+        quicklinks = SnippetStore.quicklinks()
     }
 
     func update(_ change: (inout KeyboardSettings) -> Void) {
@@ -181,6 +185,46 @@ struct TryPreview: View {
     func move(_ offsets: IndexSet, to destination: Int) {
         sources.move(fromOffsets: offsets, toOffset: destination)
         SourceStore.save(sources)
+    }
+
+    func keep(_ snippet: Snippet) {
+        SnippetStore.keep(snippet)
+        snippets = SnippetStore.snippets()
+    }
+
+    func delete(_ snippet: Snippet) {
+        snippets.removeAll { $0.id == snippet.id }
+        SnippetStore.save(snippets)
+    }
+
+    func keep(_ link: Quicklink) {
+        SnippetStore.keep(link)
+        quicklinks = SnippetStore.quicklinks()
+    }
+
+    func delete(_ link: Quicklink) {
+        quicklinks.removeAll { $0.id == link.id }
+        SnippetStore.save(quicklinks)
+    }
+
+    /// Changes what starts a keyword, and with it the keywords that start with the old one, but for one another
+    /// snippet already has.
+    func setSnippetPrefix(_ prefix: String) {
+        let old = settings.snippetPrefix
+        guard prefix != old else { return }
+        update { $0.snippetPrefix = prefix }
+        var taken = Set(snippets.map { $0.keyword.lowercased() })
+        let moved = snippets.map { snippet in
+            guard !old.isEmpty, snippet.keyword.hasPrefix(old) else { return snippet }
+            let keyword = prefix + snippet.keyword.dropFirst(old.count)
+            guard taken.insert(keyword.lowercased()).inserted else { return snippet }
+            var moved = snippet
+            moved.keyword = keyword
+            return moved
+        }
+        guard moved != snippets else { return }
+        snippets = moved
+        SnippetStore.save(moved)
     }
 }
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # Writes a made-up week or so of iikb use into a folder, for screenshots that must show no one's real typing, messages
 # or clipboard: touches.json (the iPhone Duo's four screens), typing.jsonl, transcripts.jsonl with recordings/<id>.wav,
-# mac.json (Keystroke's version 3 file), clipboard.json and app-names.json (AppName's answers, so no shot waits on the App
-# Store), each in the shape scripts/sim's fill copies (shots/demo/env). Everything is the same on every run but the dates, which
+# mac.json (Keystroke's version 3 file), clipboard.json, app-names.json (AppName's answers, so no shot waits on the App
+# Store) and snippets.json (the app's snippets and quicklinks), each in the shape scripts/sim's fill copies (shots/demo/env). Everything is the same on every run but the dates, which
 # count back from now (IIKB_NOW when set, in seconds since 1970), and so do the files' own, so Today, "2h" and "Yesterday" hold whenever the shots are taken.
 # python3 shots/demo/make.py <folder>
 import json
@@ -358,6 +358,36 @@ def mac(rng):
     }
 
 
+# Snippets and quicklinks, as SnippetStore keeps them, for the app's Snippets and Quicklinks (LaunchOptions'
+# -iikbSnippets): every kind a list shows, a tag or none, a keyword or none, arguments and {cursor}.
+def snippets():
+    return {
+        "snippets": [
+            {"id": "demo-address", "name": "Home Address", "text": "221 Maple Avenue\nPortland, OR 97205",
+             "keyword": "!addr", "tag": "Personal"},
+            {"id": "demo-email", "name": "Email", "text": "sam.rivera@example.com", "keyword": "!em",
+             "tag": "Personal"},
+            {"id": "demo-meet", "name": "Meeting",
+             "text": "Could we meet at {argument name=\"Place\" default=\"the office\"} on {argument name=\"Day\"}? {cursor}",
+             "keyword": "!meet", "tag": "Work"},
+            {"id": "demo-standup", "name": "Standup", "text": "Yesterday: {cursor}\nToday:\nBlocked by: nothing",
+             "keyword": "!su", "tag": "Work"},
+            {"id": "demo-thanks", "name": "Thanks", "text": "Thank you so much, {argument name=\"Name\"}! {cursor}",
+             "keyword": "!ty", "tag": ""},
+            {"id": "demo-shrug", "name": "Shrug", "text": "¯\\_(ツ)_/¯", "keyword": "!shrug", "tag": ""},
+            {"id": "demo-signoff", "name": "Sign-off", "text": "Talk soon,\nSam", "keyword": "", "tag": ""},
+        ],
+        "quicklinks": [
+            {"id": "demo-search", "name": "Search the Web", "link": "https://duckduckgo.com/?q={argument name=\"Query\"}"},
+            {"id": "demo-maps", "name": "Directions",
+             "link": "https://maps.apple.com/?daddr={argument name=\"To\"}&dirflg={argument name=\"By\" default=\"w\"}"},
+            {"id": "demo-wiki", "name": "Wikipedia",
+             "link": "https://en.wikipedia.org/w/index.php?search={argument name=\"Topic\"}"},
+            {"id": "demo-weather", "name": "Weather", "link": "https://weather.com"},
+        ],
+    }
+
+
 def main(folder):
     rng = random.Random(2593)
     os.makedirs(os.path.join(folder, "recordings"), exist_ok=True)
@@ -383,6 +413,7 @@ def main(folder):
     write("clipboard.json", clipboard())
     write("mac.json", mac(rng))
     write("app-names.json", {app: name for app, name, _ in APPS if app})
+    write("snippets.json", snippets())
     for at, _, names in os.walk(folder):
         for name in names:
             os.utime(os.path.join(at, name), (NOW, NOW))
