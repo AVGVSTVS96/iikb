@@ -166,7 +166,7 @@ public final class Corrector {
         }
         guard !Words.isNumberLed(word.text) else { return nil }
         if let lexicon {
-            let ranked = ranked(word)
+            let ranked = inContext(ranked(word), word, context: context, lexicon)
             guard let best = ranked.first(where: { !$0.isCompletion }) else { return nil }
             if best.isLiteral || best.word.lowercased().filter({ $0 != "'" }) == lower,
                 let contraction = contraction(of: word, in: lexicon)
@@ -399,6 +399,22 @@ extension Corrector {
             consider(word, logLikelihood: max(exact, completed), isCompletion: completed > exact)
         }
         return candidates.values.sorted { $0.logPosterior > $1.logPosterior }
+    }
+
+    /// Candidates weighed on what the network expects after `context` too, as completions are, so "down to eart" reads
+    /// "earth" where the word alone reads "heart". The touches' part of each score stays as it was.
+    private func inContext(_ candidates: [Candidate], _ typed: TypedWord, context: String?, _ lexicon: Lexicon)
+        -> [Candidate]
+    {
+        guard let context, let expected = expected(after: context) else { return candidates }
+        let earlier = Words.context(before: context[context.endIndex...], in: context).earlier
+        let predict = languageModel(lexicon).predictor(after: typed.previous, earlier: earlier, expected: expected)
+        return candidates.map { candidate in
+            var weighed = candidate
+            weighed.logPosterior = candidate.logLikelihood + predict(candidate.word)
+            return weighed
+        }
+        .sorted { $0.logPosterior > $1.logPosterior }
     }
 
     /// The word typed without its apostrophe ("dont" → "don't"), when the lexicon and your touches find it far likelier
