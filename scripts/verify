@@ -19,7 +19,11 @@ logs=build/uitest/verify
 rm -rf "$shots" "$logs"
 mkdir -p "$shots" "$logs"
 step() { echo "== $1 $(date +%T)"; }
-summary() { grep -E "error:|✘|XCTAssert|Test [Cc]ase .*failed|Test run with|Executed .* tests?" "$1" | sort -u || true; }
+summary() {
+  grep -E "error:|✘|XCTAssert|Test [Cc]ase .*failed|Test run with|Executed .* tests?" "$1" | sort -u || true
+  sed -nE "s/^Test Case '-\[AppUITests\.(.*)\]' passed \(([0-9.]+) seconds\)\./\2 s \1/p" "$1" | sort -rn | head -5 |
+    sed 's/^/slowest: /'
+}
 
 step build
 xcodegen generate -q
