@@ -1,11 +1,11 @@
 #!/bin/bash
-# Here, as the iikb-duoshots user service: each time hangar opens a new iikb build on the iPhone, so the phone is awake
-# with the build Bassim just installed, the Mac screenshots iikb's keyboard on it, light and dark, in whatever pose the
+# Here, as the iikb-duoshots user service: each time hangar opens a new iikb build on the iPhone after a tap on Update,
+# so the phone is awake with the build Bassim just installed, the Mac screenshots iikb's keyboard on it, light and dark, in whatever pose the
 # Duo is in, and compares each shot with the last build's in that pose. A reviewer (Sonnet) looks at what changed beside
 # the commits between the two builds, and Config/notify hears what no commit accounts for. The keyboard comes up on the
 # app's home field (-iikbFocus), which takes the screen for about ten seconds; iikb is left open on its home. iOS can
 # leave the app Bassim is using in front instead, so a shot is kept only when duoshot-check.swift reads iikb's Home with
-# iikb's keyboard up in it.
+# iikb's keyboard up in it. hangar's Automatic installs open nothing, so the builds they put on aren't shot.
 # Shots stay in ~/.local/share/iikb/duo/<build>/, the comparison in <build>/report/.
 # scripts/duoshots watch | scripts/duoshots <build>
 set -euo pipefail

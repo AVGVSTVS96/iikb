@@ -1,6 +1,6 @@
 #!/bin/sh
-# Puts the build before the latest back on the iPhone and iPad in one step: on the install link and in hangar, whose
-# automatic installs put it on. Running it again goes forward. It changes what's live, not main: revert the commit
+# Puts the build before the latest back in one step: on the install link, and in hangar, whose Automatic installs put it
+# on each phone that has them on (the rest get it from a tap). Running it again goes forward. It changes what's live, not main: revert the commit
 # too, or the next build puts it back up.
 # Usage: scripts/rollback
 set -e

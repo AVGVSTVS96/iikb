@@ -21,10 +21,10 @@
 # up, is told why once, again only if the reason changes, and once more when a build goes up.
 # It also puts the build in hangar, the app on the iPhone that installs all of Bassim's development apps,
 # when hangar is on this box (~/Developer/hangar). Each build registers the URL scheme com.shahidy.iikb-<build>, which
-# hangar opens to know that build is installed and to bring iikb back up.
+# hangar opens after a tapped Update to know that build is installed and to bring iikb back up.
 # Its app and keyboard name the link (IIKBInstallLink), so each reads the link's manifest as it comes up and, while a
 # newer build is there, offers it: a toast in the app, a button in the keyboard's bar (KeyboardStore's InstallLink).
-# Then it prints the build on each device the Mac reaches, which is how you know what's been tapped.
+# Then, once hangar's log says its automatic install ended, it prints the build on each device the Mac reaches.
 # The link keeps the build before it, which scripts/rollback puts back.
 # Usage: scripts/phone [--now] [--rebuild]
 set -e
@@ -210,7 +210,19 @@ echo "build $number (main $commit) is on the install link, $url/"
 hangar=$HOME/Developer/hangar/bin/hangar
 if [ -x "$hangar" ]; then
   notes=$(python3 -c "import plistlib, sys; print('; '.join(r['change'] for r in plistlib.load(open(sys.argv[1], 'rb'))['IIKBChangelog'] if r['build'] > int(sys.argv[2] or 0))[:200])" Config/xtool/iikb-Info.plist "$offered")
-  "$hangar" put "$page/iikb-$number.ipa" ${notes:+--notes "$notes"} || echo "build $number couldn't be put in hangar" >&2
+  since=$(date '+%F %T')
+  put=$("$hangar" put "$page/iikb-$number.ipa" ${notes:+--notes "$notes"}) || echo "build $number couldn't be put in hangar" >&2
+  [ -z "$put" ] || echo "$put"
+  case $put in
+    (*"installs by itself"*)
+      tries=0
+      until journalctl --user -u hangar --since "$since" -o cat |
+        grep -m1 -E "installed iikb $number on its own|couldn't install on its own"; do
+        [ $((tries += 1)) -lt 60 ] || { echo "hangar hasn't said in 5 minutes whether build $number installed" >&2; break; }
+        sleep 5
+      done
+      ;;
+  esac
 fi
 unblock "build $number is on the link"
 on_devices
