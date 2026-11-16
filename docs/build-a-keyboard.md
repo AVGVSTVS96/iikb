@@ -5,7 +5,7 @@ iikb's typing lives in `KeyboardCore`: Apple's layouts and key sizes for every i
 There are two ways in:
 
 - **All of iikb.** Subclass `FullKeyboardViewController` and you get the keyboard as it ships.
-- **Your own look.** Draw your own keys and pass touches to `TypingEngine`. [`Examples/MinimalKeyboard`](../Packages/KeyboardModules/Examples/MinimalKeyboard/KeyboardViewController.swift) does this in one file of about 240 lines.
+- **Your own look.** Draw your own keys and pass touches to `TypingEngine`. [`Examples/MinimalKeyboard`](../Packages/KeyboardModules/Examples/MinimalKeyboard/KeyboardViewController.swift) does this in one file of about 260 lines.
 
 ## Add the package
 
@@ -15,7 +15,7 @@ The package is in a subfolder (`Packages/KeyboardModules`), and Swift Package Ma
 git submodule add https://github.com/AVGVSTVS96/iikb
 ```
 
-Then in Xcode, choose File › Add Package Dependencies… › Add Local…, pick `iikb/Packages/KeyboardModules`, and link `KeyboardCore`, `KeyboardEnglish` and `KeyboardUI` to your keyboard extension. You need iOS 26 and Swift 6.2 or later.
+Then in Xcode, choose File › Add Package Dependencies… › Add Local…, pick `iikb/Packages/KeyboardModules`, and link `KeyboardCore`, `KeyboardEnglish` and `KeyboardUI` to your keyboard extension. It runs on iOS 26 and later; iikb is built and tested with Swift 6.4 (Xcode 27).
 
 ## All of iikb
 
@@ -116,7 +116,7 @@ Linking `FullKeyboard` turns on UIKit's private keyboard arbiter when an extensi
 
 ## Test on Linux
 
-`KeyboardCore` imports no Foundation or UIKit, so it builds anywhere Swift 6.3 or later runs:
+`KeyboardCore` imports no Foundation or UIKit, so it builds anywhere Swift 6.4 runs:
 
 ```sh
 swift build --package-path Packages/KeyboardModules --target KeyboardCore
