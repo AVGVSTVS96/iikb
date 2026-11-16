@@ -124,7 +124,7 @@ def git(*args):
     return subprocess.run(["git", "-C", build, *args], capture_output=True, text=True, check=True).stdout
 paths = [line for line in open(f"{build}/scripts/iphone-paths.txt").read().splitlines() if not line.startswith("#")]
 entries = []
-for line in git("log", "--format=%h%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)", commit, "--", *paths).splitlines():
+for line in git("log", "--format=%h%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)", commit, "--", *paths).split("\n")[:-1]:
     sha, day, trailers = line.split("\x1f")
     entries += [(sha, day, change) for change in trailers.split("\x1e") if change]
 for line in open(f"{build}/App/Settings/changelog.tsv", encoding="utf-8"):
