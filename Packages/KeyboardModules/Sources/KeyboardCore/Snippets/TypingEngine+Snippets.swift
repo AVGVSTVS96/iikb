@@ -82,7 +82,7 @@ extension TypingEngine {
     }
 
     /// The first words of a snippet's text, its name when you give it none.
-    static func name(for text: String) -> String {
+    public static func name(for text: String) -> String {
         let line = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
         let words = line.split(separator: " ")
         let name = words.prefix(5).joined(separator: " ")
