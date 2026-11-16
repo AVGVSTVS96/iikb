@@ -134,7 +134,7 @@ final class ChatPhotoTests: XCTestCase {
 
     /// Run with the library's access reset, as before you've given it. The chat is in another app's field, as it is in
     /// Telegram: a page's box in Safari. Allow Photos opens iikb, iOS asks there, and iikb goes back to Safari, where the
-    /// chat shows the photos.
+    /// chat shows the photos, and only there: the keyboard in another app's field comes up with its keys.
     func testAllowPhotosAsksAndThePhotosShowBackInTheApp() throws {
         guard environment["IIKB_NO_ACCESS"] != nil else { throw XCTSkip("Run with the library's access reset") }
         try openChat(inSafari: true)
@@ -174,6 +174,55 @@ final class ChatPhotoTests: XCTestCase {
         XCTAssertTrue(element("iikb.chat.photo.0").waitForExistence(timeout: 15), "and one picked sits in the box")
         element("iikb.chat.send").tap()
         XCTAssertTrue(label("Got it: 1 photo").waitForExistence(timeout: 30), "and goes")
+        try openAnotherApp()
+    }
+
+    /// Run with the library's access reset. Allow Photos opens iikb and iOS asks there, and you say no and type in
+    /// iikb's own field instead: the keyboard there comes up with its keys, and the chat waits for the app it was in,
+    /// where it's open again.
+    func testAChatAwayForPhotosStaysOutOfOtherApps() throws {
+        guard environment["IIKB_NO_ACCESS"] != nil else { throw XCTSkip("Run with the library's access reset") }
+        try openChat(inSafari: true)
+        element("iikb.chat.attach").tap()
+        let notice = label("Photos need their own permission")
+        XCTAssertTrue(notice.waitForExistence(timeout: 10), "without access the grid says so")
+        notice.tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let allow = springboard.buttons["Allow Full Access"].firstMatch
+        XCTAssertTrue(allow.waitForExistence(timeout: 30), "Allow Photos opens iikb, and iOS asks")
+        try shot("away")
+        try openAnotherApp()
+        app = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        app.activate()
+        let chat = element("iikb.chat.attach")
+        let keys = app.keys.matching(identifier: "iikb.space").firstMatch
+        if !wait(60, { chat.exists || keys.exists }) {
+            let box = app.webViews.textViews.firstMatch
+            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: box.frame.midX, dy: box.frame.midY))
+                .tap()
+        }
+        XCTAssertTrue(chat.waitForExistence(timeout: 60), "back in Safari, the chat is open again")
+        try shot("back")
+        let atop = element("iikb.chat.more")
+        (atop.exists ? atop : element("iikb.more")).tap()
+        XCTAssertTrue(wait { !chat.exists }, "and More leaves it, so it isn't kept")
+    }
+
+    /// iikb's own field, in another app than the chat's: the keyboard comes up there with its keys. iOS's question, still
+    /// up over iikb when the one that asked is gone, holds the keyboard back, and XCUITest turns it down as the field is
+    /// tapped, on the Duo and the iPad alike.
+    private func openAnotherApp() throws {
+        app = XCUIApplication()
+        app.launchArguments = ["-iikbFocus", "YES"]
+        app.launch()
+        app.textViews.firstMatch.tap()
+        let chat = element("iikb.chat.attach")
+        let keys = app.keys.matching(identifier: "iikb.space").firstMatch
+        _ = wait(60) { chat.exists || keys.exists }
+        XCTAssertFalse(chat.exists, "the chat stays out of another app")
+        XCTAssertTrue(app.showsIikb(relaunching: false), "iikb's keys come up there")
+        try shot("elsewhere")
+        XCTAssertFalse(chat.exists, "and the chat still isn't there")
     }
 
     /// Opens the stand-in's first chat from the menu, in iikb's own field or a page's box in Safari.
@@ -297,9 +346,9 @@ final class ChatPhotoTests: XCTestCase {
         for character in text { key(character == " " ? "space" : String(character)).tap() }
     }
 
-    private func wait(_ condition: @escaping () -> Bool) -> Bool {
+    private func wait(_ seconds: TimeInterval = 10, _ condition: @escaping () -> Bool) -> Bool {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition() }, object: nil)
-        return XCTWaiter.wait(for: [expectation], timeout: 10) == .completed
+        return XCTWaiter.wait(for: [expectation], timeout: seconds) == .completed
     }
 
     /// The screen in use, which scripts/phototest shoots from the Mac once the request's file is there, and then

@@ -2,8 +2,8 @@
 # Runs on GitHub's Macs (scripts/ci). Photos in Chats through the real keyboard, every flow (UITests/ChatPhotoTests.swift), light and dark,
 # with scripts/chats.ts standing in for the extension: scripts/phototest ["iPhone Duo"] [iPhone-Duo]. SCREEN picks one of
 # the Duo's screens in scripts/sim (folded-portrait otherwise); ORIENTATION=landscape turns any other device. LIBRARY=<n>
-# puts n photos in the library (24 otherwise). Each appearance starts with the library's access reset for the Allow
-# Photos test, then grants it for the rest; ONLY_ALLOW=1 runs just that test. Shots go to shots/raw/photos/, taken here
+# puts n photos in the library (24 otherwise). Each appearance starts with the library's access reset for the two Allow
+# Photos tests, then grants it for the rest; ONLY_ALLOW=1 runs just those. Shots go to shots/raw/photos/, taken here
 # of the screen in use when the test asks, with the keyboard's largest footprint while each appearance ran.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -95,6 +95,7 @@ shooter() {
   done
 }
 
+allows=(testAChatAwayForPhotosStaysOutOfOtherApps testAllowPhotosAsksAndThePhotosShowBackInTheApp)
 shooter &
 shooting=$!
 trap 'kill "$shooting" 2>/dev/null || true' EXIT
@@ -105,15 +106,18 @@ for appearance in ${APPEARANCES:-light dark}; do
   watch "$out/$slug-$appearance-memory.txt" &
   watcher=$!
   rm -f "build/uitest/photos-$appearance.log"
-  # iikb and its keyboard each keep the answer they first read for as long as they run, so both go before the reset.
-  xcrun simctl terminate "$ID" com.shahidy.iikb 2>/dev/null || true
-  pgrep -f 'Keyboard.appex/Keyboard' | xargs kill 2>/dev/null || true
-  xcrun simctl privacy "$ID" reset photos com.shahidy.iikb
-  run "$appearance" 1 -only-testing:AppUITests/ChatPhotoTests/testAllowPhotosAsksAndThePhotosShowBackInTheApp
+  # Each from no access, since one that leaves iikb while iOS asks leaves photos refused. iikb and its keyboard each
+  # keep the answer they first read for as long as they run, so both go before the reset.
+  for allow in "${allows[@]}"; do
+    xcrun simctl terminate "$ID" com.shahidy.iikb 2>/dev/null || true
+    pgrep -f 'Keyboard.appex/Keyboard' | xargs kill 2>/dev/null || true
+    xcrun simctl privacy "$ID" reset photos com.shahidy.iikb
+    run "$appearance" 1 "-only-testing:AppUITests/ChatPhotoTests/$allow"
+  done
   if [ -z "${ONLY_ALLOW:-}" ]; then
     xcrun simctl privacy "$ID" grant photos com.shahidy.iikb
     run "$appearance" "" -only-testing:AppUITests/ChatPhotoTests \
-      -skip-testing:AppUITests/ChatPhotoTests/testAllowPhotosAsksAndThePhotosShowBackInTheApp
+      "${allows[@]/#/-skip-testing:AppUITests/ChatPhotoTests/}"
   fi
   kill "$watcher" "$stand" 2>/dev/null || true
   wait "$watcher" "$stand" 2>/dev/null || true
