@@ -258,17 +258,29 @@ struct LayoutTests {
         }
     }
 
-    private func rowsAboveBottom(width: Double, style: KeyboardStyle) -> Double {
-        let metrics = KeyboardMetrics.phone(width: width, style: style)
-        let grid = KeyGrid(
-            Layouts.layout(for: LayoutContext(device: .phone, layer: .letters)), width: width, metrics: metrics.grid)
-        return metrics.height(rows: 4, shortRows: 0) - grid.rows[0][0].frame.y
+    /// Apple's iOS 27 rows on each iPhone in portrait (iOS 27.2 simulator, Nov 16): how far above the bottom of the area
+    /// iOS gives a third-party keyboard the first row's top sits, and how tall the last row is in that area.
+    @Test func iOS27RowsSitWhereApplesDo() {
+        let screens = [
+            (Size(width: 390, height: 844), 201.0, 39.0), (Size(width: 402, height: 874), 201, 39),
+            (Size(width: 420, height: 912), 220, 45), (Size(width: 440, height: 956), 220, 45),
+            (Size(width: 375, height: 812), 210.25, 41.5), (Size(width: 375, height: 667), 208, 42),
+        ]
+        for (screen, firstRow, lastRow) in screens {
+            let keys = KeyboardGeometry(LayoutContext(device: .phone, layer: .letters), screen: screen, style: .ios27)
+            let grid = keys.grid
+            #expect(abs(keys.height - grid.rows[0][0].frame.y - firstRow) < 0.01, "\(screen)")
+            #expect(abs(grid.rows[3][0].frame.height - lastRow) < 0.01, "\(screen)")
+        }
     }
 
-    @Test func iOS27MovesRowsAsAppleDoesWithinTheKeyboardsArea() {
-        #expect(rowsAboveBottom(width: 402, style: .ios27) - rowsAboveBottom(width: 402, style: .ios26) == -3)
-        #expect(rowsAboveBottom(width: 420, style: .ios27) - rowsAboveBottom(width: 420, style: .ios26) == 2)
-        #expect(rowsAboveBottom(width: 440, style: .ios27) - rowsAboveBottom(width: 440, style: .ios26) == 2)
+    /// Apple's landscape keys on the iPhone 13 mini and the iPhone SE (iOS 27.2 simulator, Nov 16).
+    @Test func landscapeKeysAreApplesOnTheMiniAndTheSE() {
+        let context = LayoutContext(device: .phone, layer: .letters, showsGlobe: true, isLandscape: true)
+        let mini = KeyboardGeometry(context, screen: Size(width: 812, height: 375), style: .ios27).grid
+        #expect(mini.frame(of: "q")?.height == 34 && mini.frame(of: "a").map { $0.y - mini.frame(of: "q")!.y } == 41.67)
+        let se = KeyboardGeometry(context, screen: Size(width: 667, height: 375), style: .ios27)
+        #expect(se.grid.frame(of: "q")?.x == 72 && se.metrics.bottomInset == 4)
     }
 
     /// docs/design.md, "Per device": the bar over the keys, or a panel in its place.

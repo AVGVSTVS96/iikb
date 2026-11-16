@@ -146,8 +146,10 @@ Raycast's Custom Keys and Mode, in the app's Keyboard › Custom Keys (`Typing/C
 | Duo open, landscape, 951 × 669 (compact) | 4.5 in, keys 6 apart | 41.67 | 9 | 3 | 38 | 7 | 20 | |
 | Duo open, portrait, 669 × 951 | 4.5 in, keys 6 apart | 49.42 | 9 | 3 | 38 | 7 | 73 | |
 | Duo folded, landscape, 678 × 466 (compact) | 4.5 in, keys 7 apart | 33.33 | 9 | 3 | 32 | 7 | 20 | |
-| iPhone portrait (Face ID), 375–440 wide | full width | 43, or 45 from 415 wide | 11 | 3 | 38 | 7 | today's `bottomInset` | |
-| iPhone landscape (compact) | 3.75 in, keys 6 apart | 32 | 8 | 3 | 40 | 7 | 22 (iikb's inset 2) | |
+| iPhone portrait, 390–440 wide | full width | 43, or 45 from 415 wide | 11 | 3 | 38 | 7 | 0 and the last row 4 shorter, or 7 from 415 wide | |
+| iPhone 13 mini portrait, 375 × 812 | full width | 45.5 | 10.75 | 3 | 38 | 7 | 0 and the last row 4 shorter | |
+| iPhone SE portrait, 375 × 667 | full width | 42 | 12 | 3 | 38 | 7 | 4 | |
+| iPhone landscape (compact) | 3.75 in, keys 6 apart; the SE 72 in | 32; the mini 34 | 8; the mini 7.67 | 3 | 40 | 7 | 22 (iikb's inset 2; the SE's 4) | |
 | iPad | below | | | | 36, compact | 8 | below | |
 
 - Every Duo row is Apple's keyboard measured in the iOS 27.1 simulator (`scripts/sim duo`, which unfolds it with Device Hub's hinge event). "Keys block" is the side inset inside the keyboard's own width, which iOS narrows on the side layouts; "Bottom" is how far above the screen's bottom Apple's last row ends.
@@ -155,7 +157,8 @@ Raycast's Custom Keys and Mode, in the app's Keyboard › Custom Keys (`Typing/C
 - Apple's letters on the Duo are bigger than on other iPhones: 25.5 folded in portrait, 23.5 folded in landscape, 28.5 open in landscape, 28 open in portrait. iikb's `123`, return and symbols grow by the same share; Apple's own `123` is bigger still, but its key is three times as wide, since its row has no globe.
 - The Duo's keys span the keyboard's whole width on every screen, at Apple's insets folded. Open, Apple's keys leave wide margins and gaps (in portrait 18 in, 9 apart, 45.67 tall, rows 14 apart; in landscape 9 in, 10 apart, 38.67 tall, rows 13 apart), and Bassim asked for keys "taller and wider as much as possible using as much available space as possible" (Nov 3), every key alike, so open the keys take the folded landscape's margins and gaps (4.5 in, 6 apart, rows 9 apart) in Apple's keyboard height: in portrait about 10% wider and 8% taller, in landscape about 6% wider and 8% taller.
 - Split Keyboard (open in landscape; Settings › Keyboard › Appearance, holding `123` or emoji, or the bar's menu button) puts half of each row under each thumb, as Apple's does: each half five keys from the keyboard's edge, with two keys' room between the hands (12 columns of the same margins and gaps), G and V on both halves, the layer and emoji keys and a space bar on the left, a space bar, the field's own keys and return on the right. Apple's split keys are a fifth narrower, with about four keys' room between the halves, which Bassim found used "barely any" of the screen (Nov 2).
-- Regular iPhones keep their key geometry, which is measured against Apple's. In landscape, Apple's keys are 32 tall, rows 8 apart, its letters 20, and its keyboard with its suggestions is as tall as iikb's with the 40 bar (iPhone 17, 17 Pro Max, 16e and Air, iOS 27.2 simulator, Nov 11).
+- Every iPhone row is Apple's keyboard measured on each iPhone size, upright and sideways, in the iOS 27.2 simulator (`ONLY=iPhone scripts/sim all` and `scripts/shotdiff.py`, Nov 16). Upright, iOS 27 draws its rows 7 lower than iOS 26 on iPhones under 415 wide, so its last row reaches 4 below the area iOS gives a third-party keyboard, which can't draw there. iikb's rows start where Apple's do and its last row ends at the area's edge, 4 shorter (`bottomRowCut`), since the letter rows are where fingers land; a whole last row would put every row 4 above Apple's. Android, which has no such edge, keeps the last row whole. The mini's keys are taller and closer together; the SE's, with nothing under the keyboard, are shorter, further apart and end 4 above the screen's bottom.
+- Sideways, Apple's keys are 32 tall, rows 8 apart, its letters 20, and its keyboard with its suggestions is as tall as iikb's with the 40 bar. The mini's keys are 34 tall, rows 7.67 apart; the SE's sit 72 in from the screen's edges, as iOS doesn't narrow its keyboard to a safe area there.
 
 #### iPad
 

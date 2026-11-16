@@ -24,6 +24,9 @@ public struct KeyboardMetrics: Hashable, Sendable {
     public var symbolSize: Double
     /// How far below the key's middle a lone character sits; an iPad's sit a little low, as Apple's do.
     public var letterOffset: Double = 0
+    /// How much of Apple's last row lies below the area iOS gives a third-party keyboard, which can't draw there: the
+    /// last row ends at the area's edge, this much shorter, and every row's top stays on Apple's.
+    public var bottomRowCut: Double = 0
     public var edgeInset = Size(width: 4, height: 3)
     /// How far in from the key's side a word in its corner (`.?123`) starts, a little further than a glyph.
     public var textInset: Double = 7
@@ -50,12 +53,12 @@ public struct KeyboardMetrics: Hashable, Sendable {
     public var grid: GridMetrics {
         GridMetrics(
             columns: columns, sideInset: sideInset, keyGap: keyGap, rowGap: rowGap, keyHeight: keyHeight,
-            numberRowHeight: numberRowHeight, topInset: topInset, margin: margin)
+            numberRowHeight: numberRowHeight, topInset: topInset, bottomRowCut: bottomRowCut, margin: margin)
     }
 
     /// The keys' height with `rows` rows, the top `shortRows` of them short (the action row, the number row).
     public func height(rows: Int, shortRows: Int) -> Double {
-        let keys = Double(rows) * keyHeight - Double(shortRows) * (keyHeight - numberRowHeight)
+        let keys = Double(rows) * keyHeight - Double(shortRows) * (keyHeight - numberRowHeight) - bottomRowCut
         return topInset + keys + Double(rows - 1) * rowGap + bottomInset
     }
 
@@ -81,8 +84,9 @@ extension KeyboardMetrics {
         var metrics =
             switch (device, Duo.Screen(width: width, height: height)) {
             case (.phone, let duo?): Self.duo(duo, style: style, oneHanded: oneHanded, split: split)
-            case (.phone, nil) where landscape: phoneLandscape(width: width)
-            case (.phone, nil): phone(width: width, style: style).oneHanded(oneHanded, width: width)
+            case (.phone, nil) where landscape: phoneLandscape(Size(width: width, height: height))
+            case (.phone, nil):
+                phone(Size(width: width, height: height), style: style).oneHanded(oneHanded, width: width)
             case (.compactPad, _): compactPad(landscape: landscape)
             case (.pad, _): pad(shortSide: min(width, height), landscape: landscape)
             case (.largePad, _): largePad(landscape: landscape)
@@ -128,16 +132,37 @@ extension KeyboardMetrics {
 
     public static func phone(width: Double, style: KeyboardStyle = .ios26) -> KeyboardMetrics {
         let large = width >= 415
-        // iOS 27 draws its rows 7pt lower on 6.1" phones, but a third-party keyboard's area ends where iOS 26's did: it
-        // can follow by 3pt. On the large phones (Air, Pro Max) iOS 27's rows sit 2pt higher instead.
-        let lowered = style == .ios27 ? (large ? -2.0 : 3) : 0
+        // iOS 27 draws its rows 7pt lower on 6.1" phones, its last row 4pt past the area a third-party keyboard gets. On the
+        // large phones (Air, Pro Max) iOS 27's rows sit 2pt higher instead.
+        let lowered = style == .ios27 ? (large ? -2.0 : 7) : 0
+        let bottom = (large ? 5 : 3) - lowered
         return KeyboardMetrics(
             columns: 10, sideInset: 6.5, keyGap: 6, rowGap: 11,
             keyHeight: large ? 45 : 43, numberRowHeight: 0,
-            topInset: Toolbar.gap, bottomInset: (large ? 5 : 3) - lowered, cornerRadius: 9,
+            topInset: Toolbar.gap, bottomInset: max(bottom, 0), cornerRadius: 9,
             letterSize: 23, labelSize: 18, secondarySize: 12, symbolSize: 19,
-            letterOffset: -1.67
+            letterOffset: -1.67, bottomRowCut: max(-bottom, 0)
         )
+    }
+
+    /// Apple's keys on an iPhone held upright, measured in the iOS 27 simulator: as on every iPhone as wide, but the
+    /// mini's are taller and closer together, and the SE's, with nothing below them to cut, shorter, further apart and
+    /// 4 above the screen's bottom.
+    static func phone(_ screen: Size, style: KeyboardStyle) -> KeyboardMetrics {
+        var metrics = phone(width: screen.width, style: style)
+        guard style == .ios27 else { return metrics }
+        switch (screen.width, screen.height) {
+        case (375, 812):
+            metrics.keyHeight = 45.5
+            metrics.rowGap = 10.75
+        case (375, 667):
+            metrics.keyHeight = 42
+            metrics.rowGap = 12
+            metrics.bottomInset = 4
+            metrics.bottomRowCut = 0
+        default: break
+        }
+        return metrics
     }
 
     /// iOS can give a third-party keyboard a window narrower than the screen and centered on it (452pt of the iPhone
@@ -164,15 +189,27 @@ extension KeyboardMetrics {
         return metrics
     }
 
-    /// Apple's keys and letters on a regular iPhone in landscape, measured in the iOS 27.2 simulator (docs/design.md).
-    static func phoneLandscape(width: Double) -> KeyboardMetrics {
-        KeyboardMetrics(
+    /// Apple's keys and letters on a regular iPhone in landscape, measured in the iOS 27.2 simulator (docs/design.md): the
+    /// same on every iPhone but the minis, whose keys are taller, and the iPhones with a home button, whose keyboard
+    /// iOS doesn't narrow to a safe area, so Apple's keys sit 72 in from the screen's edges.
+    static func phoneLandscape(_ screen: Size) -> KeyboardMetrics {
+        var metrics = KeyboardMetrics(
             columns: 10, sideInset: 3.75, keyGap: 6, rowGap: 8,
             keyHeight: 32, numberRowHeight: 0,
             topInset: Toolbar.gap, bottomInset: 2, cornerRadius: 9,
             letterSize: 20, labelSize: 15.5, secondarySize: 11, symbolSize: 19,
             letterOffset: -1, toolbar: .compact(bar: 40)
         )
+        switch (screen.width, screen.height) {
+        case (812, 375):
+            metrics.keyHeight = 34
+            metrics.rowGap = 7.67
+        case (667, 375):
+            metrics.sideInset = 72
+            metrics.bottomInset = 4
+        default: break
+        }
+        return metrics
     }
 
     /// The iPhone Duo's four screens: Apple's keys and letters measured on each in the iOS 27.1 simulator

@@ -3,7 +3,7 @@
 The everyday commands are in the root AGENTS.md, "Build and test"; the rest are below, then how the bigger ones work.
 
 ```sh
-scripts/ci 'scripts/sim all v7'                 # screenshots: system vs iikb, light and dark, 8 devices
+scripts/ci 'scripts/sim all v7'                 # screenshots: system vs iikb, light and dark, every iPhone shape and 4 iPads (-iikbOrientation landscape after the tag turns them)
 scripts/ci 'scripts/sim variants "iPhone 17" v7'   # return key types, keyboard types, landscape
 scripts/ci 'scripts/sim duo v8'                 # Apple's keyboard and iikb on the iPhone Duo's four screens, folded and open (unfolded with Device Hub's hinge event, scripts/devicehub.c)
 scripts/ci 'KEYBOARDS="system iikb" scripts/padshots v1'   # every keyboard state (typing, layers, tray, More, panels, floating) on iPad mini, Pro 11 and Pro 13, portrait and landscape, light and dark, Apple's beside it: shots/raw/pad/v1/ (landscape shots come out turned; key frames in each -empty.txt)

@@ -19,12 +19,12 @@ public struct Rect: Hashable, Sendable {
 }
 
 public struct GridMetrics: Hashable, Sendable {
-    public var columns, sideInset, keyGap, rowGap, keyHeight, numberRowHeight, topInset: Double
+    public var columns, sideInset, keyGap, rowGap, keyHeight, numberRowHeight, topInset, bottomRowCut: Double
     public var margin: Margin
 
     public init(
         columns: Double, sideInset: Double, keyGap: Double, rowGap: Double, keyHeight: Double, numberRowHeight: Double,
-        topInset: Double, margin: Margin = .none
+        topInset: Double, bottomRowCut: Double = 0, margin: Margin = .none
     ) {
         self.columns = columns
         self.sideInset = sideInset
@@ -33,6 +33,7 @@ public struct GridMetrics: Hashable, Sendable {
         self.keyHeight = keyHeight
         self.numberRowHeight = numberRowHeight
         self.topInset = topInset
+        self.bottomRowCut = bottomRowCut
         self.margin = margin
     }
 
@@ -77,7 +78,9 @@ public struct KeyGrid: Sendable {
         let pitch = available / metrics.columns
         var y = metrics.topInset
         for (index, row) in layout.rows.enumerated() {
-            let height = index < layout.shortRows ? metrics.numberRowHeight : metrics.keyHeight
+            let height =
+                (index < layout.shortRows ? metrics.numberRowHeight : metrics.keyHeight)
+                - (index == layout.rows.count - 1 ? metrics.bottomRowCut : 0)
             let fixed = row.compactMap(\.width.span).reduce(0, +)
             let fills = row.count { $0.width == .fill }
             let fillSpan = fills > 0 ? max(available / pitch - fixed, 0) / Double(fills) : 0
