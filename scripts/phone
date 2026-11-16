@@ -1,6 +1,7 @@
 #!/bin/sh
 # Builds main for the iPhone and iPad and puts it on the install link, a page in your tailnet (Config/link,
-# scripts/AGENTS.md), where you tap Install whenever you like, from any network: nothing ever installs by itself.
+# scripts/AGENTS.md), where you tap Install whenever you like, from any network, and in hangar, which installs it by
+# itself on a phone with its Automatic installs on.
 # It builds iikb on this Linux box with xtool and provisions it for the team's devices. The team holds one development
 # certificate, and it's the Mac's: xtool's identity (~/.config/xtool/data/<team>) holds that certificate without its
 # key, so xtool (Bassim's fork) makes the profiles for it and signs ad hoc, and scripts/resign signs on the Mac, whose
@@ -18,7 +19,7 @@
 # Before building it runs scripts/gate and then scripts/formats on that commit, and puts up nothing that fails either.
 # When main can't get onto the link (a failed check, build or signing, or the Mac not answering), Config/notify, if set
 # up, is told why once, again only if the reason changes, and once more when a build goes up.
-# It also puts the build in hangar, the app on the iPhone that installs all of Bassim's development apps on his tap,
+# It also puts the build in hangar, the app on the iPhone that installs all of Bassim's development apps,
 # when hangar is on this box (~/Developer/hangar). Each build registers the URL scheme com.shahidy.iikb-<build>, which
 # hangar opens to know that build is installed and to bring iikb back up.
 # Its app and keyboard name the link (IIKBInstallLink), so each reads the link's manifest as it comes up and, while a
@@ -203,7 +204,7 @@ PY
 find "$page" -maxdepth 1 -name 'iikb-*.ipa' ! -name "iikb-$number.ipa" ! -name "iikb-$before.ipa" -delete
 echo "$number $(git rev-parse "$commit")" > "$stamp"
 why=
-echo "build $number (main $commit) is on the install link, $url/: tap Install there in Safari on the iPhone or iPad"
+echo "build $number (main $commit) is on the install link, $url/"
 hangar=$HOME/Developer/hangar/bin/hangar
 if [ -x "$hangar" ]; then
   notes=$(python3 -c "import plistlib, sys; print('; '.join(r['change'] for r in plistlib.load(open(sys.argv[1], 'rb'))['IIKBChangelog'] if r['build'] > int(sys.argv[2] or 0))[:200])" Config/xtool/iikb-Info.plist "$offered")
