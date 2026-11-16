@@ -154,6 +154,7 @@ import WidgetKit
             let tail = Task {
                 let sound = await microphone.stop()
                 take.capture = microphone.heard
+                take.unaimed = microphone.unaimed
                 (recording, self.tail) = (nil, nil)
                 return sound
             }
@@ -168,6 +169,7 @@ import WidgetKit
         guard let take = recording, tail == nil else { return }
         let sound = microphone.cut()
         take.capture = microphone.heard
+        take.unaimed = microphone.unaimed
         recording = nil
         take.typed = false
         write(take, Task { sound })
@@ -210,7 +212,7 @@ import WidgetKit
             Transcripts.shared.add(
                 written.text, heard: written.heard, id: take.id, at: take.started, seconds: seconds, typed: take.typed,
                 model: written.model, mic: take.mic, voiceProcessing: false, capture: take.capture,
-                levels: Recording.levels(samples), app: take.app)
+                unaimed: take.unaimed, levels: Recording.levels(samples), app: take.app)
             if take.typed, silent {
                 Dictation.leave(.notice("The microphone gave no sound: tap the mic again"))
             } else if take.typed, written.text.isEmpty {
@@ -384,6 +386,7 @@ private final class Take {
     var stopped = Date.now
     var mic: String?
     var capture: Capture?
+    var unaimed: String?
     /// Seconds recorded, as the microphone counts them.
     var recorded: Double = 0
     var typed = true

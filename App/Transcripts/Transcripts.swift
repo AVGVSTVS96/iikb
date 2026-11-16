@@ -22,6 +22,9 @@ struct Transcript: Codable, Identifiable, Hashable {
     var voiceProcessing: Bool?
     /// The way the iPhone's microphones heard it while they were compared (`Capture`), nil otherwise.
     var capture: String?
+    /// Why the iPhone's microphones weren't aimed at you when it had no `capture` (`Unaimed`); nil when they were, for
+    /// one recovered after iikb ended, or before iikb kept it.
+    var unaimed: String?
     /// The room and the speech in its recording as heard, before it was leveled, in dBFS (`Recording.levels`).
     var room: Double?
     var speech: Double?
@@ -164,12 +167,12 @@ struct Transcript: Codable, Identifiable, Hashable {
     func add(
         _ text: String, heard: String, id: Transcript.ID, at date: Date, seconds: Double, typed: Bool, model: String,
         mic: String?, voiceProcessing: Bool? = nil, capture: Capture? = nil,
-        levels: (room: Float, speech: Float)? = nil, app: String? = nil, recovered: Bool = false
+        unaimed: String? = nil, levels: (room: Float, speech: Float)? = nil, app: String? = nil, recovered: Bool = false
     ) {
         let transcript = Transcript(
             id: id, date: date, text: text, seconds: seconds, typed: typed, recovered: recovered ? true : nil,
             model: model, mic: mic, voiceProcessing: voiceProcessing,
-            capture: capture?.rawValue, room: levels.map { Self.decibels($0.room) },
+            capture: capture?.rawValue, unaimed: unaimed, room: levels.map { Self.decibels($0.room) },
             speech: levels.map { Self.decibels($0.speech) },
             heard: heard == text ? nil : heard, app: app
         )

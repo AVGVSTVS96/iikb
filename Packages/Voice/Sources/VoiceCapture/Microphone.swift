@@ -14,8 +14,12 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     private let feed = Feed()
     /// How the iPhone's microphones are aimed now, nil when another microphone hears.
     private var aimed: Capture?
+    /// Why they aren't, when they aren't.
+    private var missed: String?
     /// How the recording being made is heard, nil when a restart changed it mid-recording.
     private var recordingAs: Capture?
+    /// Why it isn't heard through the cardioid, when it isn't.
+    private var recordingMissed: String?
     /// The engine couldn't be started again after a change under it.
     public var onLost: () -> Void = {}
     /// Another app took the microphone: a call answered, a voice message, Siri.
@@ -75,6 +79,10 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     /// that changed it mid-recording.
     public var heard: Capture? { recordingAs }
 
+    /// Why the last recording wasn't heard through the front cardioid, where iikb was and what the session showed; nil
+    /// when it was.
+    public var unaimed: String? { recordingMissed }
+
     /// By default it hears from the iPhone and never from a Bluetooth microphone, which would put a speaker or AirPods on
     /// a call (`.allowBluetoothHFP`), and music would drop to call quality or stop. A microphone picked in Settings is
     /// asked for by `PickedMicrophone.matches` and heard from instead: a Bluetooth one is the only pick that allows
@@ -90,7 +98,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     public func open() throws {
         guard !isOn else { return }
         do {
-            try beginOnAnyEngine()
+            try beginOnAnyEngine("opened")
         } catch {
             Self.rest()
             throw error
@@ -109,12 +117,12 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
 
     /// An engine left from before a media services reset can't start (-50), and a suspended iikb may not hear of the
     /// reset, so a failed start tries once more on a new engine.
-    private func beginOnAnyEngine() throws {
+    private func beginOnAnyEngine(_ cause: String) throws {
         do {
-            try begin()
+            try begin(cause)
         } catch {
             engine = AVAudioEngine()
-            try begin()
+            try begin(cause)
         }
     }
 
@@ -122,7 +130,8 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         .mixWithOthers, .allowBluetoothA2DP, .allowAirPlay, .defaultToSpeaker,
     ]
 
-    private func begin() throws {
+    /// `cause` is what started it, kept with why the microphones weren't aimed: opened, restarted or rebuilt.
+    private func begin(_ cause: String) throws {
         let session = AVAudioSession.sharedInstance()
         let picked = SettingsStore.microphone
         let bluetooth: AVAudioSession.CategoryOptions = [.allowBluetoothHFP, .bluetoothHighQualityRecording]
@@ -139,11 +148,16 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         try? session.setPreferredInput(input)
         do {
             aimed = try Capture.aim(session)
+            missed = nil
         } catch {
-            log.error("couldn't aim the microphone: \(error.localizedDescription, privacy: .public)")
             aimed = nil
+            missed = "\(cause) \(Self.place), \(error)"
+            log.notice("not aimed: \(self.missed ?? "", privacy: .public)")
         }
-        if feed.isRecording, aimed != recordingAs { recordingAs = nil }
+        if feed.isRecording, aimed != recordingAs {
+            recordingAs = nil
+            recordingMissed = "\(recordingMissed ?? "aimed"); then \(missed ?? "aimed")"
+        }
         let node = engine.inputNode
         try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
         let heard = node.outputFormat(forBus: 0)
@@ -180,7 +194,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         }
         guard isOn else { return }
         do {
-            try beginOnAnyEngine()
+            try beginOnAnyEngine(rebuilding ? "rebuilt" : "restarted")
         } catch {
             onLost()
         }
@@ -199,6 +213,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     /// Records from the next sound on into `url`.
     public func record(to url: URL) {
         recordingAs = aimed
+        recordingMissed = missed
         feed.start(file: url)
         Dictation.publish(level: 0, recorded: 0)
     }
@@ -216,6 +231,15 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     /// Whether iikb is in front, the only time it stops and starts the microphone by choice: from the background iOS
     /// refuses the new start (Bassim's Duo, Nov 6: OSStatus 560557684 pointing it, then the engine's start failing twice).
     public static var inFront: Bool { UIApplication.shared.applicationState == .active }
+
+    /// Where iikb is, for why it went unaimed: an open from a link starts it before the app is quite in front.
+    private static var place: String {
+        switch UIApplication.shared.applicationState {
+        case .active: "in front"
+        case .inactive: "coming to the front"
+        default: "behind"
+        }
+    }
 
     /// Runs on the audio thread: hands each buffer to the recording, if there is one, and says how loud it was and how
     /// long the recording is now.
