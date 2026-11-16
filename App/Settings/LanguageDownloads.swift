@@ -3,7 +3,8 @@ import KeyboardStore
 
 /// The languages' word data, downloaded on a tap from where the manifest says, checked against its size and SHA-256
 /// before it's put in place (`LanguageFiles`, `Download`), so the keyboard never reads a file cut short or changed on the
-/// way. A download that fails keeps what it got and goes on from there on Try Again; Cancel drops it.
+/// way. A download that fails keeps what it got and goes on from there on Try Again; Cancel drops it. It also keeps the
+/// words of the languages picked together in one file for the keyboard (`merge`).
 @Observable final class LanguageDownloads {
     static let shared = LanguageDownloads()
 
@@ -21,6 +22,7 @@ import KeyboardStore
     /// Downloads started from a tap on the language itself, which it becomes once it's here.
     private var picking: Set<String> = []
     var picked: (String) -> Void = { _ in }
+    private var merging: Task<Void, Never>?
 
     private init() {}
 
@@ -39,6 +41,19 @@ import KeyboardStore
             } else if states[id] == nil || states[id] == .ready {
                 states[id] = .absent
             }
+        }
+        merge()
+    }
+
+    /// Keeps the words of the languages picked in one file, which the keyboard types several from
+    /// (`LanguageFiles.merge`): off the main actor, one at a time, as the languages picked change, as a list comes in
+    /// and at launch. Then the keyboard hears of it as it hears of a setting.
+    func merge() {
+        merging = Task { [merging] in
+            await merging?.value
+            let ids = SettingsModel.shared.settings.languages.map(\.id)
+            let changed = await Task.detached(priority: .userInitiated) { LanguageFiles.merge(ids) }.value
+            if changed { SettingsModel.shared.update { _ in } }
         }
     }
 
@@ -85,6 +100,7 @@ import KeyboardStore
             resumeData[id] = nil
             states[id] = .ready
             if picking.remove(id) != nil { picked(id) }
+            merge()
         case .failure(let failure):
             resumeData[id] = failure.resumeData
             states[id] = .failed(failure.reason)

@@ -15,8 +15,8 @@ public struct Bytes: RandomAccessCollection, @unchecked Sendable {
         self.init(UnsafeRawBufferPointer(copy.buffer), owner: copy)
     }
 
-    func withUnsafeBytes<Result>(_ body: (UnsafeRawBufferPointer) -> Result) -> Result {
-        body(buffer)
+    public func withUnsafeBytes<Result>(_ body: (UnsafeRawBufferPointer) throws -> Result) rethrows -> Result {
+        try body(buffer)
     }
 
     public var startIndex: Int { 0 }

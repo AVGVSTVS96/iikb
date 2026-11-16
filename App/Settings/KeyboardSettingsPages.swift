@@ -130,8 +130,10 @@ struct TryPreview: View {
     }
 
     func update(_ change: (inout KeyboardSettings) -> Void) {
+        let languages = settings.languages
         change(&settings)
         SettingsStore.save(settings)
+        if settings.languages != languages { LanguageDownloads.shared.merge() }
     }
 
     func binding<Value>(_ path: WritableKeyPath<KeyboardSettings, Value>) -> Binding<Value> {

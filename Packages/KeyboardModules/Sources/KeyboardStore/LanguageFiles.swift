@@ -7,6 +7,7 @@ import KeyboardEnglish
 /// English is bundled (`Lexicon.english`) and is what the keyboard types when a language's file isn't here.
 /// Beside each file, `<id>.sha256` names the manifest entry it came from, so a build whose manifest names a newer list
 /// sees the file as out of date, and the app downloads the new one while the keyboard goes on with the old.
+/// Several languages typed at once also have all their words in one file, which the app makes (`merge`).
 nonisolated public enum LanguageFiles {
     /// The files `Resources/Languages/manifest.json` lists, by language, which `scripts/languages` writes as it
     /// publishes them, so the app shows sizes and checks downloads without asking a server.
@@ -55,10 +56,10 @@ nonisolated public enum LanguageFiles {
     }
 
     /// The words the keyboard types for `id`: English's for English, a downloaded language's read in place, or nil when
-    /// it isn't here or isn't a lexicon.
-    public static func lexicon(_ id: String) -> Lexicon? {
+    /// it isn't here or isn't a lexicon. With several ids joined (`together`), all their words as the app merged them.
+    public static func lexicon(_ id: String, in folder: URL? = folder) -> Lexicon? {
         if id == "en" { return .english }
-        guard let url = url(of: id), let bytes = Bytes.mapped(url) else { return nil }
+        guard let url = url(of: id, in: folder), let bytes = Bytes.mapped(url) else { return nil }
         return Lexicon(bytes: bytes)
     }
 
@@ -82,6 +83,46 @@ nonisolated public enum LanguageFiles {
     public static func remove(_ id: String, in folder: URL? = folder) {
         for url in [url(of: id, in: folder), stamp(of: id, in: folder)].compactMap(\.self) {
             try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    /// The name the words of several languages are kept under as one file: their ids in order, as `de+en`.
+    public static func together(_ ids: [String]) -> String {
+        ids.sorted().joined(separator: "+")
+    }
+
+    /// Keeps the words of the languages `ids` in one file, `<together>.lexicon` (`Lexicon(merging:)`), which the
+    /// keyboard types several languages from, stamped with the lists it's made of, and drops the file of any other
+    /// set. A file already made of these lists stays as it is. The app's to call, since merging holds every word in
+    /// memory, more than a keyboard may; until the file is here the keyboard types the first language alone.
+    /// True when the file changed.
+    @discardableResult
+    public static func merge(_ ids: [String], in folder: URL? = folder) -> Bool {
+        guard let folder else { return false }
+        let name = together(ids)
+        // file: the languages' folder, for the merged files of other sets
+        for file in (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        where file.contains("+") && !file.hasPrefix("\(name).") {
+            try? FileManager.default.removeItem(at: folder.appending(path: file))
+        }
+        let lexicons = ids.sorted().compactMap { id in lexicon(id, in: folder).map { (id: id, words: $0) } }
+        guard ids.count > 1, lexicons.count == ids.count, var url = url(of: name, in: folder),
+            let stamp = stamp(of: name, in: folder)
+        else { return false }
+        let parts = lexicons.map { "\($0.id) \(installed($0.id, in: folder) ?? String($0.words.bytes.count))" }
+            .joined(separator: "\n")
+        guard installed(name, in: folder) != parts else { return false }
+        let merged = Lexicon(merging: lexicons.map(\.words))
+        do {
+            // file: merged languages
+            try merged.bytes.withUnsafeBytes { try Data($0).write(to: url, options: .atomic) }
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try url.setResourceValues(values)
+            try Data(parts.utf8).write(to: stamp, options: .atomic)  // file: language stamp
+            return true
+        } catch {
+            return false
         }
     }
 }

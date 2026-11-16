@@ -2,26 +2,29 @@ import KeyboardCore
 import KeyboardStore
 import SwiftUI
 
-/// The language iikb types and, where it has more than one, the layout of its letters, under the preview, which changes
-/// with a pick at once. English is part of iikb; every other language's words download here and are read offline.
+/// The languages iikb types, all of them at once, and the layout of their letters where there's more than one, under
+/// the preview, which changes with a pick at once. A tap checks a language or unchecks it, and one always stays.
+/// English is part of iikb; every other language's words download here and are read offline.
 struct LanguageSettings: View {
     private let model = SettingsModel.shared
     private let downloads = LanguageDownloads.shared
     private let status = AppStatus.shared
 
-    @State private var shown = Self.order(picked: SettingsModel.shared.settings.languages[0])
+    @State private var shown = Self.order(picked: SettingsModel.shared.settings.languages)
 
-    private var language: Language { model.settings.languages[0] }
+    private var languages: [Language] { model.settings.languages }
 
     var body: some View {
         Box(footer: footer) {
             ForEach(shown) { language in
                 DownloadRow(
                     title: language.name, detail: detail(of: language), phase: phase(of: language),
-                    picked: language == self.language
+                    picked: languages.contains(language)
                 ) {
-                    if language.id == Language.english.id || LanguageFiles.has(language.id) {
-                        pick(language.id)
+                    if languages.contains(language) {
+                        drop(language)
+                    } else if language == .english || LanguageFiles.has(language.id) {
+                        add(language)
                     } else {
                         downloads.download(language.id, thenPick: true)
                     }
@@ -30,7 +33,6 @@ struct LanguageSettings: View {
                 } cancel: {
                     downloads.cancel(language.id)
                 } remove: {
-                    if language == self.language { pick(Language.english.id) }
                     downloads.remove(language.id)
                 }
             }
@@ -40,7 +42,7 @@ struct LanguageSettings: View {
         }
         .onAppear {
             downloads.reload()
-            downloads.picked = { pick($0) }
+            downloads.picked = { add(.named($0)) }
         }
         if model.settings.layouts.count > 1 {
             Box {
@@ -56,14 +58,16 @@ struct LanguageSettings: View {
         }
     }
 
-    /// The picked language first, so it's in view under the preview, then the rest; set as the page opens, so no row
-    /// moves while it's open.
-    private static func order(picked: Language) -> [Language] {
-        [picked] + Language.all.filter { $0 != picked }
+    /// The picked languages first, so they're in view under the preview, then the rest; set as the page opens, so no
+    /// row moves while it's open.
+    private static func order(picked: [Language]) -> [Language] {
+        picked + Language.all.filter { !picked.contains($0) }
     }
 
     private var footer: String {
-        status.fullAccess ? "Downloaded languages work offline." : "Downloaded languages need Allow Full Access."
+        let downloaded =
+            status.fullAccess ? "Downloaded languages work offline." : "Downloaded languages need Allow Full Access."
+        return "Type in every language you check, with no switching. \(downloaded)"
     }
 
     private func phase(of language: Language) -> DownloadRow.Phase {
@@ -76,12 +80,18 @@ struct LanguageSettings: View {
         }
     }
 
-    /// A new language starts on its own layout, as Apple's keyboard does.
-    private func pick(_ id: String) {
+    /// Another language types on the layout that's up, and adds its own to those to pick from.
+    private func add(_ language: Language) {
+        withAnimation(.snappy) { model.update { $0.languages.append(language) } }
+    }
+
+    /// A layout only the language let go offered goes with it.
+    private func drop(_ language: Language) {
+        guard languages.count > 1 else { return }
         withAnimation(.snappy) {
-            model.update {
-                $0.languages = [.named(id)]
-                $0.layout = nil
+            model.update { settings in
+                settings.languages.removeAll { $0 == language }
+                if !settings.layouts.contains(where: { $0.id == settings.layout }) { settings.layout = nil }
             }
         }
     }

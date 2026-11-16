@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import KeyboardCore
 import KeyboardStore
 import Testing
 
@@ -50,6 +51,28 @@ struct LanguageFilesTests {
         #expect(LanguageFiles.has("de", in: folder))
         #expect(LanguageFiles.installed("de", in: folder) == nil)
         #expect(!LanguageFiles.isCurrent("de", as: try list("ein"), in: folder))
+    }
+
+    private func keep(_ words: [String], as id: String) throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let lexicon = Lexicon(counts: words.map { (word: $0, count: 1) })
+        try Data(lexicon.bytes).write(to: try #require(LanguageFiles.url(of: id, in: folder)))
+    }
+
+    @Test func severalLanguagesKeepTheirWordsInOneFile() throws {
+        try keep(["über", "hand"], as: "de")
+        try keep(["hej", "hand"], as: "sv")
+        #expect(LanguageFiles.merge(["sv", "de"], in: folder))
+        let both = try #require(LanguageFiles.lexicon(LanguageFiles.together(["sv", "de"]), in: folder))
+        #expect(["über", "hej", "hand"].allSatisfy(both.isWord))
+        #expect(!LanguageFiles.merge(["de", "sv"], in: folder), "made of the same lists, the file stays")
+
+        try keep(["über", "hand", "heute"], as: "de")
+        #expect(LanguageFiles.merge(["de", "sv"], in: folder), "a list changed")
+        #expect(LanguageFiles.lexicon("de+sv", in: folder)?.isWord("heute") == true)
+
+        #expect(!LanguageFiles.merge(["de"], in: folder))
+        #expect(!LanguageFiles.has("de+sv", in: folder), "one language has no use for it")
     }
 
     @Test func removingTakesTheStampToo() async throws {

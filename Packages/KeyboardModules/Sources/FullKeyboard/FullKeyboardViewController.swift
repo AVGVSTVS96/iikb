@@ -478,20 +478,26 @@ open class FullKeyboardViewController: UIInputViewController {
         engine.suggestionsChanged()
     }
 
-    /// Corrects in the languages picked in the app, each with its downloaded words, leaving out one whose words aren't
-    /// here (or can't be reached without Full Access) and typing English when none are, keeping what you've taught it.
-    /// For now it types the first of them alone, and the next-word network is English's. Slide to Type reads any
-    /// language's words on its keys, with English's decoder only while English is typed alone (`Swipe.decodes`).
+    /// Corrects in the languages picked in the app, all at once, each with its downloaded words, leaving out one whose
+    /// words aren't here (or can't be reached without Full Access) and typing English when none are, keeping what
+    /// you've taught it. Several are typed from the one file of all their words the app keeps (`LanguageFiles.merge`),
+    /// and the first alone until it's here. The next-word network is English's. Slide to Type reads any language's
+    /// words on its keys, with English's decoder only while English is typed alone (`Swipe.decodes`).
     private func useLanguages() {
-        let here = engine.settings.languages.compactMap { language in
-            LanguageFiles.lexicon(language.id).map { (language, $0) }
+        var packs = engine.settings.languages.compactMap { language in
+            LanguageFiles.lexicon(language.id).map {
+                LanguagePack(language, lexicon: $0, network: language == .english ? .current : nil)
+            }
         }
-        let typed = here.isEmpty ? [(Language.english, Lexicon.english)] : here
-        let list = typed.map { "\($0.0.id) \(LanguageFiles.installed($0.0.id) ?? "")" }.joined(separator: ",")
+        if packs.isEmpty { packs = [LanguagePack(.english, lexicon: .english, network: .current)] }
+        let together = LanguageFiles.together(packs.map(\.language.id))
+        let words = packs.count > 1 ? LanguageFiles.lexicon(together) : nil
+        if words == nil { packs = [packs[0]] }
+        let list = (packs.map(\.language.id) + [together]).map { "\($0) \(LanguageFiles.installed($0) ?? "")" }
+            .joined(separator: ",")
         guard list != typing else { return }
         typing = list
-        let english = typed[0].0 == .english
-        let corrector = Corrector(source: typed[0].1, network: english ? .current : nil)
+        let corrector = Corrector(typing: packs, words: words)
         if let old = engine.corrector {
             corrector.changeMemory { $0 = old.memory }
             corrector.replacements = old.replacements
@@ -500,7 +506,8 @@ open class FullKeyboardViewController: UIInputViewController {
             corrector.grid = old.grid
         }
         engine.corrector = corrector
-        engine.swipeModel = typed.count == 1 && english ? .english : Swipe.english.withoutDecoder
+        let english = packs.count == 1 && packs[0].language == .english
+        engine.swipeModel = english ? .english : Swipe.english.withoutDecoder
     }
 
     /// A look picked in the menu, kept where the app reads it too, so its Appearance page shows it at once. A new theme

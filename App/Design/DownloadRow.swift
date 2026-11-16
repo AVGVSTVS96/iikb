@@ -2,8 +2,8 @@ import SwiftUI
 
 /// One of a setting's values whose data downloads, on one line: its name, and at its right what it does, in
 /// one column: Download, Cancel while a bar under the name shows how far it's come, Try Again, Remove once it's here, and
-/// the check on the one picked. A tap elsewhere on the row picks it, which for one not here yet is the owner's to decide
-/// (a language downloads, then is picked). A newer copy of one that's here comes in with the bar and "Updating" while the
+/// the check on one that's picked. A tap elsewhere on the row is the owner's to answer (a language is picked or let go,
+/// and one not here yet downloads first). A newer copy of one that's here comes in with the bar and "Updating" while the
 /// old one stays picked. The row keeps its height through all of it.
 struct DownloadRow: View {
     enum Phase: Equatable {

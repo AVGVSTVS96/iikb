@@ -1,7 +1,7 @@
 import XCTest
 
-/// A language downloaded on Settings › Languages, its layout picked there, typed and swiped with the keyboard, then
-/// removed, which leaves English.
+/// A language downloaded on Settings › Languages and typed and swiped along with English, on a layout picked there,
+/// then let go and removed, which leaves English.
 final class LanguageTests: XCTestCase {
     private let app = XCUIApplication()
 
@@ -41,22 +41,22 @@ final class LanguageTests: XCTestCase {
 
         german.tap()
         XCTAssertTrue(becomes(german, selected: true, within: 5))
-        XCTAssertTrue(layoutRow.label.contains("German"))
+        XCTAssertTrue(row("English").isSelected, "English is typed along with it")
+        XCTAssertTrue(layoutRow.label.contains("QWERTY"), "the layout that was up stays")
         try shot("downloaded")
 
         reveal(layoutRow)
         layoutRow.tap()
-        app.buttons["QWERTY"].firstMatch.tap()
-        XCTAssertTrue(layoutRow.label.contains("QWERTY"))
-        top()
-        try shot("qwerty")
-        reveal(layoutRow)
-        layoutRow.tap()
         app.buttons["German"].firstMatch.tap()
-
+        XCTAssertTrue(layoutRow.label.contains("German"))
         top()
+        try shot("german")
+
+        german.tap()
+        XCTAssertTrue(becomes(german, selected: false, within: 5))
+        XCTAssertTrue(layoutRow.label.contains("QWERTY"), "German's layout goes with it")
         row("English").tap()
-        XCTAssertTrue(becomes(row("English"), selected: true, within: 5))
+        XCTAssertTrue(row("English").isSelected, "one language always stays")
         XCTAssertTrue(app.buttons["Remove Deutsch"].waitForExistence(timeout: 5))
         reveal(german)
         try shot("remove")
@@ -67,28 +67,44 @@ final class LanguageTests: XCTestCase {
         try shot("end")
     }
 
-    func testTypesTheLanguagePicked() throws {
+    /// English and German typed and swiped on German's keys with no switching. The keyboard types both from one file
+    /// of their words, which the app puts together after the pick, or as it opens again if it was closed before that
+    /// was done: until then a German slip is read as English, so each is typed once, since one kept twice is a word
+    /// of yours.
+    func testTypesTheLanguagesPickedAtOnce() throws {
         app.launchArguments = ["-iikbResetSettings", "YES", "-iikbSettings", "languages"]
         app.launch()
         let german = row("Deutsch")
         XCTAssertTrue(german.waitForExistence(timeout: 10))
         german.tap()
         XCTAssertTrue(becomes(german, selected: true, within: 120), "Deutsch wasn't picked once it downloaded")
+        reveal(layoutRow)
+        layoutRow.tap()
+        app.buttons["German"].firstMatch.tap()
+        XCTAssertTrue(layoutRow.label.contains("German"))
         app.terminate()
         app.launchArguments = ["-iikbFocus", "YES", "-iikbAutoCorrection", "YES"]
         app.launchWithIikb()
         XCTAssertLessThan(key("z").frame.midY, key("a").frame.midY, "German's z isn't in the top row")
-        type("nicjt ")
-        XCTAssertEqual(app.textViews.firstMatch.value as? String, "Nicht ")
+        let field = app.textViews.firstMatch
+        type("teh ")
+        XCTAssertEqual(text(field), "The ")
+        for slip in ["nicjt", "nivht", "nixht", "nicgt", "nichr", "nocht"] where !text(field).hasSuffix(" nicht ") {
+            type("\(slip) ")
+            if !text(field).hasSuffix(" nicht ") { Thread.sleep(forTimeInterval: 10) }
+        }
+        XCTAssertTrue(text(field).hasSuffix(" nicht "), "typed: \(text(field))")
         try swipe(through: ["ü", "b", "e", "r"])
+        let swiped = NSPredicate(format: "value ENDSWITH ' nicht über'")
         XCTAssertTrue(
-            XCTWaiter.wait(
-                for: [
-                    XCTNSPredicateExpectation(
-                        predicate: NSPredicate(format: "value == %@", "Nicht über"), object: app.textViews.firstMatch)
-                ], timeout: 5) == .completed,
-            "swiped on German's ü key: \(app.textViews.firstMatch.value ?? "")")
+            XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: swiped, object: field)], timeout: 5)
+                == .completed,
+            "swiped on German's ü key: \(text(field))")
         try shot("typed")
+    }
+
+    private func text(_ field: XCUIElement) -> String {
+        field.value as? String ?? ""
     }
 
     private var layoutRow: XCUIElement {
