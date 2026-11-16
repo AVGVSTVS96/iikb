@@ -20,7 +20,7 @@ struct LanguageTests {
         settings.languages = [.english, .german, .english]
         #expect(settings.languages == [.english, .german])
         #expect(settings.letters == .qwerty)
-        #expect(settings.layouts == [.qwerty, .azerty, .qwertz, .german])
+        #expect(settings.layouts == [.qwerty, .azerty, .qwertz, .dvorak, .colemak, .colemakDH, .workman, .german])
         let context = {
             LayoutContext(device: .phone, layer: .letters, screen: Size(width: 402, height: 874), settings: settings)
         }

@@ -63,7 +63,7 @@ public final class KeyboardPreviewView: UIView {
         keyboard.slidesToType = false
         keyboard.update(layout: keys.layout, signature: "preview", metrics: keys.metrics, faces: faces, theme: theme)
         bar.toolbar = keys.metrics.toolbar
-        bar.keys = keys.grid.typingRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
+        bar.keys = keys.grid.barRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
         let secondary = settings.mode == .secondary
         bar.update(more: keys.context.showsMoreButton || secondary, on: secondary)
         bar.update(edits: secondary ? SuggestionBar.Edits(cut: false, copy: false, paste: true) : nil, theme: theme)

@@ -64,7 +64,7 @@ extension KeyGrid {
     public func key(holding letter: String) -> String? {
         if index(of: letter) != nil { return letter }
         for row in rows {
-            for item in row where item.key.alternates.contains(letter) {
+            for item in row where item.key.alternates.contains(letter) && item.key.holdPick != letter {
                 if let label = item.key.label { return label }
             }
         }

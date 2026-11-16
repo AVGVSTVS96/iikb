@@ -7,6 +7,8 @@ UIKit, the parts any keyboard can build on, with no private API. Keyboard behavi
 - `KeyboardView`: one view owns all touches: rollover, slide-off, callouts, long-press accents, the spacebar trackpad, iPad flicks, and swipes.
   - A touch that began on a letter in the letters layer and has gone 0.8 key widths from where it began, past the neighboring key a tap's drift never reaches, stops being a key, collects its path from every coalesced sample, and sends `.swipe` when it lifts or when another finger lands.
   - `TrailView` draws the thin fading line behind it in the theme's prominent color, never touching the keys.
+  - A hold opens `AlternatesView` on `Key.holdPick` when the key has one (a number hint's digit, .com), else on its own character. On the layer and emoji keys it opens the menu (`KeyboardView.menu`), and on the emoji key `heldEmoji` in rows of four above it, the most picked nearest the finger; the menu stays where the finger is, so letting go without sliding still changes nothing.
+  - A touch on delete that slides left half a key stops being a press: each further key width takes out one more word (`KeyboardEvent.deleteSlide`), and sliding back gives them back, until it lifts.
   - The top row takes taps over the bar's bottom edge (docs/design.md, "Where taps land"), so a reach for it types its key, never picking a suggestion or opening a panel.
 - `HostText`: the body font most fields draw in, so the trackpad moves the caret a character for as far as the character is wide. Up and down send `.cursorLines` for each line height the finger crosses (`KeyboardView.lineHeight`, the field's where FullKeyboard knows it), else for each row of keys.
 - `KeyView`.

@@ -54,6 +54,7 @@ struct CustomKeysTests {
                 abs(row[1].frame.x + row[1].frame.width / 2 - (q.x + p.x + p.width) / 2) < 1,
                 "centered over the letters")
             #expect(with.grid.typingRow.first?.key.action == .character("q"))
+            #expect(with.grid.barRow.map(\.frame) == with.grid.typingRow.map(\.frame), "the bar skips the action row")
         }
     }
 

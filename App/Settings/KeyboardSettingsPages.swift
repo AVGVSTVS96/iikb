@@ -278,6 +278,16 @@ struct TypingSettings: View {
                 title: "“.” Shortcut", detail: "Double-tap space for a period and a space.",
                 isOn: model.binding(\.periodShortcut))
         }
+        if KeysHere().currency {
+            Box(
+                footer:
+                    "The sign on the currency key of the 123 keys. Automatic shows your region’s, as Apple’s keyboard does."
+            ) {
+                MenuRow(
+                    title: "Currency Symbol", selection: model.binding(\.currency), choices: Currency.allCases
+                ) { $0 == .automatic ? "Automatic (\($0.symbol(in: .current)))" : $0.title }
+            }
+        }
         Box(header: "Text Replacements") {
             Button {
                 AppStatus.openSettings()
@@ -320,6 +330,12 @@ private struct LayoutSettings: View {
                 ToggleRow(
                     title: "Number Row", detail: "1 to 0 above the letters. The keyboard grows upward.",
                     isOn: model.binding(\.numberRow))
+                if !model.settings.numberRow {
+                    ToggleRow(
+                        title: "Number Hints",
+                        detail: "Digits in the corners of the top letters. Hold a letter to type its digit.",
+                        isOn: model.binding(\.numberHints))
+                }
             }
         }
         Box(header: "Emoji, GIFs and Clipboard") {
@@ -335,6 +351,15 @@ private struct LayoutSettings: View {
                     detail:
                         "One row that scrolls sideways, as in landscape, so the keyboard stays short in portrait too.",
                     isOn: model.binding(\.compactPanels))
+            }
+            if here.emojiKey {
+                MenuRow(title: "Hold Emoji Key", selection: model.binding(\.emojiGrid), choices: EmojiGrid.allCases) {
+                    $0.title
+                }
+                if model.settings.emojiGrid == .custom {
+                    TextField("Up to \(EmojiGrid.most) emoji", text: customEmoji)
+                        .row()
+                }
             }
             MenuRow(
                 title: "Clipboard Length", selection: model.binding(\.clipboardLength),
@@ -357,6 +382,18 @@ private struct LayoutSettings: View {
         }
     }
 
+    /// The custom emoji as one line, keeping only the first `EmojiGrid.most` emoji typed into it.
+    private var customEmoji: Binding<String> {
+        Binding {
+            model.settings.customEmoji.joined()
+        } set: { text in
+            let emoji = text.filter {
+                $0.unicodeScalars.contains { $0.properties.isEmojiPresentation || $0.value == 0xFE0F }
+            }
+            model.update { $0.customEmoji = emoji.prefix(EmojiGrid.most).map(String.init) }
+        }
+    }
+
     static func title(of hand: OneHanded) -> String {
         switch hand {
         case .off: "Off"
@@ -371,12 +408,13 @@ private struct LayoutSettings: View {
 /// extra keys, rows or layouts.
 struct KeysHere {
     let numberRow, emojiKey, recordKey, globeKey, leadingButton, actionRow, arrangesBottomRow: Bool
-    let split, oneHanded, largePanels, characterPreview: Bool
+    let split, oneHanded, largePanels, characterPreview, currency: Bool
 
     @MainActor init() {
         let screen = ThisDevice.screen
         let device = ThisDevice.keyboard
         characterPreview = device == .phone
+        currency = device == .phone
         let all = LayoutContext(
             device: device, layer: .letters, showsGlobe: true, showsEmoji: true, showsGlobeKey: true,
             showsNumberRow: true, leadingButton: .hidden)

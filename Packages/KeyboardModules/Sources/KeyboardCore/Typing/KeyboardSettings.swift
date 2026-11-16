@@ -57,8 +57,16 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var stopAnimation = StopAnimation.squeeze
     /// A row of digits above an iPhone's letters, which grows the keyboard upward.
     public var numberRow = false
+    /// A digit in the corner of each of an iPhone's top letters, which holding the key types, where the Number Row is off.
+    public var numberHints = false
+    /// The sign on the number layer's currency key.
+    public var currency = Currency.automatic
     /// The tone emoji take until you pick another for one; nil keeps them yellow.
     public var skinTone: SkinTone?
+    /// What holding the emoji key offers above the keyboard's menu: the emoji you use most, or `customEmoji`.
+    public var emojiGrid = EmojiGrid.recents
+    /// The emoji you set for the emoji key's hold, up to `EmojiGrid.most`, kept while it shows your recents instead.
+    public var customEmoji: [String] = []
     /// How the app writes what you dictate (`DictationWriting`).
     public var dictationStyle = DictationStyle.standard
     /// A style picked for an app, by its bundle ID, in place of `dictationStyle` there.
@@ -87,6 +95,21 @@ public struct KeyboardSettings: Hashable, Sendable {
         settings.autoCorrection = false
         return settings
     }()
+}
+
+/// What holding the emoji key offers above the keyboard's menu: the emoji you pick most, or a set of your own.
+public enum EmojiGrid: String, CaseIterable, Hashable, Sendable {
+    case recents, custom
+
+    /// As many as it holds, in two rows.
+    public static let most = 8
+
+    public var title: String {
+        switch self {
+        case .recents: "Recents"
+        case .custom: "Custom"
+        }
+    }
 }
 
 /// What the globe at the far left of an iPhone's bottom row does: switch keyboards, or sit there as a spacer that does

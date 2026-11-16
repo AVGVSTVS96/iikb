@@ -49,6 +49,12 @@ public struct LayoutContext: Hashable, Sendable {
     public var languages = [Language.english]
     /// The letters' layout, one of the languages'.
     public var letters = LetterLayout.qwerty
+    /// A digit in the corner of each top letter, which holding the key types: an iPhone's, without the number row.
+    public var showsNumberHints = false
+    /// The sign on the currency key, which trades places with $ wherever the layout has both.
+    public var currency = "$"
+    /// Where the device is, whose web address endings the period offers in an email, URL or search field.
+    public var region = Region()
 
     public init(
         device: DeviceClass, layer: KeyboardLayer, kind: InputKind = .text, showsGlobe: Bool = false,
@@ -74,10 +80,11 @@ public struct LayoutContext: Hashable, Sendable {
         if !allowsSplit { self.isSplit = false }
     }
 
-    /// The layout on a `screen`-sized device as `settings` set it up: the keyboard's, and the app's preview of it.
+    /// The layout on a `screen`-sized device as `settings` set it up in `region`: the keyboard's, and the app's preview
+    /// of it.
     public init(
         device: DeviceClass, layer: KeyboardLayer, kind: InputKind = .text, showsGlobe: Bool = false, screen: Size,
-        settings: KeyboardSettings
+        settings: KeyboardSettings, region: Region = Region()
     ) {
         self.init(
             device: device, layer: layer, kind: kind, showsGlobe: showsGlobe, isLandscape: screen.width > screen.height,
@@ -97,6 +104,9 @@ public struct LayoutContext: Hashable, Sendable {
         letters = settings.letters
         languages = settings.languages.filter { $0.layouts.contains(letters) }
         languages += settings.languages.filter { !languages.contains($0) }
+        showsNumberHints = settings.numberHints && device == .phone && layer == .letters && !showsNumberRow
+        currency = settings.currency.symbol(in: region)
+        self.region = region
     }
 
     /// Like Apple's, only an iPhone in portrait narrows its keys for one hand, and on the Duo only folded.
@@ -278,11 +288,16 @@ public enum Layouts {
             case .pad: PadLayouts.layout(for: context)
             case .largePad: LargePadLayouts.layout(for: context)
             }
-        guard context.languages != [.english] else { return layout.withActions(context) }
-        let local = layout.in(context.languages)
-        let accented =
-            context.layer == .letters && context.languages[0] != .italian ? local.accenting(context.letters) : local
-        return accented.withActions(context)
+        var local = context.languages == [.english] ? layout : layout.in(context.languages)
+        if context.layer == .letters, context.languages != [.english], context.languages[0] != .italian {
+            local = local.accenting(context.letters)
+        }
+        if context.showsNumberHints { local = local.hinted() }
+        if context.device == .phone, context.currency != "$" { local = local.priced(context.currency) }
+        if [.email, .url, .webSearch].contains(context.kind) {
+            local = local.ending(context.region.endings(typing: context.languages[0]))
+        }
+        return local.withActions(context)
     }
 }
 
@@ -376,6 +391,67 @@ extension KeyboardLayout {
             }
         }
         return layout
+    }
+}
+
+extension KeyboardLayout {
+    /// Each top letter with its digit, 1 to 0, in its corner and on its long press, at the end nearest the key's own edge
+    /// of the keyboard, where the hold opens.
+    func hinted() -> KeyboardLayout {
+        guard let top = rows.first else { return self }
+        var digits: [String: String] = [:]
+        for value in top.compactMap(\.character) where digits[value] == nil && digits.count < 10 {
+            digits[value] = String((digits.count + 1) % 10)
+        }
+        var layout = self
+        layout.rows[0] = top.map { item in
+            guard case .key(var key) = item, let value = item.character, let digit = digits[value] else { return item }
+            let options = key.alternates.isEmpty ? [value] : key.alternates
+            key.alternates = Self.isRight(item, in: top) ? options + [digit] : [digit] + options
+            key.secondary = digit
+            key.holdPick = digit
+            return .key(key)
+        }
+        return layout
+    }
+
+    /// The currency key showing `symbol`, which trades places with $ wherever the layout has both, and offers $ among the
+    /// rest on its long press.
+    func priced(_ symbol: String) -> KeyboardLayout {
+        let swap = { (text: String) in text == "$" ? symbol : text == symbol ? "$" : text }
+        var layout = self
+        layout.rows = rows.map { row in
+            row.map { item in
+                guard case .key(var key) = item, let value = item.character else { return item }
+                key.action = .character(swap(value))
+                key.secondary = key.secondary.map(swap)
+                key.alternates = key.alternates.map(swap)
+                if value == "$", !key.alternates.isEmpty, !key.alternates.contains("$") { key.alternates.append("$") }
+                return .key(key)
+            }
+        }
+        return layout
+    }
+
+    /// The bottom row's .com, or its period where it has none, offering `endings` on a long press that opens on the
+    /// first, so a hold let go types .com.
+    func ending(_ endings: [String]) -> KeyboardLayout {
+        guard let bottom = rows.last, let first = endings.first else { return self }
+        let held = bottom.contains { $0.character == ".com" } ? ".com" : "."
+        var layout = self
+        layout.rows[rows.count - 1] = bottom.map { item in
+            guard case .key(var key) = item, item.character == held else { return item }
+            key.alternates = Self.isRight(item, in: bottom) ? endings.reversed() : endings
+            key.holdPick = first
+            return .key(key)
+        }
+        return layout
+    }
+
+    /// Whether a key sits in the right half of its row's keys, where its long press runs leftward.
+    private static func isRight(_ item: RowItem, in row: [RowItem]) -> Bool {
+        let keys = row.filter { if case .key = $0 { true } else { false } }
+        return (keys.firstIndex(of: item) ?? 0) >= keys.count / 2
     }
 }
 

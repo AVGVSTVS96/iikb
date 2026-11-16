@@ -40,7 +40,9 @@ struct BarLayoutTests {
             device: screen.device, layer: .letters, isLandscape: screen.width > screen.height, isOpen: screen.split,
             oneHanded: screen.oneHanded, isSplit: screen.split)
         let grid = KeyGrid(Layouts.layout(for: context), width: screen.window, metrics: metrics.grid)
-        let keys = grid.rows[0].map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
+        #expect(
+            grid.barRow.map(\.frame) == grid.rows[0].map(\.frame), "\(screen.name): QWERTY's bar follows its top row")
+        let keys = grid.barRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
         // An iPhone's emoji open from the key beside space, so its bar has two tools at most.
         return Array(0...(screen.device == .phone ? 2 : 3)).flatMap { tools in
             [false, true].flatMap { more in

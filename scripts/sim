@@ -479,6 +479,7 @@ ipadapp() {
 LANGS="en-qwerty en_US@sw=QWERTY en qwerty
 en-azerty en_US@sw=AZERTY en azerty
 en-qwertz en_US@sw=QWERTZ en qwertz
+en-dvorak en_US@sw=Dvorak en dvorak
 es-spanish es_ES@sw=QWERTY-Spanish es spanish
 es_MX-spanish es_MX@sw=QWERTY-Spanish es spanish
 fr-french fr_FR@sw=AZERTY-French fr french

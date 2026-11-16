@@ -19,7 +19,8 @@ public struct Language: Sendable, Identifiable {
     public static let all: [Language] = [english, spanish, french, german, portuguese, italian, swedish]
 
     public static let english = Language(
-        id: "en", name: "English", layouts: [.qwerty, .azerty, .qwertz], quotes: ["“", "”", "‘", "’"])
+        id: "en", name: "English", layouts: [.qwerty, .azerty, .qwertz, .dvorak, .colemak, .colemakDH, .workman],
+        quotes: ["“", "”", "‘", "’"])
     public static let spanish = Language(
         id: "es", name: "Español", layouts: [.spanish, .qwerty, .azerty, .qwertz], quotes: ["“", "”", "‘", "’"])
     public static let french = Language(
@@ -51,9 +52,13 @@ public struct LetterLayout: Hashable, Sendable, Identifiable {
     public var shifted: [String: String] = [:]
     /// Shift and delete narrow with the letters of a longer row, as Swedish's do on an iPhone; German's keep English's.
     public var narrowsShift = false
+    /// Delete ends the top row and the bottom row's letters run to the edge, as on Apple's Dvorak.
+    public var deleteOnTop = false
 
     /// Every layout some language offers.
-    public static let all: [LetterLayout] = [qwerty, qwertz, azerty, spanish, french, german, swedish]
+    public static let all: [LetterLayout] = [
+        qwerty, qwertz, azerty, spanish, french, german, swedish, dvorak, colemak, colemakDH, workman,
+    ]
 
     public static let qwerty = LetterLayout(id: "qwerty", name: "QWERTY", rows: ["qwertyuiop", "asdfghjkl", "zxcvbnm"])
     public static let qwertz = LetterLayout(id: "qwertz", name: "QWERTZ", rows: ["qwertzuiop", "asdfghjkl", "yxcvbnm"])
@@ -66,6 +71,17 @@ public struct LetterLayout: Hashable, Sendable, Identifiable {
         id: "german", name: "German", rows: ["qwertzuiopü", "asdfghjklöä", "yxcvbnm"])
     public static let swedish = LetterLayout(
         id: "swedish", name: "Swedish", rows: ["qwertyuiopå", "asdfghjklöä", "zxcvbnm"], narrowsShift: true)
+    /// Apple's English Dvorak.
+    public static let dvorak = LetterLayout(
+        id: "dvorak", name: "Dvorak", rows: ["pyfgcrl", "aoeuidhtns", "qjkxbmwvz"], deleteOnTop: true)
+    /// Apple has none of the next three, so each is its letters on Apple's keys, as Raycast's are: what the layout puts
+    /// on a desk keyboard's letter keys, each row in its place.
+    public static let colemak = LetterLayout(
+        id: "colemak", name: "Colemak", rows: ["qwfpgjluy", "arstdhneio", "zxcvbkm"])
+    public static let colemakDH = LetterLayout(
+        id: "colemakdh", name: "Colemak-DH", rows: ["qwfpbjluy", "arstgmneio", "zxcdvkh"])
+    public static let workman = LetterLayout(
+        id: "workman", name: "Workman", rows: ["qdrwbjfup", "ashtgyneoi", "zxmcvkl"])
 }
 
 extension Sequence where Element: Equatable {

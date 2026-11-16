@@ -303,6 +303,10 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         engine.defersSuggestions = true
         keyboardView.onEvent = { [unowned self] in handle($0) }
+        keyboardView.heldEmoji = { [unowned self] in
+            EmojiSearch.english.held(
+                engine.settings.emojiGrid, custom: engine.settings.customEmoji, history: engine.emojiHistory)
+        }
         suggestionBar.onSelect = { [unowned self] in
             feedback(.input)
             engine.accept($0, in: document)
@@ -315,7 +319,10 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         useLanguages()
         Task { [weak self] in
-            let catalog = await Task.detached(priority: .userInitiated) { EmojiCatalog.english }.value
+            let catalog = await Task.detached(priority: .userInitiated) {
+                _ = EmojiSearch.english
+                return EmojiCatalog.english
+            }.value
             self?.engine.emojiCatalog = catalog
             self?.engine.suggestionsChanged()
             self?.render()
@@ -323,7 +330,7 @@ open class FullKeyboardViewController: UIInputViewController {
         keyboardView.resolve = { [unowned self] grid, point in engine.key(atX: point.x, y: point.y, in: grid) }
         keyboardView.onGrid = { [unowned self] grid in
             engine.use(grid)
-            suggestionBar.keys = grid.typingRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
+            suggestionBar.keys = grid.barRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
             keyed = grid.rows.joined().contains { $0.key.action == .dictate }
             placeMic()
         }
@@ -469,6 +476,7 @@ open class FullKeyboardViewController: UIInputViewController {
 
     private func loadSettings() {
         engine.settings = SettingsStore.load(sharing: hasFullAccess)
+        engine.region = .current
         engine.emojiHistory.skinTone = engine.settings.skinTone
         haptics.strength = Float(engine.settings.haptics.strength)
         keyboardView.characterPreview = engine.settings.characterPreview
@@ -1066,6 +1074,11 @@ open class FullKeyboardViewController: UIInputViewController {
             }
         case .up(let key) where key.action == .delete:
             deleteRepeat = nil
+        case .deleteSlide:
+            guard engine.handle(event, in: document) else { return }
+            deleteRepeat = nil
+            feedback(.deletionRepeat)
+            return render()
         case .trigger(let key) where key.action == .dismiss:
             return dismissKeyboard()
         case .trigger(let key) where key.action == .nextKeyboard:

@@ -94,8 +94,8 @@ enum LaunchOptions {
     }
 
     /// `-iikbLanguage sv`, `-iikbOneHanded left` and `-iikbCompactPanels YES`, `-iikbAutoCapitalization YES`, `-iikbAutoCorrection YES`,
-    /// `-iikbMicKey YES`, `-iikbPredictiveText NO` or Custom Keys' switches (`-iikbActionRow YES`, `-iikbPeriodKey YES`) set
-    /// those settings for a test.
+    /// `-iikbMicKey YES`, `-iikbPredictiveText NO`, `-iikbNumberHints YES` or Custom Keys' switches (`-iikbActionRow YES`,
+    /// `-iikbPeriodKey YES`) set those settings for a test.
     static func applySettings() {
         if let hand = defaults.string(forKey: "iikbOneHanded").flatMap(OneHanded.init) { SettingsStore.set(hand) }
         if let language = defaults.string(forKey: "iikbLanguage") {
@@ -107,7 +107,8 @@ enum LaunchOptions {
         let toggles: [(String, WritableKeyPath<KeyboardSettings, Bool>)] = [
             ("iikbCompactPanels", \.compactPanels), ("iikbAutoCapitalization", \.autoCapitalization),
             ("iikbAutoCorrection", \.autoCorrection), ("iikbMicKey", \.micKey),
-            ("iikbPredictiveText", \.predictiveText), ("iikbActionRow", \.actionRow),
+            ("iikbPredictiveText", \.predictiveText), ("iikbNumberHints", \.numberHints),
+            ("iikbActionRow", \.actionRow),
             ("iikbActionRowInLandscape", \.actionRowInLandscape),
             ("iikbPeriodKey", \.periodKey), ("iikbDictationButton", \.dictationButton), ("iikbSplit", \.split),
         ]
@@ -118,8 +119,8 @@ enum LaunchOptions {
 
     /// `-iikbTheme mechanical -iikbThemeAppearance dark -iikbCharacterPreview detached -iikbNumberRow YES -iikbSkinTone medium
     /// -iikbKeySpacing tighter -iikbKeyRoundness rounder -iikbStopAnimation drain -iikbLanguage de -iikbLayout qwertz
-    /// -iikbMode secondary -iikbLeadingButton hidden -iikbAroundSpace period,space,emoji` set the keyboard's look for
-    /// screenshots.
+    /// -iikbMode secondary -iikbLeadingButton hidden -iikbAroundSpace period,space,emoji -iikbCurrency euro` set the
+    /// keyboard's look for screenshots.
     static func applyLook() {
         var settings = SettingsStore.load()
         if let theme = defaults.string(forKey: "iikbTheme").flatMap(ThemeName.init) { settings.theme = theme }
@@ -150,6 +151,9 @@ enum LaunchOptions {
         }
         if let order = defaults.string(forKey: "iikbAroundSpace") {
             settings.aroundSpace = order.split(separator: ",").compactMap { BottomKey(rawValue: String($0)) }
+        }
+        if let currency = defaults.string(forKey: "iikbCurrency").flatMap(Currency.init) {
+            settings.currency = currency
         }
         if settings != SettingsStore.load() { SettingsStore.save(settings) }
     }

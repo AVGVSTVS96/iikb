@@ -107,6 +107,13 @@ public struct EmojiSearch: Sendable {
         history.ranked(tier.map { toned($0, history: history) })
     }
 
+    /// What holding the emoji key offers above the keyboard's menu, at most `EmojiGrid.most`: the set picked in
+    /// Settings as it was picked, or what you pick most, each in its tone.
+    public func held(_ grid: EmojiGrid, custom: [String], history: EmojiHistory) -> [String] {
+        let picked = grid == .custom ? custom : history.frequent.map { toned($0, history: history) }
+        return Array(picked.prefix(EmojiGrid.most))
+    }
+
     /// What the panel shows for `query`: each word of it must start a word of the emoji's name or keywords. Emoji that
     /// match every word whole come first, and within each, the ones you pick, then the ones everyone uses most. An
     /// empty query shows what you pick most, then every emoji.

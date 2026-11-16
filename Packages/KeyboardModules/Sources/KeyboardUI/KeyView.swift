@@ -113,10 +113,12 @@ final class KeyView: UIView {
         accessibilityIdentifier =
             if case .character(let value) = key.action { "iikb.\(value)" } else { "iikb.\(accessibilityName)" }
         secondaryLabel.text = shown.secondary
-        cornerLabel.text = shown.corner
+        cornerLabel.text = shown.corner ?? shown.hint
         let corner = (metrics.secondarySize + 3) * (shape?.labelScale ?? 1)
         cornerLabel.font =
-            UIFont(name: "HelveticaNeue-Bold", size: corner) ?? .systemFont(ofSize: corner, weight: .bold)
+            shown.corner == nil
+            ? KeyboardFont.letter(metrics.secondarySize * 0.75 * (shape?.labelScale ?? 1))
+            : UIFont(name: "HelveticaNeue-Bold", size: corner) ?? .systemFont(ofSize: corner, weight: .bold)
         if shown.secondary != nil, !shown.secondaryIsDimmed {
             label.font = .systemFont(ofSize: metrics.pairSize, weight: .regular)
             secondaryLabel.font = label.font
@@ -138,7 +140,7 @@ final class KeyView: UIView {
         }
         label.sizeToFit()
         icon.sizeToFit()
-        layoutCorner(inset: metrics.cornerRadius)
+        layoutCorner(inset: shown.corner == nil ? metrics.cornerRadius / 2 : metrics.cornerRadius)
 
         switch shown.alignment {
         case .center:
@@ -243,7 +245,7 @@ final class KeyView: UIView {
     }
 
     private func layoutCorner(inset: CGFloat) {
-        guard shown.corner != nil, let font = cornerLabel.font else {
+        guard cornerLabel.text != nil, let font = cornerLabel.font else {
             cornerLabel.frame = .zero
             return
         }
@@ -332,7 +334,9 @@ final class KeyView: UIView {
             icon.layer.shadowOpacity = 0
         }
         secondaryLabel.textColor = shown.secondaryIsDimmed ? theme.secondaryLabel.ui : foreground
-        cornerLabel.textColor = foreground.withAlphaComponent(paint.label.alpha * theme.secondaryLabel.alpha)
+        cornerLabel.textColor =
+            shown.corner == nil
+            ? theme.secondaryLabel.ui : foreground.withAlphaComponent(paint.label.alpha * theme.secondaryLabel.alpha)
         setNeedsLayout()
     }
 }

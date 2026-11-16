@@ -114,7 +114,7 @@ extension TypingEngine {
     public func layout(on device: DeviceClass, screen: Size, showsGlobe: Bool = false) -> LayoutContext {
         var context = LayoutContext(
             device: device, layer: layer, kind: panel == nil ? traits.kind : .text, showsGlobe: showsGlobe,
-            screen: screen, settings: settings)
+            screen: screen, settings: settings, region: region)
         if panel != nil { context.actions = [] }
         return context
     }

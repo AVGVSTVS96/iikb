@@ -56,6 +56,9 @@ public struct Key: Hashable, Sendable {
     /// It accents the vowel before it instead, types ’ after any other letter and ´ anywhere else, as French's ’ key
     /// does on Apple's iPhone keyboard, shifted or not (`Accent.before`).
     public var accentsLetterBefore = false
+    /// The long press's choice it opens on, when that isn't the key's own character: a number hint's digit, or .com on
+    /// the period of an address. Letting go without sliding types it.
+    public var holdPick: String?
 
     public init(
         _ action: KeyAction, width: KeyWidth = .input, alternates: [String] = [], secondary: String? = nil,

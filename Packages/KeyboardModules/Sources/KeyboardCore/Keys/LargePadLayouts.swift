@@ -3,12 +3,14 @@ enum LargePadLayouts {
         switch context.layer {
         case .letters:
             if let iso = ISO.of(context.languages[0], context.letters) { return letters(context, iso) }
+            let ansi = ANSI.of(context.letters)
+            let row = { (index: Int) in RowItem.keys(ansi.rows[index], secondaries: ansi.shifted[index], pairs: true) }
             return KeyboardLayout(
                 rows: [
-                    numberRow,
-                    [tab] + RowItem.keys("qwertyuiop[]\\", secondaries: "          {}|", pairs: true),
-                    [capsLock] + RowItem.keys("asdfghjkl;'", secondaries: "         :\"", pairs: true) + [returnKey],
-                    [shift] + RowItem.keys("zxcvbnm,./", secondaries: "       <>?", pairs: true) + [trailingShift],
+                    row(0) + [.key(Key(.delete, width: .fill))],
+                    [tab] + row(1),
+                    [capsLock] + row(2) + [returnKey],
+                    [shift] + row(3) + [trailingShift],
                     bottomRow(context, layerKey: .numbers),
                 ], shortRows: 1)
         case .numbers, .symbols:
@@ -71,8 +73,40 @@ enum LargePadLayouts {
         }
     }
 
-    private static let numberRow: [RowItem] =
-        RowItem.keys("`1234567890-=", secondaries: "~!@#$%^&*()_+", pairs: true) + [.key(Key(.delete, width: .fill))]
+    /// The US layouts of Apple's 13-inch iPad keyboard, its Magic Keyboard's, each row typed, then shifted: QWERTY, and
+    /// the desk layouts that keep the US keyboard's keys and move what they type.
+    struct ANSI {
+        var rows: [String]
+        var shifted: [String]
+
+        static func of(_ letters: LetterLayout) -> ANSI {
+            let digits = "`1234567890-="
+            let shiftedDigits = "~!@#$%^&*()_+"
+            return switch letters {
+            case .dvorak:
+                ANSI(
+                    rows: ["`1234567890[]", "',.pyfgcrl/=\\", "aoeuidhtns-", ";qjkxbmwvz"],
+                    shifted: ["~!@#$%^&*(){}", "\"<>       ?+|", "          _", ":         "])
+            case .colemak:
+                ANSI(
+                    rows: [digits, "qwfpgjluy;[]\\", "arstdhneio'", "zxcvbkm,./"],
+                    shifted: [shiftedDigits, "         :{}|", "          \"", "       <>?"])
+            case .colemakDH:
+                ANSI(
+                    rows: [digits, "qwfpbjluy;[]\\", "arstgmneio'", "zxcdvkh,./"],
+                    shifted: [shiftedDigits, "         :{}|", "          \"", "       <>?"])
+            case .workman:
+                ANSI(
+                    rows: [digits, "qdrwbjfup;[]\\", "ashtgyneoi'", "zxmcvkl,./"],
+                    shifted: [shiftedDigits, "         :{}|", "          \"", "       <>?"])
+            default:
+                ANSI(
+                    rows: [digits, "qwertyuiop[]\\", "asdfghjkl;'", "zxcvbnm,./"],
+                    shifted: [shiftedDigits, "          {}|", "         :\"", "       <>?"])
+            }
+        }
+    }
+
     private static let tab = RowItem.key(Key(.tab, width: .pitch(1.54)))
     private static let capsLock = RowItem.key(Key(.capsLock, width: .pitch(1.77)))
     private static let returnKey = RowItem.key(Key(.return, width: .fill))

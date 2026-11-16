@@ -15,6 +15,8 @@ public struct KeyFace: Hashable, Sendable {
 
     public var content: Content
     public var secondary: String?
+    /// A small character in the top trailing corner, an iPhone's number hint, which holding the key types.
+    public var hint: String?
     public var corner: String?
     public var secondaryIsDimmed = true
     public var alignment: Alignment = .center
@@ -67,8 +69,12 @@ extension KeyFace {
             let shown =
                 context.shift.isUppercase ? key.shifted ?? (value.count == 1 ? value.uppercased() : glyph) : glyph
             self.init(content: value.count == 1 ? .letter(shown) : .text(shown))
-            secondary = key.secondary.map { Self.glyphs[$0, default: $0] }
-            secondaryIsDimmed = !key.isPair
+            if context.device == .phone, !key.isPair {
+                hint = key.secondary
+            } else {
+                secondary = key.secondary.map { Self.glyphs[$0, default: $0] }
+                secondaryIsDimmed = !key.isPair
+            }
         case .space:
             self.init(content: .none)
             corner = "iikb"

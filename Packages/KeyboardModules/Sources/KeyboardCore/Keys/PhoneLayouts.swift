@@ -109,6 +109,7 @@ enum PhoneLayouts {
         let row = { (letters: String) in
             letters.count < widest ? [.flexible] + keys(letters) + [.flexible] : keys(letters)
         }
+        if context.letters.deleteOnTop { return deleteOnTop(context) }
         let rows = [
             row(letters[0]),
             row(letters[1]),
@@ -122,6 +123,23 @@ enum PhoneLayouts {
         return KeyboardLayout(
             rows: [RowItem.keys("1234567890").widened(by: scale)] + rows, shortRows: 1,
             extraColumns: extraColumns)
+    }
+
+    /// Apple's Dvorak, measured on the Duo: delete ends the top row, set to the right; the home row starts at the left
+    /// edge; shift and the bottom row's letters fill theirs, 0.3 of a key wider than ten keys.
+    private static func deleteOnTop(_ context: LayoutContext) -> KeyboardLayout {
+        let letters = context.letters.rows
+        let columns = 1.3 + Double(letters[2].count)
+        let rows = [
+            [.flexible] + RowItem.keys(letters[0]) + [.key(Key(.delete, width: .pitch(1.5)))],
+            RowItem.keys(letters[1]) + [.flexible],
+            [.key(Key(.shift, width: .pitch(1.3)))] + RowItem.keys(letters[2]),
+            bottomRow(context, layerKey: .numbers).widened(by: columns / 10),
+        ]
+        guard context.showsNumberRow else { return KeyboardLayout(rows: rows, extraColumns: columns - 10) }
+        return KeyboardLayout(
+            rows: [RowItem.keys("1234567890").widened(by: columns / 10)] + rows, shortRows: 1,
+            extraColumns: columns - 10)
     }
 
     private static func numbers(_ context: LayoutContext) -> KeyboardLayout {

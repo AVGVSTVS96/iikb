@@ -48,6 +48,8 @@ public final class KeyboardView: UIView {
     static let swipeDistance: CGFloat = 0.8
     /// The keys whose hold opens the layer menu, what it offers, and the layout in use.
     public var menu: (keys: [Key], items: [KeyboardEvent], current: KeyboardEvent?) = ([], [], nil)
+    /// What holding the emoji key offers above the menu (`EmojiSearch.held`), asked as the key goes down.
+    public var heldEmoji: () -> [String] = { [] }
     var showsCallouts: Bool { characterPreview != .none && faceContext.device == .phone }
 
     override public init(frame: CGRect) {

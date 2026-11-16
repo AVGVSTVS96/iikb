@@ -3,7 +3,7 @@ import UIKit
 
 extension KeyboardView {
     final class TrackedTouch {
-        enum Mode { case typing, alternates, trackpad, slide, menu, swipe }
+        enum Mode { case typing, alternates, trackpad, slide, menu, swipe, deleteSlide }
 
         var key: Key
         weak var keyView: KeyView?
@@ -14,6 +14,10 @@ extension KeyboardView {
         var lastCursor: CGPoint
         var hold: Timer?
         var menuFrame: CGRect?
+        /// The words a slide left from delete has taken out.
+        var deletedWords = 0
+        /// What holding the key offers, rows top to bottom, kept from when it went down.
+        var held: [[KeyboardEvent]] = []
         let began: TimeInterval
         let swipeReach: CGFloat
         var path: [SwipePoint]
@@ -55,7 +59,10 @@ extension KeyboardView {
             let tracked = TrackedTouch(
                 keyView: view, start: point, at: touch.timestamp, swipes: slidesToType && startsSwipe(view.key))
             self.tracked[ObjectIdentifier(touch)] = tracked
-            if menu.keys.contains(view.key), !menu.items.isEmpty { tracked.menuFrame = view.frame }
+            if menu.keys.contains(view.key) {
+                tracked.held = held(view.key)
+                if !tracked.held.isEmpty { tracked.menuFrame = view.frame }
+            }
             press(view, tracked: tracked)
             onEvent(.down(view.key, tapCount: touch.tapCount))
             if case .layer = view.key.action { tracked.mode = .slide }
@@ -73,6 +80,8 @@ extension KeyboardView {
             switch tracked.mode {
             case .alternates, .menu:
                 alternates.track(point)
+            case .deleteSlide:
+                slideDelete(tracked, to: point)
             case .trackpad:
                 while true {
                     let step = point.x > tracked.lastCursor.x ? 1 : -1
@@ -92,6 +101,14 @@ extension KeyboardView {
                 tracked.follow(touch, in: self, event: event)
                 trail.add(tracked.path[drawn...])
             case .typing, .slide:
+                if tracked.key.action == .delete, tracked.mode == .typing,
+                    tracked.start.x - point.x > (tracked.keyView?.frame.width ?? 40) / 2
+                {
+                    tracked.mode = .deleteSlide
+                    tracked.hold?.invalidate()
+                    slideDelete(tracked, to: point)
+                    continue
+                }
                 if tracked.swipeReach.isFinite {
                     tracked.follow(touch, in: self, event: event)
                     if hypot(point.x - tracked.start.x, point.y - tracked.start.y) >= tracked.swipeReach {
@@ -164,8 +181,11 @@ extension KeyboardView {
             }
             alternates.hide()
         case .menu:
-            if commit, menu.items.indices.contains(alternates.selection) { onEvent(menu.items[alternates.selection]) }
+            let items = tracked.held.flatMap(\.self)
+            if commit, items.indices.contains(alternates.selection) { onEvent(items[alternates.selection]) }
             alternates.hide()
+        case .deleteSlide:
+            break
         case .trackpad:
             setLabelsVisible(true)
         case .slide:
@@ -255,7 +275,7 @@ extension KeyboardView {
                     view.isPressed = KeyboardStyle.current.dimsKeyUnderAccents
                     self.callout.hide()
                     let shown = view.key.alternates.map(self.displayed)
-                    let base = self.displayed(self.text(for: view.key, flicked: false) ?? "")
+                    let base = self.displayed(view.key.holdPick ?? self.text(for: view.key, flicked: false) ?? "")
                     self.alternates.show(
                         shown, selected: shown.firstIndex(of: base) ?? 0, over: view.frame, in: self.drawableBounds,
                         metrics: self.keyMetrics, theme: self.theme)
@@ -273,12 +293,37 @@ extension KeyboardView {
                 else { return }
                 tracked.mode = .menu
                 self.callout.hide()
+                let rows = tracked.held
                 let items = self.menu.items
+                let grid = rows.dropLast(items.isEmpty ? 0 : 1).map {
+                    $0.map { if case .emoji(let emoji, _) = $0 { emoji } else { "" } }
+                }
+                let above = grid.reduce(0) { $0 + $1.count } - (items.isEmpty ? grid.last?.count ?? 0 : 0)
                 self.alternates.show(
-                    symbols: items.map(\.symbol), selected: self.menu.current.flatMap(items.firstIndex) ?? 0,
-                    over: frame, in: self.drawableBounds, metrics: self.keyMetrics, theme: self.theme)
+                    symbols: items.map(\.symbol), emoji: grid,
+                    selected: above + (self.menu.current.flatMap(items.firstIndex) ?? 0), over: frame,
+                    in: self.drawableBounds, metrics: self.keyMetrics, theme: self.theme)
             }
         }
+    }
+
+    /// What holding `key` offers, rows top to bottom: on the emoji key its emoji in rows of four, the ones you pick most
+    /// in the row nearest the finger, then the menu.
+    private func held(_ key: Key) -> [[KeyboardEvent]] {
+        let emoji = key.action == .emoji ? heldEmoji() : []
+        let grid = stride(from: 0, to: emoji.count, by: 4).map {
+            emoji[$0..<min($0 + 4, emoji.count)].map { KeyboardEvent.emoji($0, base: nil) }
+        }
+        return grid.reversed() + (menu.items.isEmpty ? [] : [menu.items])
+    }
+
+    /// A word more for each key's width the finger slides left of where it went down on delete, past the first half.
+    private func slideDelete(_ tracked: TrackedTouch, to point: CGPoint) {
+        let width = tracked.keyView?.frame.width ?? 40
+        let words = max(Int(((tracked.start.x - point.x - width / 2) / width).rounded(.down)) + 1, 0)
+        guard words != tracked.deletedWords else { return }
+        tracked.deletedWords = words
+        onEvent(.deleteSlide(words: words))
     }
 
     private func setLabelsVisible(_ visible: Bool) {

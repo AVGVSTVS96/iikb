@@ -6,6 +6,9 @@ public enum KeyboardEvent: Hashable, Sendable {
     /// A finger that went over the letters without lifting, as a word.
     case swipe([SwipePoint])
     case trigger(Key)
+    /// Delete held and slid left over the keys: the text goes back to how it was when delete went down, less that many
+    /// words before the caret, so sliding further takes out more and sliding back brings them back.
+    case deleteSlide(words: Int)
     case cursor(offset: Int)
     /// Moves the caret down that many lines, up when negative. The engine can't see where the field wraps, so it moves
     /// a sentence for each; FullKeyboard asks the field itself where it answers (`FieldLines`).

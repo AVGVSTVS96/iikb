@@ -67,7 +67,7 @@ public struct KeyGrid: Sendable {
 
     public init() {}
 
-    /// The first row of keys you type on, under the action row: the bar's buttons are set out as its keys are.
+    /// The first row of keys you type on, under the action row.
     public var typingRow: [(key: Key, frame: Rect)] { rows.first { $0.first?.key.isTool != true } ?? [] }
 
     public init(_ layout: KeyboardLayout, width: Double, metrics: GridMetrics, signature: String = "") {
@@ -128,6 +128,17 @@ public struct KeyGrid: Sendable {
             bands.append(top...bottom)
             y += height + metrics.rowGap
         }
+    }
+
+    /// The row the bar's buttons are set out by: the typing row, unless another above the space bar's reaches half a key
+    /// further, as Dvorak's shift row does beside a top row that starts two keys in; then the widest.
+    public var barRow: [(key: Key, frame: Rect)] {
+        let top = typingRow
+        let span = { (row: [(key: Key, frame: Rect)]) in
+            (row.last.map { $0.frame.x + $0.frame.width } ?? 0) - (row.first?.frame.x ?? 0)
+        }
+        let widest = rows.dropLast().filter { $0.first?.key.isTool != true }.max { span($0) < span($1) } ?? top
+        return span(widest) > span(top) + (top.map(\.frame.width).min() ?? 0) / 2 ? widest : top
     }
 
     /// Whether the two lay out the same keys in the same places.

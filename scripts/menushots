@@ -3,10 +3,12 @@
 # light and dark, with shots/demo's made-up data and scripts/chats.ts standing in for an extension: UITests/MenuShots
 # taps More and checks nothing moves, while the screen is recorded and shot before and after, into
 # shots/raw/menu/<screen>-<appearance>-{keys,menu}.png and <screen>-<appearance>.mov. SCREENS and APPEARANCES pick.
+# CLASS=TypingDetailsShots shoots that test's held keys instead, into shots/raw/details/.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
-out=$PWD/shots/raw/menu
+class=${CLASS:-MenuShots}
+out=$PWD/shots/raw/$([ "$class" = MenuShots ] && echo menu || echo details)
 mkdir -p "$out"
 ID=$(scripts/sim ensure "iPhone Duo" iPhone-Duo)
 xcodegen generate -q
@@ -22,12 +24,14 @@ stand=$!
 extension="http://localhost:$PORT"
 eval "$(sed -n '/^DUO_SCREENS=/,/"$/p' scripts/sim)"
 
-# Shoots each <name>.hold MenuShots leaves, on the screen it's on, then takes the file away to say it's done.
+# Shoots each <name>.hold the test leaves, on the screen it's on, after the seconds it holds, then takes the file away
+# to say it's done.
 shutter() {
   local hold
   while sleep 0.05; do
     for hold in "$out"/*.hold; do
       [ -e "$hold" ] || continue
+      sleep "$(cat "$hold" 2>/dev/null || echo 0)"
       xcrun simctl io "$ID" screenshot --display="$1" "${hold%.hold}.png" >/dev/null 2>&1 || echo "no shot for $hold" >&2
       rm "$hold"
     done
@@ -50,7 +54,7 @@ while read -r screen hinge orientation display; do
     TEST_RUNNER_IIKB_SHOTS=$name TEST_RUNNER_IIKB_EXTENSION=$extension \
       TEST_RUNNER_IIKB_ORIENTATION=$([ "$orientation" = portrait ] && echo portrait || echo landscape) \
       xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb \
-      -destination "id=$ID" -derivedDataPath build/uitest -only-testing:AppUITests/MenuShots >"$log" 2>&1 || failed=1
+      -destination "id=$ID" -derivedDataPath build/uitest -only-testing:AppUITests/$class >"$log" 2>&1 || failed=1
     grep -E "error:|Test Case .*(passed|failed)" "$log" || true
     extension=
     kill -INT "$recorder" 2>/dev/null || true

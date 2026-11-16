@@ -20,6 +20,7 @@ public enum SettingsStore {
         ("emojiKey", \.emojiKey),
         ("micKey", \.micKey),
         ("numberRow", \.numberRow),
+        ("numberHints", \.numberHints),
         ("split", \.split),
         ("compactPanels", \.compactPanels),
         ("dictationButton", \.dictationButton),
@@ -53,14 +54,18 @@ public enum SettingsStore {
     private static let actions = Order(key: "actions", path: \.actions)
     private static let aroundSpace = Order(key: "aroundSpace", path: \.aroundSpace)
     private static let clipboardLength = Choice(key: "clipboardLength", path: \.clipboardLength)
+    private static let currency = Choice(key: "currency", path: \.currency)
+    private static let emojiGrid = Choice(key: "emojiGrid", path: \.emojiGrid)
     /// Globe Key was a switch, turned off to stop taps landing on the globe, which Spacer now does with the globe kept.
     private static let globeKey = Choice(
         key: "globe", path: \.globeKey, switchKey: "globeKey", on: .switches, off: .spacer)
     private static let choices: [any Picked] = [
         theme, themeAppearance, stopAnimation, characterPreview, haptics, keySpacing, keyRoundness, dictationStyle,
         dictationEditing, dictationLists, leadingButton, clipboardLength, globeKey, mode, actions, aroundSpace,
+        currency, emojiGrid,
     ]
     private static let skinToneKey = "skinTone"
+    private static let customEmojiKey = "customEmoji"
     private static let appWritingStylesKey = "appWritingStyles"
     /// Text Mode, a setting of its own until the style took its words, now only words kept apart (`KeyboardSettings.fold`).
     private static let textModeKey = "textMode"
@@ -89,6 +94,7 @@ public enum SettingsStore {
         settings.layout = (value(forKey: layoutKey, sharing: sharing) as? String).flatMap { $0.isEmpty ? nil : $0 }
         for choice in choices { choice.load(into: &settings, sharing: sharing) }
         settings.skinTone = (value(forKey: skinToneKey, sharing: sharing) as? String).flatMap(SkinTone.init)
+        settings.customEmoji = value(forKey: customEmojiKey, sharing: sharing) as? [String] ?? []
         settings.appDictationStyles = (value(forKey: appWritingStylesKey, sharing: sharing) as? [String: String] ?? [:])
             .compactMapValues(DictationStyle.init)
         if let words = (value(forKey: textModeKey, sharing: sharing) as? String).flatMap(DictationTextMode.init) {
@@ -110,6 +116,7 @@ public enum SettingsStore {
         set(settings.layout ?? "", forKey: layoutKey)
         for choice in choices { choice.save(settings) }
         set(settings.skinTone?.rawValue ?? "", forKey: skinToneKey)
+        set(settings.customEmoji, forKey: customEmojiKey)
         set(settings.appDictationStyles.mapValues(\.rawValue), forKey: appWritingStylesKey)
         if let words = settings.dictationWords {
             set(words.rawValue, forKey: textModeKey)

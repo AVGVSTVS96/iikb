@@ -27,6 +27,8 @@ public struct TypingEngine {
         }
     }
     public var corrector: Corrector?
+    /// Where the device is set to be, for the currency key and the period's web endings; the platform sets it.
+    public var region = Region()
     /// The bundle ID of the app the keyboard is typing in (`changeApp`); nil when it can't tell.
     public private(set) var app: String?
     public var swipeModel: Swipe?
@@ -60,6 +62,10 @@ public struct TypingEngine {
     private var shiftHold: ShiftHold?
     /// Delete went down with text in the panel's search, so holding it empties the search and stops there.
     private var deleteHeldInSearch = false
+    /// Whether delete is down, so a slide left from it takes words (`slideDelete`).
+    private var deleteHeld = false
+    /// The slide's text before the caret: what it counts words back from, and what it's left there.
+    private var deleteSlide: (origin: String, shown: String)?
     private var sessionEnded = false
     private var replaying = false
     var typing = WordTaps()
@@ -182,6 +188,7 @@ public struct TypingEngine {
             tally.characters += 1
         case .delete:
             stray = nil
+            deleteSlide = nil
             tally.deletes += 1
             if let swiped = swipedWord {
                 write("", replacing: swiped.length, in: document)
@@ -243,12 +250,19 @@ public struct TypingEngine {
             case .shift: pressShift(doubleTap: tapCount == 2)
             case .delete:
                 deleteHeldInSearch = panel != nil && !query.isEmpty
+                let origin = text.selected.isEmpty ? text.before : nil
                 perform(key.action, in: document)
+                deleteHeld = true
+                if panel == nil, text.isKnown { deleteSlide = (origin ?? text.before, text.before) }
             case .capsLock, .layer: perform(key.action, in: document)
             default: return false
             }
         case .up(let key):
-            if key.action == .delete { deleteHeldInSearch = false }
+            if key.action == .delete {
+                deleteHeldInSearch = false
+                deleteHeld = false
+                deleteSlide = nil
+            }
             guard key.action == .shift else { return false }
             releaseShift(in: document)
         case .type(let key, _) where key.accentsLetterBefore:
@@ -269,6 +283,8 @@ public struct TypingEngine {
         case .trigger(let key):
             guard [.return, .tab, .undo, .redo].contains(key.action) else { return false }
             perform(key.action, in: document)
+        case .deleteSlide(let words):
+            return slideDelete(words, in: document)
         case .cursor(let offset):
             moveCursor(by: offset, in: document)
         case .cursorLines(let count):
@@ -333,6 +349,44 @@ public struct TypingEngine {
         }
         if panel != nil, deleteHeldInSearch { return }
         attach(document)
+        deleteSlide = nil
+        forgetDeletedWord()
+        tally.deletes += 1
+        history.close()
+        write("", replacing: Self.wordLength(before: text.before), in: document)
+        history.close()
+        refreshShift()
+        suggestionsChanged()
+    }
+
+    /// Makes the text before the caret what it was when delete went down, less `words` words, or after delete's repeat,
+    /// what it was when the slide began. Returns false only when no slide can run (delete isn't held, a panel is open, the
+    /// text isn't known), so delete's repeat stops even on a step that changes nothing. It edits what the slide left as
+    /// the engine wrote it, since the host may report a different stretch of the text meanwhile.
+    private mutating func slideDelete(_ words: Int, in document: some TextDocument) -> Bool {
+        guard deleteHeld, panel == nil, text.isKnown else { return false }
+        attach(document)
+        let slide = deleteSlide ?? (text.before, text.before)
+        var target = slide.origin
+        for _ in 0..<max(words, 0) where !target.isEmpty { target.removeLast(Self.wordLength(before: target)) }
+        deleteSlide = (slide.origin, target)
+        let kept = zip(slide.shown, target).prefix { $0 == $1 }.count
+        let removed = slide.shown.count - kept
+        let restored = String(target.dropFirst(kept))
+        guard removed > 0 || !restored.isEmpty else { return true }
+        forgetDeletedWord()
+        if removed > 0 { tally.deletes += 1 }
+        history.close()
+        write(restored, replacing: removed, in: document)
+        history.close()
+        refreshShift()
+        suggestionsChanged()
+        return true
+    }
+
+    /// Deleting by the word ends the word being typed, and one autocorrect is waiting to learn is unlearned, since words
+    /// you delete teach nothing.
+    private mutating func forgetDeletedWord() {
         lastSpace = nil
         revert = nil
         if typing.letters.isEmpty, let pending {
@@ -344,12 +398,6 @@ public struct TypingEngine {
             self.pending = nil
         }
         typing = WordTaps()
-        tally.deletes += 1
-        history.close()
-        write("", replacing: Self.wordLength(before: text.before), in: document)
-        history.close()
-        refreshShift()
-        suggestionsChanged()
     }
 
     /// Text that arrives whole, an emoji or what dictation heard: it ends the word in progress, then goes in as it is.
@@ -482,6 +530,8 @@ public struct TypingEngine {
         let known = text
         let report = reconcile(document)
         if report == .changed {
+            deleteHeld = false
+            deleteSlide = nil
             history.clear()
             if text.isEmpty, !sessionEnded { keepWord(in: known) }
             sessionEnded = false
