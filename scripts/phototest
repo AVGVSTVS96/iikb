@@ -112,7 +112,7 @@ for appearance in ${APPEARANCES:-light dark}; do
   run "$appearance" 1 -only-testing:AppUITests/ChatPhotoTests/testAllowPhotosAsksAndThePhotosShowBackInTheApp
   if [ -z "${ONLY_ALLOW:-}" ]; then
     xcrun simctl privacy "$ID" grant photos com.shahidy.iikb
-    run "$appearance" "" -only-testing:AppUITests/ChatPhotoTests \
+    run "$appearance" "" -only-testing:AppUITests/ChatPhotoTests${PROBE:+/testPasteMenuProbe} \
       -skip-testing:AppUITests/ChatPhotoTests/testAllowPhotosAsksAndThePhotosShowBackInTheApp
   fi
   kill "$watcher" "$stand" 2>/dev/null || true

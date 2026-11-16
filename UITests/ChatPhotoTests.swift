@@ -97,6 +97,30 @@ final class ChatPhotoTests: XCTestCase {
         XCTAssertTrue(label("Got it: 1 photo").waitForExistence(timeout: 20), "and goes")
     }
 
+    func testPasteMenuProbe() throws {
+        try openChat()
+        UIPasteboard.general.image = UIGraphicsImageRenderer(size: CGSize(width: 60, height: 40)).image {
+            UIColor.systemTeal.setFill()
+            $0.fill(CGRect(x: 0, y: 0, width: 60, height: 40))
+        }
+        let field = element("iikb.chat.field")
+        field.tap()
+        XCTAssertTrue(iikbKeys.waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 1)
+        field.press(forDuration: 1)
+        Thread.sleep(forTimeInterval: 2)
+        try shot("probe-pressed")
+        print("PROBE-PRESSED-BEGIN")
+        print(app.debugDescription)
+        print("PROBE-PRESSED-END")
+        field.tap()
+        Thread.sleep(forTimeInterval: 2)
+        try shot("probe-tapped")
+        print("PROBE-TAPPED-BEGIN")
+        print(app.debugDescription)
+        print("PROBE-TAPPED-END")
+    }
+
     func testASendThatFailsIsKeptAndGoesAgain() throws {
         try openChat()
         try stand("fail")
