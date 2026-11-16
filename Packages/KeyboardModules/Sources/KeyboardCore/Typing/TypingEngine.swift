@@ -291,7 +291,7 @@ public struct TypingEngine {
             insertWhole(emoji, in: document)
         case .paste(let text):
             insertWhole(text, in: document)
-        case .dictated(let heard, let plain, let id):
+        case .dictated(let heard, let plain, let id, let language):
             let lexicon = corrector?.lexicon
             let capitals = settings.dictation(in: app).capitals(in: traits.autocapitalization)
             let traits = traits
@@ -315,10 +315,11 @@ public struct TypingEngine {
                 typed =
                     DictationReading.typed(
                         plain.map { Vocabulary().corrected($0, lexicon: lexicon, field: field, typed: words) } ?? heard,
-                        in: traits, after: $0.before)
+                        in: traits, after: $0.before, spoken: language.spoken)
                     ?? Self.fitted(
-                        SpokenNumber.inline(SpokenAddress.inline(heard, lexicon: lexicon)), between: $0.before,
-                        and: $0.after, lexicon: lexicon, capitals: capitals)
+                        SpokenNumber.inline(
+                            SpokenAddress.inline(heard, lexicon: lexicon, language.spoken), in: language),
+                        between: $0.before, and: $0.after, lexicon: lexicon, capitals: capitals)
                 return typed
             }
             if let id { draft?.add(id, typed: typed, in: traits, after: before) }

@@ -3,21 +3,22 @@
 /// pad, or a telephone, one-time code, postal code or card number, as its digits, which the field formats itself; a
 /// search field as an address when all of what was said is one, and otherwise, like every other field, as prose, which
 /// is the speech model's own writing in the person's style. Dictating right after part of an address, with no space
-/// between ("john@"), goes on with it. Readings take what the model wrote, not what the style and lists made of it.
+/// between ("john@"), goes on with it. Readings take what the model wrote, not what the style and lists made of it, in
+/// the words of the language it was said in.
 enum DictationReading {
     /// What a dictation types as the field reads it, or nil when it's prose.
-    static func typed(_ said: String, in traits: InputTraits, after before: String) -> String? {
+    static func typed(_ said: String, in traits: InputTraits, after before: String, spoken: SpokenForms) -> String? {
         let reading: String? =
             switch (traits.content, traits.kind) {
             case (.emailAddress, _), (.url, _), (.username, _), (.other, .email), (.other, .url):
-                SpokenAddress.read(said)
+                SpokenAddress.read(said, spoken)
             case (.telephoneNumber, _), (.oneTimeCode, _), (.postalCode, _), (.creditCardNumber, _), (.other, .number):
-                SpokenAddress.digits(said)
-            case (.other, .decimal): SpokenAddress.digits(said, point: true)
-            case (.other, .webSearch): SpokenAddress.domain(said)
+                SpokenAddress.digits(said, spoken)
+            case (.other, .decimal): SpokenAddress.digits(said, point: true, spoken)
+            case (.other, .webSearch): SpokenAddress.domain(said, spoken)
             default: nil
             }
-        return reading ?? (continuesAddress(before) ? SpokenAddress.read(said) : nil)
+        return reading ?? (continuesAddress(before) ? SpokenAddress.read(said, spoken) : nil)
     }
 
     /// Whether the text ends in part of an address, which no space separates from the caret.

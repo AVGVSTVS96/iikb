@@ -2,12 +2,12 @@
 /// to slang, so a style never says one thing while another setting types something else. Wispr Flow's four set only
 /// the marks and keep the words; texting and slang are very casual's marks with Text Mode's Texting and Gen Z words,
 /// as those were typed when Text Mode was a setting of its own (`words`). What you said is
-/// `DictationEditing`'s. Every style gives a question the model ended with a period its question mark. Formal
+/// `DictationEditing`'s. Every style gives an English question the model ended with a period its question mark. Formal
 /// keeps every comma, ends every sentence, adds the comma after an opening "However" or "Actually" and lets one ! or ?
 /// do. Casual keeps the capitals with less punctuation: no last period, no comma after an opening "So", "Hey" or
 /// "Thanks", and a comma for a semicolon. Very casual is Casual in lowercase without the comma before "and", "but" or
-/// "so". Excited is Formal with an exclamation mark ending the last sentence, every short one and every cheer. Texting
-/// and slang are punctuated as very casual is.
+/// "so" in English. Excited is Formal with an exclamation mark ending the last sentence, every short one and every
+/// cheer. Texting and slang are punctuated as very casual is.
 public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
     case formal
     case excited
@@ -58,8 +58,8 @@ public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
     }
 
     /// `text`'s sentence marks in this style, before a list it may end on is written as one.
-    func punctuated(_ text: [Character]) -> [Character] {
-        var text = Self.questionsMarked(text)
+    func punctuated(_ text: [Character], in language: Language) -> [Character] {
+        var text = language == .english ? Self.questionsMarked(text) : text
         switch self {
         case .formal:
             text = Self.marksSingled(text)
@@ -74,9 +74,13 @@ public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
         return text
     }
 
-    /// `text`'s commas in this style, once its lists are written.
-    func commas(_ text: [Character]) -> [Character] {
-        switch self {
+    /// `text`'s commas in this style, once its lists are written. Only semicolons are loosened in other languages, as
+    /// the transitions, openers and conjunctions read are English words.
+    func commas(_ text: [Character], in language: Language) -> [Character] {
+        guard language == .english else {
+            return self == .formal || self == .excited ? text : Self.semicolonsLoosened(text)
+        }
+        return switch self {
         case .formal, .excited: Self.transitionsSetOff(text)
         case .casual: Self.openersLoosened(Self.semicolonsLoosened(text))
         case .veryCasual, .texting, .slang:
@@ -143,7 +147,7 @@ public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
 
     /// A question the model wrote with a period, or with nothing at the end: one that opens with a verb before its
     /// subject ("Are you", "Can we", "Did it"), a question word before a verb ("What do", "Where's"), or ends on a tag
-    /// after a comma (", right", ", isn't it").
+    /// after a comma (", right", ", isn't it"). Its words are English's, which would ask in Italian "Do i libri a Marco".
     static func questionsMarked(_ text: [Character]) -> [Character] {
         var text = text
         for sentence in sentences(in: text).reversed()
@@ -307,7 +311,8 @@ public enum DictationStyle: String, CaseIterable, Hashable, Sendable {
         return text
     }
 
-    /// Very casual's: no comma between two clauses joined by "and", "but", "so", "or", "then" or "because".
+    /// Very casual's: no comma between two clauses joined by "and", "but", "so", "or", "then" or "because", in English
+    /// alone, since German's ", so dass" and Italian's ", so che" keep theirs.
     static func conjunctionsLoosened(_ text: [Character]) -> [Character] {
         var text = text
         for word in Words.ranges(in: text).reversed() where word.lowerBound >= 3 {
@@ -355,26 +360,30 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
     /// Without um and uh.
     case light
     /// Without um and uh, words said twice in a row or said over, "like" and "you know" said between commas, what you
-    /// take back with "scratch that" or "never mind", and what you correct as you go ("at two, I mean three").
+    /// take back with "scratch that" or "never mind", and in English what you correct as you go ("at two, I mean
+    /// three"), whose cues are words elsewhere (Italian's "Va bene, no, grazie").
     case clean
 
     public static let standard = DictationEditing.asSaid
 
-    func edited(_ heard: [Character]) -> [Character] {
+    func edited(_ heard: [Character], in language: Language) -> [Character] {
+        let fillers = language.spoken.fillers
         switch self {
-        case .asSaid: heard
-        case .light: Self.withoutFillers(heard)
+        case .asSaid: return heard
+        case .light: return Self.withoutFillers(heard, fillers)
         case .clean:
-            Self.withoutFillers(
-                Self.withoutAsides(Self.withoutScratched(Self.withoutCorrections(Self.withoutRepeats(heard)))))
+            let said = Self.withoutRepeats(heard)
+            let corrected = language == .english ? Self.withoutCorrections(said) : said
+            return Self.withoutFillers(Self.withoutAsides(Self.withoutScratched(corrected)), fillers)
         }
     }
 
-    /// "um", "uh", "uhm", "erm" and "hmm", however long they're drawn out, as whole words written lowercase or
-    /// capitalized, with the comma after them. A capital passes to the next word, and "uh-huh" and "mm hmm" stay.
-    static func withoutFillers(_ text: [Character]) -> [Character] {
+    /// The language's fillers (`SpokenForms.fillers`: "um", "uh", "uhm", "erm" and "hmm" in English), however long
+    /// they're drawn out, as whole words written lowercase or capitalized, with the comma after them. A capital passes
+    /// to the next word, and "uh-huh", "mm hmm" and one asked after a comma ("¿Vienes, eh?") stay.
+    static func withoutFillers(_ text: [Character], _ fillers: Set<String>) -> [Character] {
         var text = text
-        while let filler = Words.ranges(in: text).first(where: { isFiller(text, $0) }) {
+        while let filler = Words.ranges(in: text).first(where: { isFiller(text, $0, fillers) }) {
             var start = filler.lowerBound
             var end = filler.upperBound
             while end < text.count,
@@ -425,11 +434,14 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
 
     private static let clauseStarts: Set<String> = ["i", "we", "you", "they", "he", "she", "it", "there", "that"]
 
-    private static func isFiller(_ text: [Character], _ word: Range<Int>) -> Bool {
+    private static func isFiller(_ text: [Character], _ word: Range<Int>, _ fillers: Set<String>) -> Bool {
         let glued =
             word.upperBound < text.count && text[word.upperBound] == "-"
             || word.lowerBound > 0 && text[word.lowerBound - 1] == "-"
-        guard !glued, text[word].dropFirst().allSatisfy(\.isLowercase) else { return false }
+        let asks =
+            word.upperBound < text.count && text[word.upperBound] == "?" && word.lowerBound >= 2
+            && text[word.lowerBound - 2] == ","
+        guard !glued, !asks, text[word].dropFirst().allSatisfy(\.isLowercase) else { return false }
         var drawn: [Character] = []
         for letter in text[word].map({ Character($0.lowercased()) }) where letter != drawn.last { drawn.append(letter) }
         if drawn == ["h", "m"], word.lowerBound >= 3, text[word.lowerBound - 1] == " ",
@@ -438,7 +450,7 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
         {
             return false
         }
-        return ["um", "uh", "uhm", "erm", "hm"].contains(String(drawn))
+        return fillers.contains(String(drawn))
     }
 
     /// The second of a short word said twice, "the the" or "I I": only words nobody says twice on purpose, so "that
@@ -791,16 +803,19 @@ public struct DictationWriting: Hashable, Sendable {
     public var words: DictationTextMode { textMode ?? style.words }
     /// Auto-Capitalization, which a dictation follows as typing does.
     public var capitalizes = true
+    /// The language it was said in, whose words for marks, fillers and addresses it reads (`SpokenForms`).
+    public var language = Language.english
 
     public init(
         style: DictationStyle = .standard, editing: DictationEditing = .standard, lists: DictationLists = .standard,
-        textMode: DictationTextMode? = nil, capitalizes: Bool = true
+        textMode: DictationTextMode? = nil, capitalizes: Bool = true, language: Language = .english
     ) {
         self.style = style
         self.editing = editing
         self.lists = lists
         self.textMode = textMode
         self.capitalizes = capitalizes
+        self.language = language
     }
 
     /// The capitals a dictation gets in a field that asks for `field`'s: none with Auto-Capitalization off, in very
@@ -810,9 +825,12 @@ public struct DictationWriting: Hashable, Sendable {
     }
 
     public func written(_ heard: String) -> String {
-        var text = style.punctuated(Self.withoutDoubledPeriods(editing.edited(SaidMarks.written(Array(heard)))))
+        let spoken = language.spoken
+        let said = editing.edited(SaidMarks.written(Array(heard), spoken), in: language)
+        var text = style.punctuated(Self.withoutDoubledPeriods(said), in: language)
         if lists != .off { text = SpokenList.written(text, bulleted: lists == .bulleted) }
-        return String(words.swapped(style.commas(text)))
+        text = style.commas(text, in: language)
+        return String(spoken.typeset(language == .english ? words.swapped(text) : text))
     }
 
     /// `heard` as iikb types it at the start of a field that capitalizes sentences, as a message's does.

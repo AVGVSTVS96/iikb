@@ -4,24 +4,25 @@
 /// spaces ("415 555 0199") or together ("4155550199") with dashes, as it mostly writes one; and a time or an amount in
 /// dollars as Bassim types one ("3:30pm", "9am", "$25", "$5.50"). Other numbers stay as written, and so do
 /// a point that's a word ("at one point five people left", "a five point plan", "three points") and counting ("one two
-/// three four", "five, four, three, two, one", "one two, one two").
+/// three four", "five, four, three, two, one", "one two, one two"). In other languages only digits said one by one are
+/// read, in their words and grouped only as said, since the model writes their times, amounts and decimals itself, and
+/// a US phone number's groups are English's.
 enum SpokenNumber {
-    /// Words that ask for a code or number said after them, so four digits are one.
-    private static let cues: Set<String> = [
-        "code", "pin", "number", "passcode", "password", "extension", "zip", "id", "digits", "otp",
-    ]
     /// Words before "one point" that make it a point you make.
     private static let determiners = Spoken.determiners.union([
         "at", "one", "each", "every", "any", "no", "some", "which", "what",
     ])
 
-    static func inline(_ text: String) -> String {
+    static func inline(_ text: String, in language: Language = .english) -> String {
         var words = text.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
         var at = 0
         while at < words.count {
-            if let number = time(in: words, at: at) ?? money(in: words, at: at) ?? number(in: words, at: at) ?? digits(
-                in: words, at: at) ?? phone(in: words, at: at)
-            {
+            let read =
+                language == .english
+                ? time(in: words, at: at) ?? money(in: words, at: at) ?? number(in: words, at: at)
+                    ?? digits(in: words, at: at, language) ?? phone(in: words, at: at)
+                : digits(in: words, at: at, language)
+            if let number = read {
                 words.replaceSubrange(at..<number.end, with: [number.written])
             }
             at += 1
@@ -139,21 +140,23 @@ enum SpokenNumber {
     /// a word that asks for them ("the code is"), grouped as said (each group between commas three digits or more) or
     /// else as a phone number's are. Never counting: a group that counts up or down by one, a run whose every step is
     /// the same ("two four six eight"), a group said again, or a pair said over and over.
-    private static func digits(in words: [String], at: Int) -> (written: String, end: Int)? {
-        if at > 0, spoken(split(words[at - 1]).word, first: true) != nil { return nil }
+    private static func digits(in words: [String], at: Int, _ language: Language) -> (written: String, end: Int)? {
+        let forms = language.spoken
+        if at > 0, spoken(split(words[at - 1]).word, first: true, forms) != nil { return nil }
         var groups = [""]
         var end = at
         var tail = ""
         var said = false
         while end < words.count, case (let word, let rest) = split(words[end]),
             let digit = spoken(
-                word, first: end == at, next: end + 1 < words.count && rest.isEmpty ? split(words[end + 1]).word : nil)
+                word, first: end == at, next: end + 1 < words.count && rest.isEmpty ? split(words[end + 1]).word : nil,
+                forms)
         {
-            said = said || word == "oh"
+            said = said || forms.zeros.contains(word)
             groups[groups.count - 1] += digit
             end += 1
             guard !rest.isEmpty else { continue }
-            if rest == ",", end < words.count, spoken(split(words[end]).word, first: false) != nil {
+            if rest == ",", end < words.count, spoken(split(words[end]).word, first: false, forms) != nil {
                 groups.append("")
             } else {
                 tail = rest
@@ -164,7 +167,7 @@ enum SpokenNumber {
         let steps = { (digits: String) in
             Set(zip(digits, digits.dropFirst()).map { $1.wholeNumberValue! - $0.wholeNumberValue! })
         }
-        let asked = words[max(0, at - 3)..<at].contains { cues.contains(split($0).word) }
+        let asked = words[max(0, at - 3)..<at].contains { forms.cues.contains(split($0).word) }
         guard all.count >= 5 || all.count == 4 && (said || asked),
             groups.count == 1 || groups.allSatisfy({ $0.count >= 3 }),
             steps(all).count > 1, !groups.contains(where: { $0.count >= 3 && [[1], [-1]].contains(steps($0)) }),
@@ -179,7 +182,9 @@ enum SpokenNumber {
         let written =
             groups.count > 1
             ? groups.joined(separator: "-")
-            : all.count == 10 ? split([3, 3, 4]) : all.count == 11 && all.first == "1" ? split([1, 3, 3, 4]) : all
+            : language != .english
+                ? all
+                : all.count == 10 ? split([3, 3, 4]) : all.count == 11 && all.first == "1" ? split([1, 3, 3, 4]) : all
         return (written + tail, end)
     }
 
@@ -211,9 +216,11 @@ enum SpokenNumber {
     }
 
     /// One digit said, with "oh" for 0 inside a run, before another digit.
-    private static func spoken(_ word: String, first: Bool, next: String? = nil) -> String? {
-        if !first, word == "oh", let next, next == "oh" || Spoken.digit(next) != nil { return "0" }
-        return Spoken.digit(word).map(String.init)
+    private static func spoken(_ word: String, first: Bool, next: String? = nil, _ forms: SpokenForms) -> String? {
+        if !first, forms.zeros.contains(word), let next, forms.zeros.contains(next) || forms.digit(next) != nil {
+            return "0"
+        }
+        return forms.digit(word).map(String.init)
     }
 
     /// The whole number starting at `at` with nothing after it: digits, or a number word under a hundred ("twenty

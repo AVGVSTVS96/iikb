@@ -29,7 +29,8 @@ public enum KeyboardEvent: Hashable, Sendable {
     /// Text from the clipboard panel, typed as it is.
     case paste(String)
     /// Text that dictation heard in its style, and as the model wrote it with the person's vocabulary (`plain`, which
-    /// the field's reading takes: `DictationReading`), the same when nil. One with its transcript's `id` is followed
-    /// until its field is sent or left, for what it became (`TypingEngine.takeDictations`).
-    case dictated(String, plain: String? = nil, id: String? = nil)
+    /// the field's reading takes: `DictationReading`), the same when nil, said in `language`, whose words for an
+    /// address and its digits it reads. One with its transcript's `id` is followed until its field is sent or left, for
+    /// what it became (`TypingEngine.takeDictations`).
+    case dictated(String, plain: String? = nil, id: String? = nil, language: Language = .english)
 }

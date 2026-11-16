@@ -12,10 +12,13 @@ enum Spoken {
         "the", "a", "an", "this", "that", "my", "your", "our", "his", "her", "their", "its",
     ]
 
+    /// The number words under a hundred said as one word, each with its worth: "seven" 7, "twenty" 20.
+    static let numbers = Dictionary(
+        uniqueKeysWithValues: units.enumerated().map { ($1, $0) } + tens.enumerated().map { ($1, ($0 + 2) * 10) })
+
     /// What a number word under a hundred is worth: "seven" 7, "twenty" 20.
     static func value(of word: some StringProtocol) -> Int? {
-        if let unit = units.firstIndex(where: { $0 == word }) { return unit }
-        return tens.firstIndex(where: { $0 == word }).map { ($0 + 2) * 10 }
+        numbers[String(word)]
     }
 
     /// The digit a word says, "zero" to "nine".

@@ -1,5 +1,5 @@
-de.tsv and es.tsv, used only by the tests, are the 8,000 commonest words of AOSP LatinIME's
-dictionaries/de_wordlist.combined and dictionaries/es_wordlist.combined
+de.tsv, es.tsv and fr.tsv, used only by the tests, are the 8,000 commonest words of AOSP LatinIME's
+dictionaries/de_wordlist.combined, dictionaries/es_wordlist.combined and dictionaries/fr_wordlist.combined
 (https://android.googlesource.com/platform/packages/inputmethods/LatinIME/+/refs/heads/main/dictionaries/),
 each word's frequency f (0 to 255) written as the count 10^(f/32).
 
