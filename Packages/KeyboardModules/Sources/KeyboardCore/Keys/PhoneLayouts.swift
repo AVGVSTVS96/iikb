@@ -58,7 +58,8 @@ enum PhoneLayouts {
     /// Each half five keys wide: the globe or the record button, layer key, the keys arranged before space and a space bar on
     /// the left, a space bar, those after space and return on the right, and the field's own keys in the gap between,
     /// clear of where the thumbs press space. Each space bar stays at least two keys wide, a key arranged on a side
-    /// without room for it going to the other, beside the same space.
+    /// without room for it going to the other, beside the same space, and the snippet key, then the period key, left
+    /// out when the halves have no room for them.
     private static func splitBottomRow(_ context: LayoutContext, layerKey: KeyboardLayer) -> [RowItem] {
         let character = { (value: String) in RowItem.key(Key(.character(value))) }
         let span = { (keys: [Key]) in keys.compactMap(\.width.span).reduce(0, +) }
@@ -66,6 +67,11 @@ enum PhoneLayouts {
         let lead =
             (context.showsMicKey ? [Key(.dictate)] : context.showsGlobeKey ? [Key(context.globe)] : [])
             + [Key(.layer(layerKey))]
+        for dropped in [KeyAction.snippetPrefix(context.snippetPrefix), .character(".")]
+        where span(before + after) > 3 - span(lead) + 1.5 {
+            before.removeAll { $0.action == dropped }
+            after.removeAll { $0.action == dropped }
+        }
         while span(after) > 1.5, !after.isEmpty { before.append(after.removeFirst()) }
         while span(before) > 3 - span(lead), !before.isEmpty { after.insert(before.removeLast(), at: 0) }
         let leading = lead + before
@@ -85,13 +91,14 @@ enum PhoneLayouts {
     }
 
     /// The keys arranged before space and after it (`LayoutContext.aroundSpace`): emoji as wide as the layer key, the
-    /// period key a key wide, its long press offering the punctuation the letters lack.
+    /// period key a key wide, its long press offering the punctuation the letters lack, and the snippet key a key wide.
     private static func beside(_ context: LayoutContext, width emoji: KeyWidth) -> (before: [Key], after: [Key]) {
         let keys = context.aroundSpace.map { key -> Key? in
             switch key {
             case .space: nil
             case .emoji: Key(.emoji, width: emoji)
             case .period: Key(.character("."), alternates: Alternates.periodKey)
+            case .snippet: Key(.snippetPrefix(context.snippetPrefix))
             }
         }
         let space = keys.firstIndex(of: nil) ?? keys.count

@@ -137,7 +137,7 @@ struct CustomKeysTests {
             [.emoji, .period, .space], [.emoji, .space, .period], [.period, .space, .emoji], [.space, .emoji, .period],
             [.space, .period, .emoji], [.period, .emoji, .space],
         ]
-        for order in orders {
+        for order in orders.flatMap({ [$0, [.snippet] + $0] }) {
             for (emoji, period, mic, layer, globe) in [true, false].flatMap({ a in
                 [true, false].flatMap { b in
                     [true, false].flatMap { c in
@@ -150,6 +150,7 @@ struct CustomKeysTests {
                 settings.aroundSpace = order
                 settings.emojiKey = emoji
                 settings.periodKey = period
+                settings.snippetKey = period
                 settings.micKey = mic
                 settings.globeKey = globe
                 let geometry = keys(settings, on: .openLandscape, layer: layer)
@@ -164,8 +165,11 @@ struct CustomKeysTests {
                         space.frame.width >= 2 * pitch - geometry.metrics.keyGap - 0.5,
                         "\(order) emoji \(emoji) period \(period) mic \(mic) \(layer) globe \(globe)")
                 }
-                let kept = row.map(\.key.action).filter { $0 == .emoji || $0 == .character(".") }
-                #expect(kept.count == (emoji ? 1 : 0) + (period && layer == .letters ? 1 : 0))
+                let besideSpace: Set<KeyAction> = [.emoji, .character("."), .snippetPrefix("!")]
+                let kept = row.map(\.key.action).filter(besideSpace.contains)
+                let room = mic || globe != .hidden ? 2 : 3
+                #expect(kept.count == min((emoji ? 1 : 0) + (period && layer == .letters ? 2 : 0), room))
+                #expect(kept.contains(.emoji) == emoji, "the emoji key is the last left out")
             }
         }
     }
@@ -202,6 +206,22 @@ struct CustomKeysTests {
         #expect(spaces.count == 2 && spaces[0].x + spaces[0].width < spaces[1].x)
     }
 
+    @Test func theSnippetKeyIsAKeyOfItsOwnOnTheLetters() {
+        var settings = KeyboardSettings.initial
+        settings.snippetKey = true
+        settings.snippetPrefix = ";"
+        #expect(
+            bottom(keys(settings)) == [.globeSpacer, .layer(.numbers), .emoji, .space, .snippetPrefix(";"), .return])
+        #expect(bottom(keys(settings, kind: .email)).contains(.snippetPrefix(";")), "a keyword goes in any field")
+        #expect(!bottom(keys(settings, layer: .numbers)).contains(.snippetPrefix(";")))
+        let grid = keys(settings).grid
+        let row = grid.rows.last!
+        let space = grid.cell(of: row.first { $0.key.action == .space }!.frame)
+        #expect(space.x + space.width <= row.first { $0.key.action == .snippetPrefix(";") }!.frame.x)
+        settings.snippetPrefix = ""
+        #expect(bottom(keys(settings)) == [.globeSpacer, .layer(.numbers), .emoji, .space, .return])
+    }
+
     @Test func withoutTheDictationButtonThereIsNoRecordKey() {
         var settings = KeyboardSettings.initial
         settings.micKey = true
@@ -212,7 +232,9 @@ struct CustomKeysTests {
 
     @Test func anArrangementKeepsEachKeyOnceWithSpace() {
         #expect(BottomKey.arranged([]) == BottomKey.standard)
-        #expect(BottomKey.arranged([.period, .period, .space]) == [.emoji, .period, .space])
-        #expect(BottomKey.arranged([.space, .emoji, .period]) == [.space, .emoji, .period])
+        #expect(BottomKey.arranged([.period, .period, .space]) == [.emoji, .period, .snippet, .space])
+        #expect(
+            BottomKey.arranged([.space, .emoji, .period]) == [.space, .emoji, .period, .snippet],
+            "an order kept before the snippet key gets it after the period")
     }
 }

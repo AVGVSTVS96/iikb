@@ -147,6 +147,7 @@ extension KeyAction {
         case .redo: "redo"
         case .emoji: "emoji"
         case .tool(let panel): panel.rawValue
+        case .snippetPrefix: "snippet"
         }
     }
 }

@@ -128,7 +128,7 @@ private struct BottomRowSettings: View {
             Box(
                 header: "Bottom Row",
                 footer:
-                    "Hold Period for more punctuation. Drag to set the keys around the space bar in any order."
+                    "Hold Period for more punctuation. The Snippet key types \(settings.snippetPrefix), the start of every snippet’s keyword. Drag to set the keys around the space bar in any order."
             ) {
                 OrderRows(items: arranged) { key in
                     if let shown = shown(key) {
@@ -184,6 +184,7 @@ private struct BottomRowSettings: View {
         switch key {
         case .emoji: model.binding(\.emojiKey)
         case .period: model.binding(\.periodKey)
+        case .snippet: model.binding(\.snippetKey)
         case .space: nil
         }
     }
@@ -193,6 +194,7 @@ private struct BottomRowSettings: View {
         case .emoji: "Emoji Key"
         case .space: "Space Bar"
         case .period: "Period Key"
+        case .snippet: "Snippet Key"
         }
     }
 }

@@ -32,6 +32,8 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var aroundSpace = BottomKey.standard
     /// A period key in the bottom row of plain fields, its long press offering more punctuation.
     public var periodKey = false
+    /// The snippet key in the bottom row of an iPhone's letters, typing the snippet prefix.
+    public var snippetKey = false
     /// The actions as a row of keys above an iPhone's letters (`actionPlace`).
     public var actionRow = false
     /// The action row in landscape too, where it otherwise moves to the bar's left.

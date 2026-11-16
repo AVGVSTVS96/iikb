@@ -70,10 +70,12 @@ extension TypingEngine {
         finish(goal, values: [], in: document)
     }
 
-    /// Asks for a new snippet's name, keyword and tag, to keep the selected text or else all the field shows, as
-    /// Raycast's Create Snippet does. The keyword starts with the prefix.
+    /// Asks for a new snippet's name, keyword and tag, to keep the selected text or else all of the field the keyboard
+    /// is given, as Raycast's Create Snippet does. The keyword starts with the prefix. With nothing to keep it does
+    /// nothing.
     mutating func createSnippet() {
         let all = text.selected.isEmpty ? text.before + (text.after ?? "") : text.selected
+        guard !all.allSatisfy(\.isWhitespace) else { return }
         let fields = [
             Template.Argument(name: "Name", defaultValue: Self.name(for: all)), Template.Argument(name: "Keyword"),
             Template.Argument(name: "Tag"),
@@ -119,9 +121,17 @@ extension TypingEngine {
         submit(in: document)
     }
 
-    /// Finishes the fill as its fields stand.
+    /// Finishes the fill as its fields stand, unless a new snippet's keyword can't be its own: then the keyword's field
+    /// says why.
     mutating func submit(in document: some TextDocument) {
         guard let fill else { return }
+        if case .keep = fill.goal,
+            let problem = Snippet.problem(with: newKeyword(fill.values[1]), for: nil, in: snippets)
+        {
+            pick(field: 1)
+            self.fill?.problem = problem
+            return
+        }
         close()
         finish(fill.goal, values: fill.values, in: document)
     }
@@ -135,6 +145,12 @@ extension TypingEngine {
         }
         refreshShift()
         suggestionsChanged()
+    }
+
+    /// A new snippet's keyword as typed in its field, none when it's the prefix alone, as the app's editor reads one.
+    private func newKeyword(_ typed: String) -> String {
+        let keyword = String(typed[...].trimmingSpaces())
+        return keyword == settings.snippetPrefix ? "" : keyword
     }
 
     private mutating func close() {
@@ -162,8 +178,7 @@ extension TypingEngine {
             finished = .open(template.filled(values, encode: Template.percentEncoded).text)
         case .keep(let text):
             let name = values[0].isEmpty ? Self.name(for: text) : values[0]
-            let keyword = values[1] == settings.snippetPrefix ? "" : values[1]
-            finished = .keep(Snippet(name: name, text: text, keyword: keyword, tag: values[2]))
+            finished = .keep(Snippet(name: name, text: text, keyword: newKeyword(values[1]), tag: values[2]))
         }
         refreshShift()
         suggestionsChanged()

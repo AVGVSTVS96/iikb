@@ -113,7 +113,10 @@ struct SnippetTests {
         #expect(engine.faces(on: .phone).returnKind == .next)
         engine.perform(.return, in: document)
         #expect(engine.fill?.at == 1)
-        #expect(engine.faces(on: .phone).returnKind == .done)
+        #expect(engine.faces(on: .phone).returnKind == .go)
+        engine.type("Rome", in: document)
+        engine.deleteWord(in: document)
+        #expect(engine.fill?.values == ["ana", ""], "holding delete empties the field's value too")
         engine.perform(.delete, in: document)
         #expect(document.text == "so !hi", "delete in an empty field leaves the app alone")
         engine.perform(.return, in: document)
@@ -133,10 +136,12 @@ struct SnippetTests {
 
     @Test func theBarOffersKeywordsAfterThePrefix() {
         var engine = engine(.afterDelimiter)
+        engine.settings.predictiveText = false
         let document = TestDocument("see ")
         engine.documentChanged(document)
         engine.type("!", in: document)
         #expect(engine.suggestions.map(\.text) == ["!hi", "!log", "!addr"])
+        #expect(engine.showsSuggestions, "the keywords show with Predictive Text off")
         engine.type("a", in: document)
         #expect(engine.suggestions == [Suggestion("!addr", .snippet)])
         engine.accept(engine.suggestions[0], in: document)
@@ -175,6 +180,10 @@ struct SnippetTests {
 
     @Test func createSnippetKeepsTheSelectionNamed() {
         var engine = engine()
+        let blank = TestDocument(" ")
+        engine.documentChanged(blank)
+        engine.handle(.createSnippet, in: blank)
+        #expect(engine.fill == nil, "with nothing to keep it asks nothing")
         let document = TestDocument("call me at 555 0100 today")
         document.select("555 0100")
         engine.documentChanged(document)
@@ -183,9 +192,17 @@ struct SnippetTests {
         #expect(engine.query == "", "the name's default is its first words")
         engine.perform(.return, in: document)
         #expect(engine.query == "!", "the keyword starts with the prefix")
-        engine.type("num", in: document)
+        engine.type("ADDR", in: document)
         engine.perform(.return, in: document)
         engine.type("work", in: document)
+        engine.perform(.return, in: document)
+        #expect(engine.takeFinished() == nil, "a keyword another snippet has isn't kept")
+        #expect(engine.fill?.at == 1)
+        #expect(engine.fill?.problem == "“!addr” is already Address’s keyword.")
+        for _ in 0..<4 { engine.perform(.delete, in: document) }
+        #expect(engine.fill?.problem == nil, "changing the keyword clears what was wrong")
+        engine.type("num", in: document)
+        engine.perform(.return, in: document)
         engine.perform(.return, in: document)
         guard case .keep(let snippet) = engine.takeFinished() else {
             Issue.record("nothing kept")
@@ -194,5 +211,21 @@ struct SnippetTests {
         #expect(
             [snippet.name, snippet.text, snippet.keyword, snippet.tag] == ["555 0100", "555 0100", "!num", "work"])
         #expect(document.text == "call me at 555 0100 today", "the field is left as it was")
+    }
+
+    @Test func theSnippetKeyStartsAKeyword() {
+        var engine = engine(.afterDelimiter)
+        let document = TestDocument()
+        engine.type("hi", in: document)
+        engine.handle(.trigger(Key(.snippetPrefix("!"))), in: document)
+        #expect(document.text == "hi !", "after a word it starts a new one")
+        #expect(engine.suggestions.map(\.kind) == [.snippet, .snippet, .snippet])
+        engine.type("addr ", in: document)
+        #expect(document.text == "hi 1 Infinite Loop ")
+        engine.handle(.trigger(Key(.snippetPrefix("!"))), in: document)
+        #expect(document.text == "hi 1 Infinite Loop !", "at a word's start it types the prefix alone")
+        engine.handle(.panel(.snippets), in: document)
+        engine.handle(.trigger(Key(.snippetPrefix("!"))), in: document)
+        #expect(engine.query == "!", "in a panel it searches")
     }
 }

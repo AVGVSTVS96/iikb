@@ -115,6 +115,8 @@ extension KeyFace {
             self.init(content: .symbol("face.smiling"), alignment: edge)
         case .tool(let panel):
             self.init(content: .tool(panel))
+        case .snippetPrefix(let prefix):
+            self.init(content: prefix.count == 1 ? .letter(prefix) : .text(prefix))
         case .undo:
             self.init(content: .symbol("arrow.uturn.backward"), alignment: edge)
             isDimmed = !context.canUndo

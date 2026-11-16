@@ -220,14 +220,7 @@ private struct SnippetEditor: View {
     }
 
     /// What keeps the snippet from being saved.
-    private var problem: String? {
-        guard !keyword.isEmpty else { return nil }
-        if keyword.contains(where: \.isWhitespace) { return "A keyword is one word, with no spaces." }
-        if let other = model.snippets.first(where: { $0.id != snippet.id && $0.isKeyword(keyword) }) {
-            return "“\(other.keyword)” is already \(other.name)’s keyword."
-        }
-        return nil
-    }
+    private var problem: String? { Snippet.problem(with: keyword, for: snippet.id, in: model.snippets) }
 
     /// Why it can't be saved, or a keyword that Immediately expands before you can type this one or that this one
     /// cuts short.

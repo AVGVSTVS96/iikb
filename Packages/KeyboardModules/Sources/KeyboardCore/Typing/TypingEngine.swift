@@ -119,7 +119,7 @@ public struct TypingEngine {
             return replay(history.undo(before: text.before).map { ($0.removed, $0.inserted.count) }, in: document)
         case .redo:
             return replay(history.redo(before: text.before).map { ($0.inserted, $0.removed.count) }, in: document)
-        case .character, .space, .return, .tab, .delete:
+        case .character, .space, .return, .tab, .delete, .snippetPrefix:
             break
         }
         if fill != nil || panel != nil && (action != .delete || !query.isEmpty) { return search(action, in: document) }
@@ -206,6 +206,12 @@ public struct TypingEngine {
         case .tab:
             write("\t", in: document)
             tally.characters += 1
+        case .snippetPrefix(let prefix):
+            commitWord(in: document)
+            let typed = (Snippet.startsWord(after: text.before.last) ? "" : " ") + prefix
+            write(typed, in: document)
+            tally.characters += typed.count
+            _ = expands(.immediately, trailing: "", in: document)
         case .delete:
             stray = nil
             deleteSlide = nil
@@ -301,8 +307,10 @@ public struct TypingEngine {
         case .trigger(let key) where key.action == .emoji:
             show(panel == .emoji ? nil : .emoji, in: document)
         case .trigger(let key):
-            guard [.return, .tab, .undo, .redo].contains(key.action) else { return false }
-            perform(key.action, in: document)
+            switch key.action {
+            case .return, .tab, .undo, .redo, .snippetPrefix: perform(key.action, in: document)
+            default: return false
+            }
         case .deleteSlide(let words):
             return slideDelete(words, in: document)
         case .cursor(let offset):
@@ -375,6 +383,8 @@ public struct TypingEngine {
     public mutating func deleteWord(in document: some TextDocument) {
         if fill != nil || panel != nil && !query.isEmpty {
             query = String(query.dropLast(Self.wordLength(before: query)))
+            if let at = fill?.at { fill?.values[at] = query }
+            fill?.problem = nil
             return suggestionsChanged()
         }
         if panel != nil, deleteHeldInSearch { return }
@@ -500,6 +510,8 @@ public struct TypingEngine {
     /// in the app, so a wrong pick can be undone without leaving the panel.
     private mutating func search(_ action: KeyAction, in document: some TextDocument) {
         switch action {
+        case .snippetPrefix(let key):
+            query += key
         case .character(let key):
             query += shift.isUppercase && layer == .letters ? key.uppercased() : key
             if Self.returnsToLetters.contains(key) { layer = .letters }
@@ -516,6 +528,7 @@ public struct TypingEngine {
             return
         }
         if let at = fill?.at { fill?.values[at] = query }
+        fill?.problem = nil
         if shiftHold != nil { shiftHold = .typedWhileHeld }
         refreshShift()
         suggestionsChanged()

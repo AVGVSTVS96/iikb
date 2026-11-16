@@ -33,6 +33,17 @@ public struct Snippet: Codable, Hashable, Sendable, Identifiable {
         }.joined()
     }
 
+    /// Why `keyword` can't be the keyword of the snippet `id` (nil for a new one) among `snippets`: it has a space, or
+    /// another snippet has it.
+    public static func problem(with keyword: String, for id: String?, in snippets: [Snippet]) -> String? {
+        guard !keyword.isEmpty else { return nil }
+        if keyword.contains(where: \.isWhitespace) { return "A keyword is one word, with no spaces." }
+        if let other = snippets.first(where: { $0.id != id && $0.isKeyword(keyword) }) {
+            return "“\(other.keyword)” is already \(other.name)’s keyword."
+        }
+        return nil
+    }
+
     /// Whether `typed` is this snippet's keyword, as auto-capitalization may have changed its case.
     public func isKeyword(_ typed: some StringProtocol) -> Bool {
         !keyword.isEmpty && typed.lowercased() == keyword.lowercased()

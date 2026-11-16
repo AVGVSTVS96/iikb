@@ -137,13 +137,13 @@ public struct Template: Hashable, Sendable {
 }
 
 extension Substring {
-    fileprivate func trimmingTrailingSpaces() -> Substring {
+    func trimmingTrailingSpaces() -> Substring {
         var trimmed = self
         while trimmed.last?.isWhitespace == true { trimmed.removeLast() }
         return trimmed
     }
 
-    fileprivate func trimmingSpaces() -> Substring {
+    func trimmingSpaces() -> Substring {
         drop(while: \.isWhitespace).trimmingTrailingSpaces()
     }
 }
