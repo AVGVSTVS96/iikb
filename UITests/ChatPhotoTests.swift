@@ -26,18 +26,21 @@ final class ChatPhotoTests: XCTestCase {
     func testSeveralPhotosGoWithACaptionAfterOneIsTakenOff() throws {
         try openChat()
         let grid = try openPhotos()
+        checkChatOverKeys("with your photos up")
         try shot("grid")
         for index in 0..<3 { cell(index).tap() }
         XCTAssertTrue(element("iikb.chat.photo.2").waitForExistence(timeout: 15), "three photos sit in the box")
         XCTAssertTrue(cell(2).isSelected, "a picked photo is marked in the grid")
+        checkChatOverKeys("with three photos picked")
         try shot("three")
         element("iikb.chat.photo.1.remove").tap()
         XCTAssertTrue(wait { !self.element("iikb.chat.photo.2").exists }, "the ✕ takes a photo off the box")
         XCTAssertFalse(cell(1).isSelected, "and unmarks it in the grid")
         try shot("removed")
-        element("iikb.chat.field").tap()
-        XCTAssertTrue(key("space").waitForExistence(timeout: 5), "tapping the box brings the keys up")
+        tapBox()
+        XCTAssertTrue(key("space").waitForExistence(timeout: 5), "tapping the box over its photos brings the keys up")
         XCTAssertFalse(grid.isHittable, "and puts the photos away")
+        checkChatOverKeys("typing under two photos")
         type("the view")
         try shot("caption")
         element("iikb.chat.send").tap()
@@ -76,11 +79,13 @@ final class ChatPhotoTests: XCTestCase {
         let field = element("iikb.chat.field")
         field.tap()
         XCTAssertTrue(key("space").waitForExistence(timeout: 5), "tapping the box brings the keys up")
+        checkChatOverKeys("with the keys up")
         field.press(forDuration: 1)
         let paste = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Paste'")).firstMatch
         XCTAssertTrue(paste.waitForExistence(timeout: 5), "the box's menu offers Paste with a photo copied")
         paste.tap()
         XCTAssertTrue(element("iikb.chat.photo.0").waitForExistence(timeout: 15), "the pasted photo sits in the box")
+        checkChatOverKeys("with a photo pasted")
         try shot("pasted")
         element("iikb.chat.send").tap()
         XCTAssertTrue(label("Got it: 1 photo").waitForExistence(timeout: 20), "and goes")
@@ -227,6 +232,28 @@ final class ChatPhotoTests: XCTestCase {
         XCTAssertTrue(card.waitForExistence(timeout: 20), "the menu has a Chats shelf with the chats as cards")
         card.tap()
         XCTAssertTrue(element("iikb.chat.attach").waitForExistence(timeout: 10), "the box has a paperclip beside it")
+    }
+
+    /// A tap on the box's middle, where your thumb goes, over its photos when it has some.
+    private func tapBox() {
+        element("iikb.chat.field").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    }
+
+    /// The chat over the keys or your photos: More and the tabs over the box, and the box whole, its photos inside it
+    /// over a line's room for its words, as the box has with nothing attached.
+    private func checkChatOverKeys(_ moment: String, file: StaticString = #filePath, line: UInt = #line) {
+        let box = element("iikb.chat.field").frame
+        XCTAssertTrue(
+            element("iikb.chat.more").isHittable, "\(moment): More sits atop the chat", file: file, line: line)
+        XCTAssertLessThanOrEqual(
+            element("iikb.chats").frame.maxY, box.minY, "\(moment): the tabs sit over the box", file: file, line: line)
+        let photos = (0..<10).map { element("iikb.chat.photo.\($0)") }.prefix { $0.exists }.map(\.frame)
+        for photo in photos {
+            XCTAssertTrue(box.contains(photo), "\(moment): the box holds its photos", file: file, line: line)
+        }
+        XCTAssertGreaterThanOrEqual(
+            box.maxY - (photos.map(\.maxY).max() ?? box.minY), 39.5,
+            "\(moment): the box keeps a line for its words under its photos", file: file, line: line)
     }
 
     private func openPhotos() throws -> XCUIElement {
