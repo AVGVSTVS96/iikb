@@ -82,12 +82,22 @@ extension Color {
 
 /// A white SF Symbol on a colored rounded square, as Raycast's More page draws its commands.
 struct Glyph: View {
-    let symbol: String
+    let image: Image
     let color: Color
     var size: CGFloat = 30
 
+    init(image: Image, color: Color, size: CGFloat = 30) {
+        self.image = image
+        self.color = color
+        self.size = size
+    }
+
+    init(symbol: String, color: Color, size: CGFloat = 30) {
+        self.init(image: Image(systemName: symbol), color: color, size: size)
+    }
+
     var body: some View {
-        Image(systemName: symbol)
+        image
             .font(.system(size: size * 0.5, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: size, height: size)

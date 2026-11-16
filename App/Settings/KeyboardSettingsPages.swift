@@ -315,40 +315,11 @@ private struct LayoutSettings: View {
                 title: "Corners", label: "Key Roundness", level: model.binding(\.keyRoundness),
                 levels: KeyRoundness.allCases, name: \.title, ends: ("Sharper", "Rounder"))
         }
-        if here.numberRow || here.emojiKey || here.recordKey {
+        if here.numberRow {
             Box(header: "Keys") {
-                if here.numberRow {
-                    ToggleRow(
-                        title: "Number Row", detail: "1 to 0 above the letters. The keyboard grows upward.",
-                        isOn: model.binding(\.numberRow))
-                }
-                if here.emojiKey {
-                    ToggleRow(
-                        title: "Emoji Key",
-                        detail:
-                            "Every emoji, from beside the space bar. Without it, a word’s emoji still show in the suggestions.",
-                        isOn: model.binding(\.emojiKey))
-                }
-                if here.recordKey {
-                    ToggleRow(
-                        title: "Record Key",
-                        detail:
-                            "The record button left of 123, in the globe’s place, instead of at the right of the bar. The globe goes to the keyboard’s menu.",
-                        isOn: model.binding(\.micKey))
-                }
-            }
-        }
-        if here.globeKey {
-            Box(
-                header: "Globe Key",
-                footer:
-                    "At the far left of the bottom row, on iPhones with no globe under the keyboard, like the Duo. As a spacer it keeps 123 away from the corner and does nothing when tapped. As a spacer or hidden, Next Keyboard is in the keyboard’s menu."
-            ) {
-                ForEach(GlobeKey.allCases, id: \.self) { globe in
-                    ChoiceRow(title: globe.title, picked: model.settings.globeKey == globe) {
-                        model.update { $0.globeKey = globe }
-                    }
-                }
+                ToggleRow(
+                    title: "Number Row", detail: "1 to 0 above the letters. The keyboard grows upward.",
+                    isOn: model.binding(\.numberRow))
             }
         }
         Box(header: "Emoji, GIFs and Clipboard") {
@@ -384,20 +355,6 @@ private struct LayoutSettings: View {
                 }
             }
         }
-        if here.keyboardMenu {
-            Box(
-                header: "Keyboard Menu",
-                footer:
-                    "Layouts, Next Keyboard and iikb Settings open from holding 123 or emoji and sliding. The menu button above the keys opens your clipboard, transcripts, GIFs and chats."
-            ) {
-                ForEach([KeyboardMenu.both, .hold], id: \.self) { place in
-                    ChoiceRow(
-                        title: place == .both ? "Hold 123 and Menu Button" : place.title,
-                        picked: (model.settings.keyboardMenu == .hold) == (place == .hold)
-                    ) { model.update { $0.keyboardMenu = place } }
-                }
-            }
-        }
     }
 
     static func title(of hand: OneHanded) -> String {
@@ -409,11 +366,12 @@ private struct LayoutSettings: View {
     }
 }
 
-/// Which layout settings change iikb's keys on this device, as KeyboardCore lays them out, so Appearance shows only
-/// those: an iPad's keyboard keeps its own globe, menu button and one-row panels, with none of an iPhone's extra keys or
-/// layouts.
-private struct KeysHere {
-    let numberRow, emojiKey, recordKey, globeKey, keyboardMenu, split, oneHanded, largePanels, characterPreview: Bool
+/// Which layout settings change iikb's keys on this device, as KeyboardCore lays them out, so Appearance and Custom Keys
+/// show only those: an iPad's keyboard keeps its own globe, menu button and one-row panels, with none of an iPhone's
+/// extra keys, rows or layouts.
+struct KeysHere {
+    let numberRow, emojiKey, recordKey, globeKey, leadingButton, actionRow, arrangesBottomRow: Bool
+    let split, oneHanded, largePanels, characterPreview: Bool
 
     @MainActor init() {
         let screen = ThisDevice.screen
@@ -421,11 +379,13 @@ private struct KeysHere {
         characterPreview = device == .phone
         let all = LayoutContext(
             device: device, layer: .letters, showsGlobe: true, showsEmoji: true, showsGlobeKey: true,
-            showsNumberRow: true, keyboardMenu: .hold)
+            showsNumberRow: true, leadingButton: .hidden)
         numberRow = all.showsNumberRow
         emojiKey = all.showsEmoji
         globeKey = all.showsGlobeKey
-        keyboardMenu = all.keyboardMenu == .hold
+        leadingButton = all.leadingButton == .hidden
+        actionRow = device == .phone
+        arrangesBottomRow = device == .phone
         recordKey = LayoutContext(device: device, layer: .letters, showsGlobe: true, showsMicKey: true).showsMicKey
         split = LayoutContext(device: device, layer: .letters, isLandscape: true, isOpen: true).allowsSplit
         oneHanded = LayoutContext(device: device, layer: .letters).allowsOneHanded

@@ -134,30 +134,28 @@
 		</dict>
 		<dict>
 			<key>FooterText</key>
-			<string>Where to open layouts, Next Keyboard and iikb Settings: hold 123 or emoji and slide, or tap the menu button above the keys.</string>
+			<string>Hidden gives the menu button’s room to the suggestions. Your actions still open the clipboard, transcripts and GIFs: show the action row, or turn off Predictive Text.</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<string>both</string>
+			<string>menu</string>
 			<key>Key</key>
-			<string>keyboardMenu</string>
+			<string>leadingButton</string>
 			<key>Title</key>
-			<string>Keyboard Menu</string>
+			<string>Leading Button</string>
 			<key>Titles</key>
 			<array>
-				<string>Both</string>
-				<string>Hold 123</string>
-				<string>Menu Button</string>
+				<string>Menu</string>
+				<string>Hidden</string>
 			</array>
 			<key>Type</key>
 			<string>PSMultiValueSpecifier</string>
 			<key>Values</key>
 			<array>
-				<string>both</string>
-				<string>hold</string>
-				<string>button</string>
+				<string>menu</string>
+				<string>hidden</string>
 			</array>
 		</dict>
 		<dict>

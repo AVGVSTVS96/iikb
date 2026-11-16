@@ -101,6 +101,9 @@ final class KeyView: UIView {
         case .symbol(let name):
             label.text = nil
             icon.image = Self.symbol(name, size: metrics.symbolSize * (shape?.symbolScale ?? 1))
+        case .tool(let panel):
+            label.text = nil
+            icon.image = panel.keyIcon(metrics.symbolSize * (shape?.symbolScale ?? 1))
         case .none:
             label.text = nil
             icon.image = nil
@@ -127,7 +130,7 @@ final class KeyView: UIView {
         super.layoutSubviews()
         guard let metrics else { return }
         defer { placeContentOnPixels() }
-        layoutPaint(radius: metrics.cornerRadius)
+        layoutPaint(radius: key.isTool ? bounds.height / 2 : metrics.cornerRadius)
         let numberRow = metrics.numberRowHeight > 0 && bounds.height < metrics.keyHeight - 0.5
         if isLetter, shown.secondary == nil, let size = metrics.numberRowLetterSize {
             let scaled = (numberRow ? size : metrics.letterSize) * (theme.keyShape?.letterScale ?? 1)
@@ -268,6 +271,7 @@ final class KeyView: UIView {
         case .undo: "undo"
         case .redo: "redo"
         case .emoji: "emoji"
+        case .tool(let panel): panel.title
         }
     }
 
@@ -275,12 +279,12 @@ final class KeyView: UIView {
         if case .letter = shown.content { true } else { false }
     }
 
-    /// The paint for this key: letters and space in the letter paint, a prominent return in the prominent one, and the
-    /// rest in the function paint.
+    /// The paint for this key: letters, space and the action row's pills (as Raycast paints them) in the letter paint, a
+    /// prominent return in the prominent one, and the rest in the function paint.
     private var paint: KeyPaint {
         if shown.isProminent { return theme.prominentKey }
         switch key.action {
-        case .character, .space: return theme.letterKey
+        case .character, .space, .tool: return theme.letterKey
         default: return theme.functionKey
         }
     }

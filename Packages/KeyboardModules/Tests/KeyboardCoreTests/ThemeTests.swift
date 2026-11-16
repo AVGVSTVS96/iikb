@@ -49,10 +49,10 @@ struct ThemeTests {
         let metrics = KeyboardMetrics.for(.phone, width: 466, height: 678, style: .ios27)
         let without = Layouts.layout(for: plain)
         let with = Layouts.layout(for: numbered)
-        #expect(with.hasNumberRow && with.rows.count == without.rows.count + 1)
+        #expect(with.shortRows == 1 && with.rows.count == without.rows.count + 1)
         let grow =
-            metrics.height(rows: with.rows.count, hasNumberRow: true)
-            - metrics.height(rows: without.rows.count, hasNumberRow: false)
+            metrics.height(rows: with.rows.count, shortRows: 1)
+            - metrics.height(rows: without.rows.count, shortRows: 0)
         #expect(grow == metrics.numberRowHeight + metrics.rowGap)
         let before = KeyGrid(without, width: 466, metrics: metrics.grid)
         let after = KeyGrid(with, width: 466, metrics: metrics.grid)
@@ -60,8 +60,9 @@ struct ThemeTests {
         let numberedQ = after.frame(of: "q")!
         #expect(numberedQ.x == q.x && numberedQ.y == q.y + grow, "q keeps its place above the bottom")
         #expect(after.frame(of: "1")!.height == metrics.numberRowHeight)
-        #expect(!Layouts.layout(for: LayoutContext(device: .phone, layer: .numbers, showsNumberRow: true)).hasNumberRow)
-        #expect(!Layouts.layout(for: LayoutContext(device: .pad, layer: .letters, showsNumberRow: true)).hasNumberRow)
+        #expect(
+            Layouts.layout(for: LayoutContext(device: .phone, layer: .numbers, showsNumberRow: true)).shortRows == 0)
+        #expect(Layouts.layout(for: LayoutContext(device: .pad, layer: .letters, showsNumberRow: true)).shortRows == 0)
     }
 
     @Test func emojiTakeThePreferredToneUntilYouPickOne() {

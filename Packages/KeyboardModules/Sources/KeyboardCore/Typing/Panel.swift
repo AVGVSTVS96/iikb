@@ -1,6 +1,6 @@
 /// A tool that opens over the bar: its results on top and a search field under them, which the keys type into while
 /// it's open (docs/design.md, "Panels").
-public enum Panel: Hashable, Sendable, CaseIterable {
+public enum Panel: String, Hashable, Sendable, CaseIterable {
     case emoji
     case gif
     case clipboard
@@ -10,6 +10,9 @@ public enum Panel: Hashable, Sendable, CaseIterable {
     /// message line as they do into any field (`LineDocument`), so the engine never opens it.
     case chats
 
-    /// The panels, in the order of their tools in the bar.
+    /// Every tool, in the order Customize Actions lists them: the actions you can pick for the action row and the bar.
     public static let tools: [Panel] = [.emoji, .gif, .transcripts, .clipboard]
+
+    /// The actions before you pick any: the menu's panels, the emoji key being where emoji are.
+    public static let standardActions: [Panel] = [.gif, .transcripts, .clipboard]
 }

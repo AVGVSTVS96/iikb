@@ -22,6 +22,11 @@ public enum SettingsStore {
         ("numberRow", \.numberRow),
         ("split", \.split),
         ("compactPanels", \.compactPanels),
+        ("dictationButton", \.dictationButton),
+        ("periodKey", \.periodKey),
+        ("actionRow", \.actionRow),
+        ("actionRowInLandscape", \.actionRowInLandscape),
+        ("switchOnClose", \.switchOnClose),
     ]
 
     /// The settings with a value picked from a list, each kept as its raw value. Character Preview and Haptic Feedback
@@ -41,14 +46,19 @@ public enum SettingsStore {
         key: "dictationEditing", path: \.dictationEditing, switchKey: "keepsUmAndUh", on: .asSaid, off: .light)
     private static let dictationLists = Choice(
         key: "spokenLists", path: \.dictationLists, switchKey: "dictationLists", on: .numbered, off: .off)
-    private static let keyboardMenu = Choice(key: "keyboardMenu", path: \.keyboardMenu)
+    /// WHY: a key of its own, not Keyboard Menu's, whose Hold 123 never hid the More button on iOS, so no one who picked
+    /// it loses the menu.
+    private static let leadingButton = Choice(key: "leadingButton", path: \.leadingButton)
+    private static let mode = Choice(key: "mode", path: \.mode)
+    private static let actions = Order(key: "actions", path: \.actions)
+    private static let aroundSpace = Order(key: "aroundSpace", path: \.aroundSpace)
     private static let clipboardLength = Choice(key: "clipboardLength", path: \.clipboardLength)
     /// Globe Key was a switch, turned off to stop taps landing on the globe, which Spacer now does with the globe kept.
     private static let globeKey = Choice(
         key: "globe", path: \.globeKey, switchKey: "globeKey", on: .switches, off: .spacer)
     private static let choices: [any Picked] = [
         theme, themeAppearance, stopAnimation, characterPreview, haptics, keySpacing, keyRoundness, dictationStyle,
-        dictationEditing, dictationLists, keyboardMenu, clipboardLength, globeKey,
+        dictationEditing, dictationLists, leadingButton, clipboardLength, globeKey, mode, actions, aroundSpace,
     ]
     private static let skinToneKey = "skinTone"
     private static let appWritingStylesKey = "appWritingStyles"
@@ -232,6 +242,23 @@ private struct Choice<Value: RawRepresentable<String>>: Picked {
 
     func save(_ settings: KeyboardSettings) {
         SettingsStore.set(settings[keyPath: path].rawValue, forKey: key)
+    }
+}
+
+/// A list of values picked and put in order, as Customize Actions keeps the actions, each kept as its raw value.
+private struct Order<Value: RawRepresentable<String>>: Picked {
+    let key: String
+    let path: WritableKeyPath<KeyboardSettings, [Value]>
+
+    var keyPath: PartialKeyPath<KeyboardSettings> { path }
+
+    func load(into settings: inout KeyboardSettings, sharing: Bool) {
+        guard let raw = SettingsStore.value(forKey: key, sharing: sharing) as? [String] else { return }
+        settings[keyPath: path] = raw.compactMap { Value(rawValue: $0) }
+    }
+
+    func save(_ settings: KeyboardSettings) {
+        SettingsStore.set(settings[keyPath: path].map(\.rawValue), forKey: key)
     }
 }
 

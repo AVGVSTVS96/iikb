@@ -22,7 +22,7 @@ struct SpacingTests {
         let metrics = KeyboardMetrics.for(context, screen: screen, window: window, style: .ios27)
         return (
             KeyGrid(layout, width: window, metrics: metrics.grid),
-            metrics.height(rows: layout.rows.count, hasNumberRow: layout.hasNumberRow)
+            metrics.height(rows: layout.rows.count, shortRows: layout.shortRows)
         )
     }
 

@@ -25,6 +25,9 @@ enum Alternates {
         "%": "%‰",
     ]
 
+    /// The period key's long press: the punctuation the letters have no key for, the commonest nearest the key.
+    static let periodKey = [".", ",", "?", "!", "'", "-", "&", "%"]
+
     static func `for`(_ character: String) -> [String] {
         all[character].map { $0.map(String.init) } ?? []
     }

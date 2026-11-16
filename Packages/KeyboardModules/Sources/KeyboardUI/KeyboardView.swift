@@ -154,7 +154,7 @@ public final class KeyboardView: UIView {
     /// row, a letter or a digit, as round as the roundness setting has them.
     var keyMetrics: KeyboardMetrics {
         var metrics = metrics
-        guard let width = grid.rows.first?.map(\.frame.width).min() else { return metrics }
+        guard let width = grid.typingRow.map(\.frame.width).min() else { return metrics }
         if let shape = theme.keyShape { metrics.cornerRadius = shape.cornerRadius(letterWidth: width) }
         metrics.cornerRadius = metrics.rounded(metrics.cornerRadius, key: Size(width: width, height: metrics.keyHeight))
         return metrics

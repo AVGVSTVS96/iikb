@@ -23,6 +23,9 @@ public enum KeyAction: Hashable, Sendable {
     case undo, redo
     /// Opens the emoji panel, or closes it when it's open.
     case emoji
+    /// An action in the action row, which opens its tool as the bar's does; the keyboard handles it, so the engine never
+    /// sees it.
+    case tool(Panel)
 }
 
 public enum KeyWidth: Hashable, Sendable {
@@ -77,6 +80,8 @@ public struct Key: Hashable, Sendable {
         return value
     }
 
+    public var isTool: Bool { if case .tool = action { true } else { false } }
+
     public var isInput: Bool {
         switch action {
         case .character, .space: true
@@ -99,13 +104,14 @@ public enum RowItem: Hashable, Sendable {
 
 public struct KeyboardLayout: Hashable, Sendable {
     public var rows: [[RowItem]]
-    public var hasNumberRow: Bool
+    /// How many of the top rows are short ones, 0.8 of a key: the action row and the number row.
+    public var shortRows: Int
     /// Keys more than the device's usual rows hold, as Swedish's å and ä: Apple narrows every key to fit them.
     public var extraColumns: Double
 
-    public init(rows: [[RowItem]], hasNumberRow: Bool = false, extraColumns: Double = 0) {
+    public init(rows: [[RowItem]], shortRows: Int = 0, extraColumns: Double = 0) {
         self.rows = rows
-        self.hasNumberRow = hasNumberRow
+        self.shortRows = shortRows
         self.extraColumns = extraColumns
     }
 

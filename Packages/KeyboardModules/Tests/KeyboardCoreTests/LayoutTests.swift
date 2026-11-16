@@ -114,9 +114,9 @@ struct LayoutTests {
         #expect(Layouts.layout(for: pad).keys.contains { $0.action == .nextKeyboard } && pad.moreMenu == [.settings])
     }
 
-    /// Layouts and Settings open from holding 123 on every iPhone, and the bar's menu button shows unless Settings picks
-    /// Hold 123 alone; an iPad, with no hold menu, always keeps its button.
-    @Test func theKeyboardMenuOpensWhereSettingsPutIt() {
+    /// Layouts and Settings open from holding 123 on every iPhone, and the bar's More button shows unless Settings hides
+    /// the leading button; an iPad, with no hold menu, always keeps its button.
+    @Test func theLeadingButtonShowsUnlessHidden() {
         var settings = KeyboardSettings()
         let open = { (device: DeviceClass) in
             LayoutContext(
@@ -124,11 +124,9 @@ struct LayoutTests {
                 settings: settings)
         }
         #expect(!open(.phone).menu.isEmpty && open(.phone).showsMoreButton)
-        settings.keyboardMenu = .hold
+        settings.leadingButton = .hidden
         #expect(!open(.phone).menu.isEmpty && !open(.phone).showsMoreButton)
         #expect(open(.pad).menu.isEmpty && open(.pad).showsMoreButton)
-        settings.keyboardMenu = .button
-        #expect(!open(.phone).menu.isEmpty && open(.phone).showsMoreButton)
     }
 
     @Test func emailAndURLBottomRows() {
@@ -264,7 +262,7 @@ struct LayoutTests {
         let metrics = KeyboardMetrics.phone(width: width, style: style)
         let grid = KeyGrid(
             Layouts.layout(for: LayoutContext(device: .phone, layer: .letters)), width: width, metrics: metrics.grid)
-        return metrics.height(rows: 4, hasNumberRow: false) - grid.rows[0][0].frame.y
+        return metrics.height(rows: 4, shortRows: 0) - grid.rows[0][0].frame.y
     }
 
     @Test func iOS27MovesRowsAsAppleDoesWithinTheKeyboardsArea() {
@@ -314,7 +312,7 @@ struct LayoutTests {
     @Test func aPanelFitsTheRoomIOSGives() {
         let open = KeyboardMetrics.for(.phone, width: 669, height: 951)
         let toolbar = open.toolbar
-        let keys = open.height(rows: 4, hasNumberRow: false)
+        let keys = open.height(rows: 4, shortRows: 0)
         #expect(toolbar.fitting(toolbar.panelHeight) == toolbar, "a panel that fits keeps its size")
         let given = ((keys + toolbar.panelHeight) * 3).rounded(.down) / 3 - keys
         #expect(toolbar.fitting(given) == toolbar, "the height iOS rounds to the screen's pixels still fits")
@@ -329,17 +327,17 @@ struct LayoutTests {
     /// iikb asked for flat (his photos, Nov 3 1:51am and 1:53am), and Apple's rows took it.
     @Test func theKeysFillTheExtraHeightIOSGives() {
         let open = KeyboardMetrics.for(.phone, width: 669, height: 951)
-        let keys = open.height(rows: 4, hasNumberRow: false)
-        let tall = open.filling(keys + 50, rows: 4, hasNumberRow: false)
-        #expect(tall.height(rows: 4, hasNumberRow: false) == keys + 50)
+        let keys = open.height(rows: 4, shortRows: 0)
+        let tall = open.filling(keys + 50, rows: 4, shortRows: 0)
+        #expect(tall.height(rows: 4, shortRows: 0) == keys + 50)
         #expect(tall.keyHeight == open.keyHeight + 12.5)
         #expect(tall.rowGap == open.rowGap && tall.topInset == open.topInset && tall.bottomInset == open.bottomInset)
-        #expect(open.filling(keys, rows: 4, hasNumberRow: false) == open)
+        #expect(open.filling(keys, rows: 4, shortRows: 0) == open)
         #expect(
-            open.filling(keys - 100, rows: 4, hasNumberRow: false) == open,
+            open.filling(keys - 100, rows: 4, shortRows: 0) == open,
             "short of room, the panel gives way, not the keys")
-        let numbers = open.filling(open.height(rows: 5, hasNumberRow: true) + 50, rows: 5, hasNumberRow: true)
-        #expect(numbers.height(rows: 5, hasNumberRow: true) == open.height(rows: 5, hasNumberRow: true) + 50)
+        let numbers = open.filling(open.height(rows: 5, shortRows: 1) + 50, rows: 5, shortRows: 1)
+        #expect(numbers.height(rows: 5, shortRows: 1) == open.height(rows: 5, shortRows: 1) + 50)
     }
 
     /// docs/design.md, "Per device": Apple's keys and letters on each of the Duo's screens, measured in the iOS 27.1
@@ -363,7 +361,7 @@ struct LayoutTests {
             let metrics = KeyboardMetrics.for(.phone, width: screen.size.width, height: screen.size.height)
             #expect(
                 abs(
-                    metrics.height(rows: 4, hasNumberRow: false)
+                    metrics.height(rows: 4, shortRows: 0)
                         - (metrics.topInset + 4 * key + 3 * row + metrics.bottomInset)) < 0.05,
                 "\(screen.name): Apple's keyboard height")
         }

@@ -33,7 +33,7 @@ enum PhoneLayouts {
         let extraColumns = Double((widest + 1) / 2 - 5) * 2
         guard context.showsNumberRow else { return KeyboardLayout(rows: rows, extraColumns: extraColumns) }
         return KeyboardLayout(
-            rows: [RowItem.keys("12345") + [.flexible] + RowItem.keys("67890")] + rows, hasNumberRow: true,
+            rows: [RowItem.keys("12345") + [.flexible] + RowItem.keys("67890")] + rows, shortRows: 1,
             extraColumns: extraColumns)
     }
 
@@ -55,16 +55,22 @@ enum PhoneLayouts {
         ])
     }
 
-    /// Each half five keys wide: the globe or the record button, layer and emoji keys and a space bar on the left, a space bar and return
-    /// on the right, and the field's own keys in the gap between, clear of where the thumbs press space.
+    /// Each half five keys wide: the globe or the record button, layer key, the keys arranged before space and a space bar on
+    /// the left, a space bar, those after space and return on the right, and the field's own keys in the gap between,
+    /// clear of where the thumbs press space. Each space bar stays at least two keys wide, a key arranged on a side
+    /// without room for it going to the other, beside the same space.
     private static func splitBottomRow(_ context: LayoutContext, layerKey: KeyboardLayer) -> [RowItem] {
         let character = { (value: String) in RowItem.key(Key(.character(value))) }
-        let leading =
-            (context.showsMicKey ? [Key(.dictate)] : context.showsGlobeKey ? [Key(context.globe)] : []) + [
-                Key(.layer(layerKey))
-            ]
-            + (context.showsEmoji ? [Key(.emoji)] : [])
-        let leadingSpan = leading.compactMap(\.width.span).reduce(0, +)
+        let span = { (keys: [Key]) in keys.compactMap(\.width.span).reduce(0, +) }
+        var (before, after) = beside(context, width: .input)
+        let lead =
+            (context.showsMicKey ? [Key(.dictate)] : context.showsGlobeKey ? [Key(context.globe)] : [])
+            + [Key(.layer(layerKey))]
+        while span(after) > 1.5, !after.isEmpty { before.append(after.removeFirst()) }
+        while span(before) > 3 - span(lead), !before.isEmpty { after.insert(before.removeLast(), at: 0) }
+        let leading = lead + before
+        let leadingSpan = span(leading)
+        let afterSpan = span(after)
         let trailing: [RowItem] =
             switch context.kind {
             case .email: [character("@"), character(".")]
@@ -75,7 +81,21 @@ enum PhoneLayouts {
             }
         let space = { (span: Double) in RowItem.key(Key(.space, width: .pitch(span))) }
         return leading.map(RowItem.key) + [space(5 - leadingSpan), .flexible] + trailing
-            + [.flexible, space(3.5), .key(Key(.return, width: .pitch(1.5)))]
+            + [.flexible, space(3.5 - afterSpan)] + after.map(RowItem.key) + [.key(Key(.return, width: .pitch(1.5)))]
+    }
+
+    /// The keys arranged before space and after it (`LayoutContext.aroundSpace`): emoji as wide as the layer key, the
+    /// period key a key wide, its long press offering the punctuation the letters lack.
+    private static func beside(_ context: LayoutContext, width emoji: KeyWidth) -> (before: [Key], after: [Key]) {
+        let keys = context.aroundSpace.map { key -> Key? in
+            switch key {
+            case .space: nil
+            case .emoji: Key(.emoji, width: emoji)
+            case .period: Key(.character("."), alternates: Alternates.periodKey)
+            }
+        }
+        let space = keys.firstIndex(of: nil) ?? keys.count
+        return (keys[..<space].compactMap { $0 }, keys[space...].compactMap { $0 })
     }
 
     /// The language's letters, a row shorter than the longest centered, Apple's keys narrowed to fit a longer row and
@@ -100,7 +120,7 @@ enum PhoneLayouts {
         let extraColumns = Double(widest - 10)
         guard context.showsNumberRow else { return KeyboardLayout(rows: rows, extraColumns: extraColumns) }
         return KeyboardLayout(
-            rows: [RowItem.keys("1234567890").widened(by: scale)] + rows, hasNumberRow: true,
+            rows: [RowItem.keys("1234567890").widened(by: scale)] + rows, shortRows: 1,
             extraColumns: extraColumns)
     }
 
@@ -133,31 +153,38 @@ enum PhoneLayouts {
     /// Return beside the emoji key, as wide as Raycast's on the open Duo in portrait and landscape.
     private static let raycastReturn = KeyWidth.pitch(1.4)
 
-    /// The globe, as wide as Raycast's, or the record button in its place, the layer key, the emoji key in every field (it's the one Bassim taps most),
-    /// space, the field's own keys and return.
+    /// The globe, as wide as Raycast's, or the record button in its place, the layer key, the keys arranged before space
+    /// (the emoji key in every field, as it's the one Bassim taps most), space, the field's own keys, those arranged after
+    /// space, and return.
     private static func bottomRow(_ context: LayoutContext, layerKey: KeyboardLayer) -> [RowItem] {
         let side = context.isLandscape ? 2.0 : 2.5
         let first =
             context.showsMicKey
             ? Key(.dictate, width: .pitch(0.93)) : context.showsGlobeKey ? Key(context.globe, width: .pitch(0.93)) : nil
+        let (before, after) = beside(context, width: .pitch(side / 2))
         let leading: [RowItem] =
-            (first.map { [.key($0)] } ?? [])
-            + [.key(Key(.layer(layerKey), width: .pitch(side / 2)))]
-            + (context.showsEmoji ? [.key(Key(.emoji, width: .pitch(side / 2)))] : [])
+            (first.map { [.key($0)] } ?? []) + [.key(Key(.layer(layerKey), width: .pitch(side / 2)))]
+            + before.map(RowItem.key)
+        let trailing = after.map(RowItem.key)
         let space = RowItem.key(Key(.space, width: .fill))
         let returnKey = RowItem.key(Key(.return, width: context.showsEmoji ? raycastReturn : .pitch(side)))
         let character = { (value: String, width: KeyWidth) in RowItem.key(Key(.character(value), width: width)) }
         switch context.kind {
         case .email:
-            return leading + [space, character("@", .pitch(1.25)), character(".", .pitch(1.25)), returnKey]
+            return leading + [space, character("@", .pitch(1.25)), character(".", .pitch(1.25))] + trailing + [
+                returnKey
+            ]
         case .url:
-            return leading + [character(".", .fill), character("/", .fill), character(".com", .fill), returnKey]
+            return leading + [character(".", .fill), character("/", .fill), character(".com", .fill)] + trailing
+                + [returnKey]
         case .twitter:
-            return leading + [space, character("@", .pitch(1.25)), character("#", .pitch(1.25)), returnKey]
+            return leading + [space, character("@", .pitch(1.25)), character("#", .pitch(1.25))] + trailing + [
+                returnKey
+            ]
         case .webSearch:
-            return leading + [space, character(".", .input), .key(Key(.return, width: .pitch(1.75)))]
+            return leading + [space, character(".", .input)] + trailing + [.key(Key(.return, width: .pitch(1.75)))]
         default:
-            return leading + [space, returnKey]
+            return leading + [space] + trailing + [returnKey]
         }
     }
 }

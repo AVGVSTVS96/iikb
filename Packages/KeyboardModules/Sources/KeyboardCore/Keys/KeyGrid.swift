@@ -66,6 +66,9 @@ public struct KeyGrid: Sendable {
 
     public init() {}
 
+    /// The first row of keys you type on, under the action row: the bar's buttons are set out as its keys are.
+    public var typingRow: [(key: Key, frame: Rect)] { rows.first { $0.first?.key.isTool != true } ?? [] }
+
     public init(_ layout: KeyboardLayout, width: Double, metrics: GridMetrics, signature: String = "") {
         self.metrics = metrics
         self.signature = signature
@@ -74,7 +77,7 @@ public struct KeyGrid: Sendable {
         let pitch = available / metrics.columns
         var y = metrics.topInset
         for (index, row) in layout.rows.enumerated() {
-            let height = layout.hasNumberRow && index == 0 ? metrics.numberRowHeight : metrics.keyHeight
+            let height = index < layout.shortRows ? metrics.numberRowHeight : metrics.keyHeight
             let fixed = row.compactMap(\.width.span).reduce(0, +)
             let fills = row.count { $0.width == .fill }
             let fillSpan = fills > 0 ? max(available / pitch - fixed, 0) / Double(fills) : 0
@@ -96,15 +99,23 @@ public struct KeyGrid: Sendable {
             }
             for (index, key) in keys.enumerated() where key.key.action == .space {
                 var (first, last) = (index, index)
-                func isField(_ index: Int) -> Bool { keys[index].key.text(shifted: false) != nil }
+                func isField(_ index: Int) -> Bool {
+                    let key = keys[index].key
+                    return key.text(shifted: false) != nil && key.alternates != Alternates.periodKey
+                }
                 while first > 0, touching[first], isField(first - 1) { first -= 1 }
                 while last + 1 < keys.count, touching[last + 1], isField(last + 1) { last += 1 }
                 guard first < last else { continue }
                 let (start, end) = (keys[first].frame.x, keys[last].frame.x + keys[last].frame.width)
                 bars.append((key.frame, Rect(x: start, y: y, width: end - start, height: height)))
             }
-            let top = index == 0 ? -Double.infinity : y - metrics.rowGap / 2
-            let bottom = index == layout.rows.count - 1 ? Double.infinity : y + height + metrics.rowGap / 2
+            // WHY: the gap under the action row is the letters', so a reach for the top row never opens a tool.
+            let top =
+                index == 0
+                ? -Double.infinity : rows.last?.first?.key.isTool == true ? y - metrics.rowGap : y - metrics.rowGap / 2
+            let bottom =
+                index == layout.rows.count - 1
+                ? Double.infinity : y + height + (keys.first?.key.isTool == true ? 0 : metrics.rowGap / 2)
             for (index, key) in keys.enumerated() {
                 if let label = key.key.label ?? key.key.text(shifted: false) {
                     labels[label, default: []].append((rows.count, index))
@@ -122,13 +133,17 @@ public struct KeyGrid: Sendable {
             && rows.elementsEqual(other.rows) { $0.elementsEqual($1) { $0.key == $1.key && $0.frame == $1.frame } }
     }
 
+    /// The key a touch at `x`, `y` means: the nearest in its row's band, or none on the action row away from its pills,
+    /// whose margins are empty room, not keys.
     public func index(atX x: Double, y: Double) -> (row: Int, key: Int)? {
         guard let row = bands.firstIndex(where: { $0.contains(y) }),
             let key = rows[row].indices.min(by: {
                 rows[row][$0].frame.distanceSquared(toX: x, y: y) < rows[row][$1].frame.distanceSquared(toX: x, y: y)
             })
         else { return nil }
-        return (row, key)
+        let hit = rows[row][key]
+        let reach = hit.frame.x - metrics.keyGap / 2...hit.frame.x + hit.frame.width + metrics.keyGap / 2
+        return hit.key.isTool && !reach.contains(x) ? nil : (row, key)
     }
 
     /// The chevron a one-handed keyboard draws in its margin to bring both hands back, as Apple places it: 40pt in from
