@@ -1,7 +1,7 @@
 #!/bin/sh
-# Runs on the Mac (ssh mac sh -s <serial> < scripts/resign): signs ~/Developer/iikb-phone/iikb.app and its
-# keyboard with the Mac's identity whose certificate has that serial number, each with the entitlements its embedded
-# profile grants, and does nothing when the Mac has no such identity. The free team holds one development certificate,
+# Runs on the Mac (ssh mac sh -s <serial> < scripts/resign): signs ~/Developer/iikb-phone/iikb.app, its frameworks
+# and its keyboard with the Mac's identity whose certificate has that serial number, the app and keyboard with the
+# entitlements their embedded profiles grant, and does nothing when the Mac has no such identity. The free team holds one development certificate,
 # and when it's the Mac's, xtool provisions for it but can't sign with it, since its key stays in the Mac's login
 # keychain. That keychain opens only in the login session, never over ssh, so the signing runs there as a one-off
 # launch agent, which no one sees.
@@ -17,6 +17,10 @@ dir=$(mktemp -d /tmp/iikb-resign.XXXXXX)
 cat > "$dir/run" <<RUN
 #!/bin/sh
 cd "\$HOME/Developer/iikb-phone"
+for framework in iikb.app/Frameworks/*; do
+  [ -e "\$framework" ] || continue
+  codesign -f -s $identity "\$framework" || exit 1
+done
 for bundle in iikb.app/PlugIns/*.appex iikb.app; do
   security cms -D -i "\$bundle/embedded.mobileprovision" > "$dir/profile.plist" || exit 1
   /usr/bin/python3 -c '
