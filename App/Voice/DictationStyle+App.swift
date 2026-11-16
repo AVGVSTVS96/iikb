@@ -7,10 +7,12 @@ extension VoiceModel {
     struct Written {
         /// As your style and vocabulary have it (`DictationWriting`).
         var text: String
-        /// As the model wrote it.
+        /// As the voice model wrote it.
         var heard: String
-        /// As the model wrote it, with your vocabulary and no style or lists: what a field of addresses or digits reads.
+        /// As the voice model wrote it, with your vocabulary and no style or lists: what a field of addresses or digits
+        /// reads.
         var plain: String
+        /// The models that wrote it: the voice model, and Clean's where its reply was typed.
         var model: String
     }
 
@@ -18,19 +20,21 @@ extension VoiceModel {
     /// recording an ended app left all go through here, in the style picked for `app`, the one it was said for.
     func write(_ recording: [Float], for app: String?) async throws -> Written {
         let (heard, model) = try await write(recording)
+        let edited = await CleanModel.shared.edit(heard)
+        let writing = SettingsStore.load().dictation(in: app)
+        let taken = edited.map { writing.takes($0, of: heard) } ?? false
         return Written(
-            text: DictationWriting.typed(heard, in: app), heard: heard, plain: DictationWriting.plain(heard),
-            model: model)
+            text: writing.typed(heard, edited: edited), heard: heard, plain: DictationWriting.plain(heard),
+            model: taken ? "\(model) + \(CleanModel.name)" : model)
     }
 }
 
 extension DictationWriting {
-    /// What iikb types for what the voice model wrote: as Settings › Voice writes it for `app` (its bundle ID), then with
-    /// your vocabulary's words and the made-up words that sound like them, so a term keeps its own spelling. The keyboard
-    /// sets its capitals.
-    static func typed(_ heard: String, in app: String?) -> String {
-        VoiceVocabulary.shared.vocabulary.corrected(
-            SettingsStore.load().dictation(in: app).written(heard), lexicon: .english)
+    /// What iikb types for what the voice model `heard`, given Clean's model's reply to it where there is one: as
+    /// Settings › Voice writes it, then with your vocabulary's words and the made-up words that sound like them, so a
+    /// term keeps its own spelling. The keyboard sets its capitals.
+    func typed(_ heard: String, edited: String?) -> String {
+        VoiceVocabulary.shared.vocabulary.corrected(written(heard, edited: edited), lexicon: .english)
     }
 
     /// What the voice model wrote, with your vocabulary's words and nothing of the style or lists.

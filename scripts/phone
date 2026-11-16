@@ -15,7 +15,7 @@
 # every 10 minutes, so builds that land meanwhile go up as one; --now skips the wait, --rebuild builds even when nothing
 # changed; the wait comes before the queue, so a run with --now goes up ahead of one waiting. Its build doesn't wait for a turn (~/.local/bin/turn): a build that waited for one while holding the lock
 # could wait on runs queued behind it.
-# Before building it runs scripts/gate and then scripts/formats on that commit, and puts up nothing that fails either.
+# Before building it runs scripts/gate, scripts/formats and scripts/clean on that commit, and puts up nothing that fails one.
 # When main can't get onto the link (a failed check, build or signing, or the Mac not answering), Config/notify, if set
 # up, is told why once, again only if the reason changes, and once more when a build goes up.
 # It also puts the build in hangar, the app on the iPhone that installs all of Bassim's development apps on his tap,
@@ -106,6 +106,8 @@ why="gate build $number fails the typing check (scripts/gate)"
 "$build/scripts/gate" || { echo "build $number (main $commit) fails scripts/gate, so it doesn't go up" >&2; exit 1; }
 why="formats build $number fails the dictation formats check (scripts/formats)"
 "$build/scripts/formats" || { echo "build $number (main $commit) fails scripts/formats, so it doesn't go up" >&2; exit 1; }
+why="clean build $number fails the check on Clean's model (scripts/clean)"
+"$build/scripts/clean" || { echo "build $number (main $commit) fails scripts/clean, so it doesn't go up" >&2; exit 1; }
 why="changelog build $number's changelog couldn't be made"
 for plist in Config/xtool/iikb-Info.plist Config/xtool/Keyboard-Info.plist Config/xtool/Controls-Info.plist; do
   python3 -c "import plistlib, sys; p = plistlib.load(open(sys.argv[1], 'rb')); p['CFBundleVersion'] = sys.argv[2]; plistlib.dump(p, open(sys.argv[1], 'wb'))" "$build/$plist" "$number"

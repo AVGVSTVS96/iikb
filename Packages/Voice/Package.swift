@@ -26,9 +26,16 @@ let package = Package(
         .target(
             name: "VoiceModels",
             dependencies: [
-                "VoiceCapture", .product(name: "KeyboardStore", package: "KeyboardModules"),
+                "VoiceCapture", "VoiceEditor", .product(name: "KeyboardStore", package: "KeyboardModules"),
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ],
             exclude: ["AGENTS.md"], swiftSettings: settings),
+        .target(
+            name: "VoiceEditor", dependencies: ["llama"], exclude: ["AGENTS.md"],
+            swiftSettings: [.treatAllWarnings(as: .error)]),
+        .binaryTarget(
+            name: "llama",
+            url: "https://github.com/ggml-org/llama.cpp/releases/download/b10400/llama-b10400-xcframework.zip",
+            checksum: "ba83d0e9893c76bac0d001aa3e67bb4ca0aedf1e3dec53a1afa97291818bc69b"),
     ]
 )

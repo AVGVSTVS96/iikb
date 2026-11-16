@@ -34,6 +34,8 @@ import bisect, collections, concurrent.futures, datetime, difflib, fcntl, hashli
 from pathlib import Path
 import numpy as np
 
+import stages
+
 ROOT = Path(__file__).resolve().parent.parent
 BACKUP = Path(os.environ.get("IIKB_BACKUP", Path.home() / ".local/share/iikb/backup"))
 DATA = BACKUP.parent / "voicebench"
@@ -234,31 +236,6 @@ def parakeet(sets, cached):
         cache.update({r["id"]: r["text"] for r in written})
         shutil.rmtree(pending)
     return {key: cache[sound] for key, (sound, _) in sounds.items() if sound in cache}
-
-
-def text_stage():
-    """Tools/VoiceBench/Text built here on a package of KeyboardCore alone, as scripts/coretest builds its tests:
-    optimized but file by file, so a change to KeyboardCore rebuilds in about 30 s rather than 95 (SwiftPM's default
-    build system fails without whole-module optimization)."""
-    pkg = ROOT / "build/voicetext"
-    (pkg / "Sources/VoiceText").mkdir(parents=True, exist_ok=True)
-    for link, target in [(pkg / "Sources/KeyboardCore", ROOT / "Packages/KeyboardModules/Sources/KeyboardCore"),
-                         (pkg / "Sources/VoiceText/main.swift", ROOT / "Tools/VoiceBench/Text/main.swift")]:
-        if not link.is_symlink():
-            link.symlink_to(target)
-    (pkg / "Package.swift").write_text("""// swift-tools-version: 6.2
-import PackageDescription
-
-let package = Package(name: "VoiceText", targets: [
-    .target(name: "KeyboardCore", exclude: ["AGENTS.md"]),
-    .executableTarget(name: "VoiceText", dependencies: ["KeyboardCore"]),
-])
-""")
-    built = subprocess.run(["swift", "build", "-c", "release", "--build-system", "native", "-Xswiftc", "-no-whole-module-optimization",
-                            "--package-path", pkg], capture_output=True, text=True)
-    if built.returncode:
-        sys.exit(built.stdout + built.stderr)
-    return pkg / ".build/release/VoiceText"
 
 
 def typed(tool, folder, heard, state):
@@ -466,7 +443,7 @@ def main():
     sets = ["real", "taps", "loud", "spoken"] + [n for n in ("labelled", "read") if (DATA / n / "clips.jsonl").exists()]
     heard = parakeet(sets, "--cached" in sys.argv)
     stage("parakeet")
-    tool = text_stage()
+    tool = stages.text_stage()
     stage("text stage build")
     memory, dictionary, kept = then(MEMORY), then(DICTIONARY), then(SETTINGS)
     numbers, tally_all, read, runs = {}, {}, {}, {}

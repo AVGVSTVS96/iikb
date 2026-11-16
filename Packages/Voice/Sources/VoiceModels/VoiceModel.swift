@@ -8,6 +8,14 @@ import VoiceCapture
 
 nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
 
+/// How far along a model is getting ready: a Parakeet, or Clean's (`CleanModel`).
+public enum ModelState: Equatable, Sendable {
+    case downloading(Double)
+    case loading
+    case ready
+    case failed(String)
+}
+
 /// The speech model voice typing writes with, picked in Settings: one of NVIDIA's Parakeets, run on the Neural Engine by
 /// FluidAudio and downloaded from Hugging Face once, or Apple's SpeechTranscriber. It only ever writes finished
 /// recordings (`write`), so it never stands between you and the microphone: a dictation made while the picked Parakeet
@@ -69,23 +77,21 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         }
     }
 
-    public enum State: Equatable {
-        case downloading(Double)
-        case loading
-        case ready
-        case failed(String)
-    }
-
     private static let modelKey = "voiceModel"
 
     public private(set) var model = UserDefaults.standard.string(forKey: modelKey).flatMap(Model.init) ?? .v3
-    public private(set) var state = State.loading { didSet { if state != oldValue { onState?() } } }
+    public private(set) var state = ModelState.loading { didSet { if state != oldValue { onState?() } } }
     @ObservationIgnored public var onState: (() -> Void)?
     @ObservationIgnored private var parakeet: Task<Dictation, any Error>?
     @ObservationIgnored private var writes = 0
     /// Whether the keyboard can start a dictation in place (iikb's microphone on, or its tab up), which gets the Parakeet
-    /// ready and keeps it for the next dictation.
-    @ObservationIgnored public var micIsOn = false { didSet { if micIsOn { prepare() } else { letGoIfIdle() } } }
+    /// and Clean's model ready and keeps them for the next dictation.
+    @ObservationIgnored public var micIsOn = false {
+        didSet {
+            CleanModel.shared.micIsOn = micIsOn
+            if micIsOn { prepare() } else { letGoIfIdle() }
+        }
+    }
 
     #if targetEnvironment(simulator)
         /// The simulator has no Neural Engine, so a Parakeet would compile on the Mac's CPU, and its UI tests stand in for

@@ -1,5 +1,5 @@
-"""Cleanup sentences said by macOS voices, written by iikb (Parakeet v3 and its text path, as scripts/voiceloop runs
-them), Wispr Flow and Aqua Voice, and scored against what a good dictation types, in two sets kept apart: seen,
+"""Cleanup sentences said by macOS voices, written by iikb (Parakeet v3, Clean's model and the text path after them,
+scripts/stages.py), Wispr Flow and Aqua Voice, and scored against what a good dictation types, in two sets kept apart: seen,
 scripts/rivals.txt, which Clean's rules were written against, and held out, heldout.txt in the data folder, written
 blind (by an agent that never read iikb's code or these sentences) and never shown to whoever works on Clean, so only
 it says how Clean does on sentences nobody fitted it to. iikb's headline is Formal with Clean, picked before the
@@ -18,9 +18,10 @@ Scores, per set, system and kind: exact (the text a good dictation types, its la
 import concurrent.futures, hashlib, json, os, re, shutil, subprocess, sys
 from pathlib import Path
 
+import stages
+
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("RIVALS_DATA", Path.home() / ".local/share/iikb/rivals"))
-LEXICON = ROOT / "Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.lexicon"
 VOICES = ["Samantha", "Daniel"]
 IIKB = {"iikb": ["formal", "clean", "numbered", "on"], "iikb casual": ["casual", "clean", "numbered", "on"], "iikb as said": ["casual", "asSaid", "numbered", "on"]}
 SETS = {"seen": ROOT / "scripts/rivals.txt", "held out": DATA / "heldout.txt"}
@@ -162,36 +163,6 @@ def parakeet(clips):
     return {c["sound"]: cache[c["sound"]] for c in clips}
 
 
-def text_stage():
-    """Tools/VoiceBench/Text on a package of KeyboardCore alone, as scripts/voiceloop builds it."""
-    pkg = ROOT / "build/voicetext"
-    (pkg / "Sources/VoiceText").mkdir(parents=True, exist_ok=True)
-    for link, target in [(pkg / "Sources/KeyboardCore", ROOT / "Packages/KeyboardModules/Sources/KeyboardCore"),
-                         (pkg / "Sources/VoiceText/main.swift", ROOT / "Tools/VoiceBench/Text/main.swift")]:
-        if not link.is_symlink():
-            link.symlink_to(target)
-    (pkg / "Package.swift").write_text("""// swift-tools-version: 6.2
-import PackageDescription
-
-let package = Package(name: "VoiceText", platforms: [.macOS(.v26)], targets: [
-    .target(name: "KeyboardCore", exclude: ["AGENTS.md"]),
-    .executableTarget(name: "VoiceText", dependencies: ["KeyboardCore"]),
-])
-""")
-    built = subprocess.run(["swift", "build", "-c", "release", "--package-path", pkg], capture_output=True, text=True)
-    if built.returncode:
-        sys.exit(built.stdout + built.stderr)
-    return pkg / ".build/release/VoiceText"
-
-
-def typed(tool, heard, settings):
-    vocabulary = DATA / "vocabulary.json"
-    vocabulary.write_text('{"terms": []}')
-    given = "".join(json.dumps(dict(id=s, heard=t)) + "\n" for s, t in heard.items())
-    done = subprocess.run([tool, LEXICON, vocabulary, "-", *settings], input=given, capture_output=True, text=True, check=True)
-    return {r["id"]: r["typed"] for r in map(json.loads, filter(None, done.stdout.split("\n")))}
-
-
 # Scoring
 
 NUMBERS = {w: str(i) for i, w in enumerate(
@@ -231,8 +202,10 @@ def main():
     all_cases = cases()
     said = clips(all_cases)
     heard = parakeet(said)
-    tool = text_stage()
-    answers = {name: typed(tool, heard, settings) for name, settings in IIKB.items()}
+    replies = {sound: row.get("edited") for sound, row in stages.edited(heard).items()}
+    tool = stages.text_stage()
+    typed = {name: stages.typed(tool, heard, settings, replies) for name, settings in IIKB.items()}
+    answers = {name: {sound: text for sound, (text, _) in rows.items()} for name, rows in typed.items()}
     answers["Wispr Flow"] = cached("wispr", said, wispr, workers=1)
     answers["Aqua Voice"] = aqua_defaults(said)
     systems = [*IIKB, *RIVALS]
@@ -256,6 +229,9 @@ def main():
                     continue
                 line += f"{sum(g['exact'] for g in got) / len(got):>8.0%}{sum(g['words'] for g in got) / len(got):>6.0%}{sum(g['wrong'] for g in got) / len(got):>8.1%}"
             print(line)
+
+    for name, rows in typed.items():
+        print(f"{name}: the model's reply typed for {sum(taken for _, taken in rows.values())} of {len(rows)} clips")
 
 
 if __name__ == "__main__":

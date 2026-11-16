@@ -1,0 +1,35 @@
+#!/usr/bin/env -S python3 -B
+"""The gate on Clean's model: each `heard | typed` line of scripts/clean.txt through the app's own Editor with the
+weights the app ships, then KeyboardCore with Clean and the other settings at their defaults, as a message types it
+(scripts/stages.py). A line passes when iikb types `typed` and it typed the model's reply, not the transcript without
+one. Here on Linux or on the Mac. scripts/phone puts nothing that fails it on the install link."""
+
+import sys
+
+import stages
+
+SETTINGS = ["casual", "clean", "numbered", "on"]
+
+
+def main():
+    rows = [line.split(" | ") for line in (stages.ROOT / "scripts/clean.txt").read_text().splitlines()
+            if line.strip() and not line.startswith("#")]
+    heard = {str(i): said for i, (said, _) in enumerate(rows)}
+    edits = stages.edited(heard)
+    typed = stages.typed(stages.text_stage(), heard, SETTINGS, {id: row.get("edited") for id, row in edits.items()})
+    failed = 0
+    for i, (said, wanted) in enumerate(rows):
+        text, taken = typed[str(i)]
+        edit = edits[str(i)]
+        if text == wanted.replace("\\n", "\n") and taken:
+            print(f"pass  {said}")
+            continue
+        failed += 1
+        reply = repr(edit["edited"]) + ("" if taken else ", not taken") if "edited" in edit else f"none, {edit['failure']}"
+        print(f"FAIL  {said}\n      wanted {wanted}\n      typed  {text!r}\n      model  {reply}")
+    print(f"clean: {len(rows) - failed} of {len(rows)} lines pass")
+    sys.exit(1 if failed else 0)
+
+
+if __name__ == "__main__":
+    main()

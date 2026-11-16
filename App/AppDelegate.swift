@@ -16,6 +16,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         Dictation.photosAllowed = photos == .authorized || photos == .limited
         if VoiceModel.hasNeuralEngine { VoiceModel.shared.prepare() }
         LanguageDownloads.shared.reload()
+        CleanModel.shared.prepare()
         Task {
             await Transcripts.shared.recover()
             Backup.syncApp()
