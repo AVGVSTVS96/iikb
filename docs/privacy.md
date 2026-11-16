@@ -16,9 +16,7 @@ Deleting iikb deletes all of it.
 ## What leaves your iPhone, and only when you use it
 
 - **Voice models.** The first time you open the iikb app, it downloads its speech model and a small voice detector
-  from Hugging Face. Apple's speech model, if you pick it, comes from Apple. Clean, if you pick it in Settings › Writing
-  Style › Cleanup, downloads its model from iikb's releases on GitHub. Nothing you say is sent; the models run on the
-  iPhone.
+  from Hugging Face. Apple's speech model, if you pick it, comes from Apple. Nothing you say is sent; the models run on the iPhone.
 - **Languages.** A language you download in iikb's Settings › Languages comes from iikb's releases on GitHub. Nothing
   you type is sent.
 - **GIF search.** What you type into GIF search goes to KLIPY, which returns the GIFs, with a random ID made for this

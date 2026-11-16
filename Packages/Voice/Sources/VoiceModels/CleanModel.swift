@@ -39,6 +39,9 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     /// What iOS must still give the app for the weights to load: twice what they hold beside the mapped file, so the
     /// Parakeet and a dictation keep room.
     private static let room = 2 * Weights.shipped.memory
+    /// WHY: on real dictations Clean 1 cut words that were meant more often than it helped (Nov 16), so Clean types
+    /// with its rules until weights that keep them replace these.
+    private static let ships = false
 
     @ObservationIgnored private var download: Task<Void, Never>?
     @ObservationIgnored private var downloaded = 0.0
@@ -54,7 +57,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     /// download while the weights aren't here, and in memory while the microphone is on or a dictation is being
     /// edited, unless iOS has too little memory left to give. Safe to call on any event, any number of times.
     public func prepare() {
-        guard SettingsStore.load().dictationEditing.asksModel else {
+        guard Self.ships, SettingsStore.load().dictationEditing.asksModel else {
             state = nil
             editor = nil
             download?.cancel()

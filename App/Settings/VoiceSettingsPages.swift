@@ -176,7 +176,7 @@ struct WritingSettings: View {
         Box(
             header: "Cleanup",
             footer:
-                "Clean runs a small language model on this \(ThisDevice.name), not a server, after a one-time download of about 400 MB. It also takes back what you cancel with “scratch that”. Cleanup is the same in every app."
+                "Clean also takes back what you cancel with “scratch that”. Cleanup is the same in every app."
         ) {
             ForEach(DictationEditing.allCases, id: \.self) { editing in
                 ChoiceRow(
