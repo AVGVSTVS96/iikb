@@ -14,7 +14,9 @@ request.recognitionLevel = .accurate
 request.usesLanguageCorrection = false
 try VNImageRequestHandler(cgImage: image).perform([request])
 let lines = (request.results ?? []).compactMap { line in
-    line.topCandidates(1).first.map { (text: $0.string.trimmingCharacters(in: .whitespaces), top: 1 - line.boundingBox.maxY) }
+    line.topCandidates(1).first.map {
+        (text: $0.string.trimmingCharacters(in: .whitespaces), top: 1 - line.boundingBox.maxY)
+    }
 }
 let iikb = { (text: String) in text.count == 4 && text.lowercased().hasSuffix("ikb") }
 let title = lines.contains { iikb($0.text) && $0.top < 0.25 }
