@@ -138,7 +138,7 @@ fun Keycaps(theme: String, appearance: String, dark: Boolean) {
                 val label = if (index == 0) "A" else "B"
                 val cap = Cap(
                     0.0, 0.0, key.first.toDouble(), key.second.toDouble(), "letter", label, null, false, null, "center",
-                    false, false, "letter", "character", true, label.lowercase(), null, label, emptyList(), false,
+                    false, false, "letter", "character", true, label.lowercase(), null, label, emptyList(), startsSwipe = false,
                 )
                 painter.draw(native, cap, swatch.look, paint, false, true, false)
                 native.restore()

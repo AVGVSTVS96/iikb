@@ -48,6 +48,8 @@ struct Cap: Encodable {
     var flicked: String?
     var shown: String?
     var alternates: [String]
+    /// Where the long press opens when it isn't on the key's own character (`Key.holdPick`).
+    var holdPick: String?
     var startsSwipe: Bool
 }
 

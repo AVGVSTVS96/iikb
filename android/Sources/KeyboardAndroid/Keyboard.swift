@@ -120,6 +120,7 @@ final class Keyboard {
                 flicked: key.text(shifted: uppercase, flicked: true).flatMap { $0 == typed ? nil : $0 },
                 shown: typed.map { uppercase ? $0.uppercased() : $0 },
                 alternates: key.alternates.map { uppercase ? $0.uppercased() : $0 },
+                holdPick: key.holdPick.map { uppercase ? $0.uppercased() : $0 },
                 startsSwipe: swipes && key.label?.first?.isLetter == true
             )
         }

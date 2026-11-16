@@ -55,6 +55,7 @@ data class Cap(
     val flicked: String? = null,
     val shown: String? = null,
     val alternates: List<String>,
+    val holdPick: String? = null,
     val startsSwipe: Boolean,
 ) {
     val right get() = x + width

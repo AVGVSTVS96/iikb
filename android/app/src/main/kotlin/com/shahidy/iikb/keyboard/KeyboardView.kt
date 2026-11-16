@@ -217,7 +217,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             val cap = Cap(
                 place.left.toDouble(), (place.top - keysTop).toDouble(), place.width().toDouble(), place.height().toDouble(),
                 "letter", picked, null, true, null, "center", false, false, "letter", "character", true, picked, null,
-                picked, tones, false,
+                picked, tones, startsSwipe = false,
             )
             showAccents(
                 frame, cap, tones, symbols = false, selected = tones.indexOf(picked).coerceAtLeast(0),
@@ -847,7 +847,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
                 touch.cursorX = touch.x
             } else {
                 touch.mode = Mode.ALTERNATES
-                val base = cap.shown ?: ""
+                val base = cap.holdPick ?: cap.shown ?: ""
                 showAccents(frame, cap, cap.alternates, symbols = false, selected = cap.alternates.indexOf(base).coerceAtLeast(0))
             }
             invalidate()
