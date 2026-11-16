@@ -66,7 +66,7 @@ import KeyboardCore
         return Frame(
             layout: grid.signature,
             width: width,
-            height: metrics.height(rows: layout.rows.count, hasNumberRow: layout.hasNumberRow),
+            height: metrics.height(rows: layout.rows.count, shortRows: layout.shortRows),
             showsSuggestions: engine.showsSuggestions,
             caps: caps,
             chips: engine.suggestions.map { Chip(text: $0.title, correction: $0.kind == .correction) },

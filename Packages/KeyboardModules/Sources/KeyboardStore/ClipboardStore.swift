@@ -107,8 +107,11 @@ public final class ClipboardStore {
     }
 
     /// Puts an image item back on the clipboard, for you to paste.
-    public func copy(image name: String, to pasteboard: UIPasteboard = .general) {
-        update { saved, disk in
+    public func copy(
+        image name: String, to pasteboard: UIPasteboard = .general,
+        then copied: @escaping @MainActor (Bool) -> Void = { _ in }
+    ) {
+        update(then: copied) { saved, disk in
             // file: clipboard blob
             guard let data = try? Data(contentsOf: disk.folder.appending(path: name)),
                 let type = UTType(filenameExtension: (name as NSString).pathExtension)
@@ -171,18 +174,24 @@ public final class ClipboardStore {
     /// A history that's there but can't be read (cut short, or kept by a build that writes it another way) is never
     /// written over: saving would put one item in place of all of it, and then in the keyboard's copy too, with the
     /// image files only that history named.
-    private func update(_ edit: @escaping @Sendable (inout Saved, Disk) -> Bool) {
+    /// Edits the history on its queue, saving it when `edit` says it changed, which `done` hears after.
+    private func update(
+        then done: @escaping @MainActor (Bool) -> Void = { _ in },
+        _ edit: @escaping @Sendable (inout Saved, Disk) -> Bool
+    ) {
         let mine = saved
         queue.async { [disk] in
-            let latest = disk.locked {
+            let (latest, edited) = disk.locked {
                 let loaded = disk.load()
-                if loaded == nil, disk.started { return mine ?? Saved() }
+                if loaded == nil, disk.started { return (mine ?? Saved(), false) }
                 var latest = loaded ?? mine ?? Saved()
-                if edit(&latest, disk) { disk.save(latest) }
-                return latest
+                let edited = edit(&latest, disk)
+                if edited { disk.save(latest) }
+                return (latest, edited)
             }
             DispatchQueue.main.async {
                 MainActor.assumeIsolated { [weak self] in
+                    done(edited)
                     guard let self else { return }
                     saved = latest
                     onChange()

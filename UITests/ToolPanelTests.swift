@@ -141,6 +141,45 @@ final class ToolPanelTests: XCTestCase {
         try shot("clipboard-preview")
     }
 
+    func testAnActionRowPillOpensItsPanelAndTheRowsMarginsTakeNoTaps() throws {
+        addTeardownBlock { _ = self.launch(["-iikbActionRow", "NO"]) }
+        let app = launch(["-iikbActionRow", "YES", "-iikbActionRowInLandscape", "YES"])
+        let pill = key("Clipboard", in: app)
+        XCTAssertTrue(pill.waitForExistence(timeout: 10), "the action row shows above the letters")
+        try shot("action-row")
+        let first = key("GIFs", in: app).frame
+        let q = key("q", in: app).frame
+        XCTAssertGreaterThan(first.minX - q.minX, 8, "the pills leave a margin above q")
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: q.minX + 4, dy: first.midY)).tap()
+        let list = app.descendants(matching: .any).matching(identifier: "iikb.clipboard").firstMatch
+        XCTAssertFalse(list.waitForExistence(timeout: 1.5), "a tap in the margin opens nothing")
+        XCTAssertTrue(key("space", in: app).isHittable, "and leaves the keys")
+        pill.tap()
+        XCTAssertTrue(list.waitForExistence(timeout: 5), "a pill opens its panel")
+        try shot("action-row-clipboard")
+    }
+
+    func testSecondaryShowsWhatWasCopiedEachTimeItIsShown() throws {
+        UIPasteboard.general.string = "Sightglass at 4, bring the deck"
+        addTeardownBlock { _ = self.launch(["-iikbMode", "primary"]) }
+        let app = launch(["-iikbMode", "secondary"])
+        let first = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.Sightglass at 4'")
+        ).firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 10), "Secondary opens on the menu with what you copied")
+        XCTAssertFalse(key("space", in: app).exists && key("space", in: app).isHittable, "and no letters")
+        try shot("secondary")
+
+        XCUIDevice.shared.press(.home)
+        UIPasteboard.general.string = "Blue Bottle at 5 instead"
+        app.activate()
+        let second = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.Blue Bottle at 5'")
+        ).firstMatch
+        XCTAssertTrue(second.waitForExistence(timeout: 10), "shown again, its shelves have what was copied meanwhile")
+        try shot("secondary-again")
+    }
+
     func testHoldingAShelfItemShowsAllOfIt() throws {
         UIPasteboard.general.string =
             "Meet at Sightglass on 7th, 4pm? Bring the deck and both printouts, and ask Sam about Thursday."
@@ -356,12 +395,13 @@ final class ToolPanelTests: XCTestCase {
         try shot("transcripts-preview")
     }
 
-    private func launch() -> XCUIApplication {
+    private func launch(_ arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = [
-            "-iikbFocus", "YES", "-iikbOrientation", orientation, "-iikbOneHanded", "off", "-iikbCompactPanels",
-            compactSetting ? "YES" : "NO",
-        ]
+        app.launchArguments =
+            [
+                "-iikbFocus", "YES", "-iikbOrientation", orientation, "-iikbOneHanded", "off", "-iikbCompactPanels",
+                compactSetting ? "YES" : "NO",
+            ] + arguments
         app.launchWithIikb()
         return app
     }

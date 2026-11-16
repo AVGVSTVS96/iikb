@@ -28,7 +28,8 @@ UIKit, the parts any keyboard can build on, with no private API. Keyboard behavi
 
 ## For the app
 
-- `KeyboardPreviewView`: the keyboard as some settings make it look, drawn by the keyboard's own views, for the app's preview.
+- `MenuShelf`: one of the menu's shelves, its name down its side beside what it holds on Liquid Glass, for FullKeyboard's `MenuView` and for Secondary in the app's preview; `Panel.color` is its head's color, which the app's Custom Keys page takes too.
+- `KeyboardPreviewView`: the keyboard as some settings make it look, drawn by the keyboard's own views, for the app's preview, and in Secondary the menu's empty shelves in the keys' place.
 - `KeycapSwatchView`: a theme's A and B keys, for its picker.
 - `TapMapView`: the keyboard drawn with what the touch model learned (Heat, Aim, Accuracy), and `TapCharts` (the heat ramp, a key's close-up and the thumbs' pull arrows).
 

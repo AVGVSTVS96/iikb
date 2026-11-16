@@ -181,7 +181,7 @@ final class EditPill: UIButton {
 }
 
 extension Panel {
-    package var title: String {
+    public var title: String {
         switch self {
         case .emoji: "Emoji"
         case .gif: "GIFs"
@@ -192,13 +192,24 @@ extension Panel {
     }
 
     /// The tool's glyph, filled as the More button's squares are, at one size with every tool's (`symbol`).
-    package func icon(_ side: CGFloat) -> UIImage? {
+    public func icon(_ side: CGFloat) -> UIImage? {
         switch self {
         case .emoji: Self.symbol("face.smiling.inverse", side)
         case .gif: Self.gifGlyph(side, filled: true)
         case .clipboard: Self.symbol("list.clipboard.fill", side)
         case .transcripts: Self.symbol("text.bubble.fill", side)
         case .chats: Self.symbol("bubble.left.and.bubble.right.fill", side)
+        }
+    }
+
+    /// The tool's glyph on an action key, in outline as the keys' glyphs are, at one size with every tool's.
+    package func keyIcon(_ side: CGFloat) -> UIImage? {
+        switch self {
+        case .emoji: Self.symbol("face.smiling", side)
+        case .gif: Self.gifGlyph(side)
+        case .clipboard: Self.symbol("list.clipboard", side)
+        case .transcripts: Self.symbol("text.bubble", side)
+        case .chats: Self.symbol("bubble.left.and.bubble.right", side)
         }
     }
 

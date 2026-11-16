@@ -13,6 +13,8 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
     /// What a row's length is counted in, Settings › Layout › Clipboard Length.
     var length: () -> ClipboardLength = { .characters }
     var onPaste: (String) -> Void = { _ in }
+    /// An image was copied for you to paste.
+    var onCopied: () -> Void = {}
     var onTurnOn: () -> Void = {}
     /// The search row's notice changed.
     var changed: () -> Void = {}
@@ -175,9 +177,12 @@ final class ClipboardPanel: UIView, PanelContent, UICollectionViewDataSource, UI
                 onPaste(text)
             }
         case .image(let name):
-            store.copy(image: name)
-            notice = "Copied. Paste it in your message."
-            changed()
+            store.copy(image: name) { [weak self] copied in
+                guard let self else { return }
+                notice = copied ? "Copied. Paste it in your message." : "Couldn't copy that image."
+                changed()
+                if copied { onCopied() }
+            }
         }
     }
 

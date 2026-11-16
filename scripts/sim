@@ -303,6 +303,7 @@ APP_PAGES="home -iikbTab home
 typing -iikbFocus YES
 settings -iikbSettings YES
 appearance -iikbSettings appearance
+custom-keys -iikbSettings customKeys
 languages -iikbSettings languages
 typing-settings -iikbSettings typing
 feedback -iikbSettings feedback

@@ -24,8 +24,23 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var emojiKey = true
     /// The globe key at the far left of an iPhone's bottom row, where iOS wants a way to the next keyboard.
     public var globeKey = GlobeKey.spacer
+    /// The mic, at the bar's right or as the Record Key (`micKey`); without it the keyboard has no way to dictate.
+    public var dictationButton = true
     /// The record button at the far left of an iPhone's bottom row, in the globe's place, instead of at the bar's right.
     public var micKey = false
+    /// The keys beside the space bar in their order, space among them (`BottomKey`).
+    public var aroundSpace = BottomKey.standard
+    /// A period key in the bottom row of plain fields, its long press offering more punctuation.
+    public var periodKey = false
+    /// The actions as a row of keys above an iPhone's letters (`actionPlace`).
+    public var actionRow = false
+    /// The action row in landscape too, where it otherwise moves to the bar's left.
+    public var actionRowInLandscape = false
+    /// The tools the action row and the bar offer, in their order.
+    public var actions = Panel.standardActions
+    public var mode = KeyboardMode.primary
+    /// In Secondary mode, the next keyboard comes up once something in the menu is used.
+    public var switchOnClose = true
     /// The emoji and GIF panels as one row that scrolls sideways on every screen, as they are in landscape.
     public var compactPanels = false
     /// What a clipboard item's length is counted in, beside its age in the keyboard's clipboard and the app's.
@@ -35,8 +50,8 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var split = false
     public var keySpacing = KeySpacing.standard
     public var keyRoundness = KeyRoundness.standard
-    /// Where the menu of layouts, Next Keyboard and iikb Settings opens: holding 123 or emoji, the bar's menu button, or both.
-    public var keyboardMenu = KeyboardMenu.both
+    /// The More button at the bar's left, or nothing there.
+    public var leadingButton = LeadingButton.menu
     public var theme = ThemeName.standard
     public var themeAppearance = ThemeAppearance.automatic
     public var stopAnimation = StopAnimation.squeeze
@@ -74,7 +89,6 @@ public struct KeyboardSettings: Hashable, Sendable {
     }()
 }
 
-/// Where an iPhone's keyboard menu opens. An iPad has no hold menu, so its menu button always shows.
 /// What the globe at the far left of an iPhone's bottom row does: switch keyboards, or sit there as a spacer that does
 /// nothing when tapped, or not be there. Spacer and Hidden put Next Keyboard in the keyboard's menu.
 public enum GlobeKey: String, CaseIterable, Hashable, Sendable {
@@ -85,18 +99,6 @@ public enum GlobeKey: String, CaseIterable, Hashable, Sendable {
         case .switches: "Switches Keyboards"
         case .spacer: "Spacer"
         case .hidden: "Hidden"
-        }
-    }
-}
-
-public enum KeyboardMenu: String, CaseIterable, Hashable, Sendable {
-    case both, hold, button
-
-    public var title: String {
-        switch self {
-        case .both: "Both"
-        case .hold: "Hold 123"
-        case .button: "Menu Button"
         }
     }
 }

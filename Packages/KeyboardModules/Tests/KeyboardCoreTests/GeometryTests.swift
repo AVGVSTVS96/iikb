@@ -45,8 +45,8 @@ struct GeometryTests {
             settings.numberRow = numberRow
             for screen in Duo.Screen.allCases.map(\.size) + Self.phones {
                 let keys = preview(.phone, on: screen, settings: settings)
-                #expect(keys.layout.hasNumberRow == numberRow)
-                #expect(keys.height == keys.metrics.height(rows: keys.layout.rows.count, hasNumberRow: numberRow))
+                #expect((keys.layout.shortRows == 1) == numberRow)
+                #expect(keys.height == keys.metrics.height(rows: keys.layout.rows.count, shortRows: numberRow ? 1 : 0))
             }
         }
     }

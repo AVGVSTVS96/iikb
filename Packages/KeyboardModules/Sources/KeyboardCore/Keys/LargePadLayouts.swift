@@ -10,7 +10,7 @@ enum LargePadLayouts {
                     [capsLock] + RowItem.keys("asdfghjkl;'", secondaries: "         :\"", pairs: true) + [returnKey],
                     [shift] + RowItem.keys("zxcvbnm,./", secondaries: "       <>?", pairs: true) + [trailingShift],
                     bottomRow(context, layerKey: .numbers),
-                ], hasNumberRow: true)
+                ], shortRows: 1)
         case .numbers, .symbols:
             return KeyboardLayout(
                 rows: [
@@ -21,7 +21,7 @@ enum LargePadLayouts {
                         .spacer(.fill)
                     ],
                     bottomRow(context, layerKey: .letters),
-                ], hasNumberRow: true)
+                ], shortRows: 1)
         }
     }
 
@@ -34,7 +34,7 @@ enum LargePadLayouts {
                 [capsLock] + row(2) + [returnKey],
                 [.key(Key(.shift, width: .pitch(1.27)))] + row(3) + [trailingShift],
                 bottomRow(context, layerKey: .numbers),
-            ], hasNumberRow: true)
+            ], shortRows: 1)
     }
 
     /// The European layouts of Apple's 13-inch iPad keyboard, its Magic Keyboard's: a key more on the top letter row,

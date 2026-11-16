@@ -58,7 +58,7 @@ let grid = KeyGrid(layout, width: view.bounds.width, metrics: metrics.grid, sign
 engine.use(grid)
 ```
 
-`grid.rows` holds each key's frame. `KeyFace(key, trailing:, context: engine.faces(on: device))` gives each key's label: a letter, a word, or an SF Symbol name. `KeyboardTheme` gives the colors: `.light(.current)` and `.dark(.current)` are Apple's, and `KeyboardTheme.named(.mechanical, dark: dark, style: .current)` gives one of iikb's five themes (`ThemeName`). Set your keys view's height to `metrics.height(rows:hasNumberRow:)` and the bar's to `metrics.toolbar.height`.
+`grid.rows` holds each key's frame. `KeyFace(key, trailing:, context: engine.faces(on: device))` gives each key's label: a letter, a word, or an SF Symbol name. `KeyboardTheme` gives the colors: `.light(.current)` and `.dark(.current)` are Apple's, and `KeyboardTheme.named(.mechanical, dark: dark, style: .current)` gives one of iikb's five themes (`ThemeName`). Set your keys view's height to `metrics.height(rows: layout.rows.count, shortRows: layout.shortRows)` and the bar's to `metrics.toolbar.height`.
 
 **4. Touches.** Find the key under a finger with `engine.key(atX:y:in: grid)`, not with the frames. It reads the touch model, so a tap where your thumb usually lands for a key goes to that key. Then send:
 

@@ -17,7 +17,7 @@ public struct KeyboardGeometry: Hashable, Sendable {
     }
 
     /// The keys' height, under the bar.
-    public var height: Double { metrics.height(rows: layout.rows.count, hasNumberRow: layout.hasNumberRow) }
+    public var height: Double { metrics.height(rows: layout.rows.count, shortRows: layout.shortRows) }
 
     public var grid: KeyGrid { KeyGrid(layout, width: width, metrics: metrics.grid, signature: context.signature) }
 }

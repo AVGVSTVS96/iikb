@@ -8,12 +8,13 @@ import VoiceModels
 /// takes the first pane and the picked page the second; elsewhere a page opens on its own.
 struct SettingsPage: View {
     enum Page: String, CaseIterable, Hashable {
-        case appearance, languages, typing, feedback, voice, writing, dictionary, extensions, sources, access, privacy,
+        case appearance, customKeys, languages, typing, feedback, voice, writing, dictionary, extensions, sources,
+            access, privacy,
             changelog,
             about
 
         static let sections: [(title: String, pages: [Page])] = [
-            ("Keyboard", [.appearance, .languages, .typing, .feedback]),
+            ("Keyboard", [.appearance, .customKeys, .languages, .typing, .feedback]),
             ("Voice Typing", [.voice, .writing, .dictionary]),
             ("iikb", [.extensions, .sources, .access, .privacy, .changelog, .about]),
         ]
@@ -21,6 +22,7 @@ struct SettingsPage: View {
         var title: String {
             switch self {
             case .appearance: "Appearance"
+            case .customKeys: "Custom Keys"
             case .languages: "Languages"
             case .typing: "Typing"
             case .feedback: ThisDevice.hasHaptics ? "Sound & Haptics" : "Sound"
@@ -39,6 +41,7 @@ struct SettingsPage: View {
         var glyph: (String, Color) {
             switch self {
             case .appearance: ("paintpalette.fill", .purple)
+            case .customKeys: ("keyboard.fill", .mint)
             case .languages: ("globe", .blue)
             case .typing: ("character.cursor.ibeam", .cyan)
             case .feedback: (ThisDevice.hasHaptics ? "hand.tap.fill" : "speaker.wave.2.fill", .pink)
@@ -61,6 +64,7 @@ struct SettingsPage: View {
             let words = VoiceVocabulary.shared.vocabulary.terms.count
             return switch self {
             case .appearance: settings.theme.title
+            case .customKeys: settings.mode.title
             case .languages: settings.languages.map(\.name).joined(separator: ", ")
             case .typing: settings.autoCorrection ? "Auto-Correction On" : "Auto-Correction Off"
             case .privacy, .changelog: nil
@@ -76,7 +80,7 @@ struct SettingsPage: View {
         }
 
         /// The keyboard's pages show iikb drawn as their settings make it, with a field to try it.
-        var showsKeyboard: Bool { [.appearance, .languages, .typing, .feedback].contains(self) }
+        var showsKeyboard: Bool { [.appearance, .customKeys, .languages, .typing, .feedback].contains(self) }
 
         /// Whether the page opens on a box's header, which beside the list sits level with the list's first header.
         @MainActor var opensOnHeader: Bool {
@@ -186,6 +190,7 @@ struct SettingsContent: View {
             if page.showsKeyboard { TryPreview() }
             switch page {
             case .appearance: AppearanceSettings()
+            case .customKeys: CustomKeysSettings()
             case .languages: LanguageSettings()
             case .typing: TypingSettings()
             case .feedback: FeedbackSettings()

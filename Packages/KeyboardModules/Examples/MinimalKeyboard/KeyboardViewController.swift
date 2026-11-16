@@ -109,7 +109,7 @@ final class KeyboardViewController: UIInputViewController {
         engine.use(keys.grid)
         let heights = (
             bar: metrics.toolbar.height,
-            keys: metrics.height(rows: layout.rows.count, hasNumberRow: layout.hasNumberRow)
+            keys: metrics.height(rows: layout.rows.count, shortRows: layout.shortRows)
         )
         if barHeight.constant != heights.bar { barHeight.constant = heights.bar }
         if keysHeight.constant != heights.keys { keysHeight.constant = heights.keys }

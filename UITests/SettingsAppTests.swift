@@ -3,7 +3,7 @@ import XCTest
 final class SettingsAppTests: XCTestCase {
     func testSettingsAppSharesSwitchesWithApp() throws {
         let iikb = XCUIApplication()
-        iikb.launchArguments = ["-iikbResetSettings", "YES", "-iikbSettings", "appearance"]
+        iikb.launchArguments = ["-iikbResetSettings", "YES", "-iikbSettings", "customKeys"]
         iikb.launch()
         let inApp = iikb.switches["Emoji Key"]
         XCTAssertTrue(inApp.waitForExistence(timeout: 5))
@@ -30,7 +30,7 @@ final class SettingsAppTests: XCTestCase {
         XCTAssertEqual(inSettings.value as? String, "0")
         settings.terminate()
 
-        iikb.launchArguments = ["-iikbSettings", "appearance"]
+        iikb.launchArguments = ["-iikbSettings", "customKeys"]
         iikb.launch()
         XCTAssertTrue(inApp.waitForExistence(timeout: 5))
         XCTAssertEqual(inApp.value as? String, "0")

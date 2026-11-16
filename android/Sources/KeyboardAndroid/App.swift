@@ -61,12 +61,12 @@ public func keysHere(env: Env, _: jclass, width: jdouble, height: jdouble, folds
     let short = min(width, height)
     let device = DeviceClass(screen: Size(width: width, height: height), folds: folds != 0)
     let all = LayoutContext(
-        device: device, layer: .letters, showsEmoji: true, showsNumberRow: true, keyboardMenu: .hold)
+        device: device, layer: .letters, showsEmoji: true, showsNumberRow: true, leadingButton: .hidden)
     let upright = Size(width: short, height: max(width, height))
     let keys = KeysHere(
         numberRow: all.showsNumberRow, emojiKey: all.showsEmoji,
         recordKey: LayoutContext(device: device, layer: .letters, showsMicKey: true).showsMicKey,
-        keyboardMenu: all.keyboardMenu == .hold,
+        keyboardMenu: all.leadingButton == .hidden,
         split: LayoutContext(device: device, layer: .letters, isLandscape: true, isOpen: true).allowsSplit,
         oneHanded: LayoutContext(device: device, layer: .letters).allowsOneHanded,
         largePanels: !KeyboardGeometry(LayoutContext(device: device, layer: .letters), screen: upright, style: .ios27)
