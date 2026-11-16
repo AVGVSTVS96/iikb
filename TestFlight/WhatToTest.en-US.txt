@@ -1,5 +1,3 @@
-- Dictation: turn on the mic switch at the top of Home, then dictate from the keyboard in any app. The small iikb strip over other apps is gone.
-- Chats: return now starts a new line, and the ↑ in the box sends.
-- Clipboard: links from the same site show which page they are, like github/swift beside github/vercel.
-- In Instagram, @ and # are on 123 now, so a tap near the end of the space bar types a space.
-- Fix: the app could freeze when the keyboard came up in the Try iikb box on Home.
+- Dictation: the small iikb strip over other apps is gone. Turn on the mic switch at the top of Home and the microphone stays on, so you can dictate from the keyboard in any app.
+- Dictate with music playing on the iPhone, a Bluetooth speaker or headphones, even a speaker you connect after the mic is on. Tell us if the music or the mic stops.
+- Transcripts: if your voice model is Parakeet, dictations that older builds wrote with Apple's model while Parakeet loaded are rewritten with Parakeet, as long as their recording is still kept.
