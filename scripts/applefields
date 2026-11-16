@@ -1,0 +1,76 @@
+#!/bin/bash
+# Runs on a Mac (scripts/ci 'scripts/applefields <name>'). UITests/AppleFields in Apple's apps on each screen,
+# with Apple's keyboard and iikb: shots, hierarchies and measurements into shots/raw/fields/<name>/.
+# SCREENS picks Duo screens ("iphone17" is the iPhone 17), KEYBOARDS and APPS pick the rest.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+tag=${1:-v1}
+export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
+out=$PWD/shots/raw/fields/$tag
+mkdir -p "$out"
+xcodegen generate -q
+eval "$(sed -n '/^DUO_SCREENS=/,/"$/p' scripts/sim)"
+
+run() { # id screen display orientation keyboard
+  local id=$1 screen=$2 display=$3 orientation=$4 keyboard=$5 name log
+  name=$out/$screen-$keyboard-$SIZE
+  log=build/uitest/fields-$screen-$keyboard.log
+  [ "$keyboard" = system ] || [ "$keyboard" = iikb ] || return 0
+  xcrun simctl ui "$id" content_size "$SIZE"
+  (
+    while sleep 0.05; do
+      for hold in "$out"/*.hold; do
+        [ -e "$hold" ] || continue
+        xcrun simctl io "$id" screenshot ${display:+--display="$display"} "${hold%.hold}.png" >/dev/null 2>&1 || echo "no shot for $hold" >&2
+        rm "$hold"
+      done
+    done
+  ) &
+  local shooter=$!
+  TEST_RUNNER_IIKB_SHOTS=$name TEST_RUNNER_IIKB_FIELDS_APPS=${APPS:-messages} \
+    TEST_RUNNER_IIKB_KEYBOARD=$keyboard TEST_RUNNER_IIKB_SCREEN=$screen \
+    xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb \
+    -destination "id=$id" -derivedDataPath build/uitest -only-testing:AppUITests/AppleFields/testFields >"$log" 2>&1 || failed=1
+  grep -E "error:|Test Case .*(passed|failed)" "$log" || true
+  kill "$shooter" 2>/dev/null || true
+  wait "$shooter" 2>/dev/null || true
+}
+
+case ${SCREENS:-iphone17} in
+  *duo* | *folded* | *open*) duo=1 ;;
+  *) duo= ;;
+esac
+
+if [ -z "$duo" ]; then
+  ID=$(scripts/sim ensure "iPhone 17" iPhone-17)
+else
+  ID=$(scripts/sim ensure "iPhone Duo" iPhone-Duo)
+fi
+xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest -quiet
+touch "$APP"
+scripts/sim boot "$ID"
+for key in KeyboardAutocorrection KeyboardAutocapitalization; do xcrun simctl spawn "$ID" defaults write com.apple.Preferences "$key" -bool NO; done
+xcrun simctl shutdown "$ID"
+scripts/sim boot "$ID"
+xcrun simctl listapps "$ID" | grep -oE 'CFBundleIdentifier = "?com\.apple\.[A-Za-z.]*' | sed 's/.*= "\?//' | sort >"$out/installed-apps.txt"
+eval "$(sed -n '/^DUO_SCREENS=/,/"$/p' scripts/sim)"
+for keyboard in ${KEYBOARDS:-system iikb}; do
+  scripts/sim use "$ID" "$keyboard"
+  if [ -z "$duo" ]; then
+    for SIZE in ${SIZES:-large}; do run "$ID" iphone17 "" portrait "$keyboard"; done
+    continue
+  fi
+  scripts/sim unfold "$ID" 0
+  while read -r screen hinge orientation display; do
+    [ -n "${SCREENS:-}" ] && [[ " $SCREENS " != *" $screen "* ]] && continue
+    scripts/sim unfold "$ID" "$hinge"
+    scripts/sim hub "$ID" orientation "$orientation"
+    for SIZE in ${SIZES:-large}; do run "$ID" "$screen" "$display" "$orientation" "$keyboard"; done
+  done <<<"$DUO_SCREENS"
+done
+TEST_RUNNER_IIKB_FIELDS_DIR=$out xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj \
+  -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest -only-testing:AppUITests/AppleFields/testAnalyze 2>&1 \
+  | grep -E "error:|Test Case .*(passed|failed)" || true
+cat "$out/analysis.txt" || true
+find "$out" -type f | sort
+exit "${failed:-0}"
