@@ -464,21 +464,31 @@ struct Session {
     }
 
     mutating func type(_ word: String, by user: inout SimulatedUser, tappingSpace: Bool) {
+        let taps = word.filter(user.canTap).map { user.tap($0) }
+        type(word, taps: taps, space: tappingSpace ? user.tap(" ") : nil, typingSpaceHits: tappingSpace)
+    }
+
+    /// `word` typed with `taps`, then `space`, or a space with no tap to read; a tap on the space bar among the letters
+    /// is typed only with `typingSpaceHits`.
+    mutating func type(
+        _ word: String, taps: [(Double, Double)], space: (Double, Double)?, typingSpaceHits: Bool = true
+    ) {
         let start = document.text.count
         let predictions = engine.suggestions.map { $0.text.lowercased() }
         var typed = ""
-        for character in word + (tappingSpace ? " " : "") where user.canTap(character) {
-            let (x, y) = user.tap(character)
+        func tap(_ x: Double, _ y: Double) -> String? {
             let hit = keyboard == .baseline ? grid.index(atX: x, y: y) : engine.key(atX: x, y: y, in: grid)
-            guard let hit, let label = grid.rows[hit.row][hit.key].key.label, tappingSpace || label != " " else {
-                continue
+            guard let hit, let label = grid.rows[hit.row][hit.key].key.label, typingSpaceHits || label != " " else {
+                return nil
             }
-            if character != " " { typed += label }
-            if character == " " { shown = engine.suggestions.map { $0.text.lowercased() } }
             engine.perform(label == " " ? .space : .character(label), in: document, tap: Tap(x: x, y: y, key: label))
+            return label
         }
-        if !tappingSpace {
-            shown = engine.suggestions.map { $0.text.lowercased() }
+        for (x, y) in taps { typed += tap(x, y) ?? "" }
+        shown = engine.suggestions.map { $0.text.lowercased() }
+        if let space {
+            _ = tap(space.0, space.1)
+        } else {
             engine.perform(.space, in: document)
         }
         if keyboard == .decoder {
@@ -593,6 +603,17 @@ struct Score: CustomStringConvertible {
         }
     }
 
+    mutating func add(_ other: Score) {
+        words += other.words
+        raw += other.raw
+        corrected += other.corrected
+        topThree += other.topThree
+        predicted += other.predicted
+        fixed += other.fixed
+        broken += other.broken
+        brokenWords += other.brokenWords
+    }
+
     private func percent(_ count: Int) -> String {
         String(format: "%.1f%%", Double(count) * 100 / Double(max(words, 1)))
     }
@@ -627,7 +648,9 @@ struct SplitMix64 {
 }
 
 final class Document: TextDocument {
-    private(set) var text = ""
+    private(set) var text: String
+
+    init(_ text: String = "") { self.text = text }
 
     var textBeforeInput: String? { text }
     var textAfterInput: String? { nil }
