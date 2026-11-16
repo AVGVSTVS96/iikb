@@ -36,6 +36,7 @@ Development happens on a Linux box. Simulator builds, tests and screenshots run 
 - Simulator checks run by default: a change gets the verify skill's row for what it touches, through `scripts/ci`, and is then checked on the iPhone. Every push to main also runs `scripts/verify` there, the newest commit waiting while one runs.
 - Device builds take the team from `Config/Team.xcconfig` (`DEVELOPMENT_TEAM = …`, not committed), which syncing leaves in place.
 - To prove a change works, follow the `verify` skill (`.claude/skills/verify`).
+- Follow and use pstack's skills (the pstack Claude Code plugin) when doing work on iikb.
 
 Prefer committing straight to main, merge parallel work like a zipper on new projects
 
