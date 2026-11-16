@@ -22,7 +22,8 @@ public struct TapEvidence: Hashable, Sendable {
 }
 
 /// Finds the words a sequence of taps most likely meant: exact A* over the lexicon trie, scoring each word as
-/// P(taps | word) × P(word). A word may differ by one missed, extra or swapped tap (about 1 in 100 keystrokes), and
+/// P(taps | word) × P(word). A word may differ by one missed, extra or swapped tap (about 1 in 100 keystrokes), the last
+/// letter's missed tap too, so a word left a letter short is read as the word as well as completed to it, and
 /// typing a contraction's apostrophe is a coin flip. Each node's subtree mass bounds every word below it, so the
 /// search finds the best words first.
 struct Decoder {
@@ -82,6 +83,7 @@ struct Decoder {
         var heap = Heap<State>()
         var found: [Result] = []
         var seen: Set<Lexicon.Node> = []
+        var completed: Set<Lexicon.Node> = []
         var trail = Trail()
         var exact = 0
         var pops = 0
@@ -105,7 +107,9 @@ struct Decoder {
         while found.count < count || exact == 0, pops < budget, let state = heap.pop() {
             pops += 1
             if state.terminal {
-                guard seen.insert(state.node).inserted else { continue }
+                let fresh =
+                    state.completing ? completed.insert(state.node).inserted : seen.insert(state.node).inserted
+                guard fresh else { continue }
                 let word = trail.word(state.spelling, in: lexicon)
                 let logPrior = lexicon.logWord(state.node) ?? 0
                 found.append(
@@ -137,6 +141,12 @@ struct Decoder {
                         spelling: spelling, terminal: false)
                     if lexicon.logWord(child) != nil { emit(next) }
                     push(next)
+                    if !state.completing, state.edits == 0, !apostrophe {
+                        push(
+                            State(
+                                node: child, tap: i, edits: 1, completing: false,
+                                score: state.score + Self.editLogProbability, spelling: spelling, terminal: false))
+                    }
                     continue
                 }
                 guard !state.completing else { continue }

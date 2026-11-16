@@ -420,7 +420,8 @@ extension TypingEngine {
         else { return false }
         let word = written(Words.matchCase(joined, to: Substring(pending.typed)))
         write(word + " ", replacing: pending.word.count + 1, in: document)
-        revert = Revert(original: pending.word + ".", replacement: word, trailing: " ")
+        let period = settings.periodShortcut && traits.smartPunctuation && Self.endsSentenceable(text)
+        revert = Revert(original: pending.typed + (period ? "." : " "), replacement: word, trailing: " ")
         corrector.forget(pending.word, after: context.previous, earlier: context.earlier)
         corrector.record(word, after: context.previous, earlier: context.earlier)
         corrector.changeMemory { $0.unrecordSpaceAfterSpace(keepingKey: false) }

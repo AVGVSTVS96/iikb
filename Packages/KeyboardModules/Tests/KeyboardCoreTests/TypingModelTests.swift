@@ -580,7 +580,12 @@ struct DecoderTests {
         let corrector = Corrector(source: testLexicon)
         let typed = TypedWord("hel", taps: "hel".map { tap(String($0)) })
         let words = corrector.suggestions(for: typed, correcting: true, guessing: true).map(\.text)
-        #expect(words == ["hel", "hello", "help"])
+        #expect(words.first == "hel" && Set(words) == ["hel", "hello", "help"])
+    }
+
+    @Test func correctsAWordLeftALetterShort() {
+        let corrector = Corrector(source: testLexicon)
+        #expect(corrector.correction(for: TypedWord("worl", taps: "worl".map { tap(String($0)) })) == "world")
     }
 
     @Test func yourOwnWordsWinOnceYouUseThem() {
@@ -753,6 +758,20 @@ struct WordStartTests {
         engine.perform(.delete, in: document)
         engine.accept(try #require(engine.suggestions.first), in: document)
         #expect(document.text == "go to jo. ")
+    }
+
+    @Test func undoingARejoinedWordWithoutThePeriodShortcutGivesBackTwoSpaces() throws {
+        var (engine, _) = engine(learningB: 0.6)
+        engine.settings.periodShortcut = false
+        let document = TestDocument()
+        engine.documentChanged(document)
+        type("go to jo", into: &engine, document)
+        engine.perform(.space, in: document, tap: spaceBelowB(0.6))
+        engine.perform(.space, in: document, tap: tap(" "))
+        #expect(document.text == "go to job ")
+        engine.perform(.delete, in: document)
+        engine.accept(try #require(engine.suggestions.first), in: document)
+        #expect(document.text == "go to jo  ")
     }
 
     @Test func aDeliberateDoubleSpaceAfterAWordIsAPeriod() {

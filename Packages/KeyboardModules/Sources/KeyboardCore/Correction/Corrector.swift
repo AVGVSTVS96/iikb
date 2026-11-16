@@ -29,6 +29,12 @@ public final class Corrector {
     private var unknown: Double?
     private var letterKeys: LetterKeys?
 
+    /// A word as typed, or as one you're still typing, each ranked on its own.
+    private struct Reading: Hashable {
+        var word: String
+        var isCompletion: Bool
+    }
+
     private struct Ranking: Hashable {
         var typed: TypedWord
         var alone: Bool
@@ -366,14 +372,15 @@ extension Corrector {
             : languageModel(lexicon)
         let taps = evidence(for: typed, touches: memory.touches)
         let literal = typed.text.lowercased()
-        var candidates: [String: Candidate] = [:]
+        var candidates: [Reading: Candidate] = [:]
         func consider(_ word: String, logLikelihood: Double, isCompletion: Bool) {
             let lower = word.lowercased()
             let isLiteral = lower == literal
+            let reading = Reading(word: lower, isCompletion: isCompletion && !isLiteral)
             let score = logLikelihood + model.logProbability(word, after: typed.previous)
-            guard score > -.infinity, score > candidates[lower]?.logPosterior ?? -.infinity else { return }
-            candidates[lower] = Candidate(
-                word: word, logLikelihood: logLikelihood, logPosterior: score, isCompletion: isCompletion && !isLiteral,
+            guard score > -.infinity, score > candidates[reading]?.logPosterior ?? -.infinity else { return }
+            candidates[reading] = Candidate(
+                word: word, logLikelihood: logLikelihood, logPosterior: score, isCompletion: reading.isCompletion,
                 isLiteral: isLiteral)
         }
         let keys = letters(lexicon)
@@ -394,9 +401,8 @@ extension Corrector {
                 }
                 continue
             }
-            let exact = likelihood(word)
-            let completed = likelihood(word, completing: true)
-            consider(word, logLikelihood: max(exact, completed), isCompletion: completed > exact)
+            consider(word, logLikelihood: likelihood(word), isCompletion: false)
+            consider(word, logLikelihood: likelihood(word, completing: true), isCompletion: true)
         }
         return candidates.values.sorted { $0.logPosterior > $1.logPosterior }
     }
