@@ -22,7 +22,7 @@ struct ArchitectureTests {
             "asyncAfter", "afterDelay", "Timer.", "Timer(", ".sleep(", "usleep(", "makeTimerSource", "timeoutInterval",
             "timeout:",
         ]
-        let timers = ["key repeat", "long-press", "source answer", "Keep Mic On", "stop waits for quiet"]
+        let timers = ["key repeat", "long-press", "source answer", "Keep Mic On", "stop waits for quiet", "probe"]
         let sources = ["App", "Keyboard", "web/Sources", "Packages/KeyboardModules/Sources", "Packages/Voice/Sources"]
             .flatMap(Self.files).filter { $0.pathExtension == "swift" }
         #expect(sources.count > 100)
@@ -34,13 +34,13 @@ struct ArchitectureTests {
                 let place = "\(Self.relative(file)):\(number + 1)"
                 guard let which = Self.marker("timer", at: number, in: lines) else {
                     Issue.record(
-                        "\(place) waits on a clock. iikb follows real events (a Darwin notification, the recording's end, textDidChange); AGENTS.md › Rules lists the only timers. If this is one of them, mark the line, or the line above it, with `// timer: <which>`, one of: \(timers.joined(separator: ", "))."
+                        "\(place) waits on a clock. iikb follows real events (a Darwin notification, the recording's end, textDidChange); a timer is only for what is timed by nature or a backup for an event that can be missed (AGENTS.md › Rules). Mark the line, or the line above it, with `// timer: <which>`, one of: \(timers.joined(separator: ", ")), or add a new one to this list with its reason."
                     )
                     continue
                 }
                 #expect(
-                    timers.contains(where: which.hasPrefix) || which.hasPrefix("unlisted ("),
-                    "\(place) marks `// timer: \(which)`, which AGENTS.md › Rules doesn't list; use one of: \(timers.joined(separator: ", "))."
+                    timers.contains(where: which.hasPrefix),
+                    "\(place) marks `// timer: \(which)`, which this list doesn't have; use one of: \(timers.joined(separator: ", ")), or add it here with its reason."
                 )
             }
         }
