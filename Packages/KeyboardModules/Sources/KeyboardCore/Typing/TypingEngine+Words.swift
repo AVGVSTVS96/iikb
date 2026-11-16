@@ -137,6 +137,9 @@ extension TypingEngine {
     /// A suggestion takes the place of the word the bar is for, and the caret ends after it and one space.
     public mutating func accept(_ suggestion: Suggestion, in document: some TextDocument) {
         attach(document)
+        if case .answer(let replacing) = suggestion.kind {
+            return accept(answer: suggestion.text, replacing: replacing, in: document)
+        }
         let text = self.text.before
         let (word, tail) = suggested
         guard text[..<word.startIndex] == suggestionsBefore else { return }
@@ -151,7 +154,7 @@ extension TypingEngine {
             corrector?.changeMemory { $0.keep(revert.original) }
             pending?.word = revert.original
             tally.undone += 1
-        case .literal:
+        case .literal, .answer:
             corrector?.changeMemory { $0.keep(whole) }
             hold(whole, typed: whole)
             tally.words += 1
@@ -189,7 +192,7 @@ extension TypingEngine {
     }
 
     /// Steps over the space after a word picked from the bar, or types one.
-    private mutating func spaceAfterPick(in document: some TextDocument) {
+    mutating func spaceAfterPick(in document: some TextDocument) {
         if text.after?.first == " " {
             moveCaret(by: 1, in: document)
             lastSpace = nil
@@ -286,7 +289,9 @@ extension TypingEngine {
         var typedText = final
         var context = Words.context(before: word, in: text)
         let owned = self.text.owned
-        guard correcting, owned >= word.count, Words.isCorrectable(word, in: text), swipedWord == nil else {
+        guard correcting, owned >= word.count, Words.isCorrectable(word, in: text), swipedWord == nil,
+            calculation == nil
+        else {
             return settle(final, typed: final, after: context, ending: ending)
         }
         let typed = TypedWord(final, taps: typing.letters, previous: context.previous)
@@ -453,7 +458,16 @@ extension TypingEngine {
         self.pending = nil
     }
 
+    /// The word suggestions, or the answer to a calculation the caret ends, alone; then the word ends as typed
+    /// (`commitWord`), since the bar shows no correction.
     mutating func refreshSuggestions() {
+        refreshWordSuggestions()
+        guard panel == nil, showsSuggestions, text.selected.isEmpty, let calculation else { return }
+        suggestions = [calculation]
+        emojiSuggestions = []
+    }
+
+    private mutating func refreshWordSuggestions() {
         suggestionsAreStale = false
         emojiSuggestions = []
         guard panel == nil else {

@@ -39,7 +39,7 @@ public struct TypingEngine {
     /// host's reports through `documentChanged`.
     public private(set) var text = TextState()
     /// What the keyboard wrote here, for the undo and redo keys.
-    private var history = EditHistory()
+    var history = EditHistory()
     public var canUndo: Bool { history.canUndo }
     public var canRedo: Bool { history.canRedo }
     /// What your typing did so far, as counts, for the app's stats.
@@ -66,6 +66,8 @@ public struct TypingEngine {
     var pending: PendingWord?
     var stray: StraySpace?
     var revert: Revert?
+    /// What Text Styles or Change Case last wrote, which the next one rewrites while the text is still as it left it.
+    var rewritten: Rewritten?
 
     private enum ShiftHold { case pressed, typedWhileHeld }
     enum LastSpace { case typed, picked }
@@ -291,6 +293,8 @@ public struct TypingEngine {
             insertWhole(emoji, in: document)
         case .paste(let text):
             insertWhole(text, in: document)
+        case .rewrite(let rewrite):
+            self.rewrite(rewrite, in: document)
         case .dictated(let heard, let plain, let id):
             let lexicon = corrector?.lexicon
             let capitals = settings.dictation(in: app).capitals(in: traits.autocapitalization)
@@ -602,7 +606,7 @@ public struct TypingEngine {
         return dictations
     }
 
-    private mutating func forgetWord() {
+    mutating func forgetWord() {
         lastSpace = nil
         pending = nil
         typing = WordTaps()

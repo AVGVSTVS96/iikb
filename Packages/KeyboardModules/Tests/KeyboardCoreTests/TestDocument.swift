@@ -48,6 +48,19 @@ class TestDocument: TextDocument {
     }
 }
 
+/// A field that shows the keyboard only `window` characters on each side of the caret, as iOS does.
+final class ClippedDocument: TestDocument {
+    let window: Int
+
+    init(_ text: String = "", window: Int = 40) {
+        self.window = window
+        super.init(text)
+    }
+
+    override var textBeforeInput: String? { String(text.prefix(cursor).suffix(window)) }
+    override var textAfterInput: String? { String(text.dropFirst(cursor + selection).prefix(window)) }
+}
+
 extension TypingEngine {
     mutating func type(_ string: String, in document: some TextDocument) {
         for character in string {

@@ -11,6 +11,8 @@ public struct Language: Sendable, Identifiable {
     /// What smart punctuation types for " and ', as Apple's keyboard does in it: the double quotes that open and
     /// close, then the single ones, the closing one also its apostrophe. French's hold a no-break space inside.
     public let quotes: [String]
+    /// What its numbers put before their fractions: English's point, the others' comma (3,5).
+    public var decimalMark: Character { id == "en" ? "." : "," }
     /// The language `id` names, or English for one iikb doesn't have.
     public static func named(_ id: String) -> Language {
         all.first { $0.id == id } ?? .english

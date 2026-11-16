@@ -188,6 +188,8 @@ extension Panel {
         case .clipboard: "Clipboard"
         case .transcripts: "Transcripts"
         case .chats: "Chats"
+        case .textStyles: "Text Styles"
+        case .changeCase: "Change Case"
         }
     }
 
@@ -199,6 +201,8 @@ extension Panel {
         case .clipboard: Self.symbol("list.clipboard.fill", side)
         case .transcripts: Self.symbol("text.bubble.fill", side)
         case .chats: Self.symbol("bubble.left.and.bubble.right.fill", side)
+        case .textStyles: Self.symbol("bold.italic.underline", side)
+        case .changeCase: Self.symbol("textformat", side)
         }
     }
 
@@ -210,6 +214,8 @@ extension Panel {
         case .clipboard: Self.symbol("list.clipboard", side)
         case .transcripts: Self.symbol("text.bubble", side)
         case .chats: Self.symbol("bubble.left.and.bubble.right", side)
+        case .textStyles: Self.symbol("bold.italic.underline", side)
+        case .changeCase: Self.symbol("textformat", side)
         }
     }
 

@@ -123,6 +123,8 @@ extension Panel {
         case .transcripts: .systemPink
         case .gif: .systemPurple
         case .chats: .systemIndigo
+        case .textStyles: .systemBlue
+        case .changeCase: .systemGreen
         }
     }
 }

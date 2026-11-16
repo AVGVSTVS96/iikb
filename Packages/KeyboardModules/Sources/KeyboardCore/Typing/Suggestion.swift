@@ -1,6 +1,8 @@
 public struct Suggestion: Hashable, Sendable {
     public enum Kind: Hashable, Sendable {
         case literal, correction, candidate, revert
+        /// The calculator's answer, which replaces this text before the caret (`Calculation`).
+        case answer(replacing: String)
     }
 
     public var text: String
@@ -12,6 +14,10 @@ public struct Suggestion: Hashable, Sendable {
     }
 
     public var title: String {
-        kind == .literal ? "“\(text)”" : text
+        switch kind {
+        case .literal: "“\(text)”"
+        case .answer: "= \(text)"
+        default: text
+        }
     }
 }
