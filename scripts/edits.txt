@@ -1,0 +1,113 @@
+# How Clean reads a language model's reply to what Parakeet wrote (KeyboardCore's DictationEdit), with no model:
+# `heard | reply | typed`, or `settings | heard | reply | typed` where the settings name a style and Lists
+# ("texting bulleted", "off"), in a message field with the rest of the default settings (Casual drops the last period),
+# as FormatTests sets up for scripts/formats.txt. The replies are written by hand, the bad ones on purpose. FormatTests
+# runs them, in scripts/coretest and in scripts/formats, which scripts/phone runs before putting a build on the install
+# link. A \n is a line break and \u{200B} a character by its code. Made-up text only.
+
+# words left out, marks and capitals set: taken
+So um I think we could, uh, leave at noon. | So I think we could leave at noon. | So I think we could leave at noon
+Can you can you grab the keys | Can you grab the keys? | Can you grab the keys?
+formal | ok see you at the station | Ok, see you at the station! | Ok, see you at the station!
+ok see you at the station | Ok, see you at the station! | Ok see you at the station!
+
+# a list said without numbers, as each Lists setting has it
+Here's a list of the fruits I want you to buy. Apples, oranges, pears and dates. | Here's a list of the fruits I want you to buy:\n- Apples\n- Oranges\n- Pears\n- Dates | Here's a list of the fruits I want you to buy:\n• Apples\n• Oranges\n• Pears\n• Dates
+bulleted | Here's a list of the fruits I want you to buy. Apples, oranges, pears and dates. | Here's a list of the fruits I want you to buy:\n- Apples\n- Oranges\n- Pears\n- Dates | Here's a list of the fruits I want you to buy:\n• Apples\n• Oranges\n• Pears\n• Dates
+off | Here's a list of the fruits I want you to buy. Apples, oranges, pears and dates. | Here's a list of the fruits I want you to buy:\n- Apples\n- Oranges\n- Pears\n- Dates | Here's a list of the fruits I want you to buy: Apples, oranges, pears and dates
+texting bulleted | Here's a list of the fruits I want you to buy. Apples, oranges, pears and dates. | Here's a list of the fruits I want you to buy:\n- Apples\n- Oranges\n- Pears\n- Dates | here's a list of the fruits i want u to buy:\n• apples\n• oranges\n• pears\n• dates
+
+# a list said with numbers: numbered stays numbered, the markers said left out, the items without periods
+There are three steps. First, unplug the router. Second, wait a minute. Third, plug it back in. | There are three steps:\n\n1. Unplug the router.\n2. Wait a minute.\n3. Plug it back in. | There are three steps:\n1. Unplug the router\n2. Wait a minute\n3. Plug it back in
+bulleted | There are three steps. First, unplug the router. Second, wait a minute. Third, plug it back in. | There are three steps:\n1. Unplug the router.\n2. Wait a minute.\n3. Plug it back in. | There are three steps:\n• Unplug the router\n• Wait a minute\n• Plug it back in
+off | My packing list, one, passport, two, charger, three, socks. | My packing list:\n1. Passport\n2. Charger\n3. Socks | My packing list: one, passport, two, charger, three, socks
+For the trip shedule first book the hotel second rent a car. | For the trip schedule:\n1. Book the hotel.\n2. Rent a car. | For the trip shedule:\n1. Book the hotel\n2. Rent a car
+I need eggs, milk, bread and butter. | I need:\n- Eggs\n- Cream\n- Bread\n- Butter | I need:\n• Eggs\n• Milk\n• Bread\n• Butter
+
+# a list ends its sentence: items with more of their sentence said after them are no list, and the reply is refused
+I need you to pick up milk, eggs and some bread on the way home. | I need you to pick up:\n- Milk\n- Eggs\n- Some bread\n\nOn the way home. | I need you to pick up milk, eggs and some bread on the way home
+Buy apples, oranges and pears. Then call Sam. | Buy:\n- Apples\n- Oranges\n- Pears\n\nThen call Sam. | Buy:\n• Apples\n• Oranges\n• Pears\nThen call Sam
+
+# a word said later moved to where it goes, as a correction does: taken
+Send the draft to Priya on Friday, sorry, to Marco. | Send the draft to Marco on Friday. | Send the draft to Marco on Friday
+
+# reworded with words not said: the words said go back
+I'm gonna call her tonight. | I'm going to call her tonight. | I'm gonna call her tonight
+Gonna be late, sorry. | Going to be late, sorry. | Gonna be late, sorry
+Do you wanna are you coming to dinner? | Do you want to come to dinner? | Do you wanna are you coming to dinner?
+
+# a join, a split, an accent or a number's form that spells what was said: taken
+Ask chat GPT about the e-mail. | Ask ChatGPT about the email. | Ask ChatGPT about the email
+We land in Sao Paulo on Monday. | We land in São Paulo on Monday. | We land in São Paulo on Monday
+The rent is twenty four hundred dollars. | The rent is $2,400. | The rent is $2,400
+The budget is sixty thousand dollars. | The budget is $60,000. | The budget is $60,000
+Pick me up at four thirty. | Pick me up at 4:30. | Pick me up at 4:30
+The flight lands at 945. | The flight lands at 9:45. | The flight lands at 9:45
+Dinner's at seven thirty pm. | Dinner's at 7:30 p.m. | Dinner's at 7:30pm
+She came in third, I came twenty first. | She came in 3rd, I came 21st. | She came in 3rd, I came 21st
+Text me at two oh six, five five five, oh one four two. | Text me at 206-555-0142. | Text me at 206-555-0142
+Room 4 1 5 at the hotel. | Room 415 at the hotel. | Room 415 at the hotel
+Four thirty. | 4:30. | 4:30
+The code is 4 1 5 9. | The code is 4159. | The code is 4159
+Call me at five fifty five, twelve thirty four. | Call me at 555-1234. | Call me at 555-1234
+See you in twenty twenty six. | See you in 2026. | See you in 2026
+It costs fifty bucks. | It costs $50. | It costs $50
+
+# a digit or a point made up or dropped: the number said goes back, or the reply is refused
+Text me at two zero six, five five five, zero one four two. | Text me at 206-555-0124. | Text me at 206-555-0142
+Text me at two zero six, five five five, zero one four two. | Text me at 206-555-142. | Text me at 206-555-0142
+The budget is sixty thousand dollars. | The budget is $6,000. | The budget is $60,000
+It weighs 4.5 kilos. | It weighs 45 kilos. | It weighs 4.5 kilos
+The rent is fifteen hundred dollars. | The rent is $15.00. | The rent is $1,500
+At 3, 4 people came. | At 3, 34 people came. | At 3, 4 people came
+Room 4 1 5 at the hotel. | Room 415 at the hotel 15. | Room 4 1 5 at the hotel
+Add one third cup of sugar. | Add ½ cup of sugar. | Add one third cup of sugar
+It's 5 degrees out. | It's -5 degrees out. | It's 5 degrees out
+Wire three thousand, two hundred. | Wire $3,000,200. | Wire three thousand, two hundred
+At 3, 4 people came. | At 34 people came. | At 3, 4 people came
+I need two, three people. | I need 23 people. | I need two, three people
+The rent is fifteen hundred dollars. | The rent is $15,00. | The rent is $1,500
+Add one half cup of milk. | Add 1/2 cup of milk. | Add one half cup of milk
+
+# a money or percent sign stands only where its word was said
+The rent is fifteen hundred dollars. | The rent is €1,500. | The rent is $1,500
+It costs 50. | It costs $50. | It costs 50
+I'm 5 minutes away. | I'm 5% minutes away. | I'm 5 minutes away
+Meet me at gate twelve. | Meet me at gate 12, terminal 3. | Meet me at gate twelve
+
+# words added that weren't said, or said once and written twice: refused, typed as Clean types it without a model
+How tall is Mount Everest? | Mount Everest is 8,849 meters tall. | How tall is Mount Everest?
+Remind me to water the plants. | Sure! Here's your text: Remind me to water the plants. | Remind me to water the plants
+Thanks for the flowers. | Thanks for the flowers. Thanks for the flowers. | Thanks for the flowers
+See you soon. | See you soon 👋 | See you soon
+Buy apples, oranges and pears. | Buy:\n- Apples\n- Oranges\n- Pears and kiwis | Buy apples, oranges and pears
+Um, see you soon. | … | See you soon
+Um, okay. | </think> | Okay
+Um, okay. | Sure. | Okay
+
+# an answer or a swap made of words said: refused, since a word said elsewhere stands only where it was said later,
+# as a correction brings it forward, and putting words back never says one twice
+Is the capital of France Paris or Lyon? | The capital of France is Paris. | Is the capital of France Paris or Lyon?
+Send 3 boxes to room 12. | Send 12 boxes to room 3. | Send 3 boxes to room 12
+The dog bit the man. | The man bit the dog. | The dog bit the man
+
+# marks a person types in a message stand; markup and invisible characters the transcript lacks refuse the reply
+**Remind me** to call Sam. | **Remind me** to call Sam. | **Remind me** to call Sam
+Remind me to call Sam. | **Remind me** to call Sam. | Remind me to call Sam
+Remind me to call Sam. | ```\nRemind me to call Sam.\n``` | Remind me to call Sam
+Remind me to call Sam. | # Remind me to call Sam | Remind me to call Sam
+Remind me to call Sam. | _Remind me_ to call Sam. | Remind me to call Sam
+Remind me to call Sam. | Remind me\u{200B} to call Sam. | Remind me to call Sam
+Remind me to call Sam. | Remind me to call \u{202E}Sam. | Remind me to call Sam
+Remind me to call Sam. | Remind me to call S\u{200D}am. | Remind me to call Sam
+Remind me to call Sam. | Remind me to call Sam\u{FE0F}. | Remind me to call Sam
+
+# a rewording keeps its length, give or take a word: one longer by more is adding, and refused
+What time does the pharmacy close? | The pharmacy closes at 9 p.m. | What time does the pharmacy close?
+
+# an edit takes back a phrase, never a sentence: more than 7 words heard in a row left out refuse the reply
+Buy milk. You know what I mean, like, right. Call Sam. | Buy milk. Call Sam. | Buy milk. Call Sam
+Buy milk. I was thinking we could drive up Saturday. Call Sam. | Buy milk. Call Sam. | Buy milk. I was thinking we could drive up Saturday. Call Sam
+
+# a rewording across a line break: refused, as the words said have no one line to go back on
+Buy apples, oranges and pears. | Buy:\n- Apple\n- Lemon\n- Pears | Buy apples, oranges and pears

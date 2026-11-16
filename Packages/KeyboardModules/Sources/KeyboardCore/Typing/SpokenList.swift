@@ -7,7 +7,26 @@
 enum SpokenList {
     static func written(_ text: [Character], bulleted: Bool = false) -> [Character] {
         guard let list = first(in: text) else { return items(text, bulleted: bulleted) ?? text }
-        var intro = Array(text[..<list.markers[0].lowerBound])
+        let intro = intro(Array(text[..<list.markers[0].lowerBound]))
+        var lines: [[Character]] = intro.isEmpty ? [] : [intro]
+        for (index, item) in list.items.enumerated() {
+            lines.append(marker(bulleted ? nil : index + 1) + item)
+        }
+        var rest = Array(text[list.end...])
+        while rest.first == " " || rest.first?.isNewline == true { rest.removeFirst() }
+        if !rest.isEmpty { lines.append(written(rest, bulleted: bulleted)) }
+        return Array(lines.joined(separator: "\n"))
+    }
+
+    /// What starts an item's line: "1. " and up, or "• " for an item with no `number`.
+    static func marker(_ number: Int?) -> [Character] {
+        number.map { Array("\($0). ") } ?? ["•", " "]
+    }
+
+    /// The line before a list, ending with a colon in place of its comma, semicolon or period: "My grocery list," is
+    /// "My grocery list:".
+    static func intro(_ text: [Character]) -> [Character] {
+        var intro = text
         while intro.last == " " { intro.removeLast() }
         if intro.last == "," || intro.last == ";"
             || intro.last == "." && intro.dropLast().last != "."
@@ -16,15 +35,7 @@ enum SpokenList {
             intro.removeLast()
         }
         if let last = intro.last, Words.isWordCharacter(last) { intro.append(":") }
-
-        var lines: [[Character]] = intro.isEmpty ? [] : [intro]
-        for (index, item) in list.items.enumerated() {
-            lines.append(Array(bulleted ? "• " : "\(index + 1). ") + item)
-        }
-        var rest = Array(text[list.end...])
-        while rest.first == " " || rest.first?.isNewline == true { rest.removeFirst() }
-        if !rest.isEmpty { lines.append(written(rest, bulleted: bulleted)) }
-        return Array(lines.joined(separator: "\n"))
+        return intro
     }
 
     /// Things listed without numbers after a sentence or clause that says a list comes, as Wispr Flow and Aqua Voice
@@ -61,7 +72,7 @@ enum SpokenList {
             }
             guard announces(text, intro) else { continue }
             var lines = [Array(text[..<intro.upperBound]) + [":"]]
-            lines += said.map { Array("• ") + trimmed(Array(text[$0].drop { $0 == " " })) }
+            lines += said.map { marker(nil) + trimmed(Array(text[$0].drop { $0 == " " })) }
             var rest = Array(text[min(end + (sentence.mark == nil ? 0 : 1), text.count)...])
             while rest.first == " " || rest.first?.isNewline == true { rest.removeFirst() }
             if !rest.isEmpty { lines.append(written(rest, bulleted: bulleted)) }
@@ -148,11 +159,6 @@ enum SpokenList {
         return nil
     }
 
-    private static let numbers = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
-    private static let ordinals = [
-        "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth",
-    ]
-
     /// The word's place in a list, if it's a marker: followed by a comma, colon or period, and not part of a longer
     /// number such as "twenty-one".
     private static func marker(_ text: [Character], _ words: [Range<Int>], _ index: Int) -> (value: Int, ordinal: Bool)?
@@ -165,9 +171,8 @@ enum SpokenList {
         else { return nil }
         var spelled = String(text[word]).lowercased()
         if spelled.hasSuffix("ly") { spelled.removeLast(2) }
-        if let number = numbers.firstIndex(of: spelled) { return (number + 1, false) }
-        if let number = Int(spelled), (1...10).contains(number) { return (number, false) }
-        if let ordinal = ordinals.firstIndex(of: spelled) { return (ordinal + 1, true) }
+        if let number = Spoken.value(of: spelled) ?? Int(spelled), (1...10).contains(number) { return (number, false) }
+        if let ordinal = Spoken.ordinal(of: spelled), (1...10).contains(ordinal) { return (ordinal, true) }
         return nil
     }
 

@@ -355,7 +355,8 @@ public enum DictationEditing: String, CaseIterable, Hashable, Sendable {
     /// Without um and uh.
     case light
     /// Without um and uh, words said twice in a row or said over, "like" and "you know" said between commas, what you
-    /// take back with "scratch that" or "never mind", and what you correct as you go ("at two, I mean three").
+    /// take back with "scratch that" or "never mind", and what you correct as you go ("at two, I mean three"); or, where
+    /// a language model on the iPhone answers, as it edits what was said (`asksModel`, `DictationEdit`).
     case clean
 
     public static let standard = DictationEditing.asSaid
@@ -809,15 +810,35 @@ public struct DictationWriting: Hashable, Sendable {
         capitalizes && !style.lowercases && !words.lowercases ? field : .none
     }
 
-    public func written(_ heard: String) -> String {
-        var text = style.punctuated(Self.withoutDoubledPeriods(editing.edited(SaidMarks.written(Array(heard)))))
-        if lists != .off { text = SpokenList.written(text, bulleted: lists == .bulleted) }
+    /// What iikb types for what the voice model `heard`. `edited` is a language model's reply to it as it came, or nil
+    /// when none answered; it's typed only where the editing asks for a model and only as an edit of what was said
+    /// (`DictationEdit`), so any reply is safe to pass.
+    public func written(_ heard: String, edited: String? = nil) -> String {
+        let text: [Character]
+        if let edit = edit(edited, of: heard) {
+            text = edit.written(lists: lists, prose: style.punctuated)
+        } else {
+            var said = style.punctuated(Self.withoutDoubledPeriods(editing.edited(SaidMarks.written(Array(heard)))))
+            if lists != .off { said = SpokenList.written(said, bulleted: lists == .bulleted) }
+            text = said
+        }
         return String(words.swapped(style.commas(text)))
     }
 
+    /// Whether `written` types `edited` for `heard`, so a bench or a gate can tell the model's line from the rules'.
+    public func takes(_ edited: String, of heard: String) -> Bool {
+        edit(edited, of: heard) != nil
+    }
+
     /// `heard` as iikb types it at the start of a field that capitalizes sentences, as a message's does.
-    public func typed(_ heard: String, lexicon: Lexicon?) -> String {
-        TypingEngine.fitted(written(heard), between: "", and: nil, lexicon: lexicon, capitals: capitals(in: .sentences))
+    public func typed(_ heard: String, edited: String? = nil, lexicon: Lexicon?) -> String {
+        TypingEngine.fitted(
+            written(heard, edited: edited), between: "", and: nil, lexicon: lexicon, capitals: capitals(in: .sentences))
+    }
+
+    private func edit(_ edited: String?, of heard: String) -> DictationEdit? {
+        guard editing.asksModel, let edited else { return nil }
+        return DictationEdit(of: Array(heard), as: Array(edited))
     }
 
     /// ".." for ".", which Parakeet sometimes writes, keeping "...".

@@ -15,15 +15,56 @@ struct FormatTests {
     ]
 
     @Test func dictationTypesEachFormatAsWritten() throws {
-        try check("formats.txt", DictationWriting(), label: "FORMAT")
+        try check("formats.txt", label: "FORMAT", Self.said(DictationWriting()))
     }
 
     /// scripts/cleanup.txt with Clean, as Wispr Flow and Aqua Voice clean by default.
     @Test func dictationCleansAsWritten() throws {
-        try check("cleanup.txt", DictationWriting(editing: .clean), label: "CLEANUP")
+        try check("cleanup.txt", label: "CLEANUP", Self.said(DictationWriting(editing: .clean)))
     }
 
-    private func check(_ file: String, _ writing: DictationWriting, label: String) throws {
+    /// scripts/edits.txt: a language model's replies, written by hand, as Clean reads them (`DictationEdit`).
+    @Test func dictationTypesARepliesEdit() throws {
+        try check("edits.txt", label: "EDITS") { parts in
+            var writing = DictationWriting(editing: .clean)
+            for setting in parts.count == 4 ? parts[0].split(separator: " ").map(String.init) : [] {
+                if let style = DictationStyle(rawValue: setting) { writing.style = style }
+                if let lists = DictationLists(rawValue: setting) { writing.lists = lists }
+            }
+            return Case(
+                field: nil, writing: writing, heard: Self.unescaped(parts[parts.count - 3]),
+                reply: Self.unescaped(parts[parts.count - 2]))
+        }
+    }
+
+    /// `text` with each `\u{…}` as the character it codes, so a row can hold one that doesn't show.
+    private static func unescaped(_ text: String) -> String {
+        var out = ""
+        var rest = Substring(text)
+        while let open = rest.range(of: "\\u{"), let close = rest[open.upperBound...].firstIndex(of: "}"),
+            let code = UInt32(rest[open.upperBound..<close], radix: 16), let scalar = Unicode.Scalar(code)
+        {
+            out += rest[..<open.lowerBound] + String(scalar)
+            rest = rest[rest.index(after: close)...]
+        }
+        return out + rest
+    }
+
+    /// A line's dictation, before what it types: the field it goes in, how it's written, what Parakeet heard and a
+    /// language model's reply to it.
+    private struct Case {
+        var field: String?
+        var writing: DictationWriting
+        var heard: String
+        var reply: String?
+    }
+
+    /// `field | heard | typed` or `heard | typed`, written as `writing` writes.
+    private static func said(_ writing: DictationWriting) -> ([String]) -> Case {
+        { parts in Case(field: parts.count == 3 ? parts[0] : nil, writing: writing, heard: parts[parts.count - 2]) }
+    }
+
+    private func check(_ file: String, label: String, _ read: ([String]) -> Case) throws {
         let lexicon = Lexicon(
             bytes: Bytes(
                 [UInt8](
@@ -48,20 +89,20 @@ struct FormatTests {
         var failed: [String] = []
         for line in cases {
             let parts = line.components(separatedBy: " | ")
-            let field = parts.count == 3 ? parts[0] : nil
-            let heard = parts[parts.count - 2]
+            let test = read(parts.map { $0.replacingOccurrences(of: "\\n", with: "\n") })
             let wanted = parts[parts.count - 1].replacingOccurrences(of: "\\n", with: "\n")
-            let written = field.flatMap { $0.hasPrefix("> ") ? String($0.dropFirst(2)) + " " : nil } ?? ""
+            let written = test.field.flatMap { $0.hasPrefix("> ") ? String($0.dropFirst(2)) + " " : nil } ?? ""
             var engine = TypingEngine(
-                traits: field.flatMap { Self.fields[$0] } ?? InputTraits(autocapitalization: .sentences))
+                traits: test.field.flatMap { Self.fields[$0] } ?? InputTraits(autocapitalization: .sentences))
+            engine.settings.dictationStyle = test.writing.style
             engine.corrector = corrector
             let document = TestDocument(written)
             engine.handle(
                 .dictated(
-                    vocabulary.corrected(writing.written(heard), lexicon: lexicon),
-                    plain: vocabulary.corrected(heard, lexicon: lexicon)), in: document)
+                    vocabulary.corrected(test.writing.written(test.heard, edited: test.reply), lexicon: lexicon),
+                    plain: vocabulary.corrected(test.heard, lexicon: lexicon)), in: document)
             if document.text != wanted {
-                failed.append("\(label) FAIL \"\(heard)\" typed \"\(document.text)\", wants \"\(wanted)\"")
+                failed.append("\(label) FAIL \"\(test.heard)\" typed \"\(document.text)\", wants \"\(wanted)\"")
             }
         }
         print((["\(label): \(cases.count - failed.count)/\(cases.count) pass"] + failed).joined(separator: "\n"))

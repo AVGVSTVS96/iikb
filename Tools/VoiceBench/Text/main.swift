@@ -2,20 +2,25 @@ import Foundation
 import KeyboardCore
 
 /// `VoiceText <en.lexicon> <vocabulary.json> <typing-memory.json|-> <style> <editing> <lists> <auto-capitalization on|off>`: for each
-/// `{id, heard, field?, content?, before?}` line on stdin, what iikb types for what the voice model wrote (`heard`), as the
-/// iPhone does it: the app's writing and Dictionary (`DictationWriting.typed` and `.plain` in App/Voice), then the keyboard's
+/// `{id, heard, edited?, field?, content?, before?}` line on stdin, what iikb types for what the voice model wrote (`heard`)
+/// and a language model's reply to it (`edited`), as the iPhone does it: the app's writing and Dictionary
+/// (`DictationWriting.typed` and `.plain` in App/Voice), then the keyboard's
 /// reading of a field of that kind and content type (`InputKind`'s and `InputContent`'s names, text and other by
 /// default) after `before` (`TypingEngine`'s `.dictated`),
 /// with the words the keyboard has seen typed (the keyboard's saved memory, as scripts/gate reads it).
 /// A line's own `memory`, `vocabulary` and `settings` (the four above) stand in for the arguments, so scripts/voiceloop
 /// replays each dictation with what the iPhone had then.
-/// Writes `{id, typed}` lines; scripts/voiceloop runs it here on Linux, on a package of KeyboardCore alone.
+/// Writes `{id, typed, edited}` lines, `edited` saying the reply was what was typed, so a gate can tell the model's line
+/// from the rules'; scripts/voiceloop runs it here on Linux, on a package of KeyboardCore alone.
 struct Clip: Decodable {
     let id, heard: String
-    let field, content, before, memory, vocabulary: String?
+    let edited, field, content, before, memory, vocabulary: String?
     let settings: [String]?
 }
-struct Row: Encodable { let id, typed: String }
+struct Row: Encodable {
+    let id, typed: String
+    let edited: Bool
+}
 struct Saved: Decodable { var memory: TypingMemory }
 
 final class Field: TextDocument {
@@ -84,14 +89,15 @@ while let line = readLine() {
     engine.settings = settings
     engine.corrector = correctors[memory]
     let field = Field(clip.before ?? "")
+    let writing = settings.dictation(in: nil)
     engine.handle(
         .dictated(
-            vocabulary.corrected(settings.dictation(in: nil).written(clip.heard), lexicon: lexicon),
+            vocabulary.corrected(writing.written(clip.heard, edited: clip.edited), lexicon: lexicon),
             plain: vocabulary.corrected(clip.heard, lexicon: lexicon)), in: field)
     let kept = zip(clip.before ?? "", field.before).prefix { $0 == $1 }.count
-    lines.append(
-        String(
-            decoding: try JSONEncoder().encode(Row(id: clip.id, typed: String(field.before.dropFirst(kept)))),
-            as: UTF8.self))
+    let row = Row(
+        id: clip.id, typed: String(field.before.dropFirst(kept)),
+        edited: clip.edited.map { writing.takes($0, of: clip.heard) } ?? false)
+    lines.append(String(decoding: try JSONEncoder().encode(row), as: UTF8.self))
 }
 print(lines.joined(separator: "\n"))
