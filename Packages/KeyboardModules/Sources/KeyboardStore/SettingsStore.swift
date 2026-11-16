@@ -25,6 +25,7 @@ public enum SettingsStore {
         ("compactPanels", \.compactPanels),
         ("dictationButton", \.dictationButton),
         ("periodKey", \.periodKey),
+        ("snippetKey", \.snippetKey),
         ("actionRow", \.actionRow),
         ("actionRowInLandscape", \.actionRowInLandscape),
         ("switchOnClose", \.switchOnClose),

@@ -26,6 +26,9 @@ public enum KeyAction: Hashable, Sendable {
     /// An action in the action row, which opens its tool as the bar's does; the keyboard handles it, so the engine never
     /// sees it.
     case tool(Panel)
+    /// The snippet key beside space, which starts a keyword: it types the snippet prefix at a word's start, so the bar
+    /// offers the keywords that go on from it (`KeyboardSettings.snippetPrefix`).
+    case snippetPrefix(String)
 }
 
 public enum KeyWidth: Hashable, Sendable {

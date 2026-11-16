@@ -44,6 +44,8 @@ public struct LayoutContext: Hashable, Sendable {
     public var order = BottomKey.standard
     /// A period key in the bottom row, in fields with none of their own.
     public var showsPeriodKey = false
+    /// What the snippet key types, on an iPhone's letters; empty with no snippet key.
+    public var snippetPrefix = ""
     /// The languages being typed, the one the keys are laid out for first: a long press offers its letters, then the
     /// others'.
     public var languages = [Language.english]
@@ -99,6 +101,7 @@ public struct LayoutContext: Hashable, Sendable {
         }
         order = settings.aroundSpace
         showsPeriodKey = settings.periodKey && device == .phone
+        snippetPrefix = settings.snippetKey && device == .phone ? settings.snippetPrefix : ""
         keySpacing = settings.keySpacing
         keyRoundness = settings.keyRoundness
         letters = settings.letters
@@ -151,13 +154,14 @@ public struct LayoutContext: Hashable, Sendable {
     /// Whether the bar shows its More button.
     public var showsMoreButton: Bool { leadingButton == .menu }
 
-    /// The keys between the layer key and return, in their order, space among them: the emoji key and, on the letters of a field with no keys of its own beside space (a period, Instagram's @ and #), the period key, where each shows.
+    /// The keys between the layer key and return, in their order, space among them: the emoji key and, on the letters of a field with no keys of its own beside space (a period, Instagram's @ and #), the period key, and the snippet key on the letters, where each shows.
     public var aroundSpace: [BottomKey] {
         BottomKey.arranged(order).filter { key in
             switch key {
             case .space: true
             case .emoji: showsEmoji
             case .period: showsPeriodKey && layer == .letters && ![.email, .url, .webSearch, .twitter].contains(kind)
+            case .snippet: !snippetPrefix.isEmpty && layer == .letters
             }
         }
     }

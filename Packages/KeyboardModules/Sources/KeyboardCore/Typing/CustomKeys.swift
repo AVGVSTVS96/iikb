@@ -15,10 +15,10 @@ public enum LeadingButton: String, CaseIterable, Hashable, Sendable {
 
 /// A key that can sit beside the space bar, on either side of it.
 public enum BottomKey: String, CaseIterable, Hashable, Sendable {
-    case emoji, space, period
+    case emoji, space, period, snippet
 
-    /// Emoji where Apple's is, and the period after space.
-    public static let standard: [BottomKey] = [.emoji, .space, .period]
+    /// Emoji where Apple's is, and the period and snippet keys after space.
+    public static let standard: [BottomKey] = [.emoji, .space, .period, .snippet]
 
     /// `order` with each key once, space included, any missing put where `standard` has them.
     public static func arranged(_ order: [BottomKey]) -> [BottomKey] {

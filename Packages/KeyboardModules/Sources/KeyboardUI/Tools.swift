@@ -216,6 +216,9 @@ extension Panel {
         case .clipboard: Self.symbol("list.clipboard", side)
         case .transcripts: Self.symbol("text.bubble", side)
         case .chats: Self.symbol("bubble.left.and.bubble.right", side)
+        case .snippets: Self.symbol("text.quote", side)
+        case .quicklinks: Self.symbol("link", side)
+        case .form: nil
         }
     }
 

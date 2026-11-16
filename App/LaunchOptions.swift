@@ -128,7 +128,8 @@ enum LaunchOptions {
             ("iikbPredictiveText", \.predictiveText), ("iikbNumberHints", \.numberHints),
             ("iikbActionRow", \.actionRow),
             ("iikbActionRowInLandscape", \.actionRowInLandscape),
-            ("iikbPeriodKey", \.periodKey), ("iikbDictationButton", \.dictationButton), ("iikbSplit", \.split),
+            ("iikbPeriodKey", \.periodKey), ("iikbSnippetKey", \.snippetKey),
+            ("iikbDictationButton", \.dictationButton), ("iikbSplit", \.split),
         ]
         for (key, path) in toggles where defaults.object(forKey: key) != nil {
             SettingsStore.set(defaults.bool(forKey: key), for: path)

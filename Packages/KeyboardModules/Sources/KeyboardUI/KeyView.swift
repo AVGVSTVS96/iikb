@@ -274,6 +274,7 @@ final class KeyView: UIView {
         case .redo: "redo"
         case .emoji: "emoji"
         case .tool(let panel): panel.title
+        case .snippetPrefix: "snippet"
         }
     }
 
@@ -281,12 +282,12 @@ final class KeyView: UIView {
         if case .letter = shown.content { true } else { false }
     }
 
-    /// The paint for this key: letters, space and the action row's pills (as Raycast paints them) in the letter paint, a
-    /// prominent return in the prominent one, and the rest in the function paint.
+    /// The paint for this key: letters, space, the snippet key and the action row's pills (as Raycast paints them) in the
+    /// letter paint, a prominent return in the prominent one, and the rest in the function paint.
     private var paint: KeyPaint {
         if shown.isProminent { return theme.prominentKey }
         switch key.action {
-        case .character, .space, .tool: return theme.letterKey
+        case .character, .space, .tool, .snippetPrefix: return theme.letterKey
         default: return theme.functionKey
         }
     }

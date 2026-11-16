@@ -18,6 +18,8 @@ public struct Fill: Hashable, Sendable {
     public internal(set) var values: [String]
     /// The field the keys type into.
     public internal(set) var at = 0
+    /// Why the fill can't finish as it stands, like a new snippet's keyword another has, until its field changes.
+    public internal(set) var problem: String?
 
     init(_ title: String, goal: Goal, fields: [Template.Argument], values: [String]? = nil) {
         self.title = title

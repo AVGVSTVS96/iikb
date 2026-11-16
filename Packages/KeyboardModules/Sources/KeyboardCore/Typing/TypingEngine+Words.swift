@@ -86,7 +86,11 @@ extension TypingEngine {
         return word.map { $0 == "'" ? apostrophe : String($0) }.joined()
     }
 
-    public var showsSuggestions: Bool {
+    /// Whether the bar shows suggestions: words where the field and Predictive Text allow them, a snippet's keywords
+    /// after the prefix in any field.
+    public var showsSuggestions: Bool { suggestions.first?.kind == .snippet || predicts }
+
+    private var predicts: Bool {
         switch traits.kind {
         case .email, .url, .number, .decimal: false
         default: settings.predictiveText
@@ -122,7 +126,7 @@ extension TypingEngine {
     /// While a panel is open, the keys are a plain text keyboard whose return closes it.
     public func faces(on device: DeviceClass) -> KeyFaceContext {
         if panel != nil {
-            let returnKind: ReturnKind = fill.map { $0.isLast ? .done : .next } ?? .default
+            let returnKind: ReturnKind = fill.map { $0.isLast ? .go : .next } ?? .default
             return KeyFaceContext(
                 device: device, layer: layer, kind: .text, shift: shift, returnKind: returnKind, returnEnabled: true)
         }
@@ -466,7 +470,7 @@ extension TypingEngine {
         let (word, tail) = suggested
         suggestions = snippetSuggestions
         guard suggestions.isEmpty else { return }
-        guard showsSuggestions, isWords(self.text.selected) else {
+        guard predicts, isWords(self.text.selected) else {
             suggestions = []
             return
         }
