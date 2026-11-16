@@ -142,6 +142,8 @@ Its runs:
 
 It runs a Release build (the decoder is slow in Debug), here on Linux in a package of KeyboardCore, the word lists and `Evaluation` alone, which gives the same numbers as the Mac; only the baseline needs `UITextChecker`, so its lines are scored on a Mac (`scripts/ci scripts/eval`). A full run is diffed against `scripts/eval.expected` (the root AGENTS.md's rule table says what a change that moves the numbers owes).
 
+When the backup is on this box, a run here adds lines the diff leaves out, since they're private and move as he types: `latency user=phone` times keys and reads the memory's size with his typing memory and personal network, and `phone emoji` scores the bar's emoji against the ones he sent right after a word.
+
 ## screens
 
 The check that notices a screen nobody meant to change (`.github/workflows/screens.yml`):

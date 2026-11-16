@@ -16,6 +16,11 @@ src=$root/Packages/KeyboardModules
 out=$root/build/eval.txt
 mkdir -p "$root/build"
 export REAL_DATA=${REAL_DATA:-$root/build/real} TEST_RUNNER_REAL_DATA=${REAL_DATA:-$root/build/real}
+mirror=${IIKB_BACKUP:-$HOME/.local/share/iikb/backup}/mirror
+if [ -f "$mirror/personal/en.network" ] && [ -f "$mirror/keyboard/support/typing-memory.json" ]; then
+  export PHONE_NETWORK=$mirror/personal/en.network PHONE_MEMORY=$mirror/keyboard/support/typing-memory.json
+fi
+[ ! -f "$HOME/.local/share/iikb/record.jsonl" ] || export RECORD=$HOME/.local/share/iikb/record.jsonl
 case "${1:-real}" in real*) [ -f "$REAL_DATA/autocorrect.txt" ] || python3 -I "$root/scripts/realtyping.py" "$REAL_DATA" ;; esac
 if [ "${1:-}" = languages ] || [ "${1:-}" = swipe ]; then
   export LANGUAGES=$root/build/languages
@@ -74,4 +79,4 @@ if [ "${1:-}" = swipe ]; then
   exit
 fi
 [ -z "${1:-}" ] || exit 0
-diff -u <(grep -E "$scored" "$root/scripts/eval.expected" | grep -v '^EVAL swipe' | grep -v '^EVAL language' | sort) <(grep '^EVAL' "$out" | grep -v '^EVAL latency' | grep -v '^EVAL swipe' | sort) && echo "EVAL matches eval.expected"
+diff -u <(grep -E "$scored" "$root/scripts/eval.expected" | grep -v '^EVAL swipe' | grep -v '^EVAL language' | sort) <(grep '^EVAL' "$out" | grep -vE '^EVAL (latency|phone)' | grep -v '^EVAL swipe' | sort) && echo "EVAL matches eval.expected"

@@ -79,11 +79,30 @@ struct Evaluation {
     }
 
     /// Main-thread cost per keystroke of what the extension runs for one key: hit-testing on touch down, the key on
-    /// touch up, and the document refresh the host's `textDidChange` triggers.
-    @Test func latency() throws {
+    /// touch up, and the document refresh the host's `textDidChange` triggers. Once for a new user, and once more with
+    /// the iPhone's own memory and network from the backup (`PHONE_MEMORY`, `PHONE_NETWORK`, set by scripts/eval
+    /// when they're on this box), since ranking a real memory's words costs what an empty one never shows.
+    @Test(arguments: ["new", "phone"]) func latency(_ typist: String) throws {
+        let environment = ProcessInfo.processInfo.environment
+        var memory = TypingMemory()
+        var network = Network.english
+        let before = Self.resident()
+        if typist == "phone" {
+            guard let saved = environment["PHONE_MEMORY"], let personal = environment["PHONE_NETWORK"] else { return }
+            struct Saved: Decodable { var memory: TypingMemory }
+            let decoder = JSONDecoder()
+            decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+                positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+            memory = try decoder.decode(Saved.self, from: Data(contentsOf: URL(fileURLWithPath: saved))).memory
+            network = try #require(
+                Network(bytes: [UInt8](Data(contentsOf: URL(fileURLWithPath: personal))), personal: true))
+        }
+        var loaded = ""
+        if let before, let after = Self.resident() { loaded = "memoryMB=\((after - before) / 1024) " }
         let phrases = try Self.phrases().prefix(100)
         var user = SimulatedUser(width: Self.width, noise: 0.2, seed: 2026)
-        var session = Session(.learning, grid: user.grid)
+        var session = Session(.learning, grid: user.grid, network: network)
+        session.engine.corrector?.changeMemory { $0 = memory }
         var down: [Duration] = []
         var letters: [Duration] = []
         var spaces: [Duration] = []
@@ -112,8 +131,15 @@ struct Evaluation {
             return "\(name) median=\(at(0.5)) p95=\(at(0.95)) p99=\(at(0.99)) max=\(at(1))"
         }
         print(
-            "EVAL latency ms keys=\(down.count) \(summary("down", down)) | \(summary("letter up", letters)) | \(summary("space up", spaces)) | \(summary("textDidChange", changed))"
+            "EVAL latency user=\(typist) \(loaded)ms keys=\(down.count) \(summary("down", down)) | \(summary("letter up", letters)) | \(summary("space up", spaces)) | \(summary("textDidChange", changed))"
         )
+    }
+
+    /// This process's resident memory in KB, where Linux reports it (`scripts/eval` here), else nil.
+    static func resident() -> Int? {
+        let status = try? String(contentsOfFile: "/proc/self/status", encoding: .utf8)
+        return status?.split(separator: "\n").first { $0.hasPrefix("VmRSS:") }?.split(separator: " ").dropFirst().first
+            .flatMap { Int($0) }
     }
 
     /// The suggestion bar before each word: how often the word you type next is one of the three it shows, and how
@@ -147,6 +173,53 @@ struct Evaluation {
                 "EVAL emoji corpus=\(corpus) words=\(words.count) withEmoji=\(String(format: "%.1f", 100.0 * Double(found.count) / Double(words.count)))%"
             )
         }
+    }
+
+    /// The bar's emoji against a real choice: each emoji the iPhone's owner sent right after a word (`RECORD`, the
+    /// record source's log, which scripts/eval passes when it's on this box), and how often the bar offers it for that
+    /// word, among its three and first, with no emoji history. `emoji()` only counts words that find any, and emoji.txt
+    /// was picked and judged by the same model, so this is the line that can say its picks are wrong.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["RECORD"] != nil)) func emojiSent() throws {
+        struct Entry: Decodable {
+            var event: String
+            var text: String
+        }
+        let plain = { (emoji: String) in
+            String(
+                String.UnicodeScalarView(
+                    emoji.unicodeScalars.filter { !$0.properties.isEmojiModifier && $0 != "\u{FE0F}" }))
+        }
+        var texts = Set<String>()
+        var (pairs, offered, first) = (0, 0, 0)
+        for line in try String(contentsOfFile: ProcessInfo.processInfo.environment["RECORD"]!, encoding: .utf8)
+            .split(separator: "\n")
+        {
+            guard let entry = try? JSONDecoder().decode(Entry.self, from: Data(line.utf8)), entry.event == "sent",
+                texts.insert(entry.text).inserted
+            else { continue }
+            var (word, previous) = ("", "")
+            for character in entry.text {
+                if character.isLetter || character == "'" {
+                    word.append(character)
+                } else if character.isWhitespace {
+                    if !word.isEmpty { (previous, word) = (word, "") }
+                } else {
+                    let before = word.isEmpty ? previous : word
+                    (previous, word) = ("", "")
+                    let scalar = character.unicodeScalars.first!.properties
+                    guard scalar.isEmoji, scalar.isEmojiPresentation || character.unicodeScalars.count > 1,
+                        !before.isEmpty
+                    else { continue }
+                    let sent = plain(String(character))
+                    let shown = EmojiCatalog.english.suggestions(for: before, history: EmojiHistory()).map(plain)
+                    pairs += 1
+                    if shown.contains(sent) { offered += 1 }
+                    if shown.first == sent { first += 1 }
+                }
+            }
+        }
+        let share = { (count: Int) in String(format: "%.1f", 100.0 * Double(count) / Double(max(pairs, 1))) }
+        print("EVAL phone emoji sent=\(pairs) offered=\(share(offered))% first=\(share(first))%")
     }
 
     /// A thumb that misses the space bar between two words and lands on the row above it ("great day" typed
@@ -440,7 +513,7 @@ struct Session {
     var window = Score()
 
     /// With `lexicon`, another language's words and no next-word network.
-    init(_ keyboard: Evaluation.Keyboard, grid: KeyGrid, lexicon: Lexicon? = nil) {
+    init(_ keyboard: Evaluation.Keyboard, grid: KeyGrid, lexicon: Lexicon? = nil, network: Network = .english) {
         self.keyboard = keyboard
         self.grid = grid
         #if canImport(UIKit)
@@ -449,7 +522,7 @@ struct Session {
         #else
             let source: any CandidateSource = lexicon ?? Lexicon.english
         #endif
-        let corrector = Corrector(source: source, network: keyboard == .baseline || lexicon != nil ? nil : .english)
+        let corrector = Corrector(source: source, network: keyboard == .baseline || lexicon != nil ? nil : network)
         corrector.grid = grid
         engine.corrector = corrector
     }

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Runs on GitHub's Macs (scripts/ci) after scripts/build. Shows the keyboard over a field holding text (so the corrector loads and runs)
-# and prints the extension's memory footprint. No XCUITest, which inflates the extension.
+# and prints the extension's memory footprint. No XCUITest, which inflates the extension. Its typing memory is empty,
+# since Bassim's is private: scripts/eval latency prints what his adds, here on Linux (memoryMB).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ID=$(scripts/sim ensure "${NAME:-iPhone 17}" "${TYPE:-iPhone-17}")

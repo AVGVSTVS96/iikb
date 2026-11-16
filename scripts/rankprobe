@@ -1,10 +1,13 @@
 #!/bin/sh
 # Times the suggestion bar's ranking on the iPhone the Mac reaches, in the installed iikb (scripts/phone's build): scripts/rankprobe.
 # Types the first 100 phrases of the evaluation corpus with seeded noisy taps, as Evaluation.latency() does (scripts/eval
-# latency, here on Linux), and prints median, p95, p99 and max for letter-up and space-up. Keep the iPhone unlocked.
+# latency, here on Linux), with the iPhone's network and the backup's typing memory as the keyboard has them, and
+# prints median, p95, p99 and max for letter-up and space-up. Keep the iPhone unlocked.
 set -e
 cd "$(dirname "$0")/.."
+memory=${IIKB_BACKUP:-$HOME/.local/share/iikb/backup}/mirror/keyboard/support/typing-memory.json
 scp -q Packages/KeyboardModules/Tests/KeyboardUITests/phrases.txt mac:/tmp/iikb-probe-phrases.txt
+scp -q "$([ -f "$memory" ] && echo "$memory" || echo /dev/null)" mac:/tmp/iikb-probe-memory.json
 ssh mac sh -s <<'MAC'
 set -e
 phone=$(xcrun devicectl list devices --json-output /tmp/iikb-phone.json >/dev/null && /usr/bin/python3 -c "
@@ -15,6 +18,8 @@ for d in json.load(open('/tmp/iikb-phone.json'))['result']['devices']:
 [ -n "$phone" ] || { echo "the Mac doesn't reach an iPhone" >&2; exit 1; }
 container="--device $phone --domain-type appDataContainer --domain-identifier com.shahidy.iikb"
 xcrun devicectl device copy to $container --source /tmp/iikb-probe-phrases.txt --destination Documents/probe-phrases.txt >/dev/null
+xcrun devicectl device copy to $container --source /tmp/iikb-probe-memory.json --destination Documents/probe-memory.json >/dev/null
+rm /tmp/iikb-probe-memory.json
 xcrun devicectl device copy to $container --source /dev/null --destination Documents/rank.log >/dev/null
 xcrun devicectl device process launch --terminate-existing --device "$phone" com.shahidy.iikb -- -iikbRankingProbe YES >/dev/null
 n=0
@@ -22,5 +27,6 @@ until xcrun devicectl device copy from $container --source Documents/rank.log --
   n=$((n + 1)); [ $n -lt 40 ] || { echo "no result in 2 minutes: is the iPhone unlocked?" >&2; exit 1; }
   sleep 3
 done
+xcrun devicectl device copy to $container --source /dev/null --destination Documents/probe-memory.json >/dev/null
 cat /tmp/iikb-rank.log
 MAC

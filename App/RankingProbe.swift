@@ -1,12 +1,17 @@
 import KeyboardCore
 import KeyboardEnglish
+import KeyboardStore
 import KeyboardUI
 import UIKit
 
 /// `-iikbRankingProbe YES` (`scripts/rankprobe`): types the phrases in `Documents/probe-phrases.txt` through `TypingEngine`
 /// with seeded noisy taps the way `Evaluation.latency()` does, timing every letter-up and space-up on this iPhone, and
-/// logs their median, p95, p99 and max to `Documents/rank.log`. Keep the screen unlocked while it runs.
+/// logs their median, p95, p99 and max to `Documents/rank.log`. It ranks with the keyboard's network (the personal one
+/// when the app has it) and the typing memory in `Documents/probe-memory.json` (the backup's), as the keyboard would
+/// with your words, since an empty memory times less work than a real one. Keep the screen unlocked while it runs.
 enum RankingProbe {
+    nonisolated private struct Saved: Codable { var memory: TypingMemory }
+
     static var asked: Bool { UserDefaults.standard.bool(forKey: "iikbRankingProbe") }
 
     @MainActor static func runIfAsked() {
@@ -27,8 +32,11 @@ enum RankingProbe {
         let grid = KeyGrid(
             Layouts.layout(for: LayoutContext(device: .phone, layer: .letters)), width: width,
             metrics: KeyboardMetrics.phone(width: width).grid, signature: "probe")
-        let corrector = Corrector(source: Lexicon.english, network: .english)
+        let corrector = Corrector(source: Lexicon.english, network: .current)
         corrector.grid = grid
+        let memory = StoredFile<Saved>(.documentsDirectory.appendingPathComponent("probe-memory.json")).read().value?
+            .memory
+        corrector.changeMemory { $0 = memory ?? TypingMemory() }
         var random = SeededRandom(seed: 2026)
         var letters: [Duration] = []
         var spaces: [Duration] = []
@@ -56,7 +64,7 @@ enum RankingProbe {
             engine.endSession()
         }
         let log =
-            "ranking probe \(Date.now.formatted()) thermal \(ProcessInfo.processInfo.thermalState.rawValue) keys=\(letters.count + spaces.count)\n"
+            "ranking probe \(Date.now.formatted()) thermal \(ProcessInfo.processInfo.thermalState.rawValue) keys=\(letters.count + spaces.count) memory=\(memory?.counts.count ?? 0) words network=\(PersonalNetwork.load() == nil ? "bundled" : "personal")\n"
             + "\(summary("letter up", letters))\n\(summary("space up", spaces))\ndone\n"
         // file: probe log
         try log.write(to: .documentsDirectory.appendingPathComponent("rank.log"), atomically: true, encoding: .utf8)
