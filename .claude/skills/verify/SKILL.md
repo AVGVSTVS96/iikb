@@ -9,7 +9,7 @@ description: Prove a change to iikb works the way a user meets it, with the chea
 
 1. Here, on Linux: `scripts/coretest` for anything in `KeyboardCore` (and `scripts/eval` when it changes what gets typed), and `scripts/check` for anything that builds into the app or the keyboard (the iPhone build, unsigned, a few minutes). Both must pass before a change lands.
 2. Land on main the moment the change is ready. hex's pipeline hears the push and runs `scripts/phone` (its log: `journalctl --user -u 'pipeline-iikb-*'`), which prints `build <N> (main <commit>) is on the install link` and then the build each device the Mac reaches has. Quote those lines and tell Bassim what's in the build. hangar installs it by itself while his Automatic installs is on (`~/.local/share/hangar/auto.json`), and otherwise waits for his tap, so never tell him to install a build his device already has. Check on the iPhone (probes, screenshots) once its build is N or later; the same number shows in the app at Settings › About.
-3. The simulator by default: the row below for what the change touches, on the iPhone Duo, through `scripts/ci`. Every push to main also runs `scripts/verify` (the sim workflow's runs on main).
+3. The simulator by default: the row below for what the change touches, on the iPhone Duo, through `scripts/ci`. Every push to main that changes more than docs also runs `scripts/verify` (the sim workflow's runs on main).
 
 ## GitHub's Macs
 
