@@ -3,15 +3,17 @@ import KeyboardStore
 import OSLog
 import Observation
 import UIKit
+import WidgetKit
 
 nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
 
 /// The microphone, recording a dictation as a `Recording`: 16 kHz, kept in memory and written to its file as
 /// it's heard. It knows nothing of the models that write recordings down, so nothing about them can hold up a
-/// recording.
+/// recording. While it's on it holds the App Group's mic lock, which tells the keyboard the app is there to dictate.
 @Observable @MainActor public final class Microphone {
     private var engine = AVAudioEngine()
     private let feed = Feed()
+    private var lock: Int32?
     /// How the iPhone's microphones are aimed now, nil when another microphone hears.
     private var aimed: Capture?
     /// Why they aren't, when they aren't.
@@ -68,9 +70,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         }
     }
 
-    public private(set) var isOn = false
-    /// It went on or off.
-    public var onChange: () -> Void = {}
+    public var isOn: Bool { lock != nil }
 
     /// The input recording now, as iOS names it.
     public var input: String? { AVAudioSession.sharedInstance().currentRoute.inputs.first?.portName }
@@ -96,23 +96,16 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     /// every app's haptics while any app records unless the recording session allows them, and an incoming call that
     /// rings doesn't stop it, only one that's answered.
     public func open() throws {
-        guard !isOn else { return }
+        guard lock == nil else { return }
         do {
             try beginOnAnyEngine("opened")
         } catch {
-            Self.rest()
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
             throw error
         }
-        isOn = true
-        onChange()
-    }
-
-    /// The session while nothing records: inactive, and playback, the category picture in picture needs (`MicTab`),
-    /// mixing so it stops no one's sound.
-    public static func rest() {
-        let session = AVAudioSession.sharedInstance()
-        try? session.setActive(false, options: .notifyOthersOnDeactivation)
-        try? session.setCategory(.playback, mode: .moviePlayback, options: .mixWithOthers)
+        lock = Dictation.lockMic() ?? -1
+        Dictation.send(.changed)
+        ControlCenter.shared.reloadControls(ofKind: Dictation.micControl)
     }
 
     /// An engine left from before a media services reset can't start (-50), and a suspended iikb may not hear of the
@@ -201,13 +194,15 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     }
 
     public func close() {
-        guard isOn else { return }
+        guard let lock else { return }
         _ = feed.stop()
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
-        Self.rest()
-        isOn = false
-        onChange()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        if lock >= 0 { Dictation.unlockMic(lock) }
+        self.lock = nil
+        Dictation.send(.changed)
+        ControlCenter.shared.reloadControls(ofKind: Dictation.micControl)
     }
 
     /// Records from the next sound on into `url`.

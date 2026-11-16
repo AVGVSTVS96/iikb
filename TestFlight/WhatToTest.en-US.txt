@@ -1,4 +1,4 @@
-- Dictation: turn on the mic switch at the top of Home and a small iikb strip comes up; slide it off the screen's edge to tuck it away. While it's up, dictate from the keyboard in any app, with the microphone on only while you talk. The first time, allow the microphone, then turn the switch off and on again.
+- Dictation: turn on the mic switch at the top of Home, then dictate from the keyboard in any app. The small iikb strip over other apps is gone.
 - Chats: return now starts a new line, and the ↑ in the box sends.
 - Clipboard: links from the same site show which page they are, like github/swift beside github/vercel.
 - In Instagram, @ and # are on 123 now, so a tap near the end of the space bar types a space.
