@@ -26,9 +26,18 @@ import UIKit
         func check(app: String?, before: String) {
             goal = nil
             queue.async {
-                let height = Field.focused(matching: before).map { $0.rect($0.caret).height }
-                if !before.isEmpty { Self.record(app: app, answered: height != nil) }
-                Task { @MainActor in self.lineHeight = height.flatMap { $0 > 0 ? $0 : nil } }
+                var height: CGFloat?
+                let answer: String
+                switch Field.find(matching: before) {
+                case .success(let field):
+                    let caret = field.rect(field.caret).height
+                    height = caret > 0 ? caret : nil
+                    answer = height == nil ? "no rects" : "lines"
+                case .failure(let stop):
+                    answer = stop.rawValue
+                }
+                if !before.isEmpty { Self.record(app: app, answer: answer) }
+                Task { @MainActor in self.lineHeight = height }
             }
         }
 
@@ -42,7 +51,7 @@ import UIKit
             let goal = goal
             pending = 0
             queue.async {
-                let move = Field.focused(matching: before)?.move(count, goal: goal)
+                let move = try? Field.find(matching: before).get().move(count, goal: goal)
                 Task { @MainActor in
                     self.moving = false
                     guard let move else {
@@ -55,13 +64,14 @@ import UIKit
             }
         }
 
-        private nonisolated static func record(app: String?, answered: Bool) {
+        /// Keeps, per app, whether its field gave its lines or where asking stopped (`Field.Stop`).
+        private nonisolated static func record(app: String?, answer: String) {
             guard let app else { return }
-            let url = URL.applicationSupportDirectory.appending(path: "field-lines.json")
-            let file = StoredFile<[String: Bool]>(url)
+            let url = URL.applicationSupportDirectory.appending(path: "field-access.json")
+            let file = StoredFile<[String: String]>(url)
             var seen = file.read().value ?? [:]
-            guard seen[app] != answered else { return }
-            seen[app] = answered
+            guard seen[app] != answer else { return }
+            seen[app] = answer
             file.save(seen)
         }
     #endif
@@ -75,17 +85,28 @@ import UIKit
         let text: NSString
         let caret: Int
 
+        /// Where asking the app for its field stopped.
+        enum Stop: String, Error {
+            case noRuntime = "no runtime"
+            case noApp = "no app"
+            case noField = "no field"
+            case noText = "no text"
+            case otherText = "other text"
+        }
+
         /// The field, when its text before the caret ends as `before` does, so it's the field the keyboard types in.
-        static func focused(matching before: String) -> Field? {
+        static func find(matching before: String) -> Result<Field, Stop> {
             guard dlopen("/System/Library/PrivateFrameworks/AXRuntime.framework/AXRuntime", RTLD_NOW) != nil,
-                let ax = NSClassFromString("AXElement"),
-                let app = call(ax, "primaryApp"), let element = call(app, "firstResponder"),
-                let text = call(element, "value") as? NSString,
+                let ax = NSClassFromString("AXElement")
+            else { return .failure(.noRuntime) }
+            guard let app = call(ax, "primaryApp") else { return .failure(.noApp) }
+            guard let element = call(app, "firstResponder") else { return .failure(.noField) }
+            guard let text = call(element, "value") as? NSString,
                 let caret = range(element, "selectedTextRange")?.location, caret <= text.length
-            else { return nil }
+            else { return .failure(.noText) }
             let shown = String(before.suffix(32))
-            guard text.substring(to: caret).hasSuffix(shown) else { return nil }
-            return Field(element: element, text: text, caret: caret)
+            guard text.substring(to: caret).hasSuffix(shown) else { return .failure(.otherText) }
+            return .success(Field(element: element, text: text, caret: caret))
         }
 
         struct Move {
