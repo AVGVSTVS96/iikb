@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Prove a change to iikb works the way a user meets it, with the cheapest real check first. KeyboardCore's tests and the iPhone build run here on Linux; the Mac's simulators type through the real keyboard extension and take screenshots; scripts/phone puts main on the install link, and a change is tried on the iPhone once Bassim installs a build with it. Use before calling any change to the keyboard, the engine, the web demo or the app done.
+description: Prove a change to iikb works the way a user meets it, with the cheapest real check first. KeyboardCore's tests and the iPhone build run here on Linux; GitHub's Macs' simulators type through the real keyboard extension and take screenshots; a push to main puts it on the install link and in hangar, and a change is tried on the iPhone once it has a build with it. Use before calling any change to the keyboard, the engine, the web demo or the app done.
 ---
 
 # Verify iikb
@@ -8,7 +8,7 @@ description: Prove a change to iikb works the way a user meets it, with the chea
 ## Order
 
 1. Here, on Linux: `scripts/coretest` for anything in `KeyboardCore` (and `scripts/eval` when it changes what gets typed), and `scripts/check` for anything that builds into the app or the keyboard (the iPhone build, unsigned, a few minutes). Both must pass before a change lands.
-2. Land on main and run `scripts/phone`, the moment the change is ready. It prints `build <N> (main <commit>) is on the install link`; quote that line and tell Bassim what's in it. Only his tap installs it, so check on the iPhone (probes, screenshots) once the build the Mac reads from it, printed after, is N or later; the same number shows in the app at Settings › About.
+2. Land on main the moment the change is ready. hex's pipeline hears the push and runs `scripts/phone` (its log: `journalctl --user -u 'pipeline-iikb-*'`), which prints `build <N> (main <commit>) is on the install link` and then the build each device the Mac reaches has. Quote those lines and tell Bassim what's in the build. hangar installs it by itself while his Automatic installs is on (`~/.local/share/hangar/auto.json`), and otherwise waits for his tap, so never tell him to install a build his device already has. Check on the iPhone (probes, screenshots) once its build is N or later; the same number shows in the app at Settings › About.
 3. The simulator by default: the row below for what the change touches, on the iPhone Duo, through `scripts/ci`. Every push to main also runs `scripts/verify` (the sim workflow's runs on main).
 
 ## GitHub's Macs
@@ -46,4 +46,3 @@ Quote the summary lines each command prints: the test counts, the `EVAL` diff or
 - The simulator merges overlapping synthesized fingers into one sliding finger, so overlap at speed is covered by `TouchReplayTests` (package tests), not by `FastTypingTests`.
 - `scripts/eval` runs a Release build; the decoder is too slow in Debug for the numbers to finish in reasonable time.
 - Taps from outside the simulator (axe, simctl) never reach a keyboard, Apple's or iikb's, and on the iPhone Duo `XCUIScreen.main` screenshots come out black in landscape and on the open screen, whose display is another of `XCUIScreen.screens`. Drive keyboards from a UI test and read key frames from `app.debugDescription`, as `AppleSplitShots` does for Apple's split (`TEST_RUNNER_IIKB_SPLIT_SHOTS=<prefix>`, `-only-testing:AppUITests/AppleSplitShots`).
-- iOS 27.1, the only simulator with the iPhone Duo, has no Messages, so tests that need it skip there.
