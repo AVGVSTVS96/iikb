@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { keystroke } from "./keystroke.ts";
 
-const GIVEN_BACK = ["mac", "personal"];
+const GIVEN_BACK = ["personal"];
 
 export const Held = z.record(z.string(), z.tuple([z.number(), z.number()]));
 

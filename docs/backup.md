@@ -57,7 +57,7 @@ sent with. A file sent with other contents moves the one it replaces to `version
 already kept one of it); nothing is ever deleted.
 An iPad's files are kept apart, in `~/.local/share/iikb/backup-ipad`, so they never go over the iPhone's: each request
 names its device (`X-Device`, from the model, "iPad" or "iPhone"; none is an iPhone), and a device other than an iPhone
-sends nothing until the server's listing names it back. The personal network and the Mac's files are one for both.
+sends nothing until the server's listing names it back. The personal network is one for both.
 `IIKB_BACKUP=~/.local/share/iikb/backup-ipad scripts/backup <udid>` backs the iPad up there too, and
 `IIKB_BACKUP=~/.local/share/iikb/backup-ipad scripts/restore <udid>` puts it back.
 It runs as the user service `iikb-backup` (dotfiles), on port 2592 behind `tailscale serve` at `/backup`, so
@@ -67,7 +67,7 @@ What it answers, to the token:
 
 - `GET /`: every file it holds for the device and every file it gives back, `{ "app/transcripts.jsonl": [size, modified] }`, times in seconds, with the device named back in `X-Device`.
 - `PUT /<name>`: a file, with its modification time in `X-Modified`.
-- `GET /mac/<name>`, `GET /personal/<name>`: what the Mac sent and what the server made for the iPhone, with the time in `Last-Modified`. The iPhone's own files are never read back out, so its token can't take them.
+- `GET /personal/<name>`: what the server made for the iPhone, with the time in `Last-Modified`. The iPhone's own files are never read back out, so its token can't take them.
 - `GET /iphone/typing-stats.json`: the iPhone's typing and dictation counts as Keystroke keeps the Mac's (`server/keystroke.ts`, docs/stats.md).
 
 A build gets the server from `Packages/KeyboardModules/Sources/KeyboardStore/Resources/Keys/backup.key`, kept out of git: the
