@@ -84,6 +84,7 @@ final class Keyboard {
         geometry.metrics.toolbar = geometry.metrics.toolbar.showing(
             engine.panel, compact: engine.settings.compactPanels)
         geometry.metrics.bottomInset += bottom
+        geometry.metrics.bottomRowCut = 0
         self.context = context
         self.geometry = geometry
         grid = KeyGrid(geometry.layout, width: width, metrics: geometry.metrics.grid, signature: context.signature)
