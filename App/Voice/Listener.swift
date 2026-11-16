@@ -212,6 +212,7 @@ import VoiceModels
                 "\(error.localizedDescription) The recording is kept, and written down when iikb next opens.")
         }
         keepMicOn()
+        Task { await Transcripts.shared.rewriteApple() }
     }
 
     /// Starts Keep Mic On's countdown over, or turns the microphone off now when it's Off, once nothing is being

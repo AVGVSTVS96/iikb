@@ -59,6 +59,9 @@ struct Transcript: Codable, Identifiable, Hashable {
 
     var words: Int { text.split(whereSeparator: \.isWhitespace).count }
 
+    /// Apple's model wrote it while a Parakeet got ready, as builds before 4d500d1 (Nov 3) did.
+    var waitsForParakeet: Bool { model?.hasPrefix("Apple, while") == true }
+
     /// The text, or, when the model wrote nothing, what it heard that your editing left out, else that it heard nothing.
     var shown: String { text.isEmpty ? heard.map { "Left out: \($0)" } ?? "Nothing heard" : text }
 }
@@ -78,6 +81,7 @@ struct Transcript: Codable, Identifiable, Hashable {
     /// Lines this build can't read (cut short, or written by a build that keeps a transcript another way), written
     /// back as they were each time the file is, so a rewrite never drops them.
     @ObservationIgnored private var unread: [Data] = []
+    @ObservationIgnored private var rewriting = false
 
     private struct Named: Decodable {
         var id: UUID
@@ -234,12 +238,13 @@ struct Transcript: Codable, Identifiable, Hashable {
         save()
     }
 
-    /// Writes again with the picked Parakeet each dictation Apple's model wrote while a Parakeet got ready, as builds
-    /// before 4d500d1 (Nov 3) did, one at a time while nothing is being recorded or written; `replace` keeps Apple's
-    /// words. What a dictation interrupts waits for the next launch.
+    /// Writes again with the picked Parakeet each dictation that `waitsForParakeet`, one at a time while nothing is being
+    /// recorded or written, as iikb starts and after each dictation; `replace` keeps Apple's words.
     func rewriteApple() async {
-        guard VoiceModel.shared.model != .apple else { return }
-        for transcript in all where transcript.model?.hasPrefix("Apple, while") == true && hasRecording(transcript.id) {
+        guard VoiceModel.shared.model != .apple, !rewriting else { return }
+        rewriting = true
+        defer { rewriting = false }
+        for transcript in all where transcript.waitsForParakeet && hasRecording(transcript.id) {
             guard !Listener.shared.isListening, !Listener.shared.isWriting else { return }
             guard
                 let written = try? await VoiceModel.shared.write(
@@ -259,9 +264,11 @@ struct Transcript: Codable, Identifiable, Hashable {
     }
 
     /// Oldest dictation first, by its transcript's date: a file's creation date is when it was last put on the iPhone,
-    /// which for every recording `scripts/restore` puts back is the restore.
+    /// which for every recording `scripts/restore` puts back is the restore. The sound a dictation `waitsForParakeet`
+    /// on stays until `rewriteApple` has it.
     private func trim() {
         let folder = recordings
+        let waiting = Set(all.filter(\.waitsForParakeet).map(\.id.uuidString))
         let said = Dictionary(all.map { ($0.id.uuidString, $0.date) }, uniquingKeysWith: { max($0, $1) })
         Task.detached(priority: .utility) {
             let files = FileManager.default
@@ -276,7 +283,7 @@ struct Transcript: Codable, Identifiable, Hashable {
                 }
             }.sorted { $0.2 > $1.2 }
             var bytes = 0
-            for (url, size, _) in kept {
+            for (url, size, _) in kept where !waiting.contains(url.deletingPathExtension().lastPathComponent) {
                 bytes += size
                 if bytes > 512_000_000 { try? files.removeItem(at: url) }
             }
