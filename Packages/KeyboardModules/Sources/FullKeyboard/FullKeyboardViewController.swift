@@ -3,6 +3,7 @@ import KeyboardEnglish
 import KeyboardStore
 import KeyboardUI
 import UIKit
+import AudioToolbox
 
 open class FullKeyboardViewController: UIInputViewController {
     open var hapticsEnabled: Bool { hasFullAccess && engine.settings.haptics != .off }
@@ -1196,7 +1197,25 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     private func feedback(_ haptic: KeyHaptics.Kind) {
-        if engine.settings.sound { UIDevice.current.playInputClick() }
+        UIDevice.current.playInputClick()
+        let id: SystemSoundID = switch haptic {
+        case .input, .separator: 1104
+        case .deletion, .deletionRepeat, .deletionRapid: 1155
+        case .other: 1156
+        }
+        let pref = CFPreferencesCopyAppValue("keyboard-audio" as CFString, "com.apple.preferences.sounds" as CFString)
+        let system = UIDevice.current.value(forKey: "isSystemSoundEnabled") as? Bool
+        let start = Date()
+        let line = "IIKBSND kind=\(haptic) id=\(id) pref=\(pref.map { "\($0)" } ?? "nil") isSystemSoundEnabled=\(system.map { "\($0)" } ?? "nil") fullAccess=\(hasFullAccess)"
+        AudioServicesPlaySystemSoundWithCompletion(id) {
+            let ms = Date().timeIntervalSince(start) * 1000
+            let out = String(format: "%.6f Keyboard %@ done_ms=%.1f\n", Date().timeIntervalSince1970, line, ms)
+            if let handle = FileHandle(forWritingAtPath: "/tmp/sndtrace.log") {
+                handle.seekToEndOfFile()
+                handle.write(Data(out.utf8))
+                try? handle.close()
+            }
+        }
         if hapticsEnabled { haptics.play(haptic) }
     }
 

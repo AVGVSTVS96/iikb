@@ -1,0 +1,121 @@
+https://github.com/AVGVSTVS96/iikb/actions/runs/43814080453
+##[group]Run bash -c "$RUN"
+^[[36;1mbash -c "$RUN"^[[0m
+shell: /bin/bash -e {0}
+env:
+  RUN: brew install --quiet fd ripgrep >/dev/null 2>&1; scratch/keysounds.sh system system-off iikb iikb-full-off
+##[endgroup]
+scratch/soundtrace.m:143:5: warning: format string is not a string literal (potentially insecure) [-Wformat-security]
+  142 |   SWAP("UIDevice", "playInputClick", NO, void, (id, SEL), , ^(id self) {
+      |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  143 |     LOG("objc=-[UIDevice playInputClick]"); old(self, s); });
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+scratch/soundtrace.m:79:38: note: expanded from macro 'LOG'
+   79 |   filelog([NSString stringWithFormat:[[@fmt stringByReplacingOccurrencesOfString:@"%{public}" withString:@"%"] stringByReplacingOccurrencesOfString:@"%s" withString:@"%s"], ##__VA_ARGS__]); } while (0)
+      |                                      ^
+scratch/soundtrace.m:101:59: note: expanded from macro 'SWAP'
+  101 |   method_setImplementation(m, imp_implementationWithBlock(body)); } while (0)
+      |                                                           ^~~~
+scratch/soundtrace.m:143:5: note: treat the string as an argument to avoid this
+scratch/soundtrace.m:79:38: note: expanded from macro 'LOG'
+   79 |   filelog([NSString stringWithFormat:[[@fmt stringByReplacingOccurrencesOfString:@"%{public}" withString:@"%"] stringByReplacingOccurrencesOfString:@"%s" withString:@"%s"], ##__VA_ARGS__]); } while (0)
+      |                                      ^
+scratch/soundtrace.m:185:3: warning: format string is not a string literal (potentially insecure) [-Wformat-security]
+  185 |   LOG("soundfile no AudioToolbox image");
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+scratch/soundtrace.m:79:38: note: expanded from macro 'LOG'
+   79 |   filelog([NSString stringWithFormat:[[@fmt stringByReplacingOccurrencesOfString:@"%{public}" withString:@"%"] stringByReplacingOccurrencesOfString:@"%s" withString:@"%s"], ##__VA_ARGS__]); } while (0)
+      |                                      ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+scratch/soundtrace.m:185:3: note: treat the string as an argument to avoid this
+scratch/soundtrace.m:79:38: note: expanded from macro 'LOG'
+   79 |   filelog([NSString stringWithFormat:[[@fmt stringByReplacingOccurrencesOfString:@"%{public}" withString:@"%"] stringByReplacingOccurrencesOfString:@"%s" withString:@"%s"], ##__VA_ARGS__]); } while (0)
+      |                                      ^
+scratch/soundtrace.m:191:3: warning: format string is not a string literal (potentially insecure) [-Wformat-security]
+  191 |   LOG("loaded");
+      |   ^~~~~~~~~~~~~
+scratch/soundtrace.m:79:38: note: expanded from macro 'LOG'
+   79 |   filelog([NSString stringWithFormat:[[@fmt stringByReplacingOccurrencesOfString:@"%{public}" withString:@"%"] stringByReplacingOccurrencesOfString:@"%s" withString:@"%s"], ##__VA_ARGS__]); } while (0)
+      |                                      ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+scratch/soundtrace.m:191:3: note: treat the string as an argument to avoid this
+scratch/soundtrace.m:79:38: note: expanded from macro 'LOG'
+   79 |   filelog([NSString stringWithFormat:[[@fmt stringByReplacingOccurrencesOfString:@"%{public}" withString:@"%"] stringByReplacingOccurrencesOfString:@"%s" withString:@"%s"], ##__VA_ARGS__]); } while (0)
+      |                                      ^
+3 warnings generated.
+build/sndtrace.dylib: replacing existing signature
+ 60 |         window.isHidden = false
+ 61 |         window.addSubview(panel)
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
+/Users/runner/work/iikb/iikb/build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
+Slimming A6814A13-97FE-478D-BEBB-16EACBAF691A: disabling 173 background services while it is off, then booting it slim.
+Reconfiguring 173 background services while the simulator is off...
+Booting the simulator (a first boot can take up to a minute)...
+=== system
+prefs sounds:
+Error: Domain 'com.apple.preferences.sounds' not found.
+Slimming A6814A13-97FE-478D-BEBB-16EACBAF691A: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+log: Ignoring some flags 0x310000 because they are process/subsystem only
+log: Simulator unable to set system mode
+-
+2026-11-16 06:16:47.406 xcodebuild[9937:34611] [MT] IDELaunchParametersSnapshot: debugger version lookup failed for path '<nil>': noURL
+
+
+
+    2043 shots/raw/sounds/system.trace
+    2340 shots/raw/sounds/system.log
+1822
+=== system-off
+prefs sounds:
+{
+    "keyboard-audio" = 0;
+}
+Slimming A6814A13-97FE-478D-BEBB-16EACBAF691A: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+log: Ignoring some flags 0x310000 because they are process/subsystem only
+log: Simulator unable to set system mode
+-
+2026-11-16 06:21:04.173 xcodebuild[18969:57565] [MT] IDELaunchParametersSnapshot: debugger version lookup failed for path '<nil>': noURL
+
+
+
+     692 shots/raw/sounds/system-off.trace
+     987 shots/raw/sounds/system-off.log
+467
+=== iikb
+prefs sounds:
+{
+}
+Slimming A6814A13-97FE-478D-BEBB-16EACBAF691A: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+log: Ignoring some flags 0x310000 because they are process/subsystem only
+log: Simulator unable to set system mode
+-
+2026-11-16 06:25:28.566 xcodebuild[28575:81301] [MT] IDELaunchParametersSnapshot: debugger version lookup failed for path '<nil>': noURL
+
+
+
+     117 shots/raw/sounds/iikb.trace
+     340 shots/raw/sounds/iikb.log
+47
+=== iikb-full-off
+prefs sounds:
+{
+    "keyboard-audio" = 0;
+}
+Slimming A6814A13-97FE-478D-BEBB-16EACBAF691A: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+Slimming A6814A13-97FE-478D-BEBB-16EACBAF691A: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+log: Ignoring some flags 0x310000 because they are process/subsystem only
+log: Simulator unable to set system mode
+-
+2026-11-16 06:29:08.018 xcodebuild[35070:98687] [MT] IDELaunchParametersSnapshot: debugger version lookup failed for path '<nil>': noURL
+
+
+
+      90 shots/raw/sounds/iikb-full-off.trace
+     313 shots/raw/sounds/iikb-full-off.log
+20
+success, https://github.com/AVGVSTVS96/iikb/actions/runs/43814080453

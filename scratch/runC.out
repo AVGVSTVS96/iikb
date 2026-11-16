@@ -1,0 +1,80 @@
+https://github.com/AVGVSTVS96/iikb/actions/runs/43794994933
+##[group]Run bash -c "$RUN"
+^[[36;1mbash -c "$RUN"^[[0m
+shell: /bin/bash -e {0}
+env:
+  RUN: brew install --quiet fd ripgrep >/dev/null 2>&1; scratch/keysounds.sh system system-off iikb iikb-full
+##[endgroup]
+build/sndtrace.dylib: replacing existing signature
+ 60 |         window.isHidden = false
+ 61 |         window.addSubview(panel)
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
+/Users/runner/work/iikb/iikb/build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
+Slimming 089A464D-335F-4ABF-8948-6F5FC14A7EFE: disabling 173 background services while it is off, then booting it slim.
+Reconfiguring 173 background services while the simulator is off...
+Booting the simulator (a first boot can take up to a minute)...
+=== system
+prefs sounds:
+Error: Domain 'com.apple.preferences.sounds' not found.
+Slimming 089A464D-335F-4ABF-8948-6F5FC14A7EFE: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+log: Ignoring some flags 0x310000 because they are process/subsystem only
+log: Simulator unable to set system mode
+-
+2026-11-16 03:43:35.598 xcodebuild[14291:43061] [MT] IDELaunchParametersSnapshot: debugger version lookup failed for path '<nil>': noURL
+
+
+
+  142728 shots/raw/sounds/system.log
+88
+=== system-off
+prefs sounds:
+{
+    "keyboard-audio" = 0;
+}
+Slimming 089A464D-335F-4ABF-8948-6F5FC14A7EFE: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+log: Ignoring some flags 0x310000 because they are process/subsystem only
+log: Simulator unable to set system mode
+-
+2026-11-16 03:46:20.779 xcodebuild[21840:61272] [MT] IDELaunchParametersSnapshot: debugger version lookup failed for path '<nil>': noURL
+
+
+
+  143388 shots/raw/sounds/system-off.log
+89
+=== iikb
+prefs sounds:
+{
+}
+Slimming 089A464D-335F-4ABF-8948-6F5FC14A7EFE: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+log: Ignoring some flags 0x310000 because they are process/subsystem only
+log: Simulator unable to set system mode
+-
+2026-11-16 03:49:04.512 xcodebuild[29059:78529] [MT] IDELaunchParametersSnapshot: debugger version lookup failed for path '<nil>': noURL
+
+
+
+   14264 shots/raw/sounds/iikb.log
+81
+=== iikb-full
+prefs sounds:
+{
+}
+Slimming 089A464D-335F-4ABF-8948-6F5FC14A7EFE: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+Slimming 089A464D-335F-4ABF-8948-6F5FC14A7EFE: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+log: Ignoring some flags 0x310000 because they are process/subsystem only
+log: Simulator unable to set system mode
+-
+2026-11-16 03:50:54.881 xcodebuild[33827:91296] [MT] IDELaunchParametersSnapshot: debugger version lookup failed for path '<nil>': noURL
+
+
+
+   14358 shots/raw/sounds/iikb-full.log
+79
+success, https://github.com/AVGVSTVS96/iikb/actions/runs/43794994933

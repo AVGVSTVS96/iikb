@@ -1,0 +1,189 @@
+https://github.com/AVGVSTVS96/iikb/actions/runs/43782138091
+##[group]Run bash -c "$RUN"
+^[[36;1mbash -c "$RUN"^[[0m
+shell: /bin/bash -e {0}
+env:
+  RUN: brew install --quiet fd ripgrep >/dev/null 2>&1; scratch/recon.sh
+##[endgroup]
+27.0 /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.18gvd9/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime
+27.1 /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.94425.0.nRccL7/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.1.simruntime
+ROOT /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot
+27.2 /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.8117.0.GJ4EeU/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime
+== UISounds
+27.2 /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime
+total 38840
+drwxr-xr-x  117 root  wheel    3744 Oct 17 05:18 .
+drwxr-xr-x    6 root  wheel     192 Oct 17 05:18 ..
+-rw-r--r--    1 root  wheel  306800 Oct 17 05:18 3rd_party_critical.caf
+-rw-r--r--    2 root  wheel   29832 Oct 17 05:18 access_scan_complete.caf
+-rw-r--r--    1 root  wheel   83374 Oct 17 05:18 acknowledgment_received.caf
+-rw-r--r--    1 root  wheel  113892 Oct 17 05:18 acknowledgment_sent.caf
+-rw-r--r--    1 root  wheel  361460 Oct 17 05:18 alarm.caf
+-rw-r--r--    1 root  wheel  176815 Oct 17 05:18 AuthenticationMatch_Full.caf
+-rw-r--r--    1 root  wheel   93788 Oct 17 05:18 AuthenticationMatch_Short.caf
+-rw-r--r--    1 root  wheel  176695 Oct 17 05:18 AuthenticationNoMatch.caf
+-rw-r--r--    1 root  wheel   36439 Oct 17 05:18 AuthenticationStart.caf
+-rw-r--r--    1 root  wheel  117164 Oct 17 05:18 AuthenticationVerifying.caf
+-rw-r--r--    1 root  wheel   44138 Oct 17 05:18 begin_record.caf
+-rw-r--r--    2 root  wheel   92408 Oct 17 05:18 camera_timer_countdown.caf
+-rw-r--r--    2 root  wheel   92460 Oct 17 05:18 camera_timer_final_second.caf
+-rw-r--r--    1 root  wheel  163400 Oct 17 05:18 connect_power.caf
+-rw-r--r--    1 root  wheel   26146 Oct 17 05:18 ct-busy.caf
+-rw-r--r--    1 root  wheel   12916 Oct 17 05:18 ct-congestion.caf
+-rw-r--r--    1 root  wheel   49298 Oct 17 05:18 ct-error.caf
+-rw-r--r--    1 root  wheel    8506 Oct 17 05:18 ct-keytone2.caf
+-rw-r--r--    1 root  wheel    8506 Oct 17 05:18 ct-path-ack.caf
+-rw-r--r--    1 root  wheel  563258 Oct 17 05:18 DeviceShutdown.caf
+-rw-r--r--    2 root  wheel   94802 Oct 17 05:18 DictationBegin.caf
+-rw-r--r--    4 root  wheel  101888 Oct 17 05:18 DictationCancel.caf
+-rw-r--r--    4 root  wheel  101888 Oct 17 05:18 DictationConfirm.caf
+-rw-r--r--    1 root  wheel  258526 Oct 17 05:18 Doorbell.caf
+-rw-r--r--    1 root  wheel   39881 Oct 17 05:18 DualBudLongPressFailure.caf
+-rw-r--r--    1 root  wheel  340160 Oct 17 05:18 EarInteraction_Complete.caf
+-rw-r--r--    2 root  wheel   41758 Oct 17 05:18 end_record.caf
+-rw-r--r--    1 root  wheel  201934 Oct 17 05:18 focus_change_app_icon.caf
+-rw-r--r--    1 root  wheel   18704 Oct 17 05:18 focus_change_keyboard.caf
+-rw-r--r--    1 root  wheel  254584 Oct 17 05:18 focus_change_large.caf
+-rw-r--r--    1 root  wheel  194704 Oct 17 05:18 focus_change_small.caf
+-rw-r--r--    1 root  wheel  292328 Oct 17 05:18 go_to_sleep_alert.caf
+-rw-r--r--    2 root  wheel   32064 Oct 17 05:18 GymKitConnected.caf
+-rw-r--r--    3 root  wheel   32064 Oct 17 05:18 GymKitConnecting.caf
+-rw-r--r--    2 root  wheel   32064 Oct 17 05:18 GymKitDisconnected.caf
+-rw-r--r--    1 root  wheel  320272 Oct 17 05:18 health_notification.caf
+-rw-r--r--    1 root  wheel   77184 Oct 17 05:18 jbl_ambiguous.caf
+-rw-r--r--    1 root  wheel  191276 Oct 17 05:18 jbl_begin_short_carplay.caf
+-rw-r--r--    2 root  wheel  191252 Oct 17 05:18 jbl_begin_short.caf
+-rw-r--r--    2 root  wheel  472470 Oct 17 05:18 jbl_begin.caf
+-rw-r--r--    2 root  wheel  757078 Oct 17 05:18 jbl_cancel.caf
+-rw-r--r--    2 root  wheel  227590 Oct 17 05:18 jbl_confirm.caf
+-rw-r--r--    1 root  wheel   80476 Oct 17 05:18 jbl_no_match.caf
+-rw-r--r--    1 root  wheel     524 Oct 17 05:18 key_press_click_visionOS.caf
+-rw-r--r--    3 root  wheel    4490 Oct 17 05:18 key_press_click.caf
+-rw-r--r--    1 root  wheel    1454 Oct 17 05:18 key_press_delete_visionOS.caf
+-rw-r--r--    3 root  wheel    5420 Oct 17 05:18 key_press_delete.caf
+-rw-r--r--    2 root  wheel    5808 Oct 17 05:18 key_press_modifier.caf
+-rw-r--r--    1 root  wheel   59416 Oct 17 05:18 keyboard_press_clear.caf
+-rw-r--r--    1 root  wheel   42408 Oct 17 05:18 keyboard_press_delete.caf
+-rw-r--r--    1 root  wheel   28696 Oct 17 05:18 keyboard_press_normal.caf
+-rw-r--r--    1 root  wheel   44428 Oct 17 05:18 LiquidDetected.caf
+-rw-r--r--    1 root  wheel  397346 Oct 17 05:18 LiveTranslationStart.caf
+-rw-r--r--    1 root  wheel   49751 Oct 17 05:18 LiveTranslationStop.caf
+-rw-r--r--    1 root  wheel   87578 Oct 17 05:18 lock.caf
+-rw-r--r--    1 root  wheel   46150 Oct 17 05:18 long_low_short_high.caf
+-rw-r--r--    1 root  wheel  122640 Oct 17 05:18 low_power.caf
+-rw-r--r--    1 root  wheel  264688 Oct 17 05:18 mail-sent.caf
+-rw-r--r--    1 root  wheel   91476 Oct 17 05:18 middle_9_short_double_low.caf
+drwxr-xr-x    6 root  wheel     192 Oct 17 05:18 Modern
+-rw-r--r--    1 root  wheel  390076 Oct 17 05:18 multiway_invitation.caf
+drwxr-xr-x  225 root  wheel    7200 Oct 17 05:18 nano
+-rw-r--r--    1 root  wheel  618730 Oct 17 05:18 navigation_pop.caf
+-rw-r--r--    1 root  wheel  607804 Oct 17 05:18 navigation_push.caf
+-rw-r--r--    1 root  wheel  264466 Oct 17 05:18 NavigationGenericManeuver.caf
+drwxr-xr-x   19 root  wheel     608 Oct 17 05:18 New
+-rw-r--r--    1 root  wheel  268696 Oct 17 05:18 new-mail.caf
+-rw-r--r--    1 root  wheel   40342 Oct 17 05:18 nfc_scan_complete.caf
+-rw-r--r--    3 root  wheel  775744 Oct 17 05:18 nfc_scan_failure.caf
+-rw-r--r--    1 root  wheel  144488 Oct 17 05:18 NFCCardComplete.caf
+-rw-r--r--    1 root  wheel   55844 Oct 17 05:18 NFCCardError.caf
+-rw-r--r--    1 root  wheel  756368 Oct 17 05:18 NFCCardProvisioned.caf
+-rw-r--r--    1 root  wheel  138208 Oct 17 05:18 OpticIDEnrollmentFailure.caf
+-rw-r--r--    1 root  wheel  251320 Oct 17 05:18 OpticIDEnrollmentStart.caf
+-rw-r--r--    1 root  wheel  145048 Oct 17 05:18 OpticIDEnrollmentSuccess.caf
+-rw-r--r--    1 root  wheel  177684 Oct 17 05:18 OpticIDUnlockMatch_Full.caf
+-rw-r--r--    3 root  wheel  775744 Oct 17 05:18 payment_failure.caf
+-rw-r--r--    1 root  wheel  128234 Oct 17 05:18 payment_success.caf
+-rw-r--r--    1 root  wheel  116452 Oct 17 05:18 PaymentReceived.caf
+-rw-r--r--    3 root  wheel  775744 Oct 17 05:18 PaymentReceivedFailure.caf
+-rw-r--r--    1 root  wheel   95408 Oct 17 05:18 photoShutter.caf
+-rw-r--r--    1 root  wheel  100626 Oct 17 05:18 PINDelete_AX.caf
+-rw-r--r--    3 root  wheel    5420 Oct 17 05:18 PINDelete.caf
+-rw-r--r--    1 root  wheel   77064 Oct 17 05:18 PINEnterDigit_AX.caf
+-rw-r--r--    3 root  wheel    4490 Oct 17 05:18 PINEnterDigit.caf
+-rw-r--r--    1 root  wheel  130968 Oct 17 05:18 PINSubmit_AX.caf
+-rw-r--r--    1 root  wheel  121542 Oct 17 05:18 PINUnexpected.caf
+-rw-r--r--    1 root  wheel   95408 Oct 17 05:18 ReceivedMessage.caf
+-rw-r--r--    1 root  wheel  580190 Oct 17 05:18 RemoteAttentionRequest_Alert.caf
+-rw-r--r--    1 root  wheel   14916 Oct 17 05:18 RingerChanged.caf
+-rw-r--r--    1 root  wheel  140114 Oct 17 05:18 ScreenCapture_visionOS.caf
+-rw-r--r--    1 root  wheel   91248 Oct 17 05:18 SentMessage.caf
+-rw-r--r--    1 root  wheel  109936 Oct 17 05:18 shake.caf
+-rw-r--r--    1 root  wheel   20928 Oct 17 05:18 short_double_high.caf
+-rw-r--r--    1 root  wheel   20940 Oct 17 05:18 short_double_low.caf
+-rw-r--r--    1 root  wheel   22044 Oct 17 05:18 short_low_high.caf
+-rw-r--r--    1 root  wheel   15212 Oct 17 05:18 SIMToolkitCallDropped.caf
+-rw-r--r--    1 root  wheel   33584 Oct 17 05:18 SIMToolkitGeneralBeep.caf
+-rw-r--r--    1 root  wheel   14576 Oct 17 05:18 SIMToolkitNegativeACK.caf
+-rw-r--r--    1 root  wheel  111200 Oct 17 05:18 SIMToolkitPositiveACK.caf
+-rw-r--r--    1 root  wheel   43416 Oct 17 05:18 SIMToolkitSMS.caf
+-rw-r--r--    2 root  wheel  162856 Oct 17 05:18 sms-received1.caf
+-rw-r--r--    1 root  wheel  803200 Oct 17 05:18 sms-received2.caf
+-rw-r--r--    1 root  wheel  303976 Oct 17 05:18 sms-received3.caf
+-rw-r--r--    1 root  wheel  270660 Oct 17 05:18 sms-received4.caf
+-rw-r--r--    1 root  wheel  257720 Oct 17 05:18 sms-received5.caf
+-rw-r--r--    1 root  wheel  263892 Oct 17 05:18 sms-received6.caf
+-rw-r--r--    1 root  wheel  127576 Oct 17 05:18 Swish.caf
+-rw-r--r--    1 root  wheel    7924 Oct 17 05:18 Tink.caf
+-rw-r--r--    1 root  wheel    7892 Oct 17 05:18 Tock.caf
+-rw-r--r--    1 root  wheel  122584 Oct 17 05:18 tweet_sent.caf
+-rw-r--r--    1 root  wheel  233800 Oct 17 05:18 ussd.caf
+-rw-r--r--    1 root  wheel  139285 Oct 17 05:18 warsaw.caf
+-rw-r--r--    1 root  wheel  484396 Oct 17 05:18 WebcamStart.caf
+-rw-r--r--    1 root  wheel    5620 Oct 17 05:18 wheels_of_time.caf
+-rw-r--r--    1 root  wheel   116008 Oct 17 05:18 Stockholm_Haptic.caf
+-rw-r--r--    4 root  wheel     5862 Oct 17 05:18 StockholmActive_Haptic.caf
+-rw-r--r--    4 root  wheel     5862 Oct 17 05:18 StockholmActiveSingleCycle_Haptic.caf
+-rw-r--r--    2 root  wheel    93000 Oct 17 05:18 StockholmFailure_Haptic.caf
+-rw-r--r--    1 root  wheel    13420 Oct 17 05:18 VoiceOver_Click_Haptic.caf
+== caches
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Caches/com.apple.dyld/dyld_sim_shared_cache_arm64.map
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Caches/com.apple.dyld/dyld_sim_shared_cache_arm64.atlas
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Caches/com.apple.dyld/dyld_sim_shared_cache_arm64
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Caches/com.apple.dyld/dyld_sim_shared_cache_arm64.01
+total 7325408
+drwxr-xr-x  6 root  wheel         192 Oct 17 05:18 .
+drwxr-xr-x  3 root  wheel          96 Oct 17 05:18 ..
+-rwxr-xr-x  1 root  admin  2030977024 Oct 17 05:18 dyld_sim_shared_cache_arm64
+-rwxr-xr-x  1 root  admin  1718566912 Oct 17 05:18 dyld_sim_shared_cache_arm64.01
+-rwxr-xr-x  1 root  admin      611180 Oct 17 05:18 dyld_sim_shared_cache_arm64.atlas
+-rwxr-xr-x  1 root  admin      448413 Oct 17 05:18 dyld_sim_shared_cache_arm64.map
+== PrivateFrameworks/UIKitCore
+ls: /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore: No such file or directory
+== PrivateFrameworks/TextInputUI
+ls: /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/TextInputUI.framework/TextInputUI: No such file or directory
+== PrivateFrameworks/TextInputCore
+-rwxr-xr-x  1 root  wheel  6265936 Oct 17 05:18 /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/TextInputCore.framework/TextInputCore
+== PrivateFrameworks/KeyboardServices
+ls: /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/KeyboardServices.framework/KeyboardServices: No such file or directory
+== Frameworks/AudioToolbox
+ls: /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox: No such file or directory
+== PrivateFrameworks/AudioToolboxCore
+ls: /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/AudioToolboxCore.framework/AudioToolboxCore: No such file or directory
+== PrivateFrameworks/UIKitServices
+ls: /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/UIKitServices.framework/UIKitServices: No such file or directory
+== PrivateFrameworks/TextInput
+ls: /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/TextInput.framework/TextInput: No such file or directory
+== files naming sound prefs
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Caches/com.apple.dyld/dyld_sim_shared_cache_arm64
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Caches/com.apple.dyld/dyld_sim_shared_cache_arm64.01
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/DataClassMigrators/PreferencesMigrator.migrator/PreferencesMigrator
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PreferenceBundles/KeyboardSettings.bundle/Preferences_feedback.plist
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/usr/libexec/sharingd
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PreferenceBundles/KeyboardSettingsBundle.bundle/Preferences_feedback.plist
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PreferenceBundles/TrackpadAndMouse.bundle/TrackpadAndMouse
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/CoreServices/AccessibilityUIServer.app/AccessibilityUIServer
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/CoreServices/AccessibilityUIServer.app/Extensions/AccessibilityAppIntents.appex/AccessibilityAppIntents
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/CoreServices/VoiceOverTouch.app/vot
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/TextInput/kbd
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/TextInputCore.framework/TextInputCore
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/Settings/SoundsAndHapticsSettings.framework/Sounds.plist
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/Settings/SoundsAndHapticsSettings.framework/SoundsAndHapticsSettings
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/AssistantServices.framework/assistantd
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/TelephonyUtilities.framework/callservicesd
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/KeyboardSettings.framework/Preferences_feedback.plist
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/SpringBoard.framework/SpringBoard
+== UISounds plist / ids
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Audio/UISounds/
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/LaunchDaemons/com.apple.audio.systemsoundserver-simd.plist
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NYLxnj/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/AudioToolbox.framework/systemsoundserver-simd
+Version: 3.1.748, BuildCommit: 1b674ab4ef7fe0e10174e886563f02b35b7021d7
+success, https://github.com/AVGVSTVS96/iikb/actions/runs/43782138091

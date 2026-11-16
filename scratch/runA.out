@@ -1,0 +1,47 @@
+https://github.com/AVGVSTVS96/iikb/actions/runs/43786943520
+##[group]Run bash -c "$RUN"
+^[[36;1mbash -c "$RUN"^[[0m
+shell: /bin/bash -e {0}
+env:
+  RUN: brew install --quiet fd ripgrep >/dev/null 2>&1; scratch/keysounds.sh system system-off
+##[endgroup]
+build/sndtrace.dylib: replacing existing signature
+ 60 |         window.isHidden = false
+ 61 |         window.addSubview(panel)
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
+/Users/runner/work/iikb/iikb/build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
+Slimming FA0F5EB2-BB58-462E-869C-8A7BB2DAF8DA: disabling 173 background services while it is off, then booting it slim.
+Reconfiguring 173 background services while the simulator is off...
+Booting the simulator (a first boot can take up to a minute)...
+=== system
+prefs sounds:
+Error: Domain 'com.apple.preferences.sounds' not found.
+Slimming FA0F5EB2-BB58-462E-869C-8A7BB2DAF8DA: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+log: Ignoring some flags 0x310000 because they are process/subsystem only
+log: Simulator unable to set system mode
+-
+2026-11-16 01:47:49.654 xcodebuild[9683:33280] [MT] IDELaunchParametersSnapshot: debugger version lookup failed for path '<nil>': noURL
+
+
+
+ 13414533 shots/raw/sounds/system.log
+244
+=== system-off
+prefs sounds:
+{
+    "keyboard-audio" = 0;
+}
+Slimming FA0F5EB2-BB58-462E-869C-8A7BB2DAF8DA: disabling 173 background services while it is off, then booting it slim.
+Booting the simulator (a first boot can take up to a minute)...
+log: Ignoring some flags 0x310000 because they are process/subsystem only
+log: Simulator unable to set system mode
+-
+2026-11-16 02:22:06.898 xcodebuild[2417:236516] [MT] IDELaunchParametersSnapshot: debugger version lookup failed for path '<nil>': noURL
+
+
+
+##[error]The operation was canceled.
+cancelled, https://github.com/AVGVSTVS96/iikb/actions/runs/43786943520

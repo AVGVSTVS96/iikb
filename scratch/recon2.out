@@ -1,0 +1,422 @@
+https://github.com/AVGVSTVS96/iikb/actions/runs/43782559121
+##[group]Run bash -c "$RUN"
+^[[36;1mbash -c "$RUN"^[[0m
+shell: /bin/bash -e {0}
+env:
+  RUN: brew install --quiet fd ripgrep >/dev/null 2>&1; scratch/recon2.sh
+##[endgroup]
+Extract dylib(s) for reverse engineering
+
+Usage:
+  ipsw dyld extract <DSC> <DYLIB> [flags]
+
+Aliases:
+  extract, e
+
+Flags:
+  -a, --all[=true|false]     Extract all dylibs
+  -c, --cache string         Path to .a2s addr to sym cache file (speeds up analysis)
+      --force[=true|false]   Overwrite existing extracted dylib(s)
+  -h, --help[=true|false]    help for extract
+      --objc[=true|false]    Add ObjC metadata to extracted dylib(s) symtab (implies --slide)
+  -o, --output string        Directory to extract the dylib(s)
+      --slide[=true|false]   Apply slide info to extracted dylib(s)
+      --stubs[=true|false]   Add stub islands to extracted dylib(s) symtab
+
+Global Flags:
+      --color[=true|false]      colorize output
+      --config string           config file (default is $HOME/.config/ipsw/config.yaml)
+      --no-color[=true|false]   disable colorize output
+  -V, --verbose[=true|false]    verbose output
+main.main()
+
+   • Created shots/raw/sounds/bin/UIKitCore
+main.main()
+
+   • Created shots/raw/sounds/bin/AudioToolbox
+main.main()
+
+   • Created shots/raw/sounds/bin/AudioToolboxCore
+main.main()
+
+
+
+main.main()
+
+   ⨯ image TextInputCore not found in cache
+main.main()
+
+   • Created shots/raw/sounds/bin/TextInput
+main.main()
+
+   • Created shots/raw/sounds/bin/KeyboardServices
+main.main()
+
+   • Created shots/raw/sounds/bin/UIKitServices
+total 159368
+drwxr-xr-x  8 runner  staff       256 Nov 16 01:16 .
+drwxr-xr-x  4 runner  staff       128 Nov 16 01:06 ..
+-rwxr-xr-x  1 runner  staff   2451632 Nov 16 01:10 AudioToolbox
+-rwxr-xr-x  1 runner  staff   5981240 Nov 16 01:11 AudioToolboxCore
+-rwxr-xr-x  1 runner  staff    471112 Nov 16 01:15 KeyboardServices
+-rwxr-xr-x  1 runner  staff   6123048 Nov 16 01:14 TextInput
+-rwxr-xr-x  1 runner  staff  66077032 Nov 16 01:08 UIKitCore
+-rwxr-xr-x  1 runner  staff    475192 Nov 16 01:16 UIKitServices
+== PrivateFrameworks/KeyboardSettings.framework/Preferences_feedback.plist
+{
+  "items" => [
+    0 => {
+      "cell" => "PSSwitchCell"
+      "default" => 1
+      "defaults" => "com.apple.keyboard.preferences"
+      "get" => "readKeyboardAllowPaddlePreferenceValue:"
+      "id" => "KeyboardAllowPaddle"
+      "key" => "KeyboardAllowPaddle"
+      "label" => "KEYBOARD_ALLOW_PADDLE"
+      "requiredCapabilities" => [
+        0 => "telephony"
+      ]
+      "set" => "setKeyboardAllowPaddlePreferenceValue:forSpecifier:"
+    }
+    1 => {
+      "cell" => "PSSwitchCell"
+      "default" => 1
+      "defaults" => "com.apple.keyboard.preferences"
+      "get" => "readKeyboardVisceralPreferenceValue:"
+      "id" => "KeyboardVisceral"
+      "key" => "KeyboardVisceral"
+      "label" => "KEYBOARD_HAPTICS_TITLE"
+      "requiredCapabilities" => [
+        0 => "telephony"
+      ]
+      "set" => "setKeyboardVisceralPreferenceValue:forSpecifier:"
+    }
+    2 => {
+      "cell" => "PSSwitchCell"
+      "default" => 1
+      "defaults" => "com.apple.preferences.sounds"
+      "id" => "keyboard-audio"
+      "key" => "keyboard-audio"
+      "label" => "KEYBOARD_SOUND_TITLE"
+    }
+  ]
+  "title" => "Keyboard"
+}
+== PreferenceBundles/KeyboardSettingsBundle.bundle/Preferences_feedback.plist
+{
+  "items" => [
+    0 => {
+      "cell" => "PSSwitchCell"
+      "default" => 1
+      "defaults" => "com.apple.keyboard.preferences"
+      "get" => "readKeyboardAllowPaddlePreferenceValue:"
+      "id" => "KeyboardAllowPaddle"
+      "key" => "KeyboardAllowPaddle"
+      "label" => "KEYBOARD_ALLOW_PADDLE"
+      "requiredCapabilities" => [
+        0 => "telephony"
+      ]
+      "set" => "setKeyboardAllowPaddlePreferenceValue:forSpecifier:"
+    }
+    1 => {
+      "cell" => "PSSwitchCell"
+      "default" => 1
+      "defaults" => "com.apple.keyboard.preferences"
+      "get" => "readKeyboardVisceralPreferenceValue:"
+      "id" => "KeyboardVisceral"
+      "key" => "KeyboardVisceral"
+      "label" => "KEYBOARD_HAPTICS_TITLE"
+      "requiredCapabilities" => [
+        0 => "telephony"
+      ]
+      "set" => "setKeyboardVisceralPreferenceValue:forSpecifier:"
+    }
+    2 => {
+      "cell" => "PSSwitchCell"
+      "default" => 1
+      "defaults" => "com.apple.preferences.sounds"
+      "id" => "keyboard-audio"
+      "key" => "keyboard-audio"
+      "label" => "KEYBOARD_SOUND_TITLE"
+    }
+  ]
+  "title" => "Keyboard"
+}
+== PrivateFrameworks/Settings/SoundsAndHapticsSettings.framework/Sounds.plist
+{
+  "id" => "com.apple.preferences.sounds"
+  "items" => [
+    0 => {
+      "cell" => "PSGroupCell"
+    }
+    1 => {
+      "allowMultilineTitleKey" => true
+      "bundle" => "AVKitSettings"
+      "cell" => "PSLinkListCell"
+      "get" => "getMicrophoneLabel:"
+      "id" => "MICROPHONE"
+      "isController" => true
+      "label" => "INPUT"
+      "requiredCapabilities" => [
+        0 => {
+          "retail-kiosk-mode" => false
+        }
+      ]
+    }
+    2 => {
+      "cell" => "PSGroupCell"
+      "requiredCapabilities" => [
+        0 => "piezo-clicker"
+      ]
+    }
+    3 => {
+      "cell" => "PSLinkListCell"
+      "detail" => "PSListItemsController"
+      "get" => "soundEffects:"
+      "id" => "SOUND_EFFECTS"
+      "label" => "SOUND_EFFECTS"
+      "requiredCapabilities" => [
+        0 => "piezo-clicker"
+      ]
+      "set" => "setSoundEffects:specifier:"
+      "validTitles" => [
+        0 => "SPEAKER"
+        1 => "HEADPHONES"
+        2 => "BOTH"
+      ]
+      "validValues" => [
+        0 => 1
+        1 => 2
+        2 => 3
+      ]
+    }
+    4 => {
+      "cell" => "PSGroupCell"
+      "id" => "RINGER_AND_ALERTS_GROUP"
+      "label" => "RINGTONE"
+      "requiredCapabilities" => [
+        0 => "any-telephony"
+      ]
+    }
+    5 => {
+      "alertType" => "TLAlertTypeIncomingCall"
+      "cell" => "PSLinkListCell"
+      "detail" => "SHSToneController"
+      "get" => "detailTextForToneWithSpecifier:"
+      "id" => "Ringtone"
+      "label" => "Ringtone"
+      "requiredCapabilities" => [
+        0 => {
+          "retail-kiosk-mode" => false
+        }
+        1 => "any-telephony"
+      ]
+    }
+    6 => {
+      "accessibilityIdentification" => "ringtone-volume"
+      "cell" => "PSSliderCell"
+      "cellClass" => "VolumeSlider"
+      "defaults" => "com.apple.preferences.sounds"
+      "get" => "ringtoneVolume:"
+      "iconImageShouldFlipForRightToLeft" => true
+      "id" => "RING_VOLUME_SLIDER"
+      "isContinuous" => true
+      "label" => "RING_VOLUME_SLIDER"
+      "max" => 1
+      "min" => 0.0625
+      "set" => "setRingtoneVolume:specifier:"
+    }
+    7 => {
+      "cell" => "PSSwitchCell"
+      "get" => "canChangeRingtoneWithButtons:"
+      "id" => "CHANGE_WITH_BUTTONS"
+      "label" => "CHANGE_WITH_BUTTONS"
+      "requiredCapabilities" => [
+        0 => "any-telephony"
+        1 => {
+          "retail-kiosk-mode" => false
+        }
+      ]
+      "set" => "setCanChangeRingtoneWithButtons:specifier:"
+    }
+    8 => {
+      "cell" => "PSLinkListCell"
+      "get" => "getSelectedHapticsOptionTitleWithSpecifier:"
+      "id" => "RINGTONE_HAPTICS"
+      "label" => "HAPTICS"
+      "requiredCapabilities" => [
+        0 => {
+          "ipad" => false
+          "retail-kiosk-mode" => false
+        }
+      ]
+    }
+    9 => {
+      "cell" => "PSGroupCell"
+      "id" => "ALARM_TIMER_GROUP"
+      "label" => "ALARM_TIMER_VOLUME"
+    }
+    10 => {
+      "cell" => "PSSwitchCell"
+      "default" => false
+      "get" => "matchAlarmRingtoneVolume:"
+      "id" => "MATCH_ALARM_RINGTONE_VOLUME"
+      "label" => "MATCH_RINGTONE_VOLUME"
+      "set" => "setMatchAlarmRingtoneVolume:specifier:"
+    }
+    11 => {
+      "accessibilityIdentification" => "alarm-volume"
+      "cell" => "PSSliderCell"
+      "cellClass" => "VolumeSlider"
+      "get" => "alarmVolume:"
+      "iconImageShouldFlipForRightToLeft" => true
+      "id" => "ALARM_VOLUME_SLIDER"
+      "isContinuous" => true
+      "label" => "ALARM_VOLUME_SLIDER"
+      "max" => 1
+      "min" => 0.1875
+      "set" => "setAlarmVolume:specifier:"
+    }
+    12 => {
+      "cell" => "PSGroupCell"
+      "id" => "ALERT_NOTIFICATION_GROUP"
+      "label" => "ALERT_NOTIFICATION_VOLUME"
+    }
+    13 => {
+      "cell" => "PSSwitchCell"
+      "default" => false
+      "get" => "matchRingtoneVolume:"
+      "id" => "MATCH_RINGTONE_VOLUME"
+      "label" => "MATCH_RINGTONE_VOLUME"
+      "set" => "setMatchRingtoneVolume:specifier:"
+    }
+    14 => {
+      "accessibilityIdentification" => "alert-volume"
+      "cell" => "PSSliderCell"
+      "cellClass" => "VolumeSlider"
+      "get" => "alertVolume:"
+      "iconImageShouldFlipForRightToLeft" => true
+      "id" => "ALERT_VOLUME_SLIDER"
+      "isContinuous" => true
+      "label" => "ALERT_VOLUME_SLIDER"
+      "max" => 1
+      "min" => 0.0625
+      "set" => "setAlertVolume:specifier:"
+    }
+    15 => {
+      "cell" => "PSGroupCell"
+      "id" => "SOUNDS_ALERT_GROUP"
+      "requiredCapabilities" => [
+        0 => "any-telephony"
+        1 => {
+          "retail-kiosk-mode" => false
+        }
+      ]
+    }
+    16 => {
+      "alertType" => "TLAlertTypeTextMessage"
+      "cell" => "PSLinkListCell"
+      "detail" => "SHSToneController"
+      "get" => "detailTextForToneWithSpecifier:"
+      "id" => "Text_Messages"
+      "label" => "Text_Messages"
+      "requiredCapabilities" => [
+        0 => {
+          "retail-kiosk-mode" => false
+        }
+      ]
+    }
+    17 => {
+      "alertType" => "TLAlertTypeNewVoicemail"
+      "cell" => "PSLinkListCell"
+      "detail" => "SHSToneController"
+      "get" => "detailTextForToneWithSpecifier:"
+      "id" => "Voicemail"
+      "label" => "Voicemail"
+      "requiredCapabilities" => [
+        0 => "telephony"
+        1 => {
+          "retail-kiosk-mode" => false
+        }
+      ]
+    }
+    18 => {
+      "alertType" => "TLAlertTypeNewMail"
+      "cell" => "PSLinkListCell"
+== LaunchDaemons/com.apple.audio.systemsoundserver-simd.plist
+{
+  "EnablePressuredExit" => true
+  "Label" => "com.apple.audio.systemsoundserver-simd"
+  "MachServices" => {
+    "com.apple.audio.SystemSoundServer-Sim" => true
+  }
+  "POSIXSpawnType" => "Interactive"
+  "ProgramArguments" => [
+    0 => "/System/Library/Frameworks/AudioToolbox.framework/systemsoundserver-simd"
+  ]
+}
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/AudioToolbox.framework/Info.plist
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/AudioToolbox.framework/com.apple.audio.pps.metadata.plist
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/AudioToolboxCore.framework/Info.plist
+File:           /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Audio/UISounds/key_press_click.caf
+File type ID:   caff
+Num Tracks:     1
+----
+Data format:     1 ch,  44100 Hz, Int16
+                no channel layout.
+estimated duration: 0.004467 sec
+audio bytes: 394
+audio packets: 197
+bit rate: 705600 bits per second
+packet size upper bound: 2
+maximum packet size: 2
+audio data file offset: 4096
+optimized
+audio 197 valid frames + 0 priming + 0 remainder = 197
+source bit depth: I16
+----
+== key_press_click
+Data format:     1 ch,  44100 Hz, Int16
+estimated duration: 0.004467 sec
+c594c8516ba82b4914732758d7739aad
+== key_press_delete
+Data format:     1 ch,  44100 Hz, Int16
+estimated duration: 0.015011 sec
+3fbc3b0a6da9bf5df665c2475c2eaf4e
+== key_press_modifier
+Data format:     1 ch,  44100 Hz, Int16
+estimated duration: 0.019410 sec
+dd4af6c199819480237dadff9819a016
+== keyboard_press_normal
+Data format:     2 ch,  44100 Hz, Int16, interleaved
+estimated duration: 0.139456 sec
+64813567d91ff01c7fcf5117184ffc2a
+== keyboard_press_delete
+Data format:     2 ch,  44100 Hz, Int16, interleaved
+estimated duration: 0.217188 sec
+c3d95c07c3c64d5f80f76b0e39af4b5f
+== keyboard_press_clear
+Data format:     2 ch,  44100 Hz, Int16, interleaved
+estimated duration: 0.313605 sec
+5a4911c71c3dbeb8180a7dbe5e10647e
+== Tock
+Data format:     2 ch,  44100 Hz, Int16, interleaved
+estimated duration: 0.021519 sec
+85350cc592a588da184b4643e4094cf5
+== Tink
+Data format:     2 ch,  44100 Hz, Int16, interleaved
+estimated duration: 0.021701 sec
+119fed04c730290c79f6ee593cce5433
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/UIKitCore.framework/key_press_click.caf
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/UIKitCore.framework/key_press_modifier.caf
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/UIKitCore.framework/key_press_delete.caf
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Audio/UISounds/key_press_click.caf
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Audio/UISounds/keyboard_press_normal.caf
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Audio/UISounds/keyboard_press_delete.caf
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Audio/UISounds/key_press_delete_visionOS.caf
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Audio/UISounds/key_press_modifier.caf
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Audio/UISounds/keyboard_press_clear.caf
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Audio/UISounds/key_press_click_visionOS.caf
+/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.2.91016.19.NGpTdp/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/Audio/UISounds/key_press_delete.caf
+ 82M
+success, https://github.com/AVGVSTVS96/iikb/actions/runs/43782559121
