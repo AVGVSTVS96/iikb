@@ -74,29 +74,30 @@ final class TypingTests: XCTestCase {
         XCTAssertEqual((field.value as? String)?.lowercased(), "axbc")
     }
 
-    func testSpaceBarMovesCursorUpAndDownBySentence() {
+    func testSpaceBarMovesCursorUpAndDownLines() {
         type("aaaa")
         tap("return")
         type("bbbb")
         tap("return")
         type("cccc")
-        drag(rows: -1)
+        drag(lines: -1)
         type("x")
-        drag(rows: -2)
+        drag(lines: -1)
         type("y")
-        drag(rows: 1)
+        drag(lines: 2)
         type("z")
-        XCTAssertEqual((field.value as? String)?.lowercased(), "aaaa\nybbbbz\nxcccc")
+        XCTAssertEqual((field.value as? String)?.lowercased(), "aaaay\nbbbbx\nccccz")
     }
 
-    func testSpaceBarMovesCursorUpASentenceInAWrappedParagraph() {
-        let paragraph = (1...6).map { "Sentence \($0) has a few words in it." }.joined(separator: " ")
+    func testSpaceBarMovesCursorUpALineInAWrappedParagraph() {
+        let paragraph = (1...40).map { "word\($0)" }.joined(separator: " ")
         relaunch(with: paragraph)
-        drag(rows: -2)
+        drag(lines: -1)
         type("q")
-        XCTAssert(
-            (field.value as? String ?? "").lowercased().hasSuffix(
-                "it. qsentence 5 has a few words in it. sentence 6 has a few words in it."))
+        let text = field.value as? String ?? ""
+        let moved =
+            text.count - 1 - (text.firstIndex(of: "q").map { text.distance(from: text.startIndex, to: $0) } ?? 0)
+        XCTAssert((20...70).contains(moved), "moved \(moved) characters back for one line up")
     }
 
     private func relaunch(with text: String) {
@@ -105,11 +106,12 @@ final class TypingTests: XCTestCase {
         app.launchWithIikb()
     }
 
-    /// Holds the space bar and moves the finger up (negative) or down that many rows of keys, half a row past them.
-    private func drag(rows: CGFloat) {
-        let row = key("a").frame.minY - key("q").frame.minY
+    /// Holds the space bar and moves the finger up (negative) or down that many lines of the field's text, at its line
+    /// height, half a line past them.
+    private func drag(lines: CGFloat) {
+        let line = 25.0  // WHY: the home field's lines are 25 apart (SF 20), as accessibility reports them
         let space = key("space").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        let dy = (rows + (rows < 0 ? -0.5 : 0.5)) * row
+        let dy = (lines + (lines < 0 ? -0.5 : 0.5)) * line
         space.press(
             forDuration: 1, thenDragTo: space.withOffset(CGVector(dx: 0, dy: dy)), withVelocity: 100,
             thenHoldForDuration: 0.2)

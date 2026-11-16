@@ -181,6 +181,7 @@ open class FullKeyboardViewController: UIInputViewController {
     private let clipboard = ClipboardStore(backup: ClipboardStore.own)
     private let sources = Sources()
     private var hostApp: String?
+    private let fieldLines = FieldLines()
     /// When iikb last opened to ask iOS for the photos, kept with the chat (`KeptChat.asked`).
     private var asked: Date?
     /// The field the keyboard is typing in (`documentIdentifier`), so dictations end with the field they were typed in,
@@ -325,6 +326,12 @@ open class FullKeyboardViewController: UIInputViewController {
         keyMic.addAction(UIAction { [unowned self] _ in suggestionBar.onMic() }, for: .touchUpInside)
         keyboardView.micKey = keyMic
         keyboardView.advance = { [unowned self] step in HostText.width(of: engine.character(crossedBy: step)) }
+        keyboardView.lineHeight = { [unowned self] in
+            line == nil ? fieldLines.lineHeight : nil
+        }
+        fieldLines.apply = { [unowned self] offset in
+            if engine.handle(.cursor(offset: offset), in: document) { render() }
+        }
         keyboardView.globeTarget = { [unowned self] control in
             control.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
         }
@@ -417,6 +424,7 @@ open class FullKeyboardViewController: UIInputViewController {
         super.viewDidAppear(animated)
         updateHost()
         syncWithDocument()
+        fieldLines.check(app: hostApp, before: engine.text.before)
         if hapticsEnabled { haptics.start() }
         stopSystemGesturesDelayingTouches()
         TouchTrace.shared.watch(view.window)
@@ -1041,6 +1049,8 @@ open class FullKeyboardViewController: UIInputViewController {
             menuOpen = false
         case .nextKeyboard:
             advanceToNextInputMode()
+        case .cursorLines(let count) where line == nil && fieldLines.lineHeight != nil:
+            return fieldLines.move(count, before: engine.text.before)
         default:
             break
         }

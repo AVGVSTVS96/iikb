@@ -81,11 +81,11 @@ extension KeyboardView {
                     tracked.lastCursor.x += CGFloat(step) * width
                     onEvent(.cursor(offset: step))
                 }
-                let row = metrics.keyHeight + metrics.rowGap
-                let sentences = Int((point.y - tracked.lastCursor.y) / row)
-                if sentences != 0 {
-                    tracked.lastCursor.y += CGFloat(sentences) * row
-                    onEvent(.cursorSentences(sentences))
+                let line = lineHeight() ?? metrics.keyHeight + metrics.rowGap
+                let lines = Int((point.y - tracked.lastCursor.y) / line)
+                if lines != 0 {
+                    tracked.lastCursor.y += CGFloat(lines) * line
+                    onEvent(.cursorLines(lines))
                 }
             case .swipe:
                 let drawn = tracked.path.count

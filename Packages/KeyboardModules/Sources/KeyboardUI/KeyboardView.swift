@@ -18,6 +18,9 @@ public final class KeyboardView: UIView {
     /// How far the space bar trackpad's finger travels to move the caret one character, -1 left or 1 right: the width
     /// of the character it crosses.
     public var advance: (Int) -> CGFloat = { _ in HostText.width(of: nil) }
+    /// How far the finger travels to move the caret a line up or down: the field's line height where its lines are
+    /// known, else nil, and up and down move a sentence per row of keys.
+    public var lineHeight: () -> CGFloat? = { nil }
 
     private(set) var layout = KeyboardLayout(rows: [])
     private(set) var signature = ""

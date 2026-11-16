@@ -8,7 +8,7 @@ UIKit, the parts any keyboard can build on, with no private API. Keyboard behavi
   - A touch that began on a letter in the letters layer and has gone 0.8 key widths from where it began, past the neighboring key a tap's drift never reaches, stops being a key, collects its path from every coalesced sample, and sends `.swipe` when it lifts or when another finger lands.
   - `TrailView` draws the thin fading line behind it in the theme's prominent color, never touching the keys.
   - The top row takes taps over the bar's bottom edge (docs/design.md, "Where taps land"), so a reach for it types its key, never picking a suggestion or opening a panel.
-- `HostText`: the body font most fields draw in, so the trackpad moves the caret a character for as far as the character is wide. Up and down move a sentence for each row of keys the finger crosses (`Sentences`, in KeyboardCore).
+- `HostText`: the body font most fields draw in, so the trackpad moves the caret a character for as far as the character is wide. Up and down send `.cursorLines` for each line height the finger crosses (`KeyboardView.lineHeight`, the field's where FullKeyboard knows it), else for each row of keys.
 - `KeyView`.
 - `KeyHaptics`: Apple's keyboard haptic values, played with public Core Haptics on an engine the keyboard owns. While any app records, iOS mutes every app's haptics unless the recording session allows them, so `Listener` does, or Keep Mic On silences the keys.
 
