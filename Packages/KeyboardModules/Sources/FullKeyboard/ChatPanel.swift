@@ -45,6 +45,7 @@ final class ChatPanel: UIView, PanelContent {
     private var line: LineDocument?
     private var typing = false
     private var picking = false
+    private var alone = false
 
     private struct Shown: Equatable {
         var revision: Int
@@ -97,11 +98,12 @@ final class ChatPanel: UIView, PanelContent {
     }
 
     /// The box shows `line`; `typing` is whether the keys are up under it, or the photo grid when `picking`, which
-    /// leaves the box without its caret, so a tap on it brings the keys back.
-    func show(_ line: LineDocument, typing: Bool, picking: Bool) {
+    /// leaves the box without its caret, so a tap on it brings the keys back. `alone` while the keys leave the chat too
+    /// little room for its tabs over its box: the box has it alone, and More is the bar's.
+    func show(_ line: LineDocument, typing: Bool, picking: Bool, alone: Bool) {
         self.line = line
-        if typing != self.typing { setNeedsLayout() }
-        (self.typing, self.picking) = (typing, picking)
+        if typing != self.typing || alone != self.alone { setNeedsLayout() }
+        (self.typing, self.picking, self.alone) = (typing, picking, alone)
     }
 
     func show(query: String, theme: KeyboardTheme, metrics: KeyboardMetrics) {
@@ -144,7 +146,7 @@ final class ChatPanel: UIView, PanelContent {
     override func layoutSubviews() {
         super.layoutSubviews()
         let row = CGFloat(bar)
-        tabs.isHidden = !typing || chats.list.isEmpty || bounds.height < row
+        tabs.isHidden = !typing || alone || chats.list.isEmpty || bounds.height < row
         more.isHidden = tabs.isHidden
         let around = (row - ChatTabs.height) / 2
         more.place(

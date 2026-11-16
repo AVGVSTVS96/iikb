@@ -159,8 +159,9 @@ final class ChatPhotos: NSObject {
     }
 }
 
-/// Your newest photos, about 110 points each across the width, drawn at the size they're shown so the grid costs the
-/// keyboard little memory; each picked one shows its number. Without access to the library it says so, and Allow Photos opens iikb to ask.
+/// Your newest photos, about 110 points each across the width, or less where that's needed for a row to show whole,
+/// drawn at the size they're shown so the grid costs the keyboard little memory; each picked one shows its number.
+/// Without access to the library it says so, and Allow Photos opens iikb to ask.
 final class PhotoGrid: UIView, UICollectionViewDataSource, UICollectionViewDelegate {
     var onTap: (PHAsset) -> Void = { _ in }
     /// The picked photos' asset ids, in order.
@@ -233,7 +234,8 @@ final class PhotoGrid: UIView, UICollectionViewDataSource, UICollectionViewDeleg
         super.layoutSubviews()
         collection.frame = bounds
         notice.frame = bounds.insetBy(dx: 24, dy: 0)
-        let across = max(3, (bounds.width / 110).rounded())
+        let whole = bounds.height > 0 ? (bounds.width / bounds.height).rounded(.up) : 0
+        let across = max(3, (bounds.width / 110).rounded(), whole)
         let side = ((bounds.width - Self.gap * (across - 1)) / across).rounded(.down)
         if layout.itemSize.width != side { layout.itemSize = CGSize(width: side, height: side) }
     }

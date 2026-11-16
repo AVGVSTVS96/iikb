@@ -118,6 +118,9 @@ open class FullKeyboardViewController: UIInputViewController {
     private let photos = ChatPhotos()
     /// The photo grid is up in the keys' place, the chat over it as with the keys up.
     private var picking = false
+    /// The keys are up under a chat left too little room for its tabs over its box, which then has the room alone,
+    /// Back beside it and More in the bar, as where iOS gives a keyboard 321 points whatever it asks (docs/design.md).
+    private var boxAlone = false
     private lazy var chatPanel: ChatPanel = {
         let panel = ChatPanel(chats: chats)
         panel.fullAccess = { [unowned self] in hasFullAccess }
@@ -700,6 +703,11 @@ open class FullKeyboardViewController: UIInputViewController {
             ? (keysUp ? tall - height : wanted.height) : inPlace || !panelOpen ? wanted.height : wanted.panelHeight
         let keysHeight = line != nil && !keysUp ? tall - ask : height
         let room = view.bounds.height
+        let aboveBar = Double(room) - wanted.height
+        let least = picking && room > 0 ? min(height, max(aboveBar - overKeys, 0)) : height
+        boxAlone =
+            line != nil && keysUp && !picking && room > 0
+            && aboveBar - height < PanelView.height(over: MessageField.oneLine, toolbar: wanted)
         metrics.toolbar = wanted
         if ask == toolbarHeightConstraint.constant, keysHeight == keyboardHeightConstraint.constant, room > 0 {
             if engine.panel != nil, !inPlace { metrics.toolbar = wanted.fitting(room - height) }
@@ -717,10 +725,8 @@ open class FullKeyboardViewController: UIInputViewController {
         renderMenu(context, metrics: metrics)
         renderSuggestions()
 
-        if keyboardHeightConstraint.constant != keysHeight {
-            keyboardHeightConstraint.constant = keysHeight
-            keysMinimumConstraint.constant = height
-        }
+        if keyboardHeightConstraint.constant != keysHeight { keyboardHeightConstraint.constant = keysHeight }
+        if keysMinimumConstraint.constant != least { keysMinimumConstraint.constant = least }
     }
 
     /// The bar, or the open panel in its place, across the keys block.
@@ -743,12 +749,12 @@ open class FullKeyboardViewController: UIInputViewController {
         panelView.open(panel)
         panelView.isHidden = panel == nil
         panelView.inKeysPlace = inPlace
-        panelView.fieldFirst = picking && !photos.attached.isEmpty
+        panelView.fieldFirst = picking && !photos.attached.isEmpty || boxAlone
         if placed.map({ $0 != (line != nil, inPlace) }) ?? true {
             placed = (line != nil, inPlace)
             view.setNeedsLayout()
         }
-        panelView.showsBack = line == nil
+        panelView.showsBack = line == nil || boxAlone
         panelView.bottomInset = line == nil ? PanelView.inset : CGFloat(metrics.bottomInset)
         suggestionBar.isHidden = engine.panel != nil && !inPlace
         panelView.block = block
@@ -764,7 +770,7 @@ open class FullKeyboardViewController: UIInputViewController {
             open: chats.list.firstIndex { $0 == chats.open }, fresh: fresh, theme: theme)
         hasMore = context.showsMoreButton || secondary
         let leading = hasMore || line != nil
-        suggestionBar.update(more: (line == nil || !keysUp) && leading, on: menuShown || inPlace)
+        suggestionBar.update(more: (line == nil || !keysUp || boxAlone) && leading, on: menuShown || inPlace)
         suggestionBar.update(offered: updateOffered && !narrow)
         suggestionBar.update(edits: menuShown && panel == nil ? edits : nil, theme: theme)
         placeMic()
@@ -779,7 +785,7 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         if let line {
             chatPanel.photos = photos.attached.map(\.url)
-            chatPanel.show(line, typing: keysUp, picking: picking)
+            chatPanel.show(line, typing: keysUp, picking: picking, alone: boxAlone)
             panelView.show(query: line.text, caret: line.caret, theme: theme, metrics: shown)
         } else if panel != nil {
             panelView.show(query: engine.query, theme: theme, metrics: shown)
@@ -1160,15 +1166,15 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     /// What the box's ↑ took from the line goes to the open chat with the photos attached, which keeps them until its
-    /// extension has them, and the chat comes back down to read. With no chat open to keep it, the text comes back to
-    /// the line.
+    /// extension has them, and the chat comes back down to read when it sent photos or was its box alone, which shows
+    /// no messages. With no chat open to keep it, the text comes back to the line.
     private func send(_ text: String) {
         engine.documentChanged(document)
         render()
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || !photos.attached.isEmpty else { return }
         if chats.send(text, photos: photos.attached) {
-            if !photos.attached.isEmpty { (keysUp, picking) = (false, false) }
+            if !photos.attached.isEmpty || boxAlone { (keysUp, picking) = (false, false) }
             return photos.clear()
         }
         guard let line, !text.isEmpty else { return }

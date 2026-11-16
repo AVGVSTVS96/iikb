@@ -54,12 +54,12 @@ public final class PanelView: UIView {
     /// Whether the search field may take focus while the keys are up, which iOS allows a keyboard only with Full Access
     /// (`MessageField`).
     public var focuses = false
-    /// Chats has no back button: More, still on, takes you back.
+    /// Chats has one only with its box alone over the keys, to put them away; elsewhere More, still on, takes you back.
     public var showsBack = true { didSet { if showsBack != oldValue { setNeedsLayout() } } }
     /// Under the field in the keys' place, so it ends where the bottom row of keys would.
     public var bottomInset = PanelView.inset { didSet { if bottomInset != oldValue { setNeedsLayout() } } }
     /// The field may take the whole panel, as a chat's box does with photos attached while they're being picked, where
-    /// the room above the keys is short.
+    /// the room above the keys is short, and over the keys where they leave it too little room for its tabs.
     public var fieldFirst = false { didSet { if fieldFirst != oldValue { setNeedsLayout() } } }
     private(set) var content: PanelContent?
     private var toolbar = KeyboardMetrics.phone(width: 390).toolbar
@@ -148,14 +148,14 @@ public final class PanelView: UIView {
         let room = bottom - top - CGFloat(Toolbar.fieldGap)
         let fieldHeight =
             own.map {
-                let most = fieldFirst ? room : room - Self.resultsRow
+                let most = fieldFirst ? bottom - top : room - Self.resultsRow
                 return min(ceil($0.sizeThatFits(CGSize(width: fieldWidth, height: most)).height), most)
             }
             ?? CGFloat(toolbar.field)
         let row = CGRect(x: block.minX, y: bottom - fieldHeight, width: width, height: fieldHeight)
         content?.frame = CGRect(
             x: block.minX, y: top, width: width, height: max(row.minY - CGFloat(Toolbar.fieldGap) - top, 0))
-        let line = CGFloat(own == nil ? toolbar.field : min(toolbar.field, 36))
+        let line = CGFloat(toolbar.field)
         back.frame = CGRect(x: row.minX, y: row.maxY - line, width: 36, height: line)
         (own ?? search).frame = CGRect(x: fieldX, y: row.minY, width: fieldWidth, height: row.height)
     }

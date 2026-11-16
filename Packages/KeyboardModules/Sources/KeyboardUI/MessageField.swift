@@ -58,14 +58,19 @@ public final class MessageField: UIView, UITextViewDelegate {
     /// The paperclip's circle, as tall as the box's one line, and its gap to the box.
     private static let attachSize: CGFloat = 40
     private static let attachGap: CGFloat = 8
-    /// The attached photos' row inside the box, above the words.
+    /// The attached photos' row inside the box, above the words: `thumbSize`, or as little as `thumbLeast` where the
+    /// keyboard leaves the box less room than its photos and a line of words need.
     private static let thumbSize: CGFloat = 76
+    private static let thumbLeast: CGFloat = 32
     private static let stripPadding: CGFloat = 8
-    /// The photos' side as laid out: `thumbSize`, or less where the keyboard leaves the box less room than its photos
-    /// and a line of words need, as where iOS gives the keyboard less height than a chat asks for.
-    private var thumbSide = MessageField.thumbSize
+    /// The photos beside the words, where the box is too short to hold them over a line: within its line, at its start,
+    /// as round as its end.
+    private static let besideMargin: CGFloat = 6
+    private static let besideGap: CGFloat = 4
+    /// The box with one line of words.
+    public static let oneLine = inset.top + lineHeight + inset.bottom
     /// The box with a row of photos over a line of words.
-    public static let withPhotos = inset.top + thumbSize + stripPadding + lineHeight + inset.bottom
+    public static let withPhotos = oneLine + thumbSize + stripPadding
     private static let lines = {
         let style = NSMutableParagraphStyle()
         style.minimumLineHeight = lineHeight
@@ -194,26 +199,24 @@ public final class MessageField: UIView, UITextViewDelegate {
         setNeedsLayout()
     }
 
-    /// The height for `size.width` at up to five lines, within `size.height`.
+    /// The height the box wants at `size.width` within `size.height`: its photos' row, then its words growing a line
+    /// at a time up to five, past which they scroll, and never part of a line. Where its photos can't sit over a line,
+    /// they sit beside it.
     override public func sizeThatFits(_ size: CGSize) -> CGSize {
-        CGSize(width: size.width, height: min(height(for: size.width, lines: 5), size.height))
-    }
-
-    /// The height the box wants at `width`, its photos' row and then its words, growing a line at a time up to
-    /// `lines`, past which they scroll.
-    public func height(for width: CGFloat, lines: Int) -> CGFloat {
-        let inset = textInset(side: Self.thumbSize)
-        let box = max(width - Self.attachSize - Self.attachGap, 1)
+        let box = max(size.width - Self.attachSize - Self.attachGap, 1)
+        let words = field.textContainerInset
         let content = field.sizeThatFits(CGSize(width: box, height: .greatestFiniteMagnitude)).height
-        let shown = ((content - inset.top - inset.bottom) / Self.lineHeight).rounded()
-        return inset.top + inset.bottom + Self.lineHeight * min(max(shown, 1), CGFloat(lines))
+        let typed = ((content - words.top - words.bottom) / Self.lineHeight).rounded()
+        let over = thumbs.isEmpty || photosBeside(within: size.height) ? 0 : Self.thumbSize + Self.stripPadding
+        let around = Self.inset.top + over + Self.inset.bottom
+        let room = ((size.height - around) / Self.lineHeight).rounded(.down)
+        let lines = min(max(typed, 1), max(room, 1), 5)
+        return CGSize(width: size.width, height: min(around + Self.lineHeight * lines, size.height))
     }
 
-    /// The words' inset in the box, below the photos' row, of photos `side` points, when there are photos.
-    private func textInset(side: CGFloat) -> UIEdgeInsets {
-        var inset = Self.inset
-        if shown?.photos.isEmpty == false { inset.top += side + Self.stripPadding }
-        return inset
+    /// Whether the photos sit beside the words: the box, `height` tall, can't hold their smallest row over a line.
+    private func photosBeside(within height: CGFloat) -> Bool {
+        !thumbs.isEmpty && height < Self.withPhotos - Self.thumbSize + Self.thumbLeast
     }
 
     override public func layoutSubviews() {
@@ -224,9 +227,29 @@ public final class MessageField: UIView, UITextViewDelegate {
         let box = bounds.inset(by: UIEdgeInsets(top: 0, left: clip + Self.attachGap, bottom: 0, right: 0))
         glass.frame = box
         field.frame = box
-        let around = Self.inset.top + Self.stripPadding + Self.lineHeight + Self.inset.bottom
-        thumbSide = min(Self.thumbSize, max(bounds.height - around, 32)).rounded(.down)
-        let inset = textInset(side: thumbSide)
+        let beside = photosBeside(within: bounds.height)
+        let side =
+            beside
+            ? Self.oneLine - 2 * Self.besideMargin
+            : min(Self.thumbSize, max(bounds.height - Self.withPhotos + Self.thumbSize, Self.thumbLeast)).rounded(.down)
+        let gap = beside ? Self.besideGap : Self.stripPadding
+        for (index, thumb) in thumbs.enumerated() {
+            thumb.beside = beside
+            thumb.frame = CGRect(x: CGFloat(index) * (side + gap), y: 0, width: side, height: side)
+        }
+        let row = max(CGFloat(thumbs.count) * (side + gap) - gap, 0)
+        strip.contentSize = CGSize(width: row, height: side)
+        var inset = Self.inset
+        if beside {
+            let margin = Self.besideMargin
+            strip.frame = CGRect(x: box.minX + margin, y: margin, width: min(row, box.width / 3), height: side)
+            inset.left = strip.frame.maxX - box.minX + Self.stripPadding
+        } else {
+            let left = Self.inset.left
+            strip.frame = CGRect(
+                x: box.minX + left, y: Self.stripPadding, width: box.width - left - Self.stripPadding, height: side)
+            if !thumbs.isEmpty { inset.top += side + Self.stripPadding }
+        }
         if field.textContainerInset != inset { field.textContainerInset = inset }
         placeholder.frame = CGRect(
             x: box.minX + inset.left, y: inset.top, width: max(box.width - inset.left - inset.right, 0),
@@ -234,14 +257,6 @@ public final class MessageField: UIView, UITextViewDelegate {
         let size = Self.sendSize
         send.bounds.size = CGSize(width: size, height: size)
         send.center = CGPoint(x: box.maxX - Self.sendMargin - size / 2, y: box.maxY - Self.sendMargin - size / 2)
-        let pad = Self.stripPadding
-        let left = Self.inset.left
-        let side = thumbSide
-        strip.frame = CGRect(x: box.minX + left, y: pad, width: box.width - left - pad, height: side)
-        for (index, thumb) in thumbs.enumerated() {
-            thumb.frame = CGRect(x: CGFloat(index) * (side + pad), y: 0, width: side, height: side)
-        }
-        strip.contentSize = CGSize(width: max(CGFloat(thumbs.count) * (side + pad) - pad, 0), height: side)
         field.scrollRangeToVisible(field.selectedRange)
     }
 
@@ -259,7 +274,6 @@ public final class MessageField: UIView, UITextViewDelegate {
             return thumb
         }
         strip.isHidden = photos.isEmpty
-        field.textContainerInset = textInset(side: thumbSide)
         superview?.setNeedsLayout()
         setNeedsLayout()
         layoutIfNeeded()
@@ -287,9 +301,10 @@ public final class MessageField: UIView, UITextViewDelegate {
         return super.hitTest(point, with: event)
     }
 
-    /// The photos' row is the box's too: a tap on it, away from a ✕, is a tap on the box.
+    /// The photos' row is the box's too: a tap on it, away from a ✕, is a tap on the box. Beside the words, too small
+    /// for their ✕, a tap on them brings your photos up, where they have it.
     @objc private func tapPhotos() {
-        if !field.focusable { onTap() }
+        if photosBeside(within: bounds.height) { onAttach() } else if !field.focusable { onTap() }
     }
 
     public func textViewShouldBeginEditing(_ textView: UITextView) -> Bool {
@@ -339,9 +354,11 @@ private final class Field: UITextView {
     }
 }
 
-/// An attached photo in the box: the picture, rounded, and a ✕ in its corner that takes it off.
+/// An attached photo in the box: the picture, rounded, and a ✕ in its corner that takes it off; beside the words, a
+/// circle without one.
 private final class Thumb: UIView {
     var onRemove: () -> Void = {}
+    var beside = false { didSet { if beside != oldValue { setNeedsLayout() } } }
     var removeIdentifier: String? {
         get { remove.accessibilityIdentifier }
         set { remove.accessibilityIdentifier = newValue }
@@ -356,7 +373,6 @@ private final class Thumb: UIView {
         super.init(frame: .zero)
         picture.contentMode = .scaleAspectFill
         picture.clipsToBounds = true
-        picture.layer.cornerRadius = 12
         picture.layer.cornerCurve = .continuous
         addSubview(picture)
         var look = UIButton.Configuration.filled()
@@ -388,11 +404,13 @@ private final class Thumb: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         picture.frame = bounds
+        picture.layer.cornerRadius = beside ? bounds.width / 2 : 12
+        remove.isHidden = beside
         remove.frame = CGRect(x: bounds.maxX - 26, y: 4, width: 22, height: 22)
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        remove.frame.insetBy(dx: -8, dy: -8).contains(point) ? remove : nil
+        !beside && remove.frame.insetBy(dx: -8, dy: -8).contains(point) ? remove : nil
     }
 
     @concurrent nonisolated private static func thumbnail(_ url: URL) async -> UIImage? {
