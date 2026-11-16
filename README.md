@@ -92,7 +92,7 @@ xcodegen generate
 open iikb.xcodeproj
 ```
 
-Put your team in `Config/Team.xcconfig` (`DEVELOPMENT_TEAM = <your team ID>`) and run the `iikb` scheme. On Linux, build it with [AVGVSTVS96/xtool](https://github.com/AVGVSTVS96/xtool), a fork that keeps the app and App Group IDs (stock xtool installs a separate copy and drops the App Group); [AGENTS.md](AGENTS.md) has the details. A different team may need to swap in its own app and App Group IDs.
+Put your team in `Config/Team.xcconfig` (`DEVELOPMENT_TEAM = <your team ID>`) and run the `iikb` scheme. On Linux, build it with [AVGVSTVS96/xtool](https://github.com/AVGVSTVS96/xtool), a fork that keeps the app and App Group IDs (stock xtool installs a separate copy and drops the App Group); [scripts/AGENTS.md](scripts/AGENTS.md) has the details. A different team may need to swap in its own app and App Group IDs.
 
 ## How it's built
 
@@ -115,8 +115,8 @@ Tests:
 ```sh
 scripts/coretest   # KeyboardCore's tests on Linux, no Mac needed (about 25 s)
 scripts/check      # builds the app and keyboard for the iPhone on Linux
-scripts/test       # on a Mac: KeyboardUI on an iPhone Duo simulator, without the slow autocorrect scorer
-scripts/uitest     # on a Mac: types through the real keyboard
+scripts/ci scripts/test     # on GitHub's Macs: KeyboardUI on an iPhone Duo simulator, without the slow autocorrect scorer
+scripts/ci scripts/uitest   # on GitHub's Macs: types through the real keyboard
 ```
 
 [AGENTS.md](AGENTS.md) explains the design and the scripts; [PROGRESS.md](PROGRESS.md) is the build log, with every measurement.
