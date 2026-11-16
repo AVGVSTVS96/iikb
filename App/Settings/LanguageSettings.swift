@@ -63,8 +63,7 @@ struct LanguageSettings: View {
     }
 
     private var footer: String {
-        "\(status.fullAccess ? "Downloaded languages work offline." : "Downloaded languages need Allow Full Access.") "
-            + "Swipe typing is English only."
+        status.fullAccess ? "Downloaded languages work offline." : "Downloaded languages need Allow Full Access."
     }
 
     private func phase(of language: Language) -> DownloadRow.Phase {

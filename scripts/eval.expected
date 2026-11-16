@@ -49,12 +49,52 @@ EVAL swipe encoder+decoder lexicon=ours top1=90.71 top3=95.28 top10=96.19
 EVAL swipe encoder+decoder lexicon=forced at -25.5 top1=91.98 top3=97.19 top10=98.76
 EVAL swipe encoder+decoder lexicon=forced at -18.0 top1=92.82 top3=97.99 top10=99.17
 EVAL swipe encoder+decoder lexicon=forced at -12.0 top1=93.44 top3=98.28 top10=99.23
+EVAL swipe language=de-german layout=german swipes=2592 inLexicon=96.99% keysOff=0.046
+EVAL swipe language=de-german a-z keys+decoder top1=69.10 top3=78.63 top10=81.94
+EVAL swipe language=de-german encoder top1=83.72 top3=90.16 top10=91.74
+EVAL swipe language=de-qwertz layout=qwertz swipes=1400 inLexicon=97.64% keysOff=0.000
+EVAL swipe language=de-qwertz a-z keys+decoder top1=71.64 top3=82.36 top10=84.50
+EVAL swipe language=de-qwertz encoder top1=86.86 top3=93.21 top10=94.21
+EVAL swipe language=de-qwertz encoder+decoder top1=77.36 top3=88.93 top10=91.64
+EVAL swipe language=de-qwerty layout=qwerty swipes=1203 inLexicon=97.26% keysOff=0.000
+EVAL swipe language=de-qwerty a-z keys+decoder top1=74.40 top3=82.13 top10=83.87
+EVAL swipe language=de-qwerty encoder top1=87.03 top3=92.77 top10=93.93
+EVAL swipe language=de-qwerty encoder+decoder top1=81.30 top3=90.61 top10=92.77
+EVAL swipe language=fr-azerty layout=french swipes=2507 inLexicon=92.66% keysOff=0.000
+EVAL swipe language=fr-azerty a-z keys+decoder top1=67.09 top3=75.67 top10=77.30
+EVAL swipe language=fr-azerty encoder top1=83.49 top3=91.98 top10=93.70
+EVAL swipe language=fr-qwerty layout=qwerty swipes=495 inLexicon=94.14% keysOff=0.000
+EVAL swipe language=fr-qwerty a-z keys+decoder top1=73.74 top3=80.00 top10=82.63
+EVAL swipe language=fr-qwerty encoder top1=87.68 top3=92.73 top10=94.55
+EVAL swipe language=fr-qwerty encoder+decoder top1=83.64 top3=92.73 top10=95.76
+EVAL swipe language=es-spanish layout=spanish swipes=1943 inLexicon=97.12% keysOff=0.000
+EVAL swipe language=es-spanish a-z keys+decoder top1=77.10 top3=82.09 top10=82.81
+EVAL swipe language=es-spanish encoder top1=87.65 top3=93.36 top10=94.08
+EVAL swipe language=en-qwerty layout=qwerty swipes=27602 inLexicon=96.83% keysOff=0.000
+EVAL swipe language=en-qwerty a-z keys+decoder top1=82.82 top3=87.69 top10=89.11
+EVAL swipe language=en-qwerty encoder top1=80.63 top3=86.71 top10=88.37
+EVAL swipe language=en-qwerty encoder+decoder top1=82.82 top3=87.69 top10=89.11
+EVAL swipe language=en-qwertz layout=qwertz swipes=781 inLexicon=96.54% keysOff=0.000
+EVAL swipe language=en-qwertz a-z keys+decoder top1=85.53 top3=92.70 top10=94.24
+EVAL swipe language=en-qwertz encoder top1=85.79 top3=92.57 top10=94.11
+EVAL swipe language=en-qwertz encoder+decoder top1=85.53 top3=92.70 top10=94.24
+EVAL swipe language=en-azerty layout=azerty swipes=95 inLexicon=97.89% keysOff=0.050
+EVAL swipe language=en-azerty a-z keys+decoder top1=91.58 top3=95.79 top10=96.84
+EVAL swipe language=en-azerty encoder top1=91.58 top3=95.79 top10=96.84
+EVAL swipe language=en-azerty encoder+decoder top1=91.58 top3=95.79 top10=96.84
+EVAL swipe drawn language=en layout=qwerty words=2580 top1=85.08 top3=94.96
+EVAL swipe drawn language=es layout=spanish words=2921 top1=85.69 top3=96.17
+EVAL swipe drawn language=fr layout=french words=3034 top1=79.86 top3=91.73
+EVAL swipe drawn language=de layout=german words=3187 top1=82.49 top3=93.69
+EVAL swipe drawn language=pt layout=qwerty words=2544 top1=85.38 top3=94.93
+EVAL swipe drawn language=it layout=qwerty words=2759 top1=80.65 top3=91.48
+EVAL swipe drawn language=sv layout=swedish words=2877 top1=83.73 top3=93.99
 EVAL swipe context dev=6000 old (alpha: 0.1, lambda: 0.15, beta: 0.6)
 EVAL swipe context dev=6000 new (alpha: 0.3, lambda: 0.31, beta: 0.727)
 EVAL swipe context test=48355 decoder alpha=0.0 lambda=0.31 beta=0.727: context top1=90.71 top3=95.28 | empty top1=90.71 top3=95.28
-EVAL swipe context test=48355 before alpha=0.4 lambda=0.0 beta=0.85: context top1=92.19 top3=95.60 | empty top1=89.58 top3=95.15
-EVAL swipe context test=48355 old alpha=0.1 lambda=0.15 beta=0.6: context top1=91.62 top3=95.35 | empty top1=90.76 top3=95.16
-EVAL swipe context test=48355 new alpha=0.3 lambda=0.31 beta=0.727: context top1=91.99 top3=95.54 | empty top1=90.71 top3=95.28
+EVAL swipe context test=48355 before alpha=0.4 lambda=0.0 beta=0.85: context top1=92.15 top3=95.62 | empty top1=89.63 top3=95.15
+EVAL swipe context test=48355 old alpha=0.1 lambda=0.15 beta=0.6: context top1=91.64 top3=95.36 | empty top1=90.76 top3=95.16
+EVAL swipe context test=48355 new alpha=0.3 lambda=0.31 beta=0.727: context top1=92.07 top3=95.56 | empty top1=90.71 top3=95.28
 EVAL language=de layout=german noise=0.0 keyboard=decoder words=3187 raw=99.1% autocorrect=97.5% top3=100.0% next3=6.6% fixed=23 broken=75 ["rockerlegende→rocker legende", "lupft→luft", "trommelfellruptur→trommelfell ruptur", "tauchverletzung→tauch verletzung", "transparentpudding→transparent pudding", "damenfahrrad→damen fahrrad", "seitenschneider→seiten schneider", "humpe→humor"]
 EVAL language=de layout=german noise=0.15 keyboard=decoder words=3187 raw=98.5% autocorrect=97.3% top3=99.9% next3=6.6% fixed=39 broken=75 ["rockerlegende→rocker legende", "lupft→luft", "trommelfellruptur→trommelfell ruptur", "tauchverletzung→tauch verletzung", "transparentpudding→transparent pudding", "damenfahrrad→damen fahrrad", "seitenschneider→seiten schneider", "humpe→humor"]
 EVAL language=de layout=german noise=0.25 keyboard=decoder words=3187 raw=84.8% autocorrect=94.4% top3=98.0% next3=6.4% fixed=357 broken=50 ["rockerlegende→rocker legende", "lupft→luft", "trommelfellruptur→trommelfell ruptur", "tauchverletzung→tauch verletzung", "transparentpudding→transparent pudding", "an→am", "seitenschneider→seiten schneider", "berufsklischees→berufs klischees"]

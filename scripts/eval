@@ -4,8 +4,9 @@
 # keyboards; the UITextChecker baseline needs Apple's platforms, so on a Mac (scripts/ci scripts/eval) it scores that
 # too. Both score real people's typing as well (realTaps, realTypos, realAutocorrect), which scripts/realtyping.py
 # downloads into build/real the first time. Optional argument: one test (noise, biasedThumbs, aimShift, predictions, emoji), or swipe: how well swipes are
-# read on swipe.futo.org's test split (SwipeEvaluation; needs scripts/swipe data and SWIPE_DATA, takes minutes), which is
-# only diffed against eval.expected's swipe lines, or languages: each other language's phrases (phrases.<id>.txt) typed
+# read on swipe.futo.org's test split and, in German, French and Spanish, its swipe-5 run (SwipeEvaluation; needs
+# scripts/swipe data and languages, and SWIPE_DATA, takes minutes), which is only diffed against eval.expected's swipe
+# lines, or languages: each other language's phrases (phrases.<id>.txt) typed
 # on its own layout with its own words, downloaded from the release the manifest names into build/languages/, each
 # language in its own process (about 12 minutes), only diffed against eval.expected's language lines. A full run must match eval.expected, its baseline lines only on a
 # Mac; a change that moves the numbers updates that file in the same commit.
@@ -16,7 +17,7 @@ out=$root/build/eval.txt
 mkdir -p "$root/build"
 export REAL_DATA=${REAL_DATA:-$root/build/real} TEST_RUNNER_REAL_DATA=${REAL_DATA:-$root/build/real}
 case "${1:-real}" in real*) [ -f "$REAL_DATA/autocorrect.txt" ] || python3 -I "$root/scripts/realtyping.py" "$REAL_DATA" ;; esac
-if [ "${1:-}" = languages ]; then
+if [ "${1:-}" = languages ] || [ "${1:-}" = swipe ]; then
   export LANGUAGES=$root/build/languages
   python3 - "$root/Packages/KeyboardModules/Sources/KeyboardStore/Resources/Languages/manifest.json" "$LANGUAGES" <<'PY'
 import hashlib, json, os, sys, urllib.request
@@ -69,7 +70,7 @@ if [ "${1:-}" = languages ]; then
   exit
 fi
 if [ "${1:-}" = swipe ]; then
-  diff -u <(grep '^EVAL swipe' "$root/scripts/eval.expected") <(grep '^EVAL swipe' "$out") && echo "EVAL swipe matches eval.expected"
+  diff -u <(grep '^EVAL swipe' "$root/scripts/eval.expected" | sort) <(grep '^EVAL swipe' "$out" | sort) && echo "EVAL swipe matches eval.expected"
   exit
 fi
 [ -z "${1:-}" ] || exit 0

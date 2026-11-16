@@ -3,12 +3,13 @@ import Testing
 
 @testable import KeyboardCore
 
-/// The finger going over the keys of `word` on the standard grid, at 8 points a step and 8 ms apart.
+/// The finger going over the keys of `word`, at a quarter of a key a step and 8 ms apart.
 private func path(_ word: String, on grid: KeyGrid = .standard) -> [SwipePoint] {
     let centers = word.map { grid.frame(of: String($0))! }.map { (x: $0.midX, y: $0.midY) }
+    let step = grid.frame(of: "a")!.width / 4
     var points = [SwipePoint(x: centers[0].x, y: centers[0].y, time: 0)]
     for (from, to) in zip(centers, centers.dropFirst()) {
-        let steps = max(Int((hypot(to.x - from.x, to.y - from.y) / 0.25).rounded(.up)), 1)
+        let steps = max(Int((hypot(to.x - from.x, to.y - from.y) / step).rounded(.up)), 1)
         for step in 1...steps {
             let share = Double(step) / Double(steps)
             points.append(
@@ -26,9 +27,22 @@ private let vocabulary = Lexicon(
         ("about", 40), ("hell", 5),
     ].map { (word: $0.0, count: Double($0.1)) })
 
-private func engine() -> (engine: TypingEngine, document: TestDocument) {
+/// iikb's phone keys for `letters`, with what a long press on each offers in `language`.
+func phoneGrid(_ language: Language, _ letters: LetterLayout) -> KeyGrid {
+    var context = LayoutContext(device: .phone, layer: .letters)
+    context.languages = [language]
+    context.letters = letters
+    return KeyGrid(
+        Layouts.layout(for: context), width: 390, metrics: KeyboardMetrics.phone(width: 390).grid,
+        signature: context.signature)
+}
+
+private func engine(_ words: Lexicon = vocabulary, on grid: KeyGrid = .standard) -> (
+    engine: TypingEngine, document: TestDocument
+) {
     var engine = TypingEngine()
-    engine.corrector = Corrector(source: vocabulary)
+    engine.corrector = Corrector(source: words)
+    engine.corrector?.grid = grid
     engine.settings.autoCapitalization = false
     engine.swipeModel = swipe
     let document = TestDocument()
@@ -85,6 +99,44 @@ struct SwipeTypingTests {
         var (engine, document) = engine()
         engine.handle(.swipe(path("im")), in: document)
         #expect(document.text == "I’m", "the apostrophe costs no swipe, and is curled as typed ones are")
+    }
+
+    @Test func eachLanguageIsSwipedOnItsOwnKeysAndALetterOnTheKeyItsUnder() {
+        let words = Lexicon(
+            counts: [
+                ("über", 50), ("uber", 50), ("año", 50), ("ano", 50), ("größe", 50), ("café", 50), ("på", 50),
+                ("pa", 50), ("perché", 50), ("não", 50),
+            ].map { (word: $0.0, count: Double($0.1)) })
+        for (language, letters, keys, word) in [
+            (Language.german, LetterLayout.german, "über", "über"), (.german, .german, "uber", "uber"),
+            (.spanish, .spanish, "año", "año"), (.german, .qwertz, "grose", "größe"),
+            (.french, .qwerty, "cafe", "café"), (.swedish, .swedish, "på", "på"), (.swedish, .swedish, "pa", "pa"),
+            (.italian, .qwerty, "perche", "perché"), (.portuguese, .qwerty, "nao", "não"),
+        ] {
+            let keyboard = phoneGrid(language, letters)
+            var (engine, document) = engine(words, on: keyboard)
+            engine.handle(.swipe(path(keys, on: keyboard)), in: document)
+            #expect(document.text == word, "\(keys) on \(letters.id)")
+        }
+    }
+
+    @Test func aWordGoesOnFromAnElisionWithNoSpaceBetween() {
+        let words = Lexicon(
+            counts: [("l'", 500), ("le", 300), ("école", 50), ("est", 100)].map { (word: $0.0, count: Double($0.1)) })
+        let keyboard = phoneGrid(.french, .french)
+        var (engine, document) = engine(words, on: keyboard)
+        engine.settings.languages = [.french]
+        engine.handle(.swipe(path("lecole", on: keyboard)), in: document)
+        #expect(document.text == "l’école", "swiped in one")
+        engine.handle(.swipe(path("est", on: keyboard)), in: document)
+        #expect(document.text == "l’école est")
+        engine.handle(.swipe(path("l'ecole", on: keyboard)), in: document)
+        #expect(document.text == "l’école est l’école", "through the apostrophe's key")
+
+        let typed = TestDocument("l’")
+        engine.documentChanged(typed)
+        engine.handle(.swipe(path("ecole", on: keyboard)), in: typed)
+        #expect(typed.text == "l’école", "after a typed one")
     }
 
     @Test func theBarOffersTheOtherReadingsAndAPickReplacesTheSwipedWord() throws {
@@ -167,6 +219,9 @@ struct SwipeTypingTests {
         #expect(document.text == "zorp")
         engine.handle(.swipe(path("quentin")), in: document)
         #expect(document.text == "zorp Quentin")
+        engine.corrector?.setNames(["Zoë"])
+        engine.handle(.swipe(path("zoe")), in: document)
+        #expect(document.text == "zorp Quentin Zoë", "in any letters the keys hold")
     }
 
     @Test func aSplitKeyboardsRepeatedKeyIsTheOneNearTheSwipe() throws {
@@ -180,15 +235,13 @@ struct SwipeTypingTests {
             Layouts.layout(for: context), width: width, metrics: metrics.grid, signature: context.signature)
         let copies = grid.rows.joined().filter { $0.key.label == "v" }.map(\.frame)
         try #require(copies.count == 2)
-        let alphabet = (0..<26).map { String(UnicodeScalar(UInt8(97 + $0))) }
-        let v = alphabet.firstIndex(of: "v")!
         for copy in copies {
             let near = [
                 SwipePoint(x: copy.midX, y: copy.midY, time: 0), SwipePoint(x: copy.midX + 1, y: copy.midY, time: 0.01),
             ]
             let layout = try #require(grid.swipeLayout(near: near))
             let box = try #require(SwipeLayout(grid: grid)).frame
-            #expect(abs(layout.centers[v].x * box.width + box.x - copy.midX) < 0.001)
+            #expect(abs(layout.centers[layout.keys["v"]!].x * box.width + box.x - copy.midX) < 0.001)
         }
     }
 

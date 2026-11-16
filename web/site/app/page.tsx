@@ -321,7 +321,8 @@ export default function Page() {
               ))}
             </div>
             <p className="font-mono text-xs text-muted-foreground">
-              English for now, swipe typing included.
+              English, plus Spanish, French, German, Portuguese, Italian and Swedish to download on
+              iPhone and iPad, swipe typing in each.
             </p>
           </Body>
         </Section>

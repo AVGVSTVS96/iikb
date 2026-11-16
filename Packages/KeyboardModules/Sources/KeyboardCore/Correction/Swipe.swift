@@ -1,12 +1,16 @@
 /// FUTO Swipe's encoder and decoder (https://huggingface.co/futo-org/futo-swipe, technical report arXiv 2606.25247),
-/// converted to one run of float32s that is read where it lies: a swipe's path in, the log-probability of each
-/// letter and of a blank at each of 32 steps out.
+/// converted to one run of float32s that is read where it lies: a swipe's path in, the log-probability of each of the
+/// layout's keys and of a blank at each of 32 steps out.
 ///
 /// Layout: `HXS1`, the number of floats as a little-endian u32, 8 bytes of zeros, then the float32 tensors of `entries`
 /// in order. A matrix is stored input-major (a row per input, so one input's weights to all outputs are contiguous),
 /// with its outputs padded with zeros to a multiple of 8; a vector is padded the same way.
 public final class Swipe: Sendable {
     public let bytes: Bytes
+    /// Whether the decoder corrects what the encoder reads where the keys are a–z's. It learned English's words alone,
+    /// and costs another language's 5 to 10 points of top 1 (`scripts/eval swipeLanguages`), so those read the encoder
+    /// alone (`withoutDecoder`), as FUTO's keyboard does.
+    public let decodes: Bool
 
     static let header: [UInt8] = Array("HXS1".utf8)
     static let dataOffset = 16
@@ -14,13 +18,8 @@ public final class Swipe: Sendable {
     static let coefficients = 64, frequencies = 8, blocks = 5, dilations = [1, 2, 3, 5, 8], kernel = 7
     static let decoderBlocks = 8, decoderWidth = 256, bottleneck = 64, memory = 15, decoderInputs = 92, headWidth = 32
 
-    /// The network's letters are a–z, in order: a lexicon letter's place among them, if it's one.
-    static func index(of letter: String) -> Int? {
-        guard let ascii = letter.utf8.first, letter.utf8.count == 1, (97...122).contains(ascii) else { return nil }
-        return Int(ascii - 97)
-    }
-
-    static func letter(at index: Int) -> UInt8 { UInt8(97 + index) }
+    /// The decoder's letters, a–z in order; the encoder reads any keys (`SwipeLayout`).
+    static let alphabet = (0..<letters).map { String(UnicodeScalar(UInt8(97 + $0))) }
 
     struct Entry {
         let name: String
@@ -101,7 +100,16 @@ public final class Swipe: Sendable {
     public init?(bytes: Bytes) {
         guard bytes.count == Self.size, Array(bytes[0..<4]) == Self.header else { return nil }
         self.bytes = bytes
+        decodes = true
     }
+
+    private init(_ model: Swipe, decodes: Bool) {
+        bytes = model.bytes
+        self.decodes = decodes
+    }
+
+    /// The same encoder, with no decoder after it.
+    public var withoutDecoder: Swipe { Swipe(self, decodes: false) }
 
     func tensor(_ name: String, in raw: UnsafeRawBufferPointer) -> UnsafeRawPointer {
         raw.baseAddress! + Self.offsets[name]!

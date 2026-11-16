@@ -1,25 +1,34 @@
 extension Swipe {
-    /// What the network says at each of its 32 steps: ln P of each letter a–z and of a blank, in that order, row by row.
+    /// What the network says at each of its 32 steps: ln P of each of the layout's keys, in its order, and of a blank,
+    /// row by row.
     public struct Emissions: Sendable {
-        public static let steps = Swipe.steps, classes = Swipe.classes
+        public static let steps = Swipe.steps
         public let values: [Float]
+        /// The layout's keys and the blank, the last.
+        public let classes: Int
+        /// Whether the decoder corrected the encoder's.
+        public let refined: Bool
+        /// The key each letter is swiped on (`SwipeLayout.keys`).
+        let keys: [String: Int]
 
-        public subscript(step: Int, letter: Int) -> Float { values[step * Self.classes + letter] }
+        public subscript(step: Int, key: Int) -> Float { values[step * classes + key] }
     }
 
-    /// The encoder's output for a path on a layout, then the decoder's correction of it when `refined`. `nil` for a
-    /// path of fewer than two points.
-    public func emissions(of path: [SwipePoint], on layout: SwipeLayout, refined: Bool = true) -> Emissions? {
+    /// The encoder's output for a path on a layout, then the decoder's correction of it when it `decodes` and the
+    /// layout's keys are a–z, the letters it reads. `nil` for a path of fewer than two points.
+    public func emissions(of path: [SwipePoint], on layout: SwipeLayout) -> Emissions? {
         guard path.count >= 2 else { return nil }
+        let refined = decodes && layout.isAToZ
         let (x, y) = layout.resampled(path)
+        let classes = layout.letters.count + 1
         return bytes.withUnsafeBytes { raw in
             let scratch = Scratch()
             let joint = encode(x: x, y: y, layout: layout, scratch, raw)
             let out = refined ? refine(joint, scratch, raw) : joint
+            let stride = refined ? Self.headWidth : classes + Self.coefficients + 1
             return Emissions(
-                values: (0..<Self.steps).flatMap { step in
-                    (0..<Self.classes).map { out[step * (refined ? Self.headWidth : Self.decoderInputs) + $0] }
-                })
+                values: (0..<Self.steps).flatMap { step in (0..<classes).map { out[step * stride + $0] } },
+                classes: classes, refined: refined, keys: layout.keys)
         }
     }
 
@@ -38,7 +47,8 @@ extension Swipe {
         }
     }
 
-    /// Steps 0..<32 of the decoder's input: log-probabilities of the classes (a–z, blank), the 64 coefficients, the gate.
+    /// Steps 0..<32 of the decoder's input: log-probabilities of the layout's keys and the blank, the 64 coefficients,
+    /// the gate.
     func encode(x: [Float], y: [Float], layout: SwipeLayout, _ scratch: Scratch, _ raw: UnsafeRawBufferPointer)
         -> UnsafeMutablePointer<Float>
     {
@@ -154,31 +164,33 @@ extension Swipe {
         Kernel.matmul(
             adapted, rows: Self.steps, inputs: Self.wide, tensor("encoder.spatial_head_lambda_proj_weight", in: raw),
             tensor("encoder.spatial_head_lambda_proj_bias", in: raw), outputs: 8, into: gates)
-        let joint = scratch.take(Self.steps * Self.decoderInputs)
+        let keys = layout.letters.count
+        let width = keys + 1 + Self.coefficients + 1
+        let joint = scratch.take(Self.steps * width)
         let coefficients = scratch.take(Self.steps * Self.coefficients)
         Kernel.matmul(
             adapted, rows: Self.steps, inputs: Self.wide, tensor("encoder.spatial_head_coeff_proj_weight", in: raw),
             tensor("encoder.spatial_head_coeff_proj_bias", in: raw), outputs: Self.coefficients, into: coefficients)
 
         let basis = Self.basis(layout)
-        var logits = [Float](repeating: 0, count: Self.letters)
+        var logits = [Float](repeating: 0, count: keys)
         for t in 0..<Self.steps {
             let gate = Math.sigmoid(gates[t * 8])
             let c = coefficients + t * Self.coefficients
-            for k in 0..<Self.letters {
+            for k in 0..<keys {
                 var sum: Float = 0
                 for j in 0..<Self.coefficients { sum += c[j] * basis[k * Self.coefficients + j] }
                 logits[k] = sum
             }
             let high = logits.max()!
             var total: Float = 0
-            for k in 0..<Self.letters { total += Math.exp(SIMD8(repeating: logits[k] - high))[0] }
+            for k in 0..<keys { total += Math.exp(SIMD8(repeating: logits[k] - high))[0] }
             let letterOffset = Float(Math.log(Double(max(gate, 1e-7)))) - high - Float(Math.log(Double(total)))
-            let row = joint + t * Self.decoderInputs
-            for k in 0..<Self.letters { row[k] = max(logits[k] + letterOffset, -100) }
-            row[Self.letters] = max(Float(Math.log(Double(max(1 - gate, 1e-7)))), -100)
-            (row + Self.classes).update(from: c, count: Self.coefficients)
-            row[Self.classes + Self.coefficients] = gate
+            let row = joint + t * width
+            for k in 0..<keys { row[k] = max(logits[k] + letterOffset, -100) }
+            row[keys] = max(Float(Math.log(Double(max(1 - gate, 1e-7)))), -100)
+            (row + keys + 1).update(from: c, count: Self.coefficients)
+            row[keys + 1 + Self.coefficients] = gate
         }
         return joint
     }
@@ -206,7 +218,7 @@ extension Swipe {
         return basis
     }
 
-    /// The decoder over `joint`: 32 steps of 32 floats, the first 27 its log-probabilities.
+    /// The decoder over `joint` of a–z's keys: 32 steps of 32 floats, the first 27 its log-probabilities.
     func refine(_ joint: UnsafeMutablePointer<Float>, _ scratch: Scratch, _ raw: UnsafeRawBufferPointer)
         -> UnsafeMutablePointer<Float>
     {

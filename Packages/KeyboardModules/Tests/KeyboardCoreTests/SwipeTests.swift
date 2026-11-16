@@ -45,9 +45,9 @@ struct Reference {
         }
         let count = Int(data[4]) | Int(data[5]) << 8 | Int(data[6]) << 16
         let keys = floats(52)
-        var centers: [Character: (x: Double, y: Double)] = [:]
-        for k in 0..<26 {
-            centers[Character(UnicodeScalar(UInt8(97 + k)))] = (Double(keys[2 * k]), Double(keys[2 * k + 1]))
+        var centers: [String: (x: Double, y: Double)] = [:]
+        for (k, letter) in KeyboardCore.Swipe.alphabet.enumerated() {
+            centers[letter] = (Double(keys[2 * k]), Double(keys[2 * k + 1]))
         }
         layout = SwipeLayout(centers: centers, frame: Rect(x: 0, y: 0, width: 1, height: 1))!
         var swipes: [Swipe] = []
@@ -105,6 +105,15 @@ struct SwipeTests {
         }
     }
 
+    @Test func aLanguagesLayoutReadsEachLetterKeyAndTheLettersUnderThem() throws {
+        let layout = try #require(SwipeLayout(grid: phoneGrid(.german, .german)))
+        #expect(layout.letters.count == 29 && !layout.isAToZ)
+        #expect(layout.keys["ü"] != layout.keys["u"] && layout.keys["ß"] == layout.keys["s"])
+        #expect(try #require(SwipeLayout(grid: .standard)).isAToZ)
+        #expect(
+            try #require(SwipeLayout(grid: phoneGrid(.french, .french))).keys["'"] != nil, "French's apostrophe key")
+    }
+
     @Test func picksTheWordOfARealSwipeFromTheLexicon() throws {
         let reference = try Reference(
             contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent(
@@ -151,7 +160,7 @@ struct SwipeTests {
         for item in reference.swipes {
             let resampled = reference.layout.resampled(item.path)
             guard maxDifference(resampled.x + resampled.y, item.features) < 1e-4 else { continue }
-            let encoder = try #require(swipe.emissions(of: item.path, on: reference.layout, refined: false)).values
+            let encoder = try #require(swipe.withoutDecoder.emissions(of: item.path, on: reference.layout)).values
             let decoder = try #require(swipe.emissions(of: item.path, on: reference.layout)).values
             perSwipe.append(
                 (
@@ -176,7 +185,7 @@ struct SwipeTests {
 extension SwipeLayout {
     /// A finger moving straight from the center of each key to the next at 0.8 key boxes a second, in the keyboard's points.
     func path(through letters: String) -> [SwipePoint] {
-        let waypoints = letters.utf8.map { centers[Int($0) - 97] }.map {
+        let waypoints = letters.map { centers[keys[String($0)]!] }.map {
             (x: frame.x + $0.x * frame.width, y: frame.y + $0.y * frame.height)
         }
         var path = [SwipePoint(x: waypoints[0].x, y: waypoints[0].y, time: 0)]

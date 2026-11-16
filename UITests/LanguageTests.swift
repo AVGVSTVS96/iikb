@@ -1,7 +1,7 @@
 import XCTest
 
-/// A language downloaded on Settings › Languages, its layout picked there, typed with the keyboard, then removed, which
-/// leaves English.
+/// A language downloaded on Settings › Languages, its layout picked there, typed and swiped with the keyboard, then
+/// removed, which leaves English.
 final class LanguageTests: XCTestCase {
     private let app = XCUIApplication()
 
@@ -80,6 +80,14 @@ final class LanguageTests: XCTestCase {
         XCTAssertLessThan(key("z").frame.midY, key("a").frame.midY, "German's z isn't in the top row")
         type("nicjt ")
         XCTAssertEqual(app.textViews.firstMatch.value as? String, "Nicht ")
+        try swipe(through: ["ü", "b", "e", "r"])
+        XCTAssertTrue(
+            XCTWaiter.wait(
+                for: [
+                    XCTNSPredicateExpectation(
+                        predicate: NSPredicate(format: "value == %@", "Nicht über"), object: app.textViews.firstMatch)
+                ], timeout: 5) == .completed,
+            "swiped on German's ü key: \(app.textViews.firstMatch.value ?? "")")
         try shot("typed")
     }
 
@@ -103,6 +111,27 @@ final class LanguageTests: XCTestCase {
 
     private func type(_ text: String) {
         for character in text { key(character == " " ? "space" : String(character)).tap() }
+    }
+
+    /// A finger sliding from key to key, 6 points every 10 ms.
+    private func swipe(through keys: [String]) throws {
+        let centers = keys.map { key($0).frame }.map { CGPoint(x: $0.midX, y: $0.midY) }
+        let finger = XCPointerEventPath(forTouchAt: centers[0], offset: 0.05)
+        var time = 0.05
+        for (from, to) in zip(centers, centers.dropFirst()) {
+            let steps = max(Int(hypot(to.x - from.x, to.y - from.y) / 6), 1)
+            for step in 1...steps {
+                time += 0.01
+                let share = Double(step) / Double(steps)
+                finger.move(
+                    to: CGPoint(x: from.x + (to.x - from.x) * share, y: from.y + (to.y - from.y) * share),
+                    atOffset: time)
+            }
+        }
+        finger.liftUp(atOffset: time + 0.02)
+        let record = XCSynthesizedEventRecord(name: keys.joined(), interfaceOrientation: .portrait)
+        record.add(finger)
+        try record.synthesize()
     }
 
     /// Drags the page up slowly, so it stops where it's let go, until the row is in view above the tab bar.
