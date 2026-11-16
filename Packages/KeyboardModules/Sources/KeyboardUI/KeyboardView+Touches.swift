@@ -249,6 +249,7 @@ extension KeyboardView {
                     tracked.lastCursor = tracked.point
                     view.isPressed = false
                     self.setLabelsVisible(false)
+                    self.onTrackpad()
                 } else {
                     tracked.mode = .alternates
                     view.isPressed = KeyboardStyle.current.dimsKeyUnderAccents

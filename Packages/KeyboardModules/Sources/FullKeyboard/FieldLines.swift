@@ -21,13 +21,13 @@ import UIKit
         func check(app: String?, before: String) {}
         func move(_ count: Int, before: String) {}
     #else
-        /// Asks whether the app's field answers, as the keyboard comes up in it.
+        /// Asks whether the app's field answers, as the keyboard comes up in it and again as the trackpad starts, since
+        /// an empty field has no lines to answer with. Which apps answered is kept once the field holds text.
         func check(app: String?, before: String) {
-            lineHeight = nil
             goal = nil
             queue.async {
                 let height = Field.focused(matching: before).map { $0.rect($0.caret).height }
-                Self.record(app: app, answered: height != nil)
+                if !before.isEmpty { Self.record(app: app, answered: height != nil) }
                 Task { @MainActor in self.lineHeight = height.flatMap { $0 > 0 ? $0 : nil } }
             }
         }

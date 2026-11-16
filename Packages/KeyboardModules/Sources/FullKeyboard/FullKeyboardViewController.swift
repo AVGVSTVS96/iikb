@@ -333,6 +333,9 @@ open class FullKeyboardViewController: UIInputViewController {
         keyboardView.lineHeight = { [unowned self] in
             line == nil ? fieldLines.lineHeight : nil
         }
+        keyboardView.onTrackpad = { [unowned self] in
+            if line == nil { fieldLines.check(app: hostApp, before: engine.text.before) }
+        }
         fieldLines.apply = { [unowned self] offset in
             if engine.handle(.cursor(offset: offset), in: document) { render() }
         }
