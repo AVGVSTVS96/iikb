@@ -135,7 +135,7 @@ final class Keyboard {
             layout: grid.signature,
             width: width,
             height: geometry.metrics.height(
-                rows: geometry.layout.rows.count, hasNumberRow: geometry.layout.hasNumberRow),
+                rows: geometry.layout.rows.count, shortRows: geometry.layout.shortRows),
             toolbar: Bar(
                 top: toolbar.top, bar: toolbar.bar, button: toolbar.button, glyph: toolbar.glyph, pitch: bar.pitch,
                 results: toolbar.results, field: toolbar.field, panelHeight: toolbar.panelHeight,
@@ -280,7 +280,7 @@ extension KeyboardSettings {
             case "hapticFeedback": haptics = HapticFeedback(rawValue: value) ?? haptics
             case "keySpacing": keySpacing = KeySpacing(rawValue: value) ?? keySpacing
             case "keyRoundness": keyRoundness = KeyRoundness(rawValue: value) ?? keyRoundness
-            case "keyboardMenu": keyboardMenu = KeyboardMenu(rawValue: value) ?? keyboardMenu
+            case "keyboardMenu": leadingButton = value == "hold" ? .hidden : .menu
             case "clipboardLength": clipboardLength = ClipboardLength(rawValue: value) ?? clipboardLength
             case "globe": globeKey = GlobeKey(rawValue: value) ?? globeKey
             case "oneHanded": oneHanded = OneHanded(rawValue: value) ?? oneHanded

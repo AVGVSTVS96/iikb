@@ -190,6 +190,7 @@ struct TapsBoard: Encodable {
         case .undo: "undo"
         case .redo: "redo"
         case .emoji: "emoji"
+        case .tool(let panel): panel.rawValue
         }
     }
 }
