@@ -106,7 +106,7 @@ Put your team in `Config/Team.xcconfig` (`DEVELOPMENT_TEAM = <your team ID>`) an
 | `App/` | The app: setup and settings, voice typing, Transcripts, Clipboard and Stats. |
 | `web/site/` | iikb's site: Next.js and shadcn/ui, with the keyboard drawn live. `scripts/site` builds it into `web/dist`. |
 | `android/` | iikb on Android: the same typing engine under a Kotlin input method. |
-| `web/Sources/` | The WebAssembly typing-engine tooling. `scripts/web` compiles the engine alongside the site. |
+| `web/Sources/` | `KeyboardCore` built to WebAssembly by `scripts/web`, to show it still compiles there. No page loads it. |
 | `UITests/` | Types through the real keyboard in the simulator. |
 | `brand/`, `copy/` | The logo, README header and site images, and the words they use. `bun copy/facts.ts` counts every number the copy cites. |
 

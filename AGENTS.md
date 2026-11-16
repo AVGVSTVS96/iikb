@@ -22,7 +22,7 @@ Each module keeps its own AGENTS.md beside its code, with what it holds and why.
 - `Packages/KeyboardModules/Tests/KeyboardUITests`: `Evaluation`, the autocorrect scorer (scripts/AGENTS.md, "scripts/eval"), with `TextCheckerSource` (`UITextChecker`) as its baseline keyboard.
 - `UITests/`: types through the real extension in the simulator.
 - `android/`: iikb on Android, KeyboardCore built with the Swift SDK for Android under a Kotlin input method, as a sideloaded APK (`scripts/android`). [android/AGENTS.md](android/AGENTS.md)
-- `web/`: the web demo and iikb's page, on KeyboardCore through `TypingEngine`, deployed to iikb.vercel.app. [web/AGENTS.md](web/AGENTS.md)
+- `web/`: iikb's page, iikb.vercel.app, and a WebAssembly build of KeyboardCore through `TypingEngine` that no page loads, kept to show KeyboardCore still compiles to it. [web/AGENTS.md](web/AGENTS.md)
 - `sources/record.ts`: the record source (Bun): a log of every message you send and every field you leave with text you typed, with the host bundle ID the keyboard sends (docs/sources.md). `bun test sources/`.
 - `extensions/`: extensions (Bun): `iikb.ts` serves one from `chats({ name, list, read, send })` (docs/extensions.md); hex serves its own from its hub. `bun test extensions/`.
 - `server/backup.ts`: the backup server (KeyboardStore/AGENTS.md, "Backup").
@@ -99,5 +99,5 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | Restore only once the device has a build from the link: an old build can't read a memory restored without its token | judgment: nothing enforces it |
 | Comments only for a decision or fact the code can't show (one `WHY:` line or a link) | `tools/oxlint/no-comments.ts` in TypeScript; judgment in Swift |
 | Every AGENTS.md names only code that exists, and no file keeps a conflict marker | `ArchitectureTests` |
-| A change you'd notice in the app or keyboard carries a `Changelog:` trailer, one short line (App/Settings/ChangelogPage.swift). It shows on each platform whose files the commit changes: iPhone's Changelog and iikb.vercel.app for `scripts/iphone-paths.txt`, Android's for `android/`; a change worded differently for each is two commits | `scripts/phone`, `web/changes.ts`, android/app/build.gradle.kts |
+| A change you'd notice in the app or keyboard carries a `Changelog:` trailer, one short line (App/Settings/ChangelogPage.swift). It shows on each platform whose files the commit changes: iPhone's Changelog and iikb.vercel.app (at its next deploy, web/AGENTS.md) for `scripts/iphone-paths.txt`, Android's for `android/`, KeyboardCore and KeyboardEnglish; a change worded differently for each is two commits | `scripts/phone`, `web/changes.ts`, android/app/build.gradle.kts |
 | What the public sees (`TestFlight/`, the README, docs/, the site, Changelog lines, the app's words) passes a reviewer before it goes out | `scripts/hooks/pre-push` runs `scripts/public-review.ts` on every push to main (`git config core.hooksPath scripts/hooks`) |

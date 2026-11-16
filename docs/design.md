@@ -339,4 +339,4 @@ open, landscape 951 × 669       open, portrait 669 × 951      folded 466 × 67
 
 ## Out of this design
 
-Snippets and quicklinks are later phases. Nothing here uses AI.
+Snippets and quicklinks are later phases.
