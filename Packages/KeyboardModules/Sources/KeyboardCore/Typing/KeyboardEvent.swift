@@ -7,8 +7,9 @@ public enum KeyboardEvent: Hashable, Sendable {
     case swipe([SwipePoint])
     case trigger(Key)
     case cursor(offset: Int)
-    /// Moves the caret down that many sentences, up when negative.
-    case cursorSentences(Int)
+    /// Moves the caret down that many lines, up when negative. The engine can't see where the field wraps, so it moves
+    /// a sentence for each; FullKeyboard asks the field itself where it answers (`FieldLines`).
+    case cursorLines(Int)
     case oneHanded(OneHanded)
     /// A hand picked from the layer key's menu. The key switched layers as it went down, so the letters come back.
     case pick(OneHanded)

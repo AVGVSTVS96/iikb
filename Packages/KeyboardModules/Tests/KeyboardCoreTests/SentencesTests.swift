@@ -21,7 +21,7 @@ struct SentencesTests {
         document.cursor = cursor
         engine.documentChanged(document)
         for count in counts {
-            _ = engine.handle(.cursorSentences(count), in: document)
+            _ = engine.handle(.cursorLines(count), in: document)
             engine.documentChanged(document)
         }
         return document.cursor

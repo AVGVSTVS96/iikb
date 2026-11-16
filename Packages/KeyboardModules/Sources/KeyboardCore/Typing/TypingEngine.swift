@@ -271,7 +271,7 @@ public struct TypingEngine {
             perform(key.action, in: document)
         case .cursor(let offset):
             moveCursor(by: offset, in: document)
-        case .cursorSentences(let count):
+        case .cursorLines(let count):
             moveCursor(sentences: count, in: document)
         case .oneHanded(let hand):
             settings.oneHanded = hand
