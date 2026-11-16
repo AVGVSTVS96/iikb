@@ -155,9 +155,9 @@ public enum Dictation {
     public static var photosAllowed: Bool {
         // file: photos channel (iOS's answer to the app)
         get { photosURL.map { FileManager.default.fileExists(atPath: $0.path) } ?? false }
-        // file: photos channel (iOS's answer to the app)
         set {
             guard let photosURL else { return }
+            // file: photos channel (iOS's answer to the app)
             if newValue { try? Data().write(to: photosURL) } else { try? FileManager.default.removeItem(at: photosURL) }
         }
     }
