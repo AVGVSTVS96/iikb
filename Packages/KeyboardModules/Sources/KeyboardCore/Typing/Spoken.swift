@@ -23,6 +23,22 @@ enum Spoken {
         value(of: word).flatMap { $0 < 10 ? $0 : nil }
     }
 
+    /// What an ordinal under a hundred is worth: "third" 3, "twelfth" 12, "twentieth" 20.
+    static func ordinal(of word: some StringProtocol) -> Int? {
+        switch word {
+        case "first": 1
+        case "second": 2
+        case "third": 3
+        case "fifth": 5
+        case "eighth": 8
+        case "ninth": 9
+        case "twelfth": 12
+        default:
+            word.hasSuffix("ieth")
+                ? value(of: word.dropLast(4) + "y") : word.hasSuffix("th") ? value(of: word.dropLast(2)) : nil
+        }
+    }
+
     /// A tens word and a unit after it as one number: 20 and 7 are 27.
     static func joined(_ tens: Int, _ unit: Int) -> Int? {
         tens >= 20 && tens % 10 == 0 && (1...9).contains(unit) ? tens + unit : nil

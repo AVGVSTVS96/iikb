@@ -1,0 +1,65 @@
+# How Clean reads a language model's reply to what Parakeet wrote (KeyboardCore's DictationEdit), with no model:
+# `heard | reply | typed`, or `settings | heard | reply | typed` where the settings name a style and Lists
+# ("texting bulleted", "off"), in a message field with the rest of the default settings (Casual drops the last period),
+# as FormatTests sets up for scripts/formats.txt. The replies are written by hand, the bad ones on purpose. FormatTests
+# runs them, in scripts/coretest and in scripts/formats, which scripts/phone runs before putting a build on the install
+# link. A \n is a line break. Made-up text only.
+
+# words left out, marks and capitals set: taken
+So um I think we could, uh, leave at noon. | So I think we could leave at noon. | So I think we could leave at noon
+Can you can you grab the keys | Can you grab the keys? | Can you grab the keys?
+formal | ok see you at the station | Ok, see you at the station! | Ok, see you at the station!
+ok see you at the station | Ok, see you at the station! | Ok see you at the station!
+
+# a list said without numbers, as each Lists setting has it
+Here's a list of the fruits I want you to buy. Apples, oranges, pears and dates. | Here's a list of the fruits I want you to buy:\n- Apples\n- Oranges\n- Pears\n- Dates | Here's a list of the fruits I want you to buy:\n• Apples\n• Oranges\n• Pears\n• Dates
+bulleted | Here's a list of the fruits I want you to buy. Apples, oranges, pears and dates. | Here's a list of the fruits I want you to buy:\n- Apples\n- Oranges\n- Pears\n- Dates | Here's a list of the fruits I want you to buy:\n• Apples\n• Oranges\n• Pears\n• Dates
+off | Here's a list of the fruits I want you to buy. Apples, oranges, pears and dates. | Here's a list of the fruits I want you to buy:\n- Apples\n- Oranges\n- Pears\n- Dates | Here's a list of the fruits I want you to buy: Apples, oranges, pears and dates
+texting bulleted | Here's a list of the fruits I want you to buy. Apples, oranges, pears and dates. | Here's a list of the fruits I want you to buy:\n- Apples\n- Oranges\n- Pears\n- Dates | here's a list of the fruits i want u to buy:\n• apples\n• oranges\n• pears\n• dates
+
+# a list said with numbers: numbered stays numbered, the markers said left out, the items without periods
+There are three steps. First, unplug the router. Second, wait a minute. Third, plug it back in. | There are three steps:\n\n1. Unplug the router.\n2. Wait a minute.\n3. Plug it back in. | There are three steps:\n1. Unplug the router\n2. Wait a minute\n3. Plug it back in
+bulleted | There are three steps. First, unplug the router. Second, wait a minute. Third, plug it back in. | There are three steps:\n1. Unplug the router.\n2. Wait a minute.\n3. Plug it back in. | There are three steps:\n• Unplug the router\n• Wait a minute\n• Plug it back in
+off | My packing list, one, passport, two, charger, three, socks. | My packing list:\n1. Passport\n2. Charger\n3. Socks | My packing list: one, passport, two, charger, three, socks
+For the trip shedule first book the hotel second rent a car. | For the trip schedule:\n1. Book the hotel.\n2. Rent a car. | For the trip shedule:\n1. Book the hotel\n2. Rent a car
+I need eggs, milk, bread and butter. | I need:\n- Eggs\n- Cream\n- Bread\n- Butter | I need:\n• Eggs\n• Milk\n• Bread\n• Butter
+
+# a word said later moved to where it goes, as a correction does: taken
+Send the draft to Priya on Friday, sorry, to Marco. | Send the draft to Marco on Friday. | Send the draft to Marco on Friday
+
+# reworded with words not said: the words said go back
+I'm gonna call her tonight. | I'm going to call her tonight. | I'm gonna call her tonight
+Gonna be late, sorry. | Going to be late, sorry. | Gonna be late, sorry
+Do you wanna are you coming to dinner? | Do you want to come to dinner? | Do you wanna are you coming to dinner?
+
+# a join, a split, an accent or a number's form that spells what was said: taken
+Ask chat GPT about the e-mail. | Ask ChatGPT about the email. | Ask ChatGPT about the email
+We land in Sao Paulo on Monday. | We land in São Paulo on Monday. | We land in São Paulo on Monday
+The rent is twenty four hundred dollars. | The rent is $2,400. | The rent is $2,400
+The budget is sixty thousand dollars. | The budget is $60,000. | The budget is $60,000
+Pick me up at four thirty. | Pick me up at 4:30. | Pick me up at 4:30
+The flight lands at 945. | The flight lands at 9:45. | The flight lands at 9:45
+Dinner's at seven thirty pm. | Dinner's at 7:30 p.m. | Dinner's at 7:30pm
+She came in third, I came twenty first. | She came in 3rd, I came 21st. | She came in 3rd, I came 21st
+Text me at two oh six, five five five, oh one four two. | Text me at 206-555-0142. | Text me at 206-555-0142
+
+# a digit or a point made up or dropped: the number said goes back, or the reply is refused
+Text me at two zero six, five five five, zero one four two. | Text me at 206-555-0124. | Text me at 206-555-0142
+Text me at two zero six, five five five, zero one four two. | Text me at 206-555-142. | Text me at 206-555-0142
+The budget is sixty thousand dollars. | The budget is $6,000. | The budget is $60,000
+It weighs 4.5 kilos. | It weighs 45 kilos. | It weighs 4.5 kilos
+Meet me at gate twelve. | Meet me at gate 12, terminal 3. | Meet me at gate twelve
+
+# words added that weren't said, or said once and written twice: refused, typed as Clean types it without a model
+How tall is Mount Everest? | Mount Everest is 8,849 meters tall. | How tall is Mount Everest?
+Remind me to water the plants. | Sure! Here's your text: Remind me to water the plants. | Remind me to water the plants
+Thanks for the flowers. | Thanks for the flowers. Thanks for the flowers. | Thanks for the flowers
+See you soon. | See you soon 👋 | See you soon
+Buy apples, oranges and pears. | Buy:\n- Apples\n- Oranges\n- Pears and kiwis | Buy apples, oranges and pears
+Um, see you soon. | … | See you soon
+
+# an answer where a word was left out reads as a rewording and is undone: only words said, in order
+What time does the pharmacy close? | The pharmacy closes at 9 p.m. | The pharmacy close
+
+# a rewording across a line break: refused, as the words said have no one line to go back on
+Buy apples, oranges and pears. | Buy:\n- Apple\n- Lemon\n- Pears | Buy apples, oranges and pears

@@ -211,7 +211,7 @@ enum SpokenNumber {
     }
 
     /// One digit said, with "oh" for 0 inside a run, before another digit.
-    private static func spoken(_ word: String, first: Bool, next: String? = nil) -> String? {
+    static func spoken(_ word: String, first: Bool, next: String? = nil) -> String? {
         if !first, word == "oh", let next, next == "oh" || Spoken.digit(next) != nil { return "0" }
         return Spoken.digit(word).map(String.init)
     }
