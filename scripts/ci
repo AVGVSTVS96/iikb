@@ -31,7 +31,7 @@ url=$(grep -o 'https://[^ ]*/actions/runs/[0-9]*' <<<"$out")
 id=${url##*/}
 echo "$url" >&2
 trap 'gh run cancel "$id" >/dev/null 2>&1; exit 130' INT TERM
-until [ "$(gh run view "$id" --json status --jq .status 2>/dev/null)" = completed ]; do sleep 20; done
+until [ "$(gh run view "$id" --json status --jq .status 2>/dev/null)" = completed ]; do sleep 60; done
 gh run view "$id" --log | awk -F'\t' '$2 == "check" { sub(/^[^ ]+ /, "", $3); print $3 }'
 mkdir -p shots/raw
 gh run download "$id" -n shots -D shots/raw 2>/dev/null || true
