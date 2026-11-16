@@ -59,10 +59,11 @@ public enum SettingsStore {
     /// Globe Key was a switch, turned off to stop taps landing on the globe, which Spacer now does with the globe kept.
     private static let globeKey = Choice(
         key: "globe", path: \.globeKey, switchKey: "globeKey", on: .switches, off: .spacer)
+    private static let snippetExpansion = Choice(key: "snippetExpansion", path: \.snippetExpansion)
     private static let choices: [any Picked] = [
         theme, themeAppearance, stopAnimation, characterPreview, haptics, keySpacing, keyRoundness, dictationStyle,
         dictationEditing, dictationLists, leadingButton, clipboardLength, globeKey, mode, actions, aroundSpace,
-        currency, emojiGrid,
+        currency, emojiGrid, snippetExpansion,
     ]
     private static let skinToneKey = "skinTone"
     private static let customEmojiKey = "customEmoji"
@@ -74,6 +75,7 @@ public enum SettingsStore {
     private static let languagesKey = "languages"
     /// The one language picked, as builds before several kept it.
     private static let languageKey = "language"
+    private static let snippetPrefixKey = "snippetPrefix"
     private static let layoutKey = "layout"
     private static let keepMicOnKey = "keepMicOn"
     private static let microphoneKey = "microphone"
@@ -91,6 +93,7 @@ public enum SettingsStore {
             value(forKey: languagesKey, sharing: sharing) as? [String]
             ?? (value(forKey: languageKey, sharing: sharing) as? String).map { [$0] } ?? []
         settings.languages = ids.compactMap { id in Language.all.first { $0.id == id } }
+        if let prefix = value(forKey: snippetPrefixKey, sharing: sharing) as? String { settings.snippetPrefix = prefix }
         settings.layout = (value(forKey: layoutKey, sharing: sharing) as? String).flatMap { $0.isEmpty ? nil : $0 }
         for choice in choices { choice.load(into: &settings, sharing: sharing) }
         settings.skinTone = (value(forKey: skinToneKey, sharing: sharing) as? String).flatMap(SkinTone.init)
@@ -113,6 +116,7 @@ public enum SettingsStore {
         for (key, path) in toggles { set(settings[keyPath: path], forKey: key) }
         set(settings.oneHanded)
         set(settings.languages.map(\.id), forKey: languagesKey)
+        set(settings.snippetPrefix, forKey: snippetPrefixKey)
         set(settings.layout ?? "", forKey: layoutKey)
         for choice in choices { choice.save(settings) }
         set(settings.skinTone?.rawValue ?? "", forKey: skinToneKey)
@@ -125,7 +129,7 @@ public enum SettingsStore {
         }
     }
 
-    private static let changed = "com.shahidy.iikb.settings"
+    static let changed = "com.shahidy.iikb.settings"
 
     /// Calls `handler` on the main queue each time the app keeps the settings, until the token is cancelled with
     /// `Dictation.stopObserving`.

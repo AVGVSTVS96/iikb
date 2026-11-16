@@ -188,6 +188,9 @@ extension Panel {
         case .clipboard: "Clipboard"
         case .transcripts: "Transcripts"
         case .chats: "Chats"
+        case .snippets: "Snippets"
+        case .quicklinks: "Quicklinks"
+        case .form: ""
         }
     }
 
@@ -199,6 +202,9 @@ extension Panel {
         case .clipboard: Self.symbol("list.clipboard.fill", side)
         case .transcripts: Self.symbol("text.bubble.fill", side)
         case .chats: Self.symbol("bubble.left.and.bubble.right.fill", side)
+        case .snippets: Self.symbol("text.quote", side)
+        case .quicklinks: Self.symbol("link", side)
+        case .form: nil
         }
     }
 
