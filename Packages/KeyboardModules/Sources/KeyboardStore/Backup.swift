@@ -74,6 +74,7 @@ nonisolated public enum Backup {
     }
 
     /// Parakeet's models, the personal network and the languages' words, which download again, and what iOS may clear.
+    /// A file marked as left out of backups (`Download`'s) is left out too.
     private static let skipped: Set<String> = ["FluidAudio", "Personal", "Languages", "Caches"]
 
     /// Sends what changed in the background, letting the app or keyboard finish even as it goes away. `skip` names files
@@ -150,7 +151,9 @@ nonisolated public enum Backup {
     }
 
     private static func contents(of folder: Folder) -> [(name: String, url: URL, size: Int, modified: Int)] {
-        let keys: Set<URLResourceKey> = [.isRegularFileKey, .fileSizeKey, .contentModificationDateKey]
+        let keys: Set<URLResourceKey> = [
+            .isRegularFileKey, .fileSizeKey, .contentModificationDateKey, .isExcludedFromBackupKey,
+        ]
         let root = folder.url.resolvingSymlinksInPath().pathComponents
         guard let walk = FileManager.default.enumerator(at: folder.url, includingPropertiesForKeys: Array(keys)) else {
             return []
@@ -162,7 +165,8 @@ nonisolated public enum Backup {
                 continue
             }
             guard let values = try? url.resourceValues(forKeys: keys), values.isRegularFile == true,
-                let size = values.fileSize, let modified = values.contentModificationDate
+                values.isExcludedFromBackup != true, let size = values.fileSize,
+                let modified = values.contentModificationDate
             else { continue }
             let path = url.resolvingSymlinksInPath().pathComponents.dropFirst(root.count)
             files.append(
