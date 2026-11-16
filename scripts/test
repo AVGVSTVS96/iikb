@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. KeyboardUI's package tests on the iPhone Duo simulator, without the slow autocorrect scorer
+# Runs on GitHub's Macs (scripts/ci). KeyboardUI's package tests on the iPhone Duo simulator, without the slow autocorrect scorer
 # (scripts/eval); KeyboardCore's run here on Linux with scripts/coretest.
 set -euo pipefail
 cd "$(dirname "$0")/../Packages/KeyboardModules"

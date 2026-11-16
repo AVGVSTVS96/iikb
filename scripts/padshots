@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. Every state of the keyboard (UITests/PadShots: typing, layers, the menu, each panel, floating)
+# Runs on GitHub's Macs (scripts/ci). Every state of the keyboard (UITests/PadShots: typing, layers, the menu, each panel, floating)
 # through the real extension on each iPad, portrait and landscape, light and dark, into shots/raw/pad/<tag>/:
 # scripts/padshots <tag>. DEVICES ("iPad Pro 11:iPad-Pro-11-inch-M4-8GB" …), ORIENTATIONS, APPEARANCES and STATES
 # (layers more emoji gif clipboard window floating) narrow it; KEYBOARDS="system iikb" shoots Apple's beside it;

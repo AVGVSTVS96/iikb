@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. A source through the real keyboard, with scripts/source.py standing in for it; prints what it was
+# Runs on GitHub's Macs (scripts/ci). A source through the real keyboard, with scripts/source.py standing in for it; prints what it was
 # sent: scripts/sourcetest ["iPhone Duo"] [iPhone-Duo]
 set -euo pipefail
 cd "$(dirname "$0")/.."

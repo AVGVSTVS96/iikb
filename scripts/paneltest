@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. OPEN=1 unfolds the iPhone Duo first, its shots named -open; without it the Duo is folded, whatever the last run left. The GIF and clipboard panels through the real keyboard, light and dark, screenshotting
+# Runs on GitHub's Macs (scripts/ci). OPEN=1 unfolds the iPhone Duo first, its shots named -open; without it the Duo is folded, whatever the last run left. The GIF and clipboard panels through the real keyboard, light and dark, screenshotting
 # each step into shots/raw/panels/: scripts/paneltest ["iPhone Duo"] [iPhone-Duo] (ONLY=<test> runs one test; RUNTIME picks the iOS; ORIENTATION=landscape; COMPACT=1 turns on Compact Emoji & GIFs; TRANSCRIPTS, JSON lines as the app keeps them, fills Transcripts)
 set -euo pipefail
 cd "$(dirname "$0")/.."

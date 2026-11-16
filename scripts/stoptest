@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. Films each stop animation (Settings › Appearance), from the bar's mic and from the Record Key, with
+# Runs on GitHub's Macs (scripts/ci). Films each stop animation (Settings › Appearance), from the bar's mic and from the Record Key, with
 # scripts/voiceapp.py standing in for the app: shots/raw/stop/<place>-<animation>-<appearance>.mp4, each from a second
 # before its stop. STOPS="drain card" and PLACES=key narrow it, APPEARANCES=dark too; OPEN=1 unfolds the iPhone Duo.
 # scripts/stoptest ["iPhone Duo"] [iPhone-Duo]

@@ -18,7 +18,7 @@
 # could wait on runs queued behind it.
 # Before building it runs scripts/gate, scripts/formats and scripts/clean on that commit, and puts up nothing that fails one.
 # When main can't get onto the link (a failed check, build or signing, or the Mac not answering), Config/notify, if set
-# up, is told why once, again only if the reason changes, and once more when a build goes up.
+# up, is told why once, again only if the reason changes, and once more when a build goes up again.
 # It also puts the build in hangar, the app on the iPhone that installs all of Bassim's development apps,
 # when hangar is on this box (~/Developer/hangar). Each build registers the URL scheme com.shahidy.iikb-<build>, which
 # hangar opens after a tapped Update to know that build is installed and to bring iikb back up.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. Types through the real keyboard extension with XCUITest.
+# Runs on GitHub's Macs (scripts/ci). Types through the real keyboard extension with XCUITest.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 NAME=${1:-iPhone Duo}

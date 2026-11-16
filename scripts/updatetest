@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. scripts/verify's update part on this checkout: a newer build on the install link, served as
+# Runs on GitHub's Macs (scripts/ci). scripts/verify's update part on this checkout: a newer build on the install link, served as
 # scripts/phone's manifest is, offered by the app's toast and the keyboard's bar, light and dark, shots in
 # shots/raw/verify/: scripts/updatetest ["iPhone Duo"] [iPhone-Duo]
 PARTS=update exec "$(dirname "$0")/verify" "$@"

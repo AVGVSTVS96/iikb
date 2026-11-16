@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac after scripts/build. Shows the keyboard over a field holding text (so the corrector loads and runs)
+# Runs on GitHub's Macs (scripts/ci) after scripts/build. Shows the keyboard over a field holding text (so the corrector loads and runs)
 # and prints the extension's memory footprint. No XCUITest, which inflates the extension.
 set -euo pipefail
 cd "$(dirname "$0")/.."

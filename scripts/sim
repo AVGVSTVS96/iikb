@@ -252,7 +252,7 @@ unfold() {
 }
 
 # Screenshots each keyboard on the iPhone Duo's four screens (folded and open, portrait and landscape, as Bassim names
-# them) and the open ones slightly folded, in the iOS 27.1 simulator, the only one with the Duo:
+# them) and the open ones slightly folded, on the newest iOS simulator with the Duo:
 # shots/raw/duo/<tag>-<screen>-<keyboard>-<appearance>.png. The open screen comes from unfolding the simulator
 # (scripts/devicehub.c); a reboot folds it again. The open screen's own upright is landscape, 951 wide, so Device Hub's
 # portrait shows it in landscape. SCREENS (folded-portrait open-landscape …) picks some. LISTENING=1 shows the bar while you talk, saved or waiting with dictations saved (scripts/voiceapp.py); DUO names the simulator.

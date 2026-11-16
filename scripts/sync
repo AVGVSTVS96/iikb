@@ -2,7 +2,7 @@
 # Syncs the tree to a folder on the Mac (scripts/sync Developer/iikb-device) and prints it. Files are compared by
 # content and only changed ones are written, so a folder that trees from several checkouts take turns in keeps its
 # builds incremental. A worktree without the KLIPY key, which git leaves out, gets the main checkout's. The backup key
-# stays here: a simulator's made-up data would land in the iPhone's backup.
+# stays here: a device test's made-up text (scripts/mac) would land in the iPhone's backup.
 set -e
 cd "$(dirname "$0")/.."
 dir=${1:-Developer/iikb}

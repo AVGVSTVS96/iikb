@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. What dictations become, through the real keyboard and app, with scripts/voiceapp.py standing in for
+# Runs on GitHub's Macs (scripts/ci). What dictations become, through the real keyboard and app, with scripts/voiceapp.py standing in for
 # the app's microphone: a long dictation edited in the middle and a short one edited at its end, each sent as a
 # messaging app sends (-iikbSends); then checks each transcript keeps the field's text as it was sent. Made-up text only.
 # scripts/edittest ["iPhone Duo"] [iPhone-Duo]

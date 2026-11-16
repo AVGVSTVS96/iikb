@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. OPEN=1 unfolds the iPhone Duo first. The bar, the pills and the emoji panel through the real keyboard, light and dark, screenshotting
+# Runs on GitHub's Macs (scripts/ci). OPEN=1 unfolds the iPhone Duo first. The bar, the pills and the emoji panel through the real keyboard, light and dark, screenshotting
 # each step into shots/raw/look/: scripts/looktest ["iPhone Duo"] [iPhone-Duo] (RUNTIME picks the iOS; ORIENTATION=landscape; COMPACT=1 turns on Compact Emoji & GIFs)
 set -euo pipefail
 cd "$(dirname "$0")/.."

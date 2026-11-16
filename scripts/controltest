@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. Control Center's iikb Mic through the real Control Center: the app's microphone turned on, the control
+# Runs on GitHub's Macs (scripts/ci). Control Center's iikb Mic through the real Control Center: the app's microphone turned on, the control
 # added, shown on, tapped, and the app's switch off after, light and dark, screenshotting each step into
 # shots/raw/control/, on a fresh boot with the widget service controls need (SIM_WIDGETS, ~/.local/bin/turn): scripts/controltest ["iPhone Duo"] [iPhone-Duo]
 set -euo pipefail

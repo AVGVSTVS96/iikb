@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. Types a file of segments through Apple's keyboard and records its bar: scripts/applebar in.txt out.txt [first count]
+# Runs on GitHub's Macs (scripts/ci). Types a file of segments through Apple's keyboard and records its bar: scripts/applebar in.txt out.txt [first count]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ID=$(scripts/sim ensure "iPhone 17" iPhone-17)

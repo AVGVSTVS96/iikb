@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. Photos in Chats through the real keyboard, every flow (UITests/ChatPhotoTests.swift), light and dark,
+# Runs on GitHub's Macs (scripts/ci). Photos in Chats through the real keyboard, every flow (UITests/ChatPhotoTests.swift), light and dark,
 # with scripts/chats.ts standing in for the extension: scripts/phototest ["iPhone Duo"] [iPhone-Duo]. SCREEN picks one of
 # the Duo's screens in scripts/sim (folded-portrait otherwise); ORIENTATION=landscape turns any other device. LIBRARY=<n>
 # puts n photos in the library (24 otherwise). Each appearance starts with the library's access reset for the Allow

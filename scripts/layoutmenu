@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. Holds the emoji key on the iPhone Duo's folded and open screens and screenshots the layout menu it opens:
+# Runs on GitHub's Macs (scripts/ci). Holds the emoji key on the iPhone Duo's folded and open screens and screenshots the layout menu it opens:
 # shots/raw/layoutmenu/<folded|open>.png. scripts/layoutmenu
 set -euo pipefail
 cd "$(dirname "$0")/.."

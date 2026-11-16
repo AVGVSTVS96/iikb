@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. A swipe's trail and the bar after it, through iikb on the iPhone Duo folded and open, light and dark:
+# Runs on GitHub's Macs (scripts/ci). A swipe's trail and the bar after it, through iikb on the iPhone Duo folded and open, light and dark:
 # shots/raw/swipe/<tag>-<screen>-<appearance>-trail.png and -bar.png. The trail is taken as the finger lifts, so it is
 # partly faded.
 set -euo pipefail

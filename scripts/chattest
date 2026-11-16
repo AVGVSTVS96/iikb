@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. OPEN=1 unfolds the iPhone Duo first. An extension's chats through the real keyboard, light and dark,
+# Runs on GitHub's Macs (scripts/ci). OPEN=1 unfolds the iPhone Duo first. An extension's chats through the real keyboard, light and dark,
 # with scripts/chats.ts standing in for the extension, or EXTENSION=<url> for a real one (then CHAT, MESSAGE, REPLY and
 # WAIT say which chat, what to send and what reply to wait for). PHOTOS=1 also attaches a photo from the grid, with
 # Photos access given to the iikb app, and sends it: scripts/chattest ["iPhone Duo"] [iPhone-Duo]

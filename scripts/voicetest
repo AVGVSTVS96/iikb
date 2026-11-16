@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. OPEN=1 unfolds the iPhone Duo first. The bar's mic through the real keyboard, with scripts/voiceapp.py standing in for the app, light and
+# Runs on GitHub's Macs (scripts/ci). OPEN=1 unfolds the iPhone Duo first. The bar's mic through the real keyboard, with scripts/voiceapp.py standing in for the app, light and
 # dark: scripts/voicetest ["iPhone Duo"] [iPhone-Duo]
 set -euo pipefail
 cd "$(dirname "$0")/.."

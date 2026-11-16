@@ -1,5 +1,5 @@
 #!/bin/bash
-# Here, started by scripts/hooks/pre-push on each push: waits for the screens runs on main (.github/workflows/screens.yml)
+# Here, started by scripts/hooks/pre-push on each push to main: waits for the screens runs on main (.github/workflows/screens.yml)
 # and, for each that ends with screens changed, has a reviewer look at them beside the commits since the run before, and
 # sends Config/notify (if set) the changes no commit's message accounts for. One watcher at a time; it stops once no
 # run is waiting, a few minutes after the push that started it. Each report stays in ~/.local/share/iikb/screens/<run>.

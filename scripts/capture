@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. Holds keys through XCUITest while grabbing frames, to see pop-ups and the accent panel.
+# Runs on GitHub's Macs (scripts/ci). Holds keys through XCUITest while grabbing frames, to see pop-ups and the accent panel.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 NAME=${1:-iPhone Duo}

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on the Mac. Replays recorded swipes through a keyboard on the iPhone Duo and writes what each typed:
+# Runs on GitHub's Macs (scripts/ci). Replays recorded swipes through a keyboard on the iPhone Duo and writes what each typed:
 # scripts/swipebench system|iikb out.tsv [fixture] [first count]. SCREEN picks the Duo's screen (folded-portrait, folded-landscape,
 # open-landscape, open-portrait; as scripts/sim names them). scripts/swipescore.py compares two outputs.
 set -euo pipefail
