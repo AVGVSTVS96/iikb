@@ -105,9 +105,23 @@ const keepReplaced = async ({ own, name, file, incoming, now }: Replacing) => {
   await rename(file, version);
 };
 
-export const backup =
-  (dir: string, token: string, now = () => new Date()) =>
-  async (request: Request): Promise<Response> => {
+export const backup = (dir: string, token: string, now = () => new Date()) => {
+  const writing = new Map<string, Promise<unknown>>();
+
+  const inTurn = async (file: string, work: () => Promise<void>) => {
+    const turn = (writing.get(file) ?? Promise.resolve()).catch(() => null).then(work);
+    writing.set(file, turn);
+
+    try {
+      await turn;
+    } finally {
+      if (writing.get(file) === turn) {
+        writing.delete(file);
+      }
+    }
+  };
+
+  return async (request: Request): Promise<Response> => {
     if (request.headers.get("authorization") !== `Bearer ${token}`) {
       return status(401);
     }
@@ -161,17 +175,20 @@ export const backup =
 
     await mkdir(path.dirname(incoming), { recursive: true });
     await Bun.write(incoming, request);
-    await keepReplaced({ own, name, file, incoming, now });
+    await inTurn(file, async () => {
+      await keepReplaced({ own, name, file, incoming, now });
 
-    if (await Bun.file(incoming).exists()) {
-      await mkdir(path.dirname(file), { recursive: true });
-      await rename(incoming, file);
-    }
+      if (await Bun.file(incoming).exists()) {
+        await mkdir(path.dirname(file), { recursive: true });
+        await rename(incoming, file);
+      }
 
-    await utimes(file, modified, modified);
+      await utimes(file, modified, modified);
+    });
 
     return status(204);
   };
+};
 
 if (import.meta.main) {
   const { values } = parseArgs({

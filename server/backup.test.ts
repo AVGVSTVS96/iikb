@@ -80,6 +80,24 @@ test("a file sent with other contents keeps the one it replaces as a version, an
   );
 });
 
+test("the same file sent twice at once keeps both, the later one in place", async () => {
+  const { dir, send } = await server();
+  await send("PUT", "/keyboard/support/emoji-history.json", "a");
+
+  const sent = await Promise.all(
+    ["b", "c"].map(
+      async (body) => (await send("PUT", "/keyboard/support/emoji-history.json", body)).status,
+    ),
+  );
+
+  expect(sent).toEqual([204, 204]);
+  expect(await readdir(path.join(dir, "incoming"))).toEqual([]);
+  expect(await readdir(path.join(dir, "versions"))).toHaveLength(2);
+  expect(
+    await readFile(path.join(dir, "mirror/keyboard/support/emoji-history.json"), "utf-8"),
+  ).toBe("c");
+});
+
 test("takes nothing without the token, outside its folder, or without a time", async () => {
   const { send, held } = await server();
   expect((await send("GET", "/", null, 0, "wrong")).status).toBe(401);
