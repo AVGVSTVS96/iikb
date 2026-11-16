@@ -98,22 +98,25 @@ public final class Network: Sendable {
 
     /// The tokens before what comes after `text`: its last words, lowercase, with a comma kept as
     /// a token, numbers as one token and a sentence's start (the text's, and after ".", "!", "?" or a new line) as another.
+    /// An elision the network knows is a word of its own, as French's "l'" in "l'ami" when it doesn't know "l'ami".
     func tokens(before text: some StringProtocol) -> [Int] {
         var tokens = [Self.start]
         var word = ""
         func end() {
-            let trimmed = word.drop { Words.apostrophes.contains($0) }.reversed().drop {
-                Words.apostrophes.contains($0)
-            }.reversed()
-            if !trimmed.isEmpty {
-                tokens.append(
-                    trimmed.contains(where: \.isNumber) ? Self.number : id(of: String(trimmed)) ?? Self.unknown)
-            }
+            let led = word.drop { $0 == "'" }
+            let trimmed = String(led.reversed().drop { $0 == "'" }.reversed())
             word = ""
+            guard !trimmed.isEmpty else { return }
+            if trimmed.contains(where: \.isNumber) { return tokens.append(Self.number) }
+            if let id = (led.last == "'" ? id(of: trimmed + "'") : nil) ?? id(of: trimmed) { return tokens.append(id) }
+            if let cut = trimmed.firstIndex(of: "'"), let head = id(of: trimmed[...cut]) {
+                return tokens += [head, id(of: trimmed[trimmed.index(after: cut)...]) ?? Self.unknown]
+            }
+            tokens.append(Self.unknown)
         }
         for character in text {
             if Words.isWordCharacter(character) {
-                word += character == "’" ? "'" : character.lowercased()
+                word += Words.apostrophes.contains(character) ? "'" : character.lowercased()
                 continue
             }
             end()

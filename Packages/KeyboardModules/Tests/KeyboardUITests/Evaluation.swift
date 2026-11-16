@@ -47,24 +47,32 @@ struct Evaluation {
         }
     }
 
-    /// Each other language typed the same way, from its own phrases (Common Voice's, `phrases.<id>.txt`) on its own
-    /// layout, with its own words (`scripts/eval languages` downloads them into `LANGUAGES`) and no next-word network,
-    /// since none is trained for it yet. A letter no key shows is tapped on the key it's under, and the lexicon is left
-    /// to put it back ("espanol" → "español"). `LANGUAGE` picks one, so scripts/eval runs each in its own process.
-    @Test(arguments: Language.all.filter { $0 != .english }.map(\.id)) func languages(_ id: String) throws {
+    /// A downloaded language as the keyboard types it: its words, its next-word network when the manifest names one,
+    /// and its own layout (`scripts/eval languages` downloads them into `LANGUAGES`). `LANGUAGE` picks one, so
+    /// scripts/eval runs each in its own process; nil when it's another or there's no folder.
+    static func downloaded(_ id: String) throws -> (lexicon: Lexicon, network: Network?, context: LayoutContext)? {
         let environment = ProcessInfo.processInfo.environment
-        guard let folder = environment["LANGUAGES"], environment["LANGUAGE"] ?? id == id else { return }
+        guard let folder = environment["LANGUAGES"], environment["LANGUAGE"] ?? id == id else { return nil }
         let language = Language.named(id)
-        let file = URL(fileURLWithPath: folder).appending(path: "\(language.id).lexicon")
-        let lexicon = try #require(Lexicon(bytes: [UInt8](Data(contentsOf: file))))
-        let phrases = try Self.phrases("phrases.\(language.id)")
+        let file = { (kind: String) in URL(fileURLWithPath: folder).appending(path: "\(language.id).\(kind)") }
+        let lexicon = try #require(Lexicon(bytes: [UInt8](Data(contentsOf: file("lexicon")))))
+        let network = (try? Data(contentsOf: file("network"))).flatMap { Network(bytes: [UInt8]($0)) }
         var context = LayoutContext(device: .phone, layer: .letters)
         context.languages = [language]
         context.letters = language.layouts[0]
+        return (lexicon, network, context)
+    }
+
+    /// Each other language typed the same way, from its own phrases (Common Voice's, `phrases.<id>.txt`) on its own
+    /// layout, with its own words and network. A letter no key shows is tapped on the key it's under, and the lexicon is
+    /// left to put it back ("espanol" → "español").
+    @Test(arguments: Language.all.filter { $0 != .english }.map(\.id)) func languages(_ id: String) throws {
+        guard let (lexicon, network, context) = try Self.downloaded(id) else { return }
+        let phrases = try Self.phrases("phrases.\(id)")
         for keyboard in Keyboard.scored where keyboard != .baseline {
             for noise in Self.noiseLevels {
                 var user = SimulatedUser(width: Self.width, noise: noise, seed: 2026, context: context)
-                var session = Session(keyboard, grid: user.grid, lexicon: lexicon)
+                var session = Session(keyboard, grid: user.grid, lexicon: lexicon, network: network)
                 for phrase in phrases {
                     session.startPhrase()
                     for word in phrase.split(separator: " ") {
@@ -72,8 +80,27 @@ struct Evaluation {
                     }
                 }
                 print(
-                    "EVAL language=\(language.id) layout=\(context.letters.id) noise=\(noise) keyboard=\(keyboard.rawValue) \(session.score)"
+                    "EVAL language=\(id) layout=\(context.letters.id) noise=\(noise) keyboard=\(keyboard.rawValue) \(session.score)"
                 )
+            }
+        }
+    }
+
+    /// Each other language's bar as `predictions` scores English's, on its phrases and on `chat.<id>.txt` (1,000 of
+    /// Tatoeba's everyday sentences, CC BY 2.0 FR, tatoeba.org), with its words, network and layout.
+    @Test(arguments: Language.all.filter { $0 != .english }.map(\.id)) func languagePredictions(_ id: String) throws {
+        guard let (lexicon, network, context) = try Self.downloaded(id) else { return }
+        let grid = SimulatedUser(width: Self.width, noise: 0, seed: 2026, context: context).grid
+        for corpus in ["phrases", "chat"] {
+            let phrases = try Self.phrases("\(corpus).\(id)")
+            for learning in [false, true] {
+                var prediction = Prediction(lexicon: lexicon, network: network, grid: grid)
+                for phrase in phrases {
+                    if !learning { prediction.engine.corrector?.changeMemory { $0 = TypingMemory() } }
+                    prediction.type(phrase.split(separator: " ").map(String.init))
+                }
+                print(
+                    "EVAL language=\(id) predict corpus=\(corpus) user=\(learning ? "learning" : "new") \(prediction.summary)")
             }
         }
     }
@@ -439,8 +466,8 @@ struct Session {
     var score = Score()
     var window = Score()
 
-    /// With `lexicon`, another language's words and no next-word network.
-    init(_ keyboard: Evaluation.Keyboard, grid: KeyGrid, lexicon: Lexicon? = nil) {
+    /// With `lexicon`, another language's words and its `network`, if it has one.
+    init(_ keyboard: Evaluation.Keyboard, grid: KeyGrid, lexicon: Lexicon? = nil, network: Network? = nil) {
         self.keyboard = keyboard
         self.grid = grid
         #if canImport(UIKit)
@@ -449,7 +476,8 @@ struct Session {
         #else
             let source: any CandidateSource = lexicon ?? Lexicon.english
         #endif
-        let corrector = Corrector(source: source, network: keyboard == .baseline || lexicon != nil ? nil : .english)
+        let corrector = Corrector(
+            source: source, network: keyboard == .baseline ? nil : lexicon == nil ? .english : network)
         corrector.grid = grid
         engine.corrector = corrector
     }
@@ -506,13 +534,21 @@ struct Session {
 
 @MainActor
 struct Prediction {
+    let lexicon: Lexicon
     var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
     var words = 0, first = 0, topThree = 0
+    /// Words of at least two (three) letters, and how many of them the bar offers once their first (two) are typed.
+    var long = [0, 0], completed = [0, 0]
 
-    init() {
-        engine.corrector = Corrector(source: Lexicon.english, network: .english)
+    init(lexicon: Lexicon = .english, network: Network? = .english, grid: KeyGrid = .standard) {
+        self.lexicon = lexicon
+        let corrector = Corrector(source: lexicon, network: network)
+        corrector.grid = grid
+        engine.corrector = corrector
     }
 
+    /// Each word typed letter by letter, the bar scored before it and once its first and two letters are in. A word
+    /// after an elision ("l'ami") is two picks, as typed with the bar: the elision before it, then the whole after it.
     mutating func type(_ phrase: [String]) {
         engine.endSession()
         let corrector = engine.corrector
@@ -520,19 +556,33 @@ struct Prediction {
         engine.corrector = corrector
         let document = Document()
         engine.suggestionsChanged()
-        for word in phrase {
-            let shown = engine.suggestions.map { $0.text.lowercased() }
-            words += 1
-            if shown.first == word.lowercased() { first += 1 }
-            if shown.contains(word.lowercased()) { topThree += 1 }
-            for character in word { engine.perform(.character(String(character)), in: document) }
+        func offers(_ word: String) -> Bool { engine.suggestions.contains { $0.text.lowercased() == word } }
+        for word in phrase.map({ $0.lowercased() }) {
+            let cut = word.firstIndex(of: "'").map { word[...$0] }
+            let head = cut.flatMap { lexicon.isWord(String($0)) && !lexicon.isWord(word) ? String($0) : nil }
+            for (start, next) in [(0, head ?? word)] + (head.map { [($0.count, word)] } ?? []) {
+                let shown = engine.suggestions.map { $0.text.lowercased() }
+                words += 1
+                if shown.first == next { first += 1 }
+                if shown.contains(next) { topThree += 1 }
+                for (index, character) in Array(next).enumerated().dropFirst(start) {
+                    engine.perform(.character(String(character)), in: document)
+                    let typed = index - start
+                    guard typed < 2, next.count > index + 1, next == word else { continue }
+                    long[typed] += 1
+                    if offers(word) { completed[typed] += 1 }
+                }
+            }
             engine.perform(.space, in: document)
         }
     }
 
     var summary: String {
         func percent(_ count: Int) -> String { String(format: "%.1f%%", Double(count) * 100 / Double(max(words, 1))) }
-        return "words=\(words) top1=\(percent(first)) top3=\(percent(topThree))"
+        func share(_ at: Int) -> String {
+            String(format: "%.1f%%", Double(completed[at]) * 100 / Double(max(long[at], 1)))
+        }
+        return "words=\(words) top1=\(percent(first)) top3=\(percent(topThree)) after1=\(share(0)) after2=\(share(1))"
     }
 }
 

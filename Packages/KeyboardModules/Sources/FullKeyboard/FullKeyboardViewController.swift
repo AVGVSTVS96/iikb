@@ -470,9 +470,9 @@ open class FullKeyboardViewController: UIInputViewController {
         engine.suggestionsChanged()
     }
 
-    /// Corrects in the languages picked in the app, each with its downloaded words, leaving out one whose words aren't
-    /// here (or can't be reached without Full Access) and typing English when none are, keeping what you've taught it.
-    /// For now it types the first of them alone, and the next-word network and Slide to Type are English's.
+    /// Corrects in the languages picked in the app, each with its downloaded words and next-word network, leaving out
+    /// one whose words aren't here (or can't be reached without Full Access) and typing English when none are, keeping
+    /// what you've taught it. For now it types the first of them alone, and Slide to Type is English's.
     private func useLanguages() {
         let here = engine.settings.languages.compactMap { language in
             LanguageFiles.lexicon(language.id).map { (language, $0) }
@@ -482,7 +482,7 @@ open class FullKeyboardViewController: UIInputViewController {
         guard list != typing else { return }
         typing = list
         let english = typed[0].0 == .english
-        let corrector = Corrector(source: typed[0].1, network: english ? .current : nil)
+        let corrector = Corrector(source: typed[0].1, network: english ? .current : LanguageFiles.network(typed[0].0.id))
         if let old = engine.corrector {
             corrector.changeMemory { $0 = old.memory }
             corrector.replacements = old.replacements

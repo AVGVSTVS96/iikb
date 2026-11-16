@@ -6,8 +6,9 @@
 # downloads into build/real the first time. Optional argument: one test (noise, biasedThumbs, aimShift, predictions, emoji), or swipe: how well swipes are
 # read on swipe.futo.org's test split (SwipeEvaluation; needs scripts/swipe data and SWIPE_DATA, takes minutes), which is
 # only diffed against eval.expected's swipe lines, or languages: each other language's phrases (phrases.<id>.txt) typed
-# on its own layout with its own words, downloaded from the release the manifest names into build/languages/, each
-# language in its own process (about 12 minutes), only diffed against eval.expected's language lines. A full run must match eval.expected, its baseline lines only on a
+# on its own layout with its own words and network, downloaded from the release the manifest names into
+# build/languages/, and its bar's predictions, each language in its own process (about 12 minutes), only diffed against
+# eval.expected's language lines; languagePredictions runs the predictions alone (a minute). A full run must match eval.expected, its baseline lines only on a
 # Mac; a change that moves the numbers updates that file in the same commit.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -16,13 +17,14 @@ out=$root/build/eval.txt
 mkdir -p "$root/build"
 export REAL_DATA=${REAL_DATA:-$root/build/real} TEST_RUNNER_REAL_DATA=${REAL_DATA:-$root/build/real}
 case "${1:-real}" in real*) [ -f "$REAL_DATA/autocorrect.txt" ] || python3 -I "$root/scripts/realtyping.py" "$REAL_DATA" ;; esac
-if [ "${1:-}" = languages ]; then
+case "${1:-}" in languages|languagePredictions) language=$1 ;; *) language= ;; esac
+if [ -n "$language" ]; then
   export LANGUAGES=$root/build/languages
   python3 - "$root/Packages/KeyboardModules/Sources/KeyboardStore/Resources/Languages/manifest.json" "$LANGUAGES" <<'PY'
 import hashlib, json, os, sys, urllib.request
 os.makedirs(sys.argv[2], exist_ok=True)
-for entry in json.load(open(sys.argv[1]))["lexicons"]:
-    path = os.path.join(sys.argv[2], entry["id"] + ".lexicon")
+for entry in json.load(open(sys.argv[1]))["files"]:
+    path = os.path.join(sys.argv[2], entry["name"])
     if not os.path.exists(path) or hashlib.sha256(open(path, "rb").read()).hexdigest() != entry["sha256"]:
         urllib.request.urlretrieve(entry["url"], path)
 PY
@@ -40,7 +42,7 @@ else
   mkdir -p "$pkg/Sources" "$pkg/Tests/KeyboardUITests"
   ln -sfn "$src/Sources/KeyboardCore" "$pkg/Sources/KeyboardCore"
   ln -sfn "$src/Sources/KeyboardEnglish" "$pkg/Sources/KeyboardEnglish"
-  for file in "$src"/Tests/KeyboardUITests/{Evaluation.swift,RealTyping.swift,SwipeEvaluation.swift,chat.txt} "$src"/Tests/KeyboardUITests/phrases*.txt; do ln -sf "$file" "$pkg/Tests/KeyboardUITests/"; done
+  for file in "$src"/Tests/KeyboardUITests/{Evaluation.swift,RealTyping.swift,SwipeEvaluation.swift} "$src"/Tests/KeyboardUITests/{phrases,chat}*.txt; do ln -sf "$file" "$pkg/Tests/KeyboardUITests/"; done
   cat > "$pkg/Package.swift" <<'SWIFT'
 // swift-tools-version: 6.2
 import PackageDescription
@@ -48,14 +50,14 @@ import PackageDescription
 let package = Package(name: "Eval", targets: [
     .target(name: "KeyboardCore"),
     .target(name: "KeyboardEnglish", dependencies: ["KeyboardCore"], exclude: ["Resources/LEXICON-LICENSE", "Resources/NETWORK-LICENSE"], resources: [.copy("Resources/en.lexicon"), .copy("Resources/en.network"), .copy("Resources/en.swipe"), .copy("Resources/SWIPE-LICENSE"), .copy("Resources/emoji.txt"), .copy("Resources/emoji-search.txt")]),
-    .testTarget(name: "KeyboardUITests", dependencies: ["KeyboardEnglish"], resources: [.copy("phrases.txt"), .copy("phrases.es.txt"), .copy("phrases.fr.txt"), .copy("phrases.de.txt"), .copy("phrases.pt.txt"), .copy("phrases.it.txt"), .copy("phrases.sv.txt"), .copy("chat.txt")]),
+    .testTarget(name: "KeyboardUITests", dependencies: ["KeyboardEnglish"], resources: [.copy("phrases.txt"), .copy("phrases.es.txt"), .copy("phrases.fr.txt"), .copy("phrases.de.txt"), .copy("phrases.pt.txt"), .copy("phrases.it.txt"), .copy("phrases.sv.txt"), .copy("chat.txt"), .copy("chat.es.txt"), .copy("chat.fr.txt"), .copy("chat.de.txt"), .copy("chat.pt.txt"), .copy("chat.it.txt"), .copy("chat.sv.txt")]),
 ])
 SWIFT
   cd "$pkg"
-  if [ "${1:-}" = languages ]; then
+  if [ -n "$language" ]; then
     swift build -c release -Xswiftc -enable-testing --build-tests 2>&1 | grep -E "error:" || true
-    for id in $(python3 -c 'import json, sys; print(" ".join(l["id"] for l in json.load(open(sys.argv[1]))["lexicons"]))' "$root/Packages/KeyboardModules/Sources/KeyboardStore/Resources/Languages/manifest.json"); do
-      LANGUAGE=$id .build/release/KeyboardUITests-test-runner --testing-library swift-testing --filter Evaluation/languages > "$root/build/eval.$id.txt" 2>&1 &
+    for id in ${ONLY:-$(python3 -c 'import json, sys; print(" ".join(sorted({f["id"] for f in json.load(open(sys.argv[1]))["files"]})))' "$root/Packages/KeyboardModules/Sources/KeyboardStore/Resources/Languages/manifest.json")}; do
+      LANGUAGE=$id .build/release/KeyboardUITests-test-runner --testing-library swift-testing --filter "Evaluation/${language%s}" > "$root/build/eval.$id.txt" 2>&1 &
     done
     wait
     cat "$root"/build/eval.*.txt | grep -E "error:|EVAL|✘" | tee "$out"
@@ -64,8 +66,10 @@ SWIFT
   fi
   scored='keyboard=(decoder|learning)|EVAL (emoji|predict|thumbs learned|strayKeys|real)'
 fi
-if [ "${1:-}" = languages ]; then
-  diff -u <(grep '^EVAL language' "$root/scripts/eval.expected") <(grep '^EVAL language' "$out") && echo "EVAL languages match eval.expected"
+if [ -n "$language" ]; then
+  lines='^EVAL language'
+  [ "$language" = languages ] || lines='^EVAL language=[a-z]* predict'
+  diff -u <(grep "$lines" "$root/scripts/eval.expected") <(grep "$lines" "$out") && echo "EVAL $language match eval.expected"
   exit
 fi
 if [ "${1:-}" = swipe ]; then

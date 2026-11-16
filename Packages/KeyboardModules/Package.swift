@@ -47,7 +47,8 @@ let package = Package(
             resources: [
                 .copy("phrases.txt"), .copy("phrases.es.txt"), .copy("phrases.fr.txt"), .copy("phrases.de.txt"),
                 .copy("phrases.pt.txt"), .copy("phrases.it.txt"), .copy("phrases.sv.txt"), .copy("chat.txt"),
-                .copy("klipy.json"),
+                .copy("chat.es.txt"), .copy("chat.fr.txt"), .copy("chat.de.txt"), .copy("chat.pt.txt"),
+                .copy("chat.it.txt"), .copy("chat.sv.txt"), .copy("klipy.json"),
             ]),
     ]
 )

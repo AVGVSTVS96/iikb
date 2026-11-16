@@ -83,6 +83,24 @@ final class LanguageTests: XCTestCase {
         try shot("typed")
     }
 
+    func testPredictsInTheLanguagePicked() throws {
+        app.launchArguments = ["-iikbResetSettings", "YES", "-iikbSettings", "languages"]
+        app.launch()
+        let spanish = row("Español")
+        XCTAssertTrue(spanish.waitForExistence(timeout: 10))
+        reveal(spanish)
+        spanish.tap()
+        XCTAssertTrue(becomes(spanish, selected: true, within: 120), "Español wasn't picked once it downloaded")
+        app.terminate()
+        app.launchArguments = ["-iikbFocus", "YES", "-iikbAutoCorrection", "YES"]
+        app.launchWithIikb()
+        type("muchas ")
+        let bar = (0..<3).map { app.descendants(matching: .any).matching(identifier: "iikb.suggestion.\($0)").firstMatch }
+        XCTAssertTrue(bar[0].waitForExistence(timeout: 5))
+        XCTAssertTrue(bar.contains { $0.label == "gracias" }, "bar: \(bar.map(\.label))")
+        try shot("predicted")
+    }
+
     private var layoutRow: XCUIElement {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Keyboard Layout'")).firstMatch
     }

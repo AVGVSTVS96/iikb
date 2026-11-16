@@ -1,20 +1,31 @@
-"""Trains the next-word network behind Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.network.
+"""Trains a next-word network: English's bundled en.network, or a downloadable language's <id>.network.
 
-Corpus: what people type to each other and to chatbots. Reddit comments from 16 subreddits, 7M words from the first
-file of each (HuggingFaceGECLM/REDDIT_comments, with links and Markdown taken out), the English user turns of
-WildChat-4.8M, and two in five lines of WildChat-1M's with SODA's dialogues (allenai; ODC-BY, CC BY 4.0). Lines are
-kept when they read as prose: mostly letters, at most 120 words, no code or markup characters. A chatbot line repeated
-within its source is dropped by its first 60 characters.
+English's corpus: what people type to each other and to chatbots. Reddit comments from 16 subreddits, 7M words from
+the first file of each (HuggingFaceGECLM/REDDIT_comments, with links and Markdown taken out), the English user turns
+of WildChat-4.8M, and two in five lines of WildChat-1M's with SODA's dialogues (allenai; ODC-BY, CC BY 4.0).
 
-Tokens: lowercase words (apostrophes kept), a comma, a number, and a sentence's start; the 20,000 commonest words and
-the specials are the vocabulary, every other word one unknown token.
+A language's corpus (es fr de pt it sv, scripts/language.py's LANGUAGES): what its people type to chatbots, the user
+turns of WildChat-4.8M in it (one pass over its files writes every language's), counted CHAT_REPEAT times since it's
+the nearest of the sources to what's typed on a phone, and what they write on the web, FineWeb-2's first file
+(HuggingFaceFW, ODC-BY), read a row group at a time over HTTP, spread over the file, until WEB_WORDS words of prose.
+Nothing scripts/eval types (phrases.<id>.txt, its chat.<id>.txt) is trained on.
+
+Lines are kept when they read as prose: mostly letters, at most 120 words, no code or markup characters. A chatbot or
+web line repeated within its source is dropped by its first 60 characters.
+
+Tokens, as Network.tokens reads the text before the caret: lowercase words (letters and digits, apostrophes kept
+inside), a comma, a number, and a sentence's start. In French and Italian an elision is a word of its own ("l'ami" is
+"l'" and "ami") unless the lexicon has the whole ("aujourd'hui"). English's vocabulary is its 20,000 commonest words
+and the specials; a language's is its 30,000 commonest that its lexicon knows, so the bar never offers a word its
+autocorrect would change. Every other word is one unknown token.
 
 Model: a word embedding (128 wide, also scoring the next word) into one LSTM layer (1024 wide) projected back to the
 embedding, trained on 32-token windows, 256 at a time, for 40,000 steps (Adam, one-cycle learning rate to 3e-3).
-About three hours on an M1 Max's GPU; on a CPU, days.
+About three hours on an M1 Max's GPU, under one on an RTX 3080; on a CPU, days.
 
 Usage: uv run --no-project --with pyarrow --with numpy --with torch python3 scripts/network.py build/network
-Each stage is skipped when its output is there: reddit.txt, wildchat.txt and chat.txt, vocab.txt and tokens.npy, model.pt, then
+       ... --with fsspec --with aiohttp python3 scripts/network.py build/languages/<id>/network <id> <id>.lexicon
+Each stage is skipped when its output is there: the corpus's text files, vocab.txt and tokens.npy, model.pt, then
 weights.f32 (the widths and the float32 tensors in Network's order), which scripts/network packs with Tools/NetworkBuilder.
 """
 
@@ -25,7 +36,10 @@ import random
 import re
 import subprocess
 import sys
+import unicodedata
 from collections import Counter
+
+from language import LANGUAGES, lexicon_words
 
 HUB = "https://huggingface.co/datasets"
 WILDCHAT = [(f"allenai/WildChat-4.8M/resolve/main/data/train-{i:05d}-of-00086.parquet") for i in range(86)]
@@ -42,14 +56,20 @@ REDDIT = [f"HuggingFaceGECLM/REDDIT_comments/resolve/main/data/{name}.parquet" f
     "tifu-00000-of-00010-b52d0440151617c8", "todayilearned-00000-of-00046-2ed2870d54c80544",
 ]]
 REDDIT_WORDS = 7_000_000
-SOURCES = {"reddit.txt": 1.0, "wildchat.txt": 1.0, "chat.txt": 0.4}
+FINEWEB = "https://huggingface.co/datasets/HuggingFaceFW/fineweb-2/resolve/main/data"
+WEB_WORDS = 150_000_000
+CHAT_REPEAT = 4
 
-VOCABULARY = 20_000
 SPECIALS = ["<s>", "<unk>", "<n>", ","]
-TOKEN = re.compile(r"[a-z0-9]+(?:'[a-z0-9]+)*|[.!?,]")
+TOKEN = re.compile(r"(?:[^\W_]|['’‘])+|[.!?,]")
 WIDTH, HIDDEN, WINDOW, BATCH, STEPS, RATE = 128, 1024, 32, 256, 40_000, 3e-3
+PARTS = int(os.environ.get("PARTS", "4"))
 
 out = ""
+language = None
+rules = (frozenset(), frozenset())
+ids = {}
+lines = []
 
 
 def path(name):
@@ -81,12 +101,13 @@ def prose(text, markup=r"[{};<>=_\\|`#*@\[\]]"):
 
 def write_unique(name, lines):
     seen = set()
-    with open(path(name), "w") as file:
+    with open(path(name + ".part"), "w") as file:
         for line in lines:
             key = hashlib.md5(line.lower()[:60].encode()).digest()
             if key not in seen:
                 seen.add(key)
                 file.write(line + "\n")
+    os.rename(path(name + ".part"), path(name))
 
 
 def user_turns(files):
@@ -128,6 +149,12 @@ def comments(files):
 
 
 def corpus():
+    if language:
+        if not os.path.exists(path("chat.txt")):
+            chats(os.path.dirname(os.path.dirname(out)))
+        if not os.path.exists(path("web.txt")):
+            write_unique("web.txt", web(LANGUAGES[language]["fineweb"]))
+        return
     if not os.path.exists(path("reddit.txt")):
         with open(path("reddit.txt"), "w") as file:
             file.writelines(line + "\n" for line in comments(download(REDDIT)))
@@ -137,45 +164,130 @@ def corpus():
         write_unique("chat.txt", (line for source in (user_turns(download(WILDCHAT_1M)), dialogues(download(SODA))) for line in source))
 
 
-def tokens(line):
+def chats(languages):
+    """Every language's WildChat user turns, as languages/<id>/network/chat.txt, in one pass over its files, each
+    deleted once read."""
+    import pyarrow.parquet as pq
+    ids = {config["wildchat"]: id for id, config in LANGUAGES.items()}
+    files = {id: open(os.path.join(languages, id, "network", "chat.txt.part"), "w") for id in LANGUAGES}
+    seen = {id: set() for id in LANGUAGES}
+    for file in WILDCHAT:
+        local = download([file])[0]
+        table = pq.read_table(local, columns=["conversation", "language"])
+        for conversation, name in zip(table.column("conversation").to_pylist(), table.column("language").to_pylist()):
+            if name not in ids:
+                continue
+            for message in conversation:
+                if message["role"] == "user" and message.get("language") == name and len(message["content"].split()) <= 300:
+                    for line in prose(unicodedata.normalize("NFC", message["content"])):
+                        key = hashlib.md5(line.lower()[:60].encode()).digest()
+                        if key not in seen[ids[name]]:
+                            seen[ids[name]].add(key)
+                            files[ids[name]].write(line + "\n")
+        os.remove(local)
+    for id, file in files.items():
+        file.close()
+        os.rename(file.name, file.name.removesuffix(".part"))
+
+
+def web(config):
+    """Prose lines from FineWeb-2's first file in a language, read a row group at a time over HTTP, spread over the
+    file, until WEB_WORDS words."""
+    import fsspec
+    import pyarrow.parquet as pq
+    with fsspec.open(f"{FINEWEB}/{config}/train/000_00000.parquet", block_size=8 << 20) as file:
+        shard = pq.ParquetFile(file)
+        groups = shard.metadata.num_row_groups
+        words = 0
+        for group in range(0, groups, max(1, groups // 400)):
+            for text in shard.read_row_group(group, columns=["text"]).column(0).to_pylist():
+                for line in prose(unicodedata.normalize("NFC", text)):
+                    words += len(line.split())
+                    yield line
+            if words >= WEB_WORDS:
+                return
+
+
+def tokens(line, heads=frozenset(), whole=frozenset()):
     out = ["<s>"]
-    for token in TOKEN.findall(line.lower().replace("’", "'")):
+    for token in TOKEN.findall(line.lower()):
         if token in ".!?":
             if out[-1] != "<s>":
                 out.append("<s>")
         elif token == ",":
             out.append(",")
-        elif any(c.isdigit() for c in token):
-            out.append("<n>")
         else:
-            out.append(token)
+            word = token.replace("’", "'").replace("‘", "'").lstrip("'")
+            word = word if word.rstrip("'") + "'" in heads and word.endswith("'") else word.rstrip("'")
+            if not word:
+                continue
+            if any(c.isdigit() for c in word):
+                out.append("<n>")
+                continue
+            head, _, tail = word.partition("'")
+            if tail and head + "'" in heads and word not in whole:
+                out += [head + "'", tail]
+            else:
+                out.append(word)
     return out
 
 
-def prepare():
+def read(text):
+    return " ".join(text.strip().lower().rstrip(".!?").split())
+
+
+def count(span):
+    return Counter(t for line in lines[slice(*span)] for t in tokens(line, *rules) if t not in SPECIALS)
+
+
+def numbered(span):
     import numpy as np
+    return np.array([ids.get(t, 1) for line in lines[slice(*span)] for t in tokens(line, *rules)], dtype=np.uint16)
+
+
+def spans(size=20_000):
+    """The lines in parts, by where they sit in `lines`, which the forked workers share rather than each part being
+    copied to them."""
+    return [(i, i + size) for i in range(0, len(lines), size)]
+
+
+def prepare():
+    global rules, ids, lines
+    import multiprocessing
+    import numpy as np
+    from concurrent.futures import ProcessPoolExecutor
     if os.path.exists(path("tokens.npy")):
         return
     lines = []
     for name, keep in SOURCES.items():
         sample = random.Random(1)
-        lines += [line for line in open(path(name)) if sample.random() < keep]
+        for line in open(path(name)):
+            lines += [line] * (int(keep) + (sample.random() < keep % 1))
     random.Random(2).shuffle(lines)
-    counts = Counter(t for line in lines for t in tokens(line) if t not in SPECIALS)
-    vocabulary = SPECIALS + [word for word, _ in counts.most_common(VOCABULARY - len(SPECIALS))]
+    known, size = None, 20_000
+    if language:
+        known, size = {word.lower() for word in lexicon_words(sys.argv[3])}, 30_000
+        heads = {word for word in known if word.endswith("'")} if LANGUAGES[language].get("elides") else set()
+        rules = (frozenset(heads), frozenset(known))
+        held = {read(line) for name in held_out() for line in open(name)}
+        lines = [line for line in lines if read(line) not in held]
+    jobs = int(os.environ.get("JOBS", "8"))
+    fork = multiprocessing.get_context("fork")
+    with ProcessPoolExecutor(jobs, mp_context=fork, initializer=os.nice, initargs=(19,)) as pool:
+        counts = Counter()
+        for counted in pool.map(count, spans()):
+            counts.update(counted)
+    vocabulary = SPECIALS + [w for w, _ in counts.most_common() if known is None or w in known][:size - len(SPECIALS)]
     ids = {word: i for i, word in enumerate(vocabulary)}
     with open(path("vocab.txt"), "w") as file:
         file.write("\n".join(vocabulary) + "\n")
-    total = sum(len(tokens(line)) for line in lines)
-    array = np.lib.format.open_memmap(path("tokens.npy.part"), mode="w+", dtype=np.uint16, shape=(total,))
-    at = 0
-    for line in lines:
-        row = [ids.get(word, 1) for word in tokens(line)]
-        array[at:at + len(row)] = row
-        at += len(row)
-    array.flush()
-    del array
-    os.rename(path("tokens.npy.part"), path("tokens.npy"))
+    with ProcessPoolExecutor(jobs, mp_context=fork, initializer=os.nice, initargs=(19,)) as pool:
+        parts = list(pool.map(numbered, spans()))
+    array = np.concatenate(parts)
+    print(f"{len(lines)} lines, {len(array)} tokens, {np.mean(array != 1):.1%} in the vocabulary", file=sys.stderr,
+          flush=True)
+    np.save(path("tokens.part.npy"), array)
+    os.rename(path("tokens.part.npy"), path("tokens.npy"))
 
 
 def train():
@@ -186,8 +298,9 @@ def train():
         return
     torch.manual_seed(0)
     device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
+    torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = True
     words = len(open(path("vocab.txt")).read().split("\n")) - 1
-    data = np.load(path("tokens.npy"), mmap_mode="r")
+    data = torch.from_numpy(np.load(path("tokens.npy")).astype(np.int32)).to(device)
     held = 2_000_000
     training, validation = data[:-held], data[-held:]
 
@@ -208,16 +321,18 @@ def train():
     loss = nn.CrossEntropyLoss()
     rng = np.random.default_rng(0)
 
-    def batch(source):
-        starts = rng.integers(0, len(source) - WINDOW - 1, BATCH)
-        x = torch.from_numpy(np.stack([source[s:s + WINDOW + 1] for s in starts]).astype(np.int64)).to(device)
+    offsets = torch.arange(WINDOW + 1, device=device)
+
+    def batch(source, size=BATCH // PARTS):
+        starts = torch.from_numpy(rng.integers(0, len(source) - WINDOW - 1, size)).to(device)
+        x = source[starts[:, None] + offsets].long()
         return x[:, :-1], x[:, 1:]
 
     for step in range(1, STEPS + 1):
-        x, y = batch(training)
-        error = loss(model(x).reshape(-1, words), y.reshape(-1))
         optimizer.zero_grad()
-        error.backward()
+        for _ in range(PARTS):
+            x, y = batch(training)
+            (loss(model(x).reshape(-1, words), y.reshape(-1)) / PARTS).backward()
         nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         schedule.step()
@@ -241,8 +356,22 @@ def export():
             file.write(np.asarray(part, dtype="<f4").tobytes())
 
 
+def held_out():
+    """What scripts/eval types in the language, kept out of its training."""
+    tests = os.path.join(os.path.dirname(__file__), "../Packages/KeyboardModules/Tests/KeyboardUITests")
+    return [name for name in (os.path.join(tests, f"{kind}.{language}.txt") for kind in ("phrases", "chat"))
+            if os.path.exists(name)]
+
+
 if __name__ == "__main__":
     out = sys.argv[1]
+    if len(sys.argv) > 2:
+        language = sys.argv[2]
+        SOURCES = {"chat.txt": CHAT_REPEAT, "web.txt": 1.0}
+        for id in LANGUAGES:
+            os.makedirs(os.path.join(os.path.dirname(os.path.dirname(out)), id, "network"), exist_ok=True)
+    else:
+        SOURCES = {"reddit.txt": 1.0, "wildchat.txt": 1.0, "chat.txt": 0.4}
     os.makedirs(os.path.join(out, "download"), exist_ok=True)
     corpus()
     prepare()

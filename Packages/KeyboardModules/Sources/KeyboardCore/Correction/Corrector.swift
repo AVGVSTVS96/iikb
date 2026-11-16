@@ -222,7 +222,10 @@ public final class Corrector {
         return [Suggestion(word.text, .literal)] + alternatives
     }
 
-    func predictions(after previous: String?, earlier: String?, context: String) -> [Suggestion] {
+    /// `keep` says which words may come next.
+    func predictions(
+        after previous: String?, earlier: String?, context: String, keep: (String) -> Bool = { _ in true }
+    ) -> [Suggestion] {
         var seen: Set<String> = []
         var words =
             TypingMemory.contexts(previous, earlier).reversed().flatMap(memory.predictions(after:))
@@ -238,7 +241,7 @@ public final class Corrector {
         }
         return
             words
-            .filter { seen.insert($0.lowercased()).inserted }
+            .filter { keep($0) && seen.insert($0.lowercased()).inserted }
             .prefix(3)
             .map { Suggestion($0, .candidate) }
     }
@@ -256,8 +259,20 @@ public final class Corrector {
     /// word 68.7% of the time without them, 67.8% with, where "good n" offered "not" over "night"). A name the model
     /// knows no better counts as one word of the lexicon's, so "m" offers "my" before a contact called "M3". `context` is
     /// the text before the word.
+    /// After an elision, the word after it: "l'h" completes "h" after "l'", and "l'" alone is followed by the words
+    /// likeliest to come next that an elision goes before.
     func completions(for typed: TypedWord, context: String?) -> [String] {
         guard let lexicon else { return [] }
+        if isElision(typed.text) {
+            return predictions(
+                after: typed.text.lowercased(), earlier: typed.previous, context: (context ?? "") + typed.text,
+                keep: { Self.takesElision($0) && !self.isElision($0) }
+            ).map { typed.text + $0.text }
+        }
+        if let (head, rest) = elided(typed) {
+            let after = TypedWord(rest.text, taps: rest.taps, previous: head.lowercased())
+            return completions(for: after, context: (context ?? "") + head).map { head + $0 }
+        }
         let earlier = context.flatMap { Words.context(before: $0[$0.endIndex...], in: $0).earlier }
         let expected = context.flatMap(expected(after:))
         let model = languageModel(lexicon)
@@ -435,6 +450,12 @@ extension Corrector {
             added.logPosterior - literal.logPosterior >= Self.apostropheLogOdds
         else { return nil }
         return added.word
+    }
+
+    /// Whether the word is an elision, which runs into the word after it: French's "l'", Italian's "dell'".
+    func isElision(_ word: String) -> Bool {
+        let plain = Words.plain(word)
+        return plain.last == "'" && lexicon?.isWord(plain.lowercased()) == true
     }
 
     /// A word whose part up to an apostrophe is a word of its own, French's "c'" in "c'est" and Italian's "dell'" in

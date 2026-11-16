@@ -4,8 +4,15 @@ import Testing
 
 struct LanguageFilesTests {
     let folder = URL.temporaryDirectory.appending(path: "LanguageFiles \(UUID().uuidString)/Languages")
-    let old = LanguageFiles.Download(id: "de", size: 3, sha256: "old", url: URL(string: "https://example.com/de")!)
-    let new = LanguageFiles.Download(id: "de", size: 3, sha256: "new", url: URL(string: "https://example.com/de")!)
+
+    private func file(_ name: String, _ sha256: String) -> LanguageFiles.File {
+        LanguageFiles.File(
+            id: "de", name: name, size: 3, sha256: sha256, url: URL(string: "https://example.com/\(name)")!)
+    }
+
+    private var old: LanguageFiles.File { file("de.lexicon", "old") }
+    private var new: LanguageFiles.File { file("de.lexicon", "new") }
+    private var network: LanguageFiles.File { file("de.network", "net") }
 
     private func downloaded(_ words: String) throws -> URL {
         let file = URL.temporaryDirectory.appending(path: "download \(UUID().uuidString)")
@@ -27,22 +34,34 @@ struct LanguageFilesTests {
         try LanguageFiles.install(downloaded("zwei"), as: new, in: folder)
         #expect(LanguageFiles.isCurrent(new, in: folder))
         #expect(try words() == "zwei")
-        #expect(LanguageFiles.installed("de", in: folder) == "new")
+    }
+
+    @Test func aLanguageWithoutItsNetworkTypesAndIsOutOfDateUntilItsIn() throws {
+        let download = LanguageFiles.Download(id: "de", files: [new, network])
+        try LanguageFiles.install(downloaded("ein"), as: new, in: folder)
+        #expect(LanguageFiles.has("de", in: folder))
+        #expect(!LanguageFiles.isCurrent(download, in: folder), "an older build downloaded no network")
+        let wordsOnly = LanguageFiles.installed("de", in: folder)
+
+        try LanguageFiles.install(downloaded("netz"), as: network, in: folder)
+        #expect(LanguageFiles.isCurrent(download, in: folder))
+        #expect(LanguageFiles.installed("de", in: folder) != wordsOnly, "the keyboard sees the network come in")
+        #expect(download.size == 6)
     }
 
     @Test func aFileFromBeforeStampsIsOutOfDate() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try Data("ein".utf8).write(to: try #require(LanguageFiles.url(of: "de", in: folder)))
         #expect(LanguageFiles.has("de", in: folder))
-        #expect(LanguageFiles.installed("de", in: folder) == nil)
         #expect(!LanguageFiles.isCurrent(new, in: folder))
     }
 
-    @Test func removingTakesTheStampToo() throws {
+    @Test func removingTakesEveryFileAndStamp() throws {
         try LanguageFiles.install(downloaded("ein"), as: new, in: folder)
+        try LanguageFiles.install(downloaded("netz"), as: network, in: folder)
         LanguageFiles.remove("de", in: folder)
         #expect(!LanguageFiles.has("de", in: folder))
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).isEmpty)
         try Data("ein".utf8).write(to: try #require(LanguageFiles.url(of: "de", in: folder)))
         #expect(!LanguageFiles.isCurrent(new, in: folder), "a stamp left behind would vouch for the wrong file")
     }

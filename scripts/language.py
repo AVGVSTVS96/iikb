@@ -4,6 +4,7 @@ Usage: scripts/language.py words <id> <build>    the word counts, word<TAB>count
        scripts/language.py license <id> <build>  the notices for its sources, to stdout
        scripts/language.py phrases <id> <build>  writes the eval phrases and the held-out sentences
        scripts/language.py report <id> <build>   how many held-out words the counts know, the top words, what's missing
+       scripts/language.py chat <id> <build> <out>  the everyday sentences scripts/eval predicts (chat.<id>.txt)
 
 Words: Android's keyboard word lists (AOSP LatinIME dictionaries, Apache-2.0) say which words a keyboard offers and
 how each is capitalized. FineWeb-2 (ODC-BY) adds words the lists lack ("WhatsApp", "selfie") when it uses them at
@@ -21,7 +22,8 @@ French and Italian elide ("l'ami", "dell'anno"): what the list writes before at 
 its own word, as the engine types the word after the apostrophe on its own; "aujourd'hui" stays whole. Words joined
 by hyphens ("peut-être") count as their parts, since a lexicon's words are letters and apostrophes.
 Sentences: Mozilla Common Voice's sentence collector (CC0), never part of the counts: 500 short ones typed by
-scripts/eval, and up to 5,000 more held out to measure how many words the counts know.
+scripts/eval, and up to 5,000 more held out to measure how many words the counts know. And 1,000 of Tatoeba's
+everyday sentences (CC BY 2.0 FR), whose next words scripts/eval predicts as it does English's chat.txt.
 The build dir keeps the counts; the FineWeb-2 shard (about 5 GB) is deleted once counted, and the news is read as it downloads.
 """
 
@@ -43,13 +45,14 @@ AOSP = "https://android.googlesource.com/platform/packages/inputmethods/LatinIME
 FINEWEB = "https://huggingface.co/datasets/HuggingFaceFW/fineweb-2/resolve/main/data"
 LEIPZIG = "https://downloads.wortschatz-leipzig.de/corpora"
 VOICE = "https://raw.githubusercontent.com/common-voice/common-voice/main/server/data"
+TATOEBA = "https://downloads.tatoeba.org/exports/per_language"
 LANGUAGES = {
-    "es": dict(aosp=["es"], fineweb="spa_Latn", news="spa_news_2024", voice=["es/sentence-collector.txt"]),
-    "fr": dict(aosp=["fr"], fineweb="fra_Latn", news="fra_news_2024", voice=["fr/sentence-collector.txt"], elides=True),
-    "de": dict(aosp=["de"], fineweb="deu_Latn", news="deu_news_2024", voice=["de/sentence-collector.txt"]),
-    "pt": dict(aosp=["pt_BR", "pt_PT"], fineweb="por_Latn", news="por_news_2024", voice=["pt/sentence-collector.txt"]),
-    "it": dict(aosp=["it"], fineweb="ita_Latn", news="ita_news_2024", voice=["it/sentence-collector.txt", "it/frasi.txt"], elides=True),
-    "sv": dict(aosp=["sv"], fineweb="swe_Latn", news="swe_news_2023", voice=["sv-SE/sentence-collector.txt"]),
+    "es": dict(tatoeba="spa", aosp=["es"], fineweb="spa_Latn", news="spa_news_2024", voice=["es/sentence-collector.txt"], wildchat="Spanish"),
+    "fr": dict(tatoeba="fra", aosp=["fr"], fineweb="fra_Latn", news="fra_news_2024", voice=["fr/sentence-collector.txt"], elides=True, wildchat="French"),
+    "de": dict(tatoeba="deu", aosp=["de"], fineweb="deu_Latn", news="deu_news_2024", voice=["de/sentence-collector.txt"], wildchat="German"),
+    "pt": dict(tatoeba="por", aosp=["pt_BR", "pt_PT"], fineweb="por_Latn", news="por_news_2024", voice=["pt/sentence-collector.txt"], wildchat="Portuguese"),
+    "it": dict(tatoeba="ita", aosp=["it"], fineweb="ita_Latn", news="ita_news_2024", voice=["it/sentence-collector.txt", "it/frasi.txt"], elides=True, wildchat="Italian"),
+    "sv": dict(tatoeba="swe", aosp=["sv"], fineweb="swe_Latn", news="swe_news_2023", voice=["sv-SE/sentence-collector.txt"], wildchat="Swedish"),
 }
 ROW_GROUPS = 600
 PER_PAGE = 10
@@ -180,8 +183,13 @@ def news(build, language):
 
 
 def english():
-    """Each English word's probability, read from en.lexicon's trie (KeyboardCore's Lexicon.swift)."""
-    data = open(EN_LEXICON, "rb").read()
+    """Each English word's probability, read from en.lexicon's trie."""
+    return lexicon_words(EN_LEXICON)
+
+
+def lexicon_words(path):
+    """Each word of a lexicon file and its probability, read from its trie (KeyboardCore's Lexicon.swift)."""
+    data = open(path, "rb").read()
     length = struct.unpack_from("<I", data, 8)[0]
     letters = data[12:12 + length].decode("utf-8").split("\n")
     nodes = (12 + length + 7) // 8 * 8
@@ -357,7 +365,16 @@ https://commoncrawl.org/terms-of-use. {language}.lexicon contains counts derived
 Capitals, and a check that keeps words of web spam out: Leipzig Corpora Collection, {config["news"]}_1M,
 https://wortschatz.uni-leipzig.de/en/download, © Universität Leipzig / Sächsische Akademie der Wissenschaften / InfAI,
 under Creative Commons Attribution (CC BY), https://creativecommons.org/licenses/by/4.0/. {language}.lexicon contains
-counts derived from it.""")
+counts derived from it.
+
+{language}.network, the next-word network, is trained by scripts/network {language} (scripts/network.py) on two sources,
+and contains weights learned from them:
+
+What people type to chatbots: the user turns in this language of WildChat-4.8M by the Allen Institute for AI,
+https://huggingface.co/datasets/allenai/WildChat-4.8M, under the Open Data Commons Attribution License (ODC-By) v1.0,
+https://opendatacommons.org/licenses/by/1-0/.
+
+What people write on the web: FineWeb-2 by Hugging Face, {config["fineweb"]}, the first of its files, as above.""")
 
 
 def sentences(build, language):
@@ -385,6 +402,27 @@ def phrases(build, language, out):
     held = [line for line in lines if line.strip().rstrip(".!?").strip() not in set(typed)][:5000]
     with open(os.path.join(build, "heldout.txt"), "w") as file:
         file.write("\n".join(held) + "\n")
+
+
+def chat(build, language, out):
+    """1,000 of Tatoeba's sentences of 3 to 20 words, in its own order shuffled, with the punctuation a phone's
+    letters don't type taken out, as chat.txt holds English's."""
+    import bz2
+    code = LANGUAGES[language]["tatoeba"]
+    path = fetch(f"{TATOEBA}/{code}/{code}_sentences.tsv.bz2", os.path.join(build, "tatoeba.tsv.bz2"))
+    with bz2.open(path, "rt", encoding="utf-8") as file:
+        lines = sorted({unicodedata.normalize("NFC", line.rstrip("\n").split("\t")[2]) for line in file})
+    random.Random(language).shuffle(lines)
+    word = re.compile(r"[^\W\d_]+(?:'[^\W\d_]+)*")
+    kept = []
+    for line in lines:
+        words = re.sub(r"[.,!?¿¡;:\"«»“”„()…–—]", " ", line.replace("’", "'")).split()
+        if 3 <= len(words) <= 20 and all(word.fullmatch(w) for w in words):
+            kept.append(" ".join(words))
+        if len(kept) == 1000:
+            break
+    with open(out, "w") as file:
+        file.write("\n".join(kept) + "\n")
 
 
 def report(build, language, words_path):
@@ -425,5 +463,7 @@ if __name__ == "__main__":
         license(language)
     elif command == "phrases":
         phrases(build, language, sys.argv[4])
+    elif command == "chat":
+        chat(build, language, sys.argv[4])
     elif command == "report":
         report(build, language, sys.argv[4])

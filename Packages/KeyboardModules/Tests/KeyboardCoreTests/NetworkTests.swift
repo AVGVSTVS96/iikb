@@ -21,6 +21,28 @@ let testNetwork: Network = {
         output: vocabulary.map { Network.specials.contains($0) || $0 == "want" ? -10 : 0 })
 }()
 
+/// A French network that expects "ami" after "l'" and "de" after a sentence's start, as `testNetwork` is made.
+let elisionNetwork: Network = {
+    let vocabulary = Network.specials + ["l'", "ami", "de", "avenue", "aujourd'hui", "geht's"]
+    let embedding = vocabulary.map { word -> [Float] in
+        switch word {
+        case "<s>", "de": [0, 1]
+        case "l'", "ami": [1, 0]
+        default: [0, 0]
+        }
+    }
+    let input: [[Float]] = [[0, 0], [0, 0], [0, 0], [0, 0], [5, 0], [0, 5], [0, 0], [0, 0]]
+    return Network(
+        vocabulary: vocabulary, embedding: embedding, input: input, recurrent: Array(repeating: [0, 0], count: 8),
+        gates: [10, 10, -10, -10, 0, 0, 10, 10], projection: [[20, 0], [0, 20]], projectionBias: [0, 0],
+        output: vocabulary.map { Network.specials.contains($0) || $0 == "l'" ? -10 : 0 })
+}()
+
+let elisionLexicon = Lexicon(
+    counts: [("de", 1000), ("l'", 900), ("avenue", 300), ("ami", 20), ("aujourd'hui", 50), ("est", 500)].map {
+        (word: $0.0, count: Double($0.1))
+    })
+
 struct NetworkTests {
     @Test func findsEveryWordItStores() {
         for word in ["want", "to", "i", "work"] {
@@ -85,6 +107,39 @@ struct NetworkTests {
         engine.pressShift(doubleTap: false)
         engine.releaseShift(in: document)
         #expect(engine.suggestions.first?.text == "to")
+    }
+
+    @Test func readsAnElisionAsAWordOfItsOwnAndAnyApostropheAsOne() {
+        let names = elisionNetwork.tokens(before: "de l’ami aujourd'hui geht‘s l'").map(elisionNetwork.spelling(of:))
+        #expect(names == ["<s>", "de", "l'", "ami", "aujourd'hui", "geht's", "l'"])
+    }
+
+    @Test func theBarAfterAnElisionOffersTheWordAfterIt() {
+        var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
+        engine.corrector = Corrector(source: elisionLexicon, network: elisionNetwork)
+        let document = TestDocument()
+        engine.documentChanged(document)
+        for character in "de l'" {
+            engine.perform(character == " " ? .space : .character(String(character)), in: document)
+        }
+        #expect(engine.suggestions.dropFirst().first.map { Words.plain($0.text) } == "l'ami", "the network's word, not the lexicon's commoner one")
+        engine.perform(.character("a"), in: document)
+        #expect(engine.suggestions.dropFirst().first.map { Words.plain($0.text) } == "l'ami")
+    }
+
+    @Test func aPickedElisionRunsIntoTheNextWord() {
+        var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
+        engine.corrector = Corrector(source: elisionLexicon, network: elisionNetwork)
+        let document = TestDocument()
+        engine.documentChanged(document)
+        for character in "de " {
+            engine.perform(character == " " ? .space : .character(String(character)), in: document)
+        }
+        engine.accept(Suggestion("l'", .candidate), in: document)
+        #expect(document.text == "de l'")
+        #expect(engine.suggestions.dropFirst().first.map { Words.plain($0.text) } == "l'ami")
+        engine.accept(Suggestion("l'ami", .candidate), in: document)
+        #expect(document.text == "de l'ami ")
     }
 
     @Test func contextReadsTwoWordsBack() {

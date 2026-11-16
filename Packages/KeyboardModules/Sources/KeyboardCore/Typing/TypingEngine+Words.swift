@@ -131,7 +131,8 @@ extension TypingEngine {
         return faces
     }
 
-    /// A suggestion takes the place of the word the bar is for, and the caret ends after it and one space.
+    /// A suggestion takes the place of the word the bar is for, and the caret ends after it and one space, or right
+    /// after an elision ("l'"), where the word it runs into goes.
     public mutating func accept(_ suggestion: Suggestion, in document: some TextDocument) {
         attach(document)
         let text = self.text.before
@@ -164,7 +165,7 @@ extension TypingEngine {
         }
         revert = nil
         typing = WordTaps()
-        spaceAfterPick(in: document)
+        if corrector?.isElision(suggestion.text) != true { spaceAfterPick(in: document) }
         refreshShift()
         suggestionsChanged()
     }

@@ -2,9 +2,10 @@ import CryptoKit
 import Foundation
 import KeyboardStore
 
-/// The languages' word data, downloaded on a tap from where the manifest says, checked against its size and SHA-256
-/// before it's put in place (`LanguageFiles`), so the keyboard never reads a file cut short or changed on the way. A
-/// download that fails keeps what it got and goes on from there on Try Again; Cancel drops it.
+/// The languages' data, downloaded on a tap from where the manifest says, each file checked against its size and
+/// SHA-256 before it's put in place (`LanguageFiles`), so the keyboard never reads a file cut short or changed on the
+/// way. A language's files come one after another, each put in place as it's checked, so its words type before its
+/// network is in. A download that fails keeps what it got and goes on from there on Try Again; Cancel drops it.
 @Observable final class LanguageDownloads {
     static let shared = LanguageDownloads()
 
@@ -29,8 +30,9 @@ import KeyboardStore
         id == "en" ? .ready : states[id] ?? .absent
     }
 
-    /// What's on disk now, keeping a download under way. A list an older build downloaded is downloaded again as this
-    /// build's manifest names it, while the keyboard goes on with the old one until it's here.
+    /// What's on disk now, keeping a download under way. A language here whose files aren't all the ones this build's
+    /// manifest names (a newer list, or a network an older build had none of) gets them, while the keyboard goes on
+    /// with what's here.
     func reload() {
         for (id, item) in items where running[id] == nil {
             if LanguageFiles.isCurrent(item) {
@@ -91,8 +93,26 @@ import KeyboardStore
         var resumeData: Data?
     }
 
+    /// The language's files the manifest names that aren't here, the first resuming from `resumeData`.
     private nonisolated static func fetch(
         _ item: LanguageFiles.Download, resumingFrom resumeData: Data?, progress: @escaping @Sendable (Double) -> Void
+    ) async -> Result<Void, Failure> {
+        let missing = item.files.filter { !LanguageFiles.isCurrent($0) }
+        let size = Double(max(missing.reduce(0) { $0 + $1.size }, 1))
+        var done = 0
+        for (index, file) in missing.enumerated() {
+            let before = Double(done)
+            let result = await fetch(file, resumingFrom: index == 0 ? resumeData : nil) {
+                progress((before + $0 * Double(file.size)) / size)
+            }
+            guard case .success = result else { return result }
+            done += file.size
+        }
+        return .success(())
+    }
+
+    private nonisolated static func fetch(
+        _ item: LanguageFiles.File, resumingFrom resumeData: Data?, progress: @escaping @Sendable (Double) -> Void
     ) async -> Result<Void, Failure> {
         do {
             let (file, response) = try await download(item, resumingFrom: resumeData, progress: progress)
@@ -118,7 +138,7 @@ import KeyboardStore
     /// Downloads `item` to a temporary file of its own, saying how much has come against the manifest's size, since a
     /// server may not say. A task's own count, not `download(from:delegate:)`, whose delegate hears nothing as it goes.
     private nonisolated static func download(
-        _ item: LanguageFiles.Download, resumingFrom resumeData: Data?, progress: @escaping @Sendable (Double) -> Void
+        _ item: LanguageFiles.File, resumingFrom resumeData: Data?, progress: @escaping @Sendable (Double) -> Void
     ) async throws -> (URL, URLResponse) {
         final class Running: @unchecked Sendable {
             var task: URLSessionDownloadTask?

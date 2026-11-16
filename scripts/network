@@ -1,7 +1,20 @@
 #!/bin/sh
-# Rebuilds Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.network (see scripts/network.py for the corpus and model).
-# Downloads about 20 GB into build/network and trains on the GPU if there is one (about three hours on an M1 Max).
+# Rebuilds a next-word network (scripts/network.py has the corpus and model). With no argument, English's bundled
+# Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.network: downloads about 20 GB into build/network and
+# trains on the GPU if there is one (about three hours on an M1 Max). With a language's id (es fr de pt it sv), its
+# downloadable build/languages/<id>.network, on the lexicon the manifest names, and its <id>.LICENSE; scripts/languages
+# publishes them.
 set -e
 cd "$(dirname "$0")/.."
-nice -n 19 uv run --no-project --with pyarrow --with numpy --with torch python3 scripts/network.py build/network
-scripts/tool NetworkBuilder build/network/vocab.txt build/network/weights.f32 Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.network
+if [ -z "$1" ]; then
+  uv run --no-project --with pyarrow --with numpy --with torch python3 scripts/network.py build/network
+  scripts/tool NetworkBuilder build/network/vocab.txt build/network/weights.f32 Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.network
+  exit
+fi
+dir=build/languages/$1/network
+mkdir -p "$dir"
+[ -f "build/languages/$1.lexicon" ] || curl -sfL -o "build/languages/$1.lexicon" "$(python3 -c 'import json, sys; print(next(f["url"] for f in json.load(open(sys.argv[1]))["files"] if f["name"] == sys.argv[2] + ".lexicon"))' Packages/KeyboardModules/Sources/KeyboardStore/Resources/Languages/manifest.json "$1")"
+uv run --no-project --with pyarrow --with numpy --with torch --with fsspec --with aiohttp \
+  python3 scripts/network.py "$dir" "$1" "build/languages/$1.lexicon"
+scripts/tool NetworkBuilder "$dir/vocab.txt" "$dir/weights.f32" "build/languages/$1.network"
+python3 scripts/language.py license "$1" "$dir" > "build/languages/$1.LICENSE"

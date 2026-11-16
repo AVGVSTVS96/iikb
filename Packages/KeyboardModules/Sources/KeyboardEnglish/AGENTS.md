@@ -3,7 +3,7 @@
 The bundled English data and its loaders, apart from the UI, on KeyboardCore and Foundation alone.
 
 - `Lexicon.english`: `Resources/en.lexicon`, built by `scripts/lexicon`; sources and licenses in `Resources/LEXICON-LICENSE`.
-- `Network.english`: `Resources/en.network`, trained by `scripts/network` on what people type to each other and to chatbots; sources and licenses in `Resources/NETWORK-LICENSE`.
+- `Network.english`: `Resources/en.network`, trained by `scripts/network` on what people type to each other and to chatbots; sources and licenses in `Resources/NETWORK-LICENSE`. Another language's, `scripts/network <id>`, is a download beside its words (KeyboardStore's `LanguageFiles`), never bundled.
 - `Swipe.english`: `Resources/en.swipe`, `scripts/swipe`.
 - `EmojiCatalog.english` and `EmojiSearch.english` (KeyboardCore/AGENTS.md, "Keys/").
 - `Network.current`, the personal network when the app has fetched one, is iikb's and lives in KeyboardStore's `PersonalNetwork`.

@@ -1,46 +1,60 @@
 {
-  "lexicons": [
+  "files": [
     {
       "id": "de",
+      "name": "de.lexicon",
       "format": "HXL2",
       "size": 6455040,
       "sha256": "b8727210fd2a1d173e0ae26201689686a1060578e72974276a65f0d705e48b9e",
-      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261111-2328/de.lexicon"
+      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261116-0854/de.lexicon"
     },
     {
       "id": "es",
+      "name": "es.lexicon",
       "format": "HXL2",
       "size": 4626360,
       "sha256": "b3c1907d08a0a399330466ad41a508a5face354d526f93f9ab4d1f83570c5984",
-      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261111-2328/es.lexicon"
+      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261116-0854/es.lexicon"
+    },
+    {
+      "id": "es",
+      "name": "es.network",
+      "format": "HXN1",
+      "size": 9497500,
+      "sha256": "9ebcff98aee0f61209192fad1fd0152e35f31011064ce58a62b9d71e2ad5c9ab",
+      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261116-0854/es.network"
     },
     {
       "id": "fr",
+      "name": "fr.lexicon",
       "format": "HXL2",
       "size": 2555784,
       "sha256": "d058ebb256d51834ee13804b64daaaf0dec076d26e2169cc2d2bbab2a6ad7b1f",
-      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261111-2328/fr.lexicon"
+      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261116-0854/fr.lexicon"
     },
     {
       "id": "it",
+      "name": "it.lexicon",
       "format": "HXL2",
       "size": 2891072,
       "sha256": "d9fe77e69e213d7905a974910b03060892c6db849036358b2aad0333121d4313",
-      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261111-2328/it.lexicon"
+      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261116-0854/it.lexicon"
     },
     {
       "id": "pt",
+      "name": "pt.lexicon",
       "format": "HXL2",
       "size": 5251520,
       "sha256": "c1158c4791432ac779b3fbd6c4ac5979bc8e071165dd46f0b4af084e76bfafc8",
-      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261111-2328/pt.lexicon"
+      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261116-0854/pt.lexicon"
     },
     {
       "id": "sv",
+      "name": "sv.lexicon",
       "format": "HXL2",
       "size": 5474784,
       "sha256": "f57bb37a5b664fbcac4666d26088d7820db2372b59bb0e4ec541e1d104446506",
-      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261111-2328/sv.lexicon"
+      "url": "https://github.com/AVGVSTVS96/iikb/releases/download/languages-20261116-0854/sv.lexicon"
     }
   ]
 }
