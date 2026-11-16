@@ -30,19 +30,18 @@ iikb's saved data, in the App Group the app and the keyboard extension share and
 
 ## Dictation, the channel to the app for voice typing
 
-Never used in password or code fields.
 - A status file in the App Group that only the app writes. It carries whether the app is recording and the length of each dictation it's still writing down, apart, and what those wait for while the model gets ready.
 - A `Note` file for each dictation written down, or something to tell you, which the keyboard takes by removing it, so the two never write the same file and none is typed twice.
-- A dictation is typed only by the keyboard you stopped it in, which sends a number it picks each time it appears in `finish`'s state, so it never lands in a field you've left; one whose keyboard closed first says it's in Transcripts.
+- A dictation is typed only by the keyboard you stopped it in, which sends a number it picks each time it appears in `finish`'s state, so it never lands in a field you've left; one whose keyboard closed first says it's in Transcripts, and one stopped in the app (its Done) is typed by the next keyboard to see it.
 - Darwin notifications both ways. The microphone's level and the seconds recorded so far are carried in a notification's state, so the bar's time is the recording's own length.
 - A file lock the app holds while its microphone stays on, which the kernel drops when the app ends.
 - `host`: a file only the keyboard writes, the app it's in as it starts or stops a dictation, which the transcript keeps.
-- `edits`: a file the keyboard leaves for each dictation once its field is sent or left, with what it became, which the app takes into its transcript by removing it, as the keyboard takes a `Note`.
+- `edits`: a file the keyboard leaves for each dictation once its field is sent or left, with what it became, which the app takes into its transcript by removing it, as the keyboard takes a `Note`. A dictation typed into a password or code field is typed but never followed, so it leaves none.
 - `keep` and `takeDraft`: the dictations a keyboard was following as it went away, in its own container (`dictation-draft.json`), which the next keyboard takes and goes on following in the same field, or closes out in another.
 
 ## Backup
 
 docs/backup.md has the whole story.
-- `Backup` sends iikb's files to the server built in as `Resources/Keys/backup.key` (kept out of git; `scripts/phone` won't build without it, and `scripts/sync` keeps it off the Mac so simulators never send) each time they change: the keyboard as it goes away, the app as it starts, as it writes down a dictation or changes the Dictionary (`Backup.syncApp`, never a recording still being made), and as its microphone goes off or a dictation fails, with voice typing's log (`Backup.syncAppAndVoiceLog`).
+- `Backup` sends iikb's files to the server built in as `Resources/Keys/backup.key` (kept out of git, so simulator runs on GitHub's Macs never send; `scripts/phone` won't build without it, and `scripts/sync` leaves it off the Mac's trees) each time they change: the keyboard as it goes away, the app as it starts, as it writes down a dictation or changes the Dictionary (`Backup.syncApp`, never a recording still being made), and as its microphone goes off or a dictation fails, with voice typing's log (`Backup.syncAppAndVoiceLog`).
 - It sends what the server lacks or holds at another size or modification time to the second, so a failed send goes with the next.
 - `server/backup.ts` keeps them in `~/.local/share/iikb/backup/mirror` as `scripts/backup` does, and moves a file it replaces to `versions/<time>/`, deleting nothing; `scripts/restore` puts them back, as they were at any time.

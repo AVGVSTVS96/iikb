@@ -6,8 +6,9 @@ and the server never deletes one. The TestFlight build never backs up: Xcode Clo
 
 ## What goes
 
-Everything but what downloads again or iOS may clear (Parakeet's models, `Caches`), under the names `scripts/backup`
-gives them:
+Everything but what downloads again or iOS may clear: Parakeet's and Clean's models, the languages' words, the personal
+network and `Caches`. `scripts/backup` still takes the languages' words and the personal network. On the server, files go
+under the names `scripts/backup` gives them:
 
 | On the server | On the iPhone | What it holds |
 |---|---|---|
@@ -17,7 +18,7 @@ gives them:
 | `keyboard/Preferences/` | the keyboard's `Library/Preferences` | the keyboard's settings |
 | `group/Library/` | the App Group's `Library` | the clipboard history, the taps and typing counts the app shows, the settings both read |
 | `personal/` | the server (`scripts/personal`) | `en.network`, the next-word network fine-tuned on your typing (below); made there, so the iPhone only reads it |
-| `mac/` | the Mac, until Nov 5 2026 | Keystroke's `typing-stats.json` as the Mac sent it before the app read computers directly (docs/computers.md) |
+| `mac/` | the Mac, until Nov 16 2026 | Keystroke's `typing-stats.json` as the Mac sent it, which the app read until Nov 5, when it began reading computers directly (docs/computers.md) |
 
 ## Transcripts
 
@@ -26,7 +27,7 @@ gives them:
 | Field | What it holds |
 |---|---|
 | `id`, `date`, `seconds` | the dictation (its recording is `app/recordings/<id>.wav`) and when it began, in seconds since 2001 |
-| `heard` | what the model wrote, when Writing Style, Lists or the Dictionary changed it; otherwise it's `text` |
+| `heard` | what the model wrote, when Writing Style or the Dictionary changed it; otherwise it's `text` |
 | `text` | what the model wrote as your style and Dictionary write it |
 | `typed` | whether it was typed where you said it (false when canceled or recovered) |
 | `model`, `mic`, `app`, `recovered` | the model that wrote it, the microphone, the app it was typed into, and whether it was written down after iikb ended mid-dictation |
@@ -71,8 +72,9 @@ What it answers, to the token:
 
 A build gets the server from `Packages/KeyboardModules/Sources/KeyboardStore/Resources/Keys/backup.key`, kept out of git: the
 address on the first line, the token on the second. `scripts/phone` takes it from the main checkout and won't build
-without it, so every build it puts on the install link (scripts/AGENTS.md) backs up. `scripts/sync` leaves it out of the Mac's trees, so a
-simulator's made-up data never reaches the backup. A build without the file sends nothing and shows no Backup section.
+without it, so every build it puts on the install link and in hangar (scripts/AGENTS.md) backs up. Simulators run on GitHub's
+Macs from git's tree, which never holds the key, so their made-up data never reaches the backup; `scripts/sync` leaves it
+out of the Mac's trees too. A build without the file sends nothing and shows no Backup section.
 
 ## Your network
 
@@ -100,11 +102,11 @@ up first (`scripts/backup`), once it has picked what to put back, so what the iP
 `versions/` rather than written over. It quits the app first when the app's files go back. A keyboard that's up reads what was put back the next time it appears.
 
 A reinstall that starts a new container sends its near-empty files over the good ones as soon as the app starts, so
-the good ones are in `versions/` and the mirror holds the empty ones. When iikb's container is new and empty, as after
-the app was deleted, add the time to `reinstalls` in the backup folder after installing and before opening iikb
-(`date +%Y-%m-%dT%H%M%S >> ~/.local/share/iikb/backup/reinstalls`, `backup-ipad` for an iPad): a shrink in the day
-after that is taken for the new container, and any other is you (Reset Learned
-Words, a deleted transcript, a cleared clipboard), which backs up and restores as it is. Without `--at`,
+the good ones are in `versions/` and the mirror holds the empty ones. Before installing iikb again after deleting it, add
+the time to `reinstalls` in the backup folder, since iikb backs up the moment it first opens
+(`date +%Y-%m-%dT%H%M%S >> ~/.local/share/iikb/backup/reinstalls`, `backup-ipad` for an iPad). A shrink in the day
+after that time is taken for the new container; any other is you (Reset Learned Words, a deleted transcript, a cleared
+clipboard), which backs up and restores as it is. Without `--at`,
 `scripts/restore` leaves out only a file the mirror holds at under half the size of a copy replaced in the day after a
 reinstall in the last 30 days (one over 4 KB), puts the rest back, and prints the `--at` that puts each larger copy back;
 `--at now` takes the mirror as it is. In that day `scripts/backup` keeps the mirror's copy of such a file rather than
@@ -114,5 +116,5 @@ Reset Learned Words and Taps gives the memory a new reset token, and a keyboard 
 so `scripts/restore` puts `keyboard/support/typing-memory.json` back without its token, and the first keyboard to read it
 saves it at once under the one it has: restoring that file alone, from before the reset (`--at`), undoes a reset, and a
 reset made once a keyboard has read it lets it go as any other. Your network comes back with the next one the server
-makes. Older builds can't read a memory restored without its token and stop learning until they're updated, so restore
-the memory only once the device runs a current build.
+makes. Builds before 424 (Nov 4 2026) can't read a memory restored without its token and stop learning until they're updated,
+so restore the memory only on a device running build 424 or later.
