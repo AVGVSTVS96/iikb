@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+ID=$(scripts/sim ensure "iPhone Duo" iPhone-Duo)
+scripts/sim boot "$ID"
+scripts/sim use "$ID" iikb
+xcodegen generate -q
+xcodebuild test -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest \
+  -only-testing:AppUITests/ProxyProbe 2>&1 | grep -E "PROBE|error:|Test Case .*(passed|failed)|Executed" || true

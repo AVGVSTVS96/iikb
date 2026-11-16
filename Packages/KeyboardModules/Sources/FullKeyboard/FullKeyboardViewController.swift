@@ -220,6 +220,20 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         toolbarView.addSubview(suggestionBar)
         view.addSubview(panelView)
+        for (i, (id, step)) in [("iikb.probe.back", -1), ("iikb.probe.fwd", 1), ("iikb.probe.read", 0)].enumerated() {
+            let b = UIButton(type: .system)
+            b.setTitle(id, for: .normal)
+            b.backgroundColor = .red
+            b.accessibilityIdentifier = id
+            b.frame = CGRect(x: 120 + i * 70, y: 0, width: 60, height: 30)
+            b.addAction(UIAction { [unowned self] _ in probeStep(step) }, for: .touchUpInside)
+            view.addSubview(b)
+            probeButtons.append(b)
+        }
+        probeLabel.accessibilityIdentifier = "iikb.probe"
+        probeLabel.isAccessibilityElement = true
+        probeLabel.frame = CGRect(x: 0, y: 0, width: 100, height: 2)
+        view.addSubview(probeLabel)
         keysMinimumConstraint.priority = .required - 1
         toolbarHeightConstraint.priority = .required - 2
         keyboardHeightConstraint.priority = .defaultHigh
@@ -516,13 +530,43 @@ open class FullKeyboardViewController: UIInputViewController {
         render()
     }
 
+    private let probeLabel = UILabel()
+    private var probeButtons: [UIButton] = []
+    private var probeEvents = 0
+    private func probeDescribe(_ tag: String) -> String {
+        let p = textDocumentProxy
+        let b = p.documentContextBeforeInput ?? ""
+        let a = p.documentContextAfterInput ?? ""
+        let sel = p.selectedText ?? ""
+        func esc(_ s: Substring) -> String { s.replacingOccurrences(of: "\n", with: "⏎") }
+        return "\(tag)#\(probeEvents) b=\(b.count) a=\(a.count) sel=\(sel.count) bnl=\(b.filter { $0 == "\n" }.count) anl=\(a.filter { $0 == "\n" }.count) bhead=[\(esc(b.prefix(14)))] btail=[\(esc(b.suffix(14)))] ahead=[\(esc(a.prefix(14)))] atail=[\(esc(a.suffix(14)))]"
+    }
+    private func probeUpdate(_ tag: String) {
+        probeEvents += 1
+        let d = probeDescribe(tag)
+        probeLabel.accessibilityLabel = d
+        NSLog("PROBE %@", d)
+        view.bringSubviewToFront(probeLabel)
+        probeButtons.forEach { view.bringSubviewToFront($0) }
+    }
+    private func probeStep(_ step: Int) {
+        let p = textDocumentProxy
+        let b = p.documentContextBeforeInput ?? ""
+        let a = p.documentContextAfterInput ?? ""
+        if step < 0 { p.adjustTextPosition(byCharacterOffset: -b.count) }
+        if step > 0 { p.adjustTextPosition(byCharacterOffset: a.count) }
+        probeUpdate(step == 0 ? "read" : "sync")
+    }
+
     override open func selectionDidChange(_ textInput: UITextInput?) {
+        probeUpdate("sel")
         hostAway = false
         updateHost()
         syncWithDocument()
     }
 
     override open func textDidChange(_ textInput: UITextInput?) {
+        probeUpdate("text")
         hostAway = false
         updateHost()
         syncWithDocument()
