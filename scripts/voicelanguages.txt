@@ -1,0 +1,63 @@
+# Dictation cases per language for scripts/voicelanguages, written beside the code that passes them (the held-out set,
+# ~/.local/share/iikb/heldout/languages.txt, was written blind). Format: lang | kind | say | typed || other right answer
+es | marks | Hola Marta coma vienes mañana a la reunión punto | Hola Marta, vienes mañana a la reunión.
+es | marks | Necesito tres cosas dos puntos pan coma leche y huevos punto | Necesito tres cosas: pan, leche y huevos.
+es | marks | Cuál es tu dirección signo de interrogación | ¿Cuál es tu dirección?
+es | marks | Primera línea nueva línea segunda línea | Primera línea\nsegunda línea || Primera línea\nSegunda línea
+es | fillers | Eh, creo que, eh, podemos quedar a las tres y media. | Creo que podemos quedar a las tres y media. || Creo que podemos quedar a las 3:30.
+es | numbers | El billete cuesta veinticinco euros con cincuenta. | El billete cuesta 25,50 euros. || El billete cuesta 25,50 €.
+es | addresses | Mi correo es juan punto perez arroba gmail punto com | Mi correo es juan.perez@gmail.com
+es | numbers | Llámame al seis cero cero uno dos tres cuatro cinco seis. | Llámame al 600123456. || Llámame al 600 123 456.
+es | numbers | Subimos un quince por ciento este año. | Subimos un 15 % este año. || Subimos un 15% este año.
+es | names | Quedamos el doce de marzo en Barcelona con Lucía. | Quedamos el 12 de marzo en Barcelona con Lucía.
+es | plain | Es un buen punto, lo vemos en punto de la tarde. | Es un buen punto, lo vemos en punto de la tarde.
+fr | marks | Salut Marie virgule tu viens demain point | Salut Marie, tu viens demain.
+fr | marks | J'ai besoin de trois choses deux points du pain virgule du lait et des œufs point | J'ai besoin de trois choses : du pain, du lait et des œufs.
+fr | marks | Quelle est ton adresse point d'interrogation | Quelle est ton adresse ?
+fr | marks | Première ligne à la ligne deuxième ligne | Première ligne\ndeuxième ligne || Première ligne\nDeuxième ligne
+fr | fillers | Euh, je pense que, euh, on peut se voir à trois heures et demie. | Je pense qu'on peut se voir à 3h30. || Je pense que on peut se voir à 3h30. || Je pense que, on peut se voir à 3h30.
+fr | numbers | Le billet coûte vingt-cinq euros cinquante. | Le billet coûte 25,50 euros. || Le billet coûte 25,50 €.
+fr | addresses | Mon adresse est jean point dupont arobase gmail point com | Mon adresse est jean.dupont@gmail.com
+fr | numbers | On a augmenté de quinze pour cent cette année. | On a augmenté de 15 % cette année. || On a augmenté de 15% cette année.
+fr | names | On se voit le douze mars à Lyon avec Chloé. | On se voit le 12 mars à Lyon avec Chloé.
+fr | plain | C'est un bon point de vue. | C'est un bon point de vue.
+de | marks | Hallo Anna Komma kommst du morgen Punkt | Hallo Anna, kommst du morgen.
+de | marks | Wie ist deine Adresse Fragezeichen | Wie ist deine Adresse?
+de | marks | Erste Zeile neue Zeile zweite Zeile | Erste Zeile\nzweite Zeile || Erste Zeile\nZweite Zeile
+de | fillers | Äh, ich glaube, äh, wir können uns um halb vier treffen. | Ich glaube, wir können uns um halb vier treffen.
+de | numbers | Das Ticket kostet fünfundzwanzig Euro fünfzig. | Das Ticket kostet 25,50 Euro. || Das Ticket kostet 25,50 €.
+de | addresses | Meine E-Mail ist max punkt müller at gmail punkt com | Meine E-Mail ist max.müller@gmail.com
+de | numbers | Ruf mich an unter null eins sieben eins zwei drei vier fünf sechs sieben. | Ruf mich an unter 0171234567.
+de | numbers | Wir sind um fünfzehn Prozent gewachsen. | Wir sind um 15 % gewachsen. || Wir sind um 15% gewachsen.
+de | names | Wir treffen uns am zwölften März in Berlin bei Jürgen. | Wir treffen uns am 12. März in Berlin bei Jürgen.
+de | plain | Das ist der springende Punkt bei der Sache. | Das ist der springende Punkt bei der Sache.
+pt | marks | Olá Ana vírgula você vem amanhã ponto | Olá Ana, você vem amanhã.
+pt | marks | Qual é o seu endereço ponto de interrogação | Qual é o seu endereço?
+pt | marks | Primeira linha nova linha segunda linha | Primeira linha\nsegunda linha || Primeira linha\nSegunda linha
+pt | fillers | Hã, eu acho que, hã, podemos nos encontrar às três e meia. | Eu acho que podemos nos encontrar às três e meia. || Eu acho que podemos nos encontrar às 3h30.
+pt | numbers | O bilhete custa vinte e cinco reais e cinquenta. | O bilhete custa R$ 25,50.
+pt | addresses | Meu email é joao ponto silva arroba gmail ponto com | Meu e-mail é joao.silva@gmail.com || Meu email é joao.silva@gmail.com
+pt | numbers | Me liga no nove nove oito sete seis cinco quatro três dois. | Me liga no 998765432.
+pt | numbers | Crescemos quinze por cento este ano. | Crescemos 15% este ano.
+pt | names | Nos vemos no dia doze de março em Lisboa com o João. | Nos vemos no dia 12 de março em Lisboa com o João.
+pt | plain | Esse é o ponto principal da reunião. | Esse é o ponto principal da reunião.
+it | marks | Ciao Giulia virgola vieni domani punto | Ciao Giulia, vieni domani.
+it | marks | Qual è il tuo indirizzo punto interrogativo | Qual è il tuo indirizzo?
+it | marks | Prima riga a capo seconda riga | Prima riga\nseconda riga || Prima riga\nSeconda riga
+it | fillers | Ehm, credo che, ehm, possiamo vederci alle tre e mezza. | Credo che possiamo vederci alle tre e mezza. || Credo che possiamo vederci alle 3:30.
+it | numbers | Il biglietto costa venticinque euro e cinquanta. | Il biglietto costa 25,50 euro. || Il biglietto costa 25,50 €.
+it | addresses | La mia email è marco punto rossi chiocciola gmail punto com | La mia email è marco.rossi@gmail.com
+it | numbers | Chiamami al tre quattro sette uno due tre quattro cinque sei sette. | Chiamami al 3471234567. || Chiamami al 347 123 4567.
+it | numbers | Siamo cresciuti del quindici per cento quest'anno. | Siamo cresciuti del 15% quest'anno.
+it | names | Ci vediamo il dodici marzo a Roma con Francesca. | Ci vediamo il 12 marzo a Roma con Francesca.
+it | plain | Su questo punto siamo d'accordo. | Su questo punto siamo d'accordo.
+sv | marks | Hej Anna kommatecken kommer du i morgon punkt | Hej Anna, kommer du i morgon.
+sv | marks | Vad är din adress frågetecken | Vad är din adress?
+sv | marks | Första raden ny rad andra raden | Första raden\nandra raden || Första raden\nAndra raden
+sv | fillers | Eh, jag tror att, eh, vi kan ses halv fyra. | Jag tror att vi kan ses halv fyra.
+sv | numbers | Biljetten kostar tjugofem kronor och femtio öre. | Biljetten kostar 25 kronor och 50 öre. || Biljetten kostar 25,50 kr.
+sv | addresses | Min e-post är erik punkt larsson snabel-a gmail punkt com | Min e-post är erik.larsson@gmail.com
+sv | numbers | Ring mig på noll sju noll ett två tre fyra fem sex sju. | Ring mig på 0701234567. || Ring mig på 070-123 45 67.
+sv | numbers | Vi har vuxit med femton procent i år. | Vi har vuxit med 15 % i år. || Vi har vuxit med 15% i år.
+sv | names | Vi ses den tolfte mars i Stockholm med Björn. | Vi ses den 12 mars i Stockholm med Björn.
+sv | plain | Jag ska komma i morgon, det är en viktig punkt. | Jag ska komma i morgon, det är en viktig punkt.
