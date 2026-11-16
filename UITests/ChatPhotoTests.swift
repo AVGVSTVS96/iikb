@@ -80,6 +80,12 @@ final class ChatPhotoTests: XCTestCase {
         field.tap()
         XCTAssertTrue(key("space").waitForExistence(timeout: 5), "tapping the box brings the keys up")
         checkChatOverKeys("with the keys up")
+        if pinned {
+            element("iikb.panel.back").tap()
+            XCTAssertTrue(wait { !self.iikbKeys.exists }, "Back beside the box puts the keys away")
+            field.tap()
+            XCTAssertTrue(iikbKeys.waitForExistence(timeout: 5), "and the box brings them back")
+        }
         field.press(forDuration: 1)
         let paste = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Paste'")).firstMatch
         XCTAssertTrue(paste.waitForExistence(timeout: 5), "the box's menu offers Paste with a photo copied")
@@ -240,21 +246,43 @@ final class ChatPhotoTests: XCTestCase {
     }
 
     /// The chat over the keys or your photos: More and the tabs over the box, and the box whole, its photos inside it
-    /// over a line's room for its words, as the box has with nothing attached.
+    /// over a line's room for its words, as the box has with nothing attached. Where iOS leaves the chat over the keys
+    /// too little room for that (`pinned`), it's the box alone, Back beside it and More in the bar, its photos small
+    /// beside its words; over your photos it still has its tabs, the photos giving it room.
     private func checkChatOverKeys(_ moment: String, file: StaticString = #filePath, line: UInt = #line) {
         let box = element("iikb.chat.field").frame
-        XCTAssertTrue(
-            element("iikb.chat.more").isHittable, "\(moment): More sits atop the chat", file: file, line: line)
-        XCTAssertLessThanOrEqual(
-            element("iikb.chats").frame.maxY, box.minY, "\(moment): the tabs sit over the box", file: file, line: line)
+        let alone = pinned && iikbKeys.exists
+        let more = (chat: element("iikb.chat.more").isHittable, bar: element("iikb.more").isHittable)
+        if alone {
+            XCTAssertTrue(more.bar && !more.chat, "\(moment): one More, in the bar", file: file, line: line)
+            XCTAssertTrue(
+                element("iikb.panel.back").isHittable, "\(moment): Back sits beside the box", file: file, line: line)
+        } else {
+            XCTAssertTrue(more.chat && !more.bar, "\(moment): one More, atop the chat", file: file, line: line)
+            XCTAssertLessThanOrEqual(
+                element("iikb.chats").frame.maxY, box.minY, "\(moment): the tabs sit over the box", file: file,
+                line: line)
+        }
         let photos = (0..<10).map { element("iikb.chat.photo.\($0)") }.prefix { $0.exists }.map(\.frame)
         for photo in photos {
             XCTAssertTrue(box.contains(photo), "\(moment): the box holds its photos", file: file, line: line)
         }
         XCTAssertGreaterThanOrEqual(
-            box.maxY - (photos.map(\.maxY).max() ?? box.minY), 39.5,
-            "\(moment): the box keeps a line for its words under its photos", file: file, line: line)
+            box.maxY - (alone ? box.minY : photos.map(\.maxY).max() ?? box.minY), 39.5,
+            "\(moment): the box keeps a line for its words\(alone ? "" : " under its photos")", file: file, line: line)
+        if alone, let end = photos.map(\.maxX).max() {
+            XCTAssertGreaterThanOrEqual(
+                box.maxX - end, box.width / 2, "\(moment): the photos sit beside the words, which keep most of the box",
+                file: file, line: line)
+        }
     }
+
+    /// Open, slightly folded and held tall, where iOS gives a keyboard 321 points whatever it asks (docs/design.md).
+    private var pinned: Bool { environment["IIKB_SCREEN"] == "open-portrait-slightly-folded" }
+
+    /// iikb's keys are up: its space bar, never the space key of the Apple keyboard iOS sometimes keeps in the tree
+    /// out of sight (`UIKeyboardLayoutStar Preview`).
+    private var iikbKeys: XCUIElement { app.keys.matching(identifier: "iikb.space").firstMatch }
 
     private func openPhotos() throws -> XCUIElement {
         element("iikb.chat.attach").tap()

@@ -56,7 +56,7 @@ run() {
   TEST_RUNNER_IIKB_EXTENSION="http://localhost:$PORT" TEST_RUNNER_IIKB_SHOTS="$PWD/$out/$slug-$appearance" \
     TEST_RUNNER_IIKB_ORIENTATION="${ORIENTATION:-}" TEST_RUNNER_IIKB_LIBRARY="${LIBRARY:-}" TEST_RUNNER_IIKB_NO_ACCESS="$none" \
     TEST_RUNNER_IIKB_LAUNCH="$([ "${turn:-portrait}" = portrait ] && echo portrait || echo landscape)" \
-    xcodebuild test-without-building -collect-test-diagnostics never -test-timeouts-enabled YES \
+    TEST_RUNNER_IIKB_SCREEN="${hinge:+$screen}" xcodebuild test-without-building -collect-test-diagnostics never -test-timeouts-enabled YES \
     -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 420 -project iikb.xcodeproj -scheme iikb \
     -destination "id=$ID" -derivedDataPath build/uitest "$@" >> "build/uitest/photos-$appearance.log" 2>&1 || failed=1
   grep -E "error:|Test Case .*(passed|failed|skipped)" "build/uitest/photos-$appearance.log" || true
