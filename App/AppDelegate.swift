@@ -2,7 +2,6 @@ import KeyboardStore
 import Photos
 import SwiftUI
 import UIKit
-import VoiceCapture
 import VoiceModels
 
 @main
@@ -145,8 +144,6 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = tabs
         window.makeKeyAndVisible()
         self.window = window
-        if !Listener.shared.isMicOn { Microphone.rest() }
-        MicTab.shared.place(in: window)
         open(options.urlContexts)
     }
 

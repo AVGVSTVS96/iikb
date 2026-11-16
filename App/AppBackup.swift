@@ -1,9 +1,15 @@
 import KeyboardStore
 
 extension Backup {
-    /// Sends the app's files and the group's in the background.
+    /// Sends the app's files and the group's in the background, with what iikb logged up to now, which takes seconds to
+    /// read, so iOS is asked to let it finish as iikb goes away.
     static func syncApp() {
-        sync(app + group, skip: unwritten)
+        let skip = unwritten
+        ProcessInfo.processInfo.performExpiringActivity(withReason: "Backing up iikb") { expired in
+            guard !expired else { return }
+            AppLog.write()
+            sync(app + group, skip: skip)
+        }
         Task { await PersonalNetwork.fetch() }
     }
 

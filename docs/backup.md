@@ -11,7 +11,7 @@ gives them:
 
 | On the server | On the iPhone | What it holds |
 |---|---|---|
-| `app/` | the app's `Library/Application Support` | transcripts, their recordings, the Dictionary |
+| `app/` | the app's `Library/Application Support` | transcripts, their recordings, the Dictionary, and `iikb.log`, what the app logged since it started (the microphone going on and off, where sound was playing), rewritten as it backs up |
 | `app/Preferences/` | the app's `Library/Preferences` | the app's settings |
 | `keyboard/support/` | the keyboard's `Library/Application Support` | what it learned (words, taps), emoji and GIF picks, its clipboard copy |
 | `keyboard/Preferences/` | the keyboard's `Library/Preferences` | the keyboard's settings |
@@ -40,8 +40,8 @@ When something changes, never on a clock:
 
 - the keyboard, each time it goes away, after saving what it learned (Full Access only, since a keyboard can't go online
   without it);
-- the app, as it starts, each time it writes down a dictation, keeps what one became, or changes the transcripts, and each time you change the
-  Dictionary;
+- the app, as it starts, each time it writes down a dictation, keeps what one became, or changes the transcripts, each time its
+  microphone goes off, and each time you change the Dictionary;
 - `scripts/backup`, which copies the same files through the Mac when you run it.
 
 Each sync asks the server what it holds and sends every file it lacks or holds at another size or modification time to
