@@ -32,7 +32,9 @@ public enum Dictation {
         /// is typed by the next keyboard to see it.
         /// `plain` is what the model wrote with your vocabulary, no style or lists, which a field of addresses or digits reads.
         /// `id` is its transcript's, which the keyboard leaves beside what the dictation became (`edits`).
-        case heard(String, plain: String, keyboard: UInt64?, id: UUID?)
+        /// `language` is the id of the language it was said in (`Language.of`), whose words for an address and its
+        /// digits the keyboard reads; nil, English, in a note left before dictation heard other languages.
+        case heard(String, plain: String, keyboard: UInt64?, id: UUID?, language: String? = nil)
         /// Something to tell you about a dictation: why it couldn't be made or written down, or where it went.
         case notice(String)
     }

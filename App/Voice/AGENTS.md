@@ -19,7 +19,7 @@ Voice typing is two steps that never wait on each other, joined by `Listener`: t
 
 ## The microphone and the model
 
-Each is a module of its own in Packages/Voice: the microphone in [VoiceCapture/AGENTS.md](../../Packages/Voice/Sources/VoiceCapture/AGENTS.md), the model in [VoiceModels/AGENTS.md](../../Packages/Voice/Sources/VoiceModels/AGENTS.md). The app writes what a model wrote in your style (`VoiceModel.write(_:for:)`, `DictationWriting`).
+Each is a module of its own in Packages/Voice: the microphone in [VoiceCapture/AGENTS.md](../../Packages/Voice/Sources/VoiceCapture/AGENTS.md), the model in [VoiceModels/AGENTS.md](../../Packages/Voice/Sources/VoiceModels/AGENTS.md). The app writes what a model wrote in your style and in the language it was said in, of the ones you type and English (`VoiceModel.write(_:for:)`, `DictationWriting`, `Language.of`, over each language's lexicon, mapped in place each time, so a list downloaded again is the one read), and leaves that language's id in the note for the keyboard.
 
 ## The app's timers
 

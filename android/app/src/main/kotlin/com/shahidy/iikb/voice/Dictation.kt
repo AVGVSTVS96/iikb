@@ -193,7 +193,7 @@ class Dictation(context: Context, private val typist: Typist) {
 
     /**
      * Keeps a dictation in Transcripts, typed as your Writing Style and then your Dictionary have it (iOS's
-     * `DictationWriting.typed`) unless you canceled it. One the model heard nothing in is kept too, with its sound,
+     * `VoiceModel.write(_:for:)`, in English only here) unless you canceled it. One the model heard nothing in is kept too, with its sound,
      * and the bar says where it is, as on iOS.
      */
     private fun deliver(take: Take, heard: String, seconds: Double, model: String) {

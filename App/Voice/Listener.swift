@@ -199,7 +199,10 @@ import VoiceModels
             } else if take.typed, written.text.isEmpty {
                 Dictation.leave(.notice("\(written.model) heard nothing: the recording is in iikb › Transcripts"))
             } else if take.typed {
-                Dictation.leave(.heard(written.text, plain: written.plain, keyboard: take.keyboard, id: take.id))
+                Dictation.leave(
+                    .heard(
+                        written.text, plain: written.plain, keyboard: take.keyboard, id: take.id,
+                        language: written.language.id))
             }
             publish()
             HostApp.log.notice(

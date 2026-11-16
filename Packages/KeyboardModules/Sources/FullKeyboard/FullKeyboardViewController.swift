@@ -1220,9 +1220,13 @@ open class FullKeyboardViewController: UIInputViewController {
         recorded = Dictation.level.recorded
         for (file, note) in Dictation.notes where Dictation.take(file) {
             switch note {
-            case .heard(let text, let plain, let keyboard, let id) where keyboard == nil || keyboard == self.keyboard:
+            case .heard(let text, let plain, let keyboard, let id, let language)
+            where keyboard == nil || keyboard == self.keyboard:
                 engine.handle(
-                    .dictated(text, plain: plain, id: hostField.isPrivate ? nil : id?.uuidString), in: document)
+                    .dictated(
+                        text, plain: plain, id: hostField.isPrivate ? nil : id?.uuidString,
+                        language: language.map(Language.named) ?? .english),
+                    in: document)
             case .heard:
                 notice = "Not typed here: it’s in iikb › Transcripts"
             case .notice(let notice):

@@ -176,8 +176,9 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     }
 
     /// A finished recording written down by the picked model, once it's ready, with the model's name. Picking another
-    /// model while it waits has that one write it.
-    public func write(_ recording: [Float]) async throws -> (heard: String, model: String) {
+    /// model while it waits has that one write it. `languages` are the ids of the ones you type, in the order picked:
+    /// a Parakeet hears any of them by itself, and Apple's hears one (`AppleSpeech.locale`).
+    public func write(_ recording: [Float], in languages: [String]) async throws -> (heard: String, model: String) {
         writes += 1
         defer {
             writes -= 1
@@ -190,7 +191,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
                 if let parakeet {
                     return (try await parakeet.value.write(recording), model.title)
                 }
-                return (try await AppleSpeech.write(recording), model.title)
+                return (try await AppleSpeech.write(recording, in: AppleSpeech.locale(for: languages)), model.title)
             } catch {
                 guard self.model != model else { throw error }
             }
@@ -237,8 +238,16 @@ extension AsrManager {
 /// Apple's SpeechTranscriber (the iOS 26 model, not the older one behind the system's dictation key), else the dictation
 /// model with punctuation.
 nonisolated enum AppleSpeech {
-    static func write(_ recording: [Float]) async throws -> String {
-        let (module, heard) = try await transcriber()
+    /// The iPhone's own language when it's one you type, else the first you type, since Apple's model hears one.
+    static func locale(for languages: [String]) -> Locale {
+        guard let first = languages.first,
+            let own = Locale.current.language.languageCode?.identifier, !languages.contains(own)
+        else { return .current }
+        return Locale(identifier: first)
+    }
+
+    static func write(_ recording: [Float], in locale: Locale) async throws -> String {
+        let (module, heard) = try await transcriber(locale)
         defer { heard.cancel() }
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
             throw Unsupported()
@@ -256,8 +265,8 @@ nonisolated enum AppleSpeech {
         return try await heard.value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private static func transcriber() async throws -> (any SpeechModule, Task<String, any Error>) {
-        if SpeechTranscriber.isAvailable, let locale = await SpeechTranscriber.supportedLocale(equivalentTo: .current) {
+    private static func transcriber(_ locale: Locale) async throws -> (any SpeechModule, Task<String, any Error>) {
+        if SpeechTranscriber.isAvailable, let locale = await SpeechTranscriber.supportedLocale(equivalentTo: locale) {
             let module = SpeechTranscriber(locale: locale, preset: .transcription)
             return (
                 module,
@@ -270,7 +279,7 @@ nonisolated enum AppleSpeech {
                 }
             )
         }
-        guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: .current) else {
+        guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: locale) else {
             throw Unsupported()
         }
         let module = DictationTranscriber(

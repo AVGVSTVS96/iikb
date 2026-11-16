@@ -4,7 +4,7 @@ The models that write a finished recording down (`VoiceModel`, `Parakeet`, `Appl
 
 ## The model
 
-`VoiceModel.write` writes with the model you pick in Settings: Parakeet v3 (the default) or Parakeet Ultra through FluidAudio, on the Neural Engine, downloaded once from Hugging Face, or Apple's SpeechTranscriber.
+`VoiceModel.write` writes with the model you pick in Settings: Parakeet v3 (the default) or Parakeet Ultra through FluidAudio, on the Neural Engine, downloaded once from Hugging Face, or Apple's SpeechTranscriber. A Parakeet hears every language iikb types by itself, held to the Latin alphabet (`language: .english` in `Dictation.write` only filters the script: on 120 of FLEURS' French clips `.french` got 5.99% of words wrong to 5.88%); Apple's hears one, the iPhone's own language when it's one you type, else the first you type (`AppleSpeech.locale`).
 - Apple's never stands in for a Parakeet. A dictation made while the picked Parakeet gets ready (its Neural Engine compile, after each install of a new build and each iOS update, takes 30 s to over 2 minutes) is recorded as any other and written once it's ready; the next one can be recorded meanwhile, and they're typed in the order said.
 - Transcribe Again and a recording an ended app left, written as soon as the app starts, go through the same `write`.
 - v3 is loaded when the microphone turns on and let go once it's off with nothing left to write, since it loads again in 0.1 s. Ultra, whose every load takes minutes, is kept. The simulator, which has no Neural Engine, loads one only when its microphone turns on, on the Mac's CPU.

@@ -31,7 +31,7 @@ iikb's saved data, in the App Group the app and the keyboard extension share and
 
 Never used in password or code fields.
 - A status file in the App Group that only the app writes. It carries whether the app is recording and the length of each dictation it's still writing down, apart, and what those wait for while the model gets ready.
-- A `Note` file for each dictation written down, or something to tell you, which the keyboard takes by removing it, so the two never write the same file and none is typed twice.
+- A `Note` file for each dictation written down, or something to tell you, which the keyboard takes by removing it, so the two never write the same file and none is typed twice. A dictation's note carries the id of the language it was said in; one an older app left has none and is English.
 - A dictation is typed only by the keyboard you stopped it in, which sends a number it picks each time it appears in `finish`'s state, so it never lands in a field you've left; one whose keyboard closed first says it's in Transcripts.
 - Darwin notifications both ways. The microphone's level and the seconds recorded so far are carried in a notification's state, so the bar's time is the recording's own length.
 - A file lock the app holds while its microphone stays on, which the kernel drops when the app ends.
