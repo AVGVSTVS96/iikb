@@ -689,7 +689,7 @@ struct FeedbackSettings: View {
         Box {
             ToggleRow(
                 title: "Sound",
-                detail: "The key click, while Keyboard Clicks is on in iOS Settings › Sounds & Haptics.",
+                detail: "Apple’s key sounds, while Sound is on in iOS Settings › Sounds & Haptics › Keyboard Feedback.",
                 isOn: model.binding(\.sound))
         }
     }

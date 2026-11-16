@@ -46,7 +46,7 @@
 		</dict>
 		<dict>
 			<key>FooterText</key>
-			<string>Plays the key click while Keyboard Clicks is on in Settings › Sounds &amp; Haptics.</string>
+			<string>Plays Apple’s key sounds while Sound is on in Settings › Sounds &amp; Haptics › Keyboard Feedback.</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

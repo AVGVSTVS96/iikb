@@ -182,6 +182,7 @@ open class FullKeyboardViewController: UIInputViewController {
     private lazy var keysMinimumConstraint = keyboardView.heightAnchor.constraint(greaterThanOrEqualToConstant: 0)
     private var deleteRepeat: DeleteRepeat?
     private let haptics = KeyHaptics()
+    private var clicks = KeyClicks()
     private let clipboard = ClipboardStore(backup: ClipboardStore.own)
     private let sources = Sources()
     private var hostApp: String?
@@ -395,6 +396,7 @@ open class FullKeyboardViewController: UIInputViewController {
         engine.emojiHistory = MemoryStore.loadEmoji()
         engine.emojiHistory.app = hostApp
         loadSettings()
+        clicks.refresh()
         if hasFullAccess { clipboard.catchUp() }
         syncWithDocument()
         if observers.isEmpty {
@@ -1264,14 +1266,14 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     private func feedback(_ haptic: KeyHaptics.Kind) {
-        if engine.settings.sound { UIDevice.current.playInputClick() }
+        if engine.settings.sound { clicks.play(haptic) }
         if hapticsEnabled { haptics.play(haptic) }
     }
 
     private static func haptic(for key: Key) -> KeyHaptics.Kind {
         switch key.action {
         case .character: .input
-        case .space, .return, .tab: .separator
+        case .space, .tab: .separator
         case .delete: .deletion
         default: .other
         }

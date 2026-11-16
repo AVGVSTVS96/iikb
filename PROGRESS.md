@@ -374,3 +374,7 @@
 - Folded and held upright, one of the Duo's microphones lost seconds of speech at a time; iikb records through voice processing on every microphone (e9add01).
 - Recording never waits for the model: the `Microphone` only records and `VoiceModel` only writes finished recordings, so a dictation starts at once while the last is still being written (0b658d0).
 - The app's Clipboard tab shows the keyboard's clipboard history, now in the App Group with the keyboard's own copy as backup (cb457a5).
+
+## 2026-11-16 · Apple's key sounds
+
+- Each key plays the sound Apple's keyboard plays for it: letters `key_press_click` (1104), delete and its repeats `key_press_delete` (1155), space, return and the rest `key_press_modifier` (1156). iOS 27.2.1's keyboard patterns (`/Library/Audio/Tunings/Generic/Haptics/Patterns/Keyboard*.ahap`, from the iPhone Duo's and 16 Pro Max's IPSWs) each hold one sound, at volume 0.45, with the haptic `KeyHaptics` already played; their files are byte for byte those system sounds. Return is Other, not InputSeparator as the Oct 12 entry above has it: UIKit's keyboard sends return as interaction 13, action 7, beside shift and 123 (traced in the iOS 27.2 simulator). Apple's gate is Keyboard Feedback › Sound (`com.apple.preferences.sounds`, `keyboard-audio`, missing means on), checked in the host's process before anything plays.

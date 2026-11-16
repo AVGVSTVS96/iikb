@@ -12,7 +12,7 @@ UIKit, the parts any keyboard can build on, with no private API. Keyboard behavi
   - The top row takes taps over the bar's bottom edge (docs/design.md, "Where taps land"), so a reach for it types its key, never picking a suggestion or opening a panel.
 - `HostText`: the body font most fields draw in, so the trackpad moves the caret a character for as far as the character is wide. Up and down send `.cursorLines` for each line height the finger crosses (`KeyboardView.lineHeight`, the field's where FullKeyboard knows it), else for each row of keys.
 - `KeyView`.
-- `KeyHaptics`: Apple's keyboard haptic values, played with public Core Haptics on an engine the keyboard owns. While any app records, iOS mutes every app's haptics unless the recording session allows them, so VoiceCapture's `Microphone` does, or Keep Mic On silences the keys.
+- `KeyHaptics`: Apple's keyboard haptic values and the sound each kind of key plays, the haptics played with public Core Haptics on an engine the keyboard owns. While any app records, iOS mutes every app's haptics unless the recording session allows them, so VoiceCapture's `Microphone` does, or Keep Mic On silences the keys.
 
 ## The bar
 

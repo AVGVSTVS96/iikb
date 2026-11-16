@@ -1,3 +1,4 @@
+import AudioToolbox
 import CoreHaptics
 import Foundation
 
@@ -7,7 +8,8 @@ import Foundation
 /// and only wakes on that host's next foreground notification, so a keyboard that hops between hosts runs its own.
 public final class KeyHaptics {
     /// Apple's keyboard patterns are Core Haptics library entries (`CHHapticPatternLibraryKeyKeyboard…`) of one
-    /// transient each, plus a click sound. These are their haptic values, exported on iOS 27 (iPhone 16 Pro Max).
+    /// transient each and one of three sounds. These are their values, read from iOS 27.2.1's
+    /// `/Library/Audio/Tunings/Generic/Haptics/Patterns/Keyboard*.ahap`, the same for the iPhone Duo and 16 Pro Max.
     public enum Kind: CaseIterable, Sendable {
         case input, separator, deletion, deletionRepeat, deletionRapid, other
 
@@ -28,6 +30,16 @@ public final class KeyHaptics {
             case .separator: 0.64
             case .deletion, .deletionRepeat, .deletionRapid: 0.313
             case .other: 0.229
+            }
+        }
+
+        /// The pattern's sound: its file is byte for byte the system sound `key_press_click`, `key_press_delete` or
+        /// `key_press_modifier`.
+        public var sound: SystemSoundID {
+            switch self {
+            case .input: 1104
+            case .deletion, .deletionRepeat, .deletionRapid: 1155
+            case .separator, .other: 1156
             }
         }
 
