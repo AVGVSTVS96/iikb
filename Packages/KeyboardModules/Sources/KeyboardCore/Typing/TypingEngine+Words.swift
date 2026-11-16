@@ -269,7 +269,8 @@ extension TypingEngine {
         let word = Words.current(in: text)
         guard !word.isEmpty else { return }
         if let run = typedRun(in: text),
-            let words = corrector.spaced(run, context: String(text.dropLast(run.text.count))).map(written)
+            let words = corrector.spaced(run, context: String(text.dropLast(run.text.count)), correcting: correcting)
+                .map(written)
         {
             let typed = String(text.suffix(run.text.count))
             write(words, replacing: typed.count, in: document)
@@ -326,10 +327,12 @@ extension TypingEngine {
     }
 
     /// The word in progress with what its taps typed before it in the same run ("great@day"), when the keyboard typed
-    /// all of it where a word can start and each tap typed its character.
+    /// all of it where a word can start and each tap typed its character. Which key a tap meant is read with
+    /// Auto-Correction off too, as letters are.
     private func typedRun(in text: String) -> TypedWord? {
         let taps = typing.before + typing.letters
-        guard correcting, !typing.before.isEmpty, self.text.owned >= taps.count, text.count >= taps.count else {
+        guard traits.allowsCorrection, !typing.before.isEmpty, self.text.owned >= taps.count, text.count >= taps.count
+        else {
             return nil
         }
         let run = text.suffix(taps.count)

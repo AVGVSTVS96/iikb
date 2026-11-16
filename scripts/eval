@@ -59,7 +59,7 @@ SWIFT
   else
     swift test -c release -Xswiftc -enable-testing --filter "Evaluation${1:+/$1}" 2>&1 | grep -E "error:|EVAL|✘" | tee "$out"
   fi
-  scored='keyboard=(decoder|learning)|EVAL (emoji|predict|thumbs learned)'
+  scored='keyboard=(decoder|learning)|EVAL (emoji|predict|thumbs learned|strayKeys)'
 fi
 if [ "${1:-}" = languages ]; then
   diff -u <(grep '^EVAL language' "$root/scripts/eval.expected") <(grep '^EVAL language' "$out") && echo "EVAL languages match eval.expected"

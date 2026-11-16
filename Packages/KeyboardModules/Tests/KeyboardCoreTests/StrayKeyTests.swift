@@ -2,9 +2,9 @@ import Testing
 
 @testable import KeyboardCore
 
-/// A key that's no part of a word, hit where a space belonged ("great@day"), on the split keyboard, whose Instagram field
-/// puts its @ and # between the space bars: the space after the run reads the tap as the space when it fits where space
-/// taps land better than the key it hit (`Corrector.spaced`). The full keyboard keeps them off the space bar's row.
+/// A key that's no part of a word, hit where a space belonged ("great@day"), on the screens whose Instagram fields put
+/// @ and # by the space bar (beside it, or between the split keyboard's bars): the space after the run reads the tap as
+/// the space when it fits where space taps land better than the key it hit (`Corrector.spaced`).
 struct StrayKeyTests {
     struct Screen: CustomTestStringConvertible, Sendable {
         var testDescription: String
@@ -69,18 +69,20 @@ struct StrayKeyTests {
         }
     }
 
-    @Test(arguments: whole) func theFullKeyboardKeepsInstagramsKeysOffTheSpaceBarsRow(on screen: Screen) {
-        let labels = { (grid: KeyGrid) in grid.rows.last!.map { "\($0.key.action) \($0.frame)" } }
-        #expect(labels(screen.grid()) == labels(screen.grid(.text)))
-        #expect(!screen.grid().rows.joined().contains { ["@", "#"].contains($0.key.text(shifted: false)) })
-    }
-
-    @Test func aKeyHitForTheSpaceBecomesTheSpace() {
+    @Test(arguments: whole + [split]) func aKeyHitForTheSpaceBecomesTheSpace(on screen: Screen) {
         for key in ["@", "#"] {
-            var typist = Typist(Self.split)
+            var typist = Typist(screen)
             typist.type("great\(key)day ")
             #expect(typist.document.text == "great day ", "\(key)")
         }
+    }
+
+    /// Which key a tap meant is read with Auto-Correction off too; only the words' spelling is left as typed.
+    @Test(arguments: whole + [split]) func withAutoCorrectionOffOnlyTheSpaceIsRead(on screen: Screen) {
+        var typist = Typist(screen)
+        typist.engine.settings.autoCorrection = false
+        typist.type("great@day grat#day ")
+        #expect(typist.document.text == "great day grat day ")
     }
 
     @Test func eachWordIsReadAsIfTheSpaceHadBeenTyped() {
@@ -119,9 +121,14 @@ struct StrayKeyTests {
     }
 
     @Test func onlyAKeyTouchingTheSpaceBarCanBeTheSpace() {
-        let grid = Self.split.grid()
-        let near = grid.rows.joined().compactMap { $0.key.text(shifted: false) }.filter { grid.touches($0, " ") }
-        #expect(near == ["x", "c", "v", "v", "b", "n", "m", "@", "#"])
+        for (screen, keys) in [
+            (Self.whole[0], ["x", "c", "v", "b", "n", "m", "@", "#"]),
+            (Self.split, ["x", "c", "v", "v", "b", "n", "m", "@", "#"]),
+        ] {
+            let grid = screen.grid()
+            let near = grid.rows.joined().compactMap { $0.key.text(shifted: false) }.filter { grid.touches($0, " ") }
+            #expect(near == keys, "\(screen.testDescription)")
+        }
     }
 
     @Test func anAddressAHandleAndAMentionStay() {

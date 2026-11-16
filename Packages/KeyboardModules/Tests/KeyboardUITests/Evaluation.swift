@@ -233,123 +233,135 @@ struct Evaluation {
         }
     }
 
-    /// A thumb that means the space on the open Duo's split keyboard in an Instagram field, whose @ and # sit between
-    /// the space bars, and goes where the bars are in every other field: each phrase is typed up to a word pair by
-    /// someone who has typed the corpus, the pair with the space's tap drawn around either bar (spread as a key's taps
-    /// are, the bar's width for its pitch) until it lands on @ or #. Counts the pairs the space after them reads apart,
-    /// of all and of those with no typo of their own, and, with that tap aimed at the @ key instead, the pairs left as
-    /// typed.
+    /// A thumb that means the space in an Instagram field, whose @ and # sit by the space bar (beside it on the folded
+    /// Duo, between the open Duo's split bars), and goes where the bar is in every other field, with Auto-Correction off
+    /// as iikb starts: each phrase is typed up to a word pair by someone who has typed other text (`chat.txt`), the pair
+    /// with the space's tap drawn around a plain field's bar (spread as a key's taps are, the bar's width for its pitch)
+    /// until it lands on @ or #. Counts the pairs the space after them reads apart, of all and of those with no typo of
+    /// their own, and, with that tap aimed at the @ key instead, the pairs left as typed.
     @Test func strayKeys() throws {
         let phrases = try Self.phrases()
-        var settings = KeyboardSettings()
-        settings.split = true
-        let screen = Duo.Screen.openLandscape.size
-        let field = KeyboardGeometry(
-            LayoutContext(device: .phone, layer: .letters, kind: .twitter, screen: screen, settings: settings),
-            screen: screen, style: .ios27
-        ).grid
-        var user = SimulatedUser(grid: field, noise: 0.25, seed: 2031)
-        var thumb = SplitMix64(seed: 2032)
-        let bars = field.rows.last!.map(\.frame).filter { field.key(atX: $0.midX, y: $0.midY)?.action == .space }
-        var random = SplitMix64(seed: 2033)
         var typed = TypingMemory()
-        for phrase in phrases {
+        for sentence in try Self.phrases("chat") {
             var previous = ""
-            for word in phrase.split(separator: " ").map(String.init) {
+            for word in sentence.split(whereSeparator: \.isWhitespace).map({
+                String($0.filter { $0.isLetter || $0 == "'" })
+            })
+            where !word.isEmpty {
                 typed.record(word, after: previous)
                 previous = word
             }
         }
-        var runs = 0
-        var mistyped = 0
-        var read = 0
-        var readSpelled = 0
-        var meant = 0
-        var kept = 0
-        for phrase in phrases {
-            let words = phrase.split(separator: " ").map(String.init)
-            guard words.count > 1 else { continue }
-            let pick = Int(random.next() % UInt64(words.count - 1))
-            let pair = words[pick] + " " + words[pick + 1]
-            /// The text after the pair is typed with `stray` where its space belonged, and whether a word had a typo.
-            func type(_ stray: (x: Double, y: Double), _ key: String) -> (text: String, typo: Bool) {
-                var engine = TypingEngine(traits: InputTraits(kind: .twitter, autocapitalization: .none))
-                let corrector = Corrector(source: Lexicon.english, network: .english)
-                corrector.changeMemory { $0 = typed }
-                engine.corrector = corrector
-                engine.use(field)
-                let document = Document()
-                engine.suggestionsChanged()
-                var typo = false
-                func tap(_ x: Double, _ y: Double) -> String {
-                    let hit = engine.key(atX: x, y: y, in: field)!
-                    let key = field.rows[hit.row][hit.key].key
-                    guard let text = key.action == .space ? " " : key.text(shifted: false) else { return "" }
-                    engine.handle(.type(key, Tap(x: x, y: y, key: text)), in: document)
-                    return text
-                }
-                func space() { _ = tap(field.frame(of: " ")!.midX, field.frame(of: " ")!.midY) }
-                for word in words[..<pick] {
-                    for character in word {
-                        _ = tap(field.frame(of: String(character))!.midX, field.frame(of: String(character))!.midY)
+        for (name, screen, split) in [("folded", Duo.Screen.foldedPortrait, false), ("split", .openLandscape, true)] {
+            var settings = KeyboardSettings()
+            settings.split = split
+            func grid(_ kind: InputKind) -> KeyGrid {
+                KeyboardGeometry(
+                    LayoutContext(device: .phone, layer: .letters, kind: kind, screen: screen.size, settings: settings),
+                    screen: screen.size, style: .ios27
+                ).grid
+            }
+            let field = grid(.twitter)
+            let plain = grid(.text)
+            var user = SimulatedUser(grid: field, noise: 0.25, seed: 2031)
+            var thumb = SplitMix64(seed: 2032)
+            let bars = plain.rows.last!.map(\.frame).filter { plain.key(atX: $0.midX, y: $0.midY)?.action == .space }
+            var random = SplitMix64(seed: 2033)
+            var runs = 0
+            var mistyped = 0
+            var read = 0
+            var readSpelled = 0
+            var meant = 0
+            var kept = 0
+            for phrase in phrases {
+                let words = phrase.split(separator: " ").map(String.init)
+                guard words.count > 1 else { continue }
+                let pick = Int(random.next() % UInt64(words.count - 1))
+                let pair = words[pick] + " " + words[pick + 1]
+                /// The text after the pair is typed with `stray` where its space belonged, and whether a word had a typo.
+                func type(_ stray: (x: Double, y: Double), _ key: String) -> (text: String, typo: Bool) {
+                    var engine = TypingEngine(traits: InputTraits(kind: .twitter, autocapitalization: .none))
+                    engine.settings.autoCorrection = false
+                    let corrector = Corrector(source: Lexicon.english, network: .english)
+                    corrector.changeMemory { $0 = typed }
+                    engine.corrector = corrector
+                    engine.use(field)
+                    let document = Document()
+                    engine.suggestionsChanged()
+                    var typo = false
+                    func tap(_ x: Double, _ y: Double) -> String {
+                        let hit = engine.key(atX: x, y: y, in: field)!
+                        let key = field.rows[hit.row][hit.key].key
+                        guard let text = key.action == .space ? " " : key.text(shifted: false) else { return "" }
+                        engine.handle(.type(key, Tap(x: x, y: y, key: text)), in: document)
+                        return text
+                    }
+                    func space() { _ = tap(field.frame(of: " ")!.midX, field.frame(of: " ")!.midY) }
+                    for word in words[..<pick] {
+                        for character in word {
+                            _ = tap(field.frame(of: String(character))!.midX, field.frame(of: String(character))!.midY)
+                        }
+                        space()
+                    }
+                    for (index, word) in words[pick...(pick + 1)].enumerated() {
+                        if index > 0 {
+                            engine.handle(
+                                .type(Key(.character(key)), Tap(x: stray.x, y: stray.y, key: key)), in: document)
+                        }
+                        var spelled = ""
+                        for character in word {
+                            let point = user.tap(character)
+                            spelled += tap(point.0, point.1)
+                        }
+                        if spelled != word { typo = true }
                     }
                     space()
+                    return (document.text, typo)
                 }
-                for (index, word) in words[pick...(pick + 1)].enumerated() {
-                    if index > 0 {
-                        engine.handle(.type(Key(.character(key)), Tap(x: stray.x, y: stray.y, key: key)), in: document)
+                func landing(_ aim: () -> (Double, Double)) -> (point: (x: Double, y: Double), key: String)? {
+                    for _ in 0..<500 {
+                        let point = aim()
+                        if let key = field.key(atX: point.0, y: point.1)?.text(shifted: false), key == "@" || key == "#"
+                        {
+                            return (point, key)
+                        }
                     }
-                    var spelled = ""
-                    for character in word {
-                        let point = user.tap(character)
-                        spelled += tap(point.0, point.1)
-                    }
-                    if spelled != word { typo = true }
+                    return nil
                 }
-                space()
-                return (document.text, typo)
-            }
-            func landing(_ aim: () -> (Double, Double)) -> (point: (x: Double, y: Double), key: String)? {
-                for _ in 0..<500 {
-                    let point = aim()
-                    if let key = field.key(atX: point.0, y: point.1)?.text(shifted: false), key == "@" || key == "#" {
-                        return (point, key)
-                    }
+                guard
+                    let missed = landing({
+                        let bar = bars[Int(thumb.next() % UInt64(bars.count))]
+                        return (
+                            bar.midX + thumb.gaussian() * 0.4 * bar.width,
+                            bar.midY + thumb.gaussian() * 0.4 * (bar.height + 11)
+                        )
+                    })
+                else { continue }
+                let result = type(missed.point, missed.key)
+                runs += 1
+                if result.typo { mistyped += 1 }
+                if result.text.hasSuffix(pair + " ") {
+                    read += 1
+                    if !result.typo { readSpelled += 1 }
                 }
-                return nil
+                let at = field.frame(of: "@")!
+                guard
+                    let aimed = landing({
+                        (at.midX + random.gaussian() * 0.25 * at.width, at.midY + random.gaussian() * 0.25 * at.height)
+                    })
+                else { continue }
+                let deliberate = type(aimed.point, aimed.key)
+                if !deliberate.typo {
+                    meant += 1
+                    if deliberate.text.hasSuffix(words[pick] + aimed.key + words[pick + 1] + " ") { kept += 1 }
+                }
             }
-            guard
-                let missed = landing({
-                    let bar = bars[Int(thumb.next() % UInt64(bars.count))]
-                    return (
-                        bar.midX + thumb.gaussian() * 0.4 * bar.width,
-                        bar.midY + thumb.gaussian() * 0.4 * (bar.height + 11)
-                    )
-                })
-            else { continue }
-            let result = type(missed.point, missed.key)
-            runs += 1
-            if result.typo { mistyped += 1 }
-            if result.text.hasSuffix(pair + " ") {
-                read += 1
-                if !result.typo { readSpelled += 1 }
+            let share = { (count: Int, of: Int) in String(format: "%.1f%%", 100.0 * Double(count) / Double(max(of, 1)))
             }
-            let at = field.frame(of: "@")!
-            guard
-                let aimed = landing({
-                    (at.midX + random.gaussian() * 0.25 * at.width, at.midY + random.gaussian() * 0.25 * at.height)
-                })
-            else { continue }
-            let deliberate = type(aimed.point, aimed.key)
-            if !deliberate.typo {
-                meant += 1
-                if deliberate.text.hasSuffix(words[pick] + aimed.key + words[pick + 1] + " ") { kept += 1 }
-            }
+            print(
+                "EVAL strayKeys keyboard=\(name) runs=\(runs) withTypo=\(mistyped) readAsSpace=\(share(read, runs)) spelledRight: readAsSpace=\(share(readSpelled, runs - mistyped)) meantTheKey: kept=\(share(kept, meant))"
+            )
         }
-        let share = { (count: Int, of: Int) in String(format: "%.1f%%", 100.0 * Double(count) / Double(max(of, 1))) }
-        print(
-            "EVAL strayKeys keyboard=decoder runs=\(runs) withTypo=\(mistyped) readAsSpace=\(share(read, runs)) spelledRight: readAsSpace=\(share(readSpelled, runs - mistyped)) meantTheKey: kept=\(share(kept, meant))"
-        )
     }
 
     @Test func biasedThumbs() throws {

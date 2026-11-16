@@ -729,11 +729,11 @@ extension Corrector {
 
     /// The words of a run with a key that's no part of a word where a space belonged ("great@day", "teh#best"), each
     /// read as if the space had been typed, when each such key touches the space bar and for its tap that's likelier
-    /// than as typed. As typed, the tap
-    /// meant the key it hit rather than the space bar, and the key runs two words into one the lexicon doesn't know,
-    /// which you type as seldom as you've kept one (`LanguageModel.novelty`). None when what's between the keys is no
-    /// word, as in a handle, or you've kept the run.
-    func spaced(_ run: TypedWord, context: String) -> String? {
+    /// than as typed. As typed, the tap meant the key it hit rather than the space bar, and the key runs two words into
+    /// one the lexicon doesn't know, which you type as seldom as you've kept one (`LanguageModel.novelty`). None when
+    /// what's between the keys is neither a word nor a typo of one, as in a handle, or you've kept the run. Without
+    /// `correcting` (Auto-Correction off), each word stays as typed.
+    func spaced(_ run: TypedWord, context: String, correcting: Bool) -> String? {
         let letters = Array(run.text)
         guard let lexicon, run.taps.count == letters.count, !memory.isKept(run.text) else { return nil }
         let keys = memory.touches.layout(grid)
@@ -753,11 +753,10 @@ extension Corrector {
                 String(letters[part]), taps: Array(run.taps[part]),
                 previous: words.last?.split(separator: " ").last?.lowercased() ?? run.previous)
             let known = isSpelled(word.text) || memory.count(of: word.text.lowercased()) > 1
-            guard Words.isCorrectable(Substring(word.text), in: word.text),
-                let read = correction(for: word, context: context + words.map { $0 + " " }.joined())
-                    ?? (known ? word.text : nil)
-            else { return nil }
-            words.append(read)
+            guard Words.isCorrectable(Substring(word.text), in: word.text) else { return nil }
+            let corrected = correction(for: word, context: context + words.map { $0 + " " }.joined())
+            guard known || corrected != nil else { return nil }
+            words.append(correcting ? corrected ?? word.text : word.text)
         }
         return words.joined(separator: " ")
     }
