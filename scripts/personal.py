@@ -7,10 +7,11 @@ again each time it's saved.
 Only the output side learns: the embedding (which also scores the next word), the projection and the output biases. The
 LSTM stays as shipped, so its int8 rows are copied byte for byte and the file stays the size it was. Learning stops at the
 pass where 10% of the lines, kept aside, are best predicted, and the output side goes from the shipped network toward
-that pass as far as it can, up to halfway, while every word the shipped network's bar shows for scripts/gate.txt's
-everyday phrases stays there: all the way, it fits your words a little better but crowds out the phrases Apple's bar
-offers, and how far is safe changes with each run. When no pass beats the shipped network, or no step keeps the
-phrases, the output is the shipped file.
+that pass as far as it can, up to halfway, while its bar shows as many of the next words of everyday text as the
+shipped network's does: all the way, it fits your words a little better but crowds out the phrases Apple's bar offers,
+and how far is safe changes with each run. The everyday text is chat.txt, the eval's 1,000 Taskmaster-1 sentences,
+before each word and after its first letter, and never scripts/gate.txt, which checks the result. When no pass beats
+the shipped network, or no step keeps the everyday words, the output is the shipped file.
 
 Usage: scripts/personal record.jsonl [en.network [out]]
 Defaults: the shipped network in the repo, and ~/.local/share/iikb/backup/mirror/personal/en.network, where
@@ -34,7 +35,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SHIPPED = f"{ROOT}/Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.network"
 MIRROR = os.path.expanduser("~/.local/share/iikb/backup/mirror/personal/en.network")
 KINDS = {"text", "webSearch", "twitter"}
-GATE = f"{ROOT}/scripts/gate.txt"
+EVERYDAY = f"{ROOT}/Packages/KeyboardModules/Tests/KeyboardUITests/chat.txt"
 WINDOW, BATCH, RATE, PASSES, HELD = 32, 32, 1e-3, 8, 0.1
 STEPS = (0.5, 0.375, 0.25, 0.125)
 
@@ -107,17 +108,9 @@ def lines(path):
     return out
 
 
-def everyday(vocabulary):
-    """scripts/gate.txt's bar cases the network can score: (the text before the word, the letters typed of it, the word)."""
-    known = set(vocabulary)
-    cases = []
-    for line in open(GATE):
-        if line.startswith(("#", "?", "=")) or "|" not in line:
-            continue
-        text, wanted = line.rstrip("\n").split("|", 1)
-        before, _, typed = text.rpartition(" ")
-        cases += [(before, typed, word) for word in wanted.split() if word in known and word.startswith(typed)]
-    return cases
+def everyday(ids):
+    """chat.txt's sentences as the network reads them."""
+    return [np.array([ids.get(t, 1) for t in network.tokens(line)]) for line in open(EVERYDAY) if line.strip()]
 
 
 def fine_tune(net, corpus):
@@ -182,29 +175,38 @@ def fine_tune(net, corpus):
     if best[1] is None:
         return None
     shipped = [dequantized("emb", 0).numpy(), dequantized("proj", 3).numpy(), net["proj_bias"], net["output"]]
-    cases = everyday(net["vocabulary"])
-    candidates = {typed: np.array([i for word, i in ids.items() if word[0].isalpha() and word != typed and word.startswith(typed)])
-                  for typed in {typed for _, typed, _ in cases}}
+    sentences = everyday(ids)
+    padded = np.zeros((len(sentences), max(map(len, sentences))), dtype=np.int64)
+    for i, sentence in enumerate(sentences):
+        padded[i, :len(sentence)] = sentence
+    vocabulary = net["vocabulary"]
+    alphabetic = np.array([word[0].isalpha() for word in vocabulary])
+    first = np.array([ord(word[0]) for word in vocabulary])
+    letter = np.array([len(word) == 1 for word in vocabulary])
 
     def bar(values):
-        """The cases whose word the bar shows: of the words starting with the letters typed, the likeliest two beside
-        them, or three before a word."""
+        """How many of the everyday words the bar shows: before the word, among the three likeliest; after its first
+        letter, among the two likeliest starting with it, beside the letter typed."""
         emb, proj, proj_bias, output = (torch.tensor(np.asarray(v), dtype=torch.float32) for v in values)
-        shown = set()
+        shown = 0
         with torch.no_grad():
-            for before, typed, word in cases:
-                h = lstm(emb[torch.tensor([[ids.get(t, 1) for t in network.tokens(before)]])])[0][0, -1]
-                scores = ((h @ proj.T + proj_bias) @ emb[candidates[typed]].T + output[candidates[typed]]).numpy()
-                top = candidates[typed][np.argsort(-scores)[:2 if typed else 3]]
-                if ids[word] in top:
-                    shown.add((before, typed, word))
-        return shown
+            for start in range(0, len(padded), 32):
+                batch = padded[start:start + 32]
+                scores = ((lstm(emb[torch.from_numpy(batch[:, :-1])])[0] @ proj.T + proj_bias) @ emb.T + output).numpy()
+                words = batch[:, 1:]
+                counted = alphabetic[words]
+                above = scores > np.take_along_axis(scores, words[..., None], -1)
+                shown += ((above & alphabetic).sum(-1) < 3)[counted].sum()
+                same = (first == first[words][..., None]) & ~letter
+                shown += ((above & same).sum(-1) < 2)[counted & ~letter[words]].sum()
+        return int(shown)
 
     kept = bar(shipped)
     for step in STEPS:
         values = [(1 - step) * start + step * learned for start, learned in zip(shipped, best[1])]
-        if bar(values) >= kept:
-            print(f"{step} of the way to the best pass keeps the bar's {len(kept)} everyday words", file=sys.stderr)
+        now = bar(values)
+        print(f"{step} of the way to the best pass: the bar shows {now} everyday words, the shipped network {kept}", file=sys.stderr)
+        if now >= kept:
             return values
     return None
 

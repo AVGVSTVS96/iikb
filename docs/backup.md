@@ -81,10 +81,12 @@ out of the Mac's trees too. A build without the file sends nothing and shows no 
 The suggestion bar's network (`en.network`, trained on what people type; `scripts/network`) learns how you write. The
 server keeps a log of what you type (`sources/record.ts`, the user service `iikb-record`), and
 `scripts/personal` fine-tunes a copy of the shipped network on it: only its output side (the embedding that scores the
-next word, the projection and the output biases) learns, from the lines of the log with near-repeats dropped, and the
-pass that best predicts the last tenth of them, kept aside, is the one it goes toward from the shipped network, as far as
-it can up to halfway while every word the shipped network's bar shows for `scripts/gate.txt`'s everyday phrases stays there
-(the shipped network itself if no pass beats it or no step keeps them), so the bar keeps the phrases Apple's offers. The LSTM is copied byte for byte, so the file is the same size.
+next word, the projection and the output biases) learns, from the log's lines with near-repeats dropped. It takes the pass that best predicts the last tenth of them,
+kept aside, and moves the shipped network toward it, at most halfway, and only as far as its bar still shows as many of
+the next words of everyday text as the shipped network's (the eval's `chat.txt`, before each word and after its first
+letter). Going all the way would crowd those words out. If no pass beats the shipped network or no step keeps them, the
+shipped network stays. `scripts/gate.txt` never picks the step; it checks the result. The LSTM is copied byte for byte,
+so the file is the same size.
 
 It runs when the log or the shipped network changes, at most once a day: the path unit `iikb-personal`
 (dotfiles) starts the service of the same name, which asks for `--daily`. The network goes to `mirror/personal/en.network`.
