@@ -71,13 +71,68 @@ open class FullKeyboardViewController: UIInputViewController {
         panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
         return panel
     }()
+    /// Your quicklinks, read with the settings.
+    private var quicklinks: [Quicklink] = []
+    private lazy var snippetsPanel: SnippetsPanel = {
+        let panel = SnippetsPanel(.snippets)
+        panel.items = { [unowned self] in engine.snippets.map { SnippetsPanel.Item($0) } }
+        panel.fullAccess = { [unowned self] in hasFullAccess }
+        panel.onPick = { [unowned self] id in
+            guard let snippet = engine.snippets.first(where: { $0.id == id }) else { return }
+            insert(.snippet(snippet))
+        }
+        panel.onEdit = { [unowned self] in open(AppLink.snippets($0)) }
+        panel.onCreate = { [unowned self] in
+            guard hasFullAccess else { return .fullAccess }
+            feedback(.other)
+            handle(.createSnippet)
+            return engine.fill == nil ? .empty : nil
+        }
+        panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
+        return panel
+    }()
+    private lazy var quicklinksPanel: SnippetsPanel = {
+        let panel = SnippetsPanel(.quicklinks)
+        panel.items = { [unowned self] in quicklinks.map { SnippetsPanel.Item($0) } }
+        panel.fullAccess = { [unowned self] in hasFullAccess }
+        panel.onPick = { [unowned self] id in
+            guard let link = quicklinks.first(where: { $0.id == id }) else { return }
+            insert(.quicklink(link, opening: false))
+        }
+        panel.onOpen = { [unowned self] id in
+            guard let link = quicklinks.first(where: { $0.id == id }) else { return }
+            feedback(.other)
+            handle(.quicklink(link, opening: true))
+        }
+        panel.onEdit = { [unowned self] in open(AppLink.quicklinks($0)) }
+        panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
+        return panel
+    }()
+    private lazy var formPanel: FormPanel = {
+        let panel = FormPanel()
+        panel.fill = { [unowned self] in engine.fill }
+        panel.focuses = { [unowned self] in hasFullAccess }
+        panel.onField = { [unowned self] in
+            feedback(.other)
+            handle(.field($0))
+        }
+        panel.onNext = { [unowned self] in
+            feedback(.other)
+            guard let fill = engine.fill else { return }
+            handle(fill.isLast ? .submit : .field(fill.at + 1))
+        }
+        return panel
+    }()
     /// The panels this keyboard has, in the tools' order. GIFs need a KLIPY key built in.
     private lazy var panels: [Panel: PanelContent] = [
         .emoji: emojiPanel, .gif: gifPanel, .clipboard: clipboardPanel, .transcripts: transcriptsPanel,
+        .snippets: snippetsPanel, .quicklinks: quicklinksPanel, .form: formPanel,
     ].compactMapValues { $0 }
     private lazy var host = ProxyDocument { [unowned self] in textDocumentProxy }
     /// The chats panel's message line while it's open, which the keys type into in place of the app's field.
     private var line: LineDocument?
+    /// A pick from a panel is waiting on its arguments, so the keyboard switches back once it's typed.
+    private var pickWaits = false
     private var document: any TextDocument { line ?? host }
     /// What you'd begun in each chat you switched away from, by chat id.
     private var drafts: [String: String] = [:]
@@ -113,7 +168,8 @@ open class FullKeyboardViewController: UIInputViewController {
         if Duo.isDuo(short: min(screenSize.width, screenSize.height)) { return 44 }
         return needsInputModeSwitchKey ? 0 : 91
     }
-    private var panelInKeysPlace: Bool { panelOpen && !keysUp && engine.panel != .emoji }
+    /// The emoji panel opens from its key, and a form needs the keys to fill it in, so both always sit above them.
+    private var panelInKeysPlace: Bool { panelOpen && !keysUp && engine.panel != .emoji && engine.panel != .form }
     /// The photos attached to the open chat's next message, and the grid they're picked in.
     private let photos = ChatPhotos()
     /// The photo grid is up in the keys' place, the chat over it as with the keys up.
@@ -464,7 +520,8 @@ open class FullKeyboardViewController: UIInputViewController {
         keepDictations()
         Dictation.keep(engine.takeDraft(), in: field)
         field = nil
-        engine.handle(.panel(nil), in: document)
+        closePanels(in: document)
+        pickWaits = false
         menuOpen = false
         menuView.isHidden = true
         keysUp = false
@@ -481,6 +538,8 @@ open class FullKeyboardViewController: UIInputViewController {
     private func loadSettings() {
         engine.settings = SettingsStore.load(sharing: hasFullAccess)
         engine.region = .current
+        engine.snippets = SnippetStore.snippets(sharing: hasFullAccess)
+        quicklinks = SnippetStore.quicklinks(sharing: hasFullAccess)
         engine.emojiHistory.skinTone = engine.settings.skinTone
         haptics.strength = Float(engine.settings.haptics.strength)
         keyboardView.characterPreview = engine.settings.characterPreview
@@ -542,6 +601,8 @@ open class FullKeyboardViewController: UIInputViewController {
     /// The app kept new settings while the keyboard is up, as beside it on the open iPhone Duo.
     private func settingsChanged() {
         loadSettings()
+        snippetsPanel.reset()
+        quicklinksPanel.reset()
         if hasFullAccess { chats.reload() }
         if hapticsEnabled { haptics.start() }
         render()
@@ -844,9 +905,11 @@ open class FullKeyboardViewController: UIInputViewController {
             if open, secondary, hasChats { self.chats.start(opening: false) }
             if open {
                 let chats: [(Panel, PanelResults)] = hasChats ? [(.chats, chatShelf)] : []
+                let kept: [Panel] = [.snippets] + (quicklinks.isEmpty ? [] : [.quicklinks])
                 menuView.open(
-                    [Panel.clipboard, .transcripts, .gif].compactMap { panel in panels[panel].map { (panel, $0) } }
-                        + chats)
+                    ([Panel.clipboard, .transcripts, .gif] + kept).compactMap { panel in
+                        panels[panel].map { (panel, $0) }
+                    } + chats)
             }
         }
         guard open else { return }
@@ -884,6 +947,7 @@ open class FullKeyboardViewController: UIInputViewController {
     /// Back steps out one level: the keys down, then the panel to the menu it was opened from. The emoji panel, opened
     /// from its key, closes.
     private func back() {
+        if engine.panel == .form { return handle(.panel(nil)) }
         if keysUp, engine.panel != .emoji {
             (keysUp, picking) = (false, false)
             return render()
@@ -1093,7 +1157,8 @@ open class FullKeyboardViewController: UIInputViewController {
             if case .tool(let panel) = key.action { show(panel, backToMenu: false) }
             return
         case .trigger(let key)
-        where key.action == .return && keysUp && line == nil && engine.panel != nil && engine.panel != .emoji:
+        where key.action == .return && keysUp && line == nil && engine.panel != nil && engine.panel != .emoji
+            && engine.panel != .form:
             keysUp = false
             return render()
         case .type:
@@ -1113,7 +1178,38 @@ open class FullKeyboardViewController: UIInputViewController {
         default:
             break
         }
-        if engine.handle(event, in: document) { render() }
+        if engine.handle(event, in: document) {
+            if line != nil, engine.fill != nil { engine.handle(.panel(nil), in: document) }
+            render()
+        }
+        switch engine.takeFinished() {
+        case .keep(let snippet):
+            SnippetStore.keep(snippet)
+            settingsChanged()
+        case .open(let link):
+            if let url = URL(string: link) { open(url) }
+        case nil:
+            break
+        }
+        if pickWaits, engine.fill == nil {
+            pickWaits = false
+            if case .panel = event {} else { switchOnClose() }
+        }
+    }
+
+    /// A snippet or quicklink picked in its panel or shelf is typed, once any arguments are filled in, and the menu
+    /// gives the keys back.
+    private func insert(_ event: KeyboardEvent) {
+        feedback(.input)
+        menuOpen = false
+        handle(event)
+        if engine.fill == nil { switchOnClose() } else { pickWaits = true }
+    }
+
+    /// Closes a form, then the panel it came from.
+    private func closePanels(in document: some TextDocument) {
+        if engine.fill != nil { engine.handle(.panel(nil), in: document) }
+        engine.handle(.panel(nil), in: document)
     }
 
     /// The chats panel opens with its line in place of the app's field, which the keys type into as into a message box,
@@ -1122,7 +1218,7 @@ open class FullKeyboardViewController: UIInputViewController {
         guard line == nil else { return }
         menuOpen = false
         self.keysUp = keysUp
-        engine.handle(.panel(nil), in: host)
+        closePanels(in: host)
         engine.leaveField()
         let line = LineDocument(text)
         self.line = line

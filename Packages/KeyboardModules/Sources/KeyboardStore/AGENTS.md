@@ -25,8 +25,9 @@ iikb's saved data, in the App Group the app and the keyboard extension share and
 - `Download`: a file iikb downloads and can download again: fetched to a temporary file with URLSession, going on from where it broke off, checked against its size and SHA-256, put in place in one move, and marked as left out of backups, which iCloud and `Backup` follow.
 - `LanguageFiles`: a language's words, listed with their sizes and SHA-256 in `Resources/Languages/manifest.json` (written by `scripts/languages`), downloaded by the app (a `Download`) into the group's `Library/Languages/<id>.lexicon` and read in place by the keyboard. English is bundled.
 - `SourceStore`: the `Source`s you add in the app; `ExtensionStore`: the `Extension`s.
+- `SnippetStore`: your snippets and quicklinks, as JSON under `SettingsStore`'s keys (`snippets`, `quicklinks`), so the keyboard reads them without Full Access and each side keeps its own copy; a list it can't read is moved aside to `<key>-unread-<seconds>` before a save, as `StoredFile` moves a file. A save tells a keyboard that's up, as the settings' does.
 - `UnsentStore`: what you sent in a chat that its extension hasn't answered for yet, in the extension's own container (`chat-unsent.json`), each under the id it's sent with, so a send outlives the keyboard that began it and is taken once.
-- `AppLink`: the app's links the keyboard opens.
+- `AppLink`: the app's links the keyboard opens, a snippet's or quicklink's editor among them.
 
 ## Dictation, the channel to the app for voice typing
 
