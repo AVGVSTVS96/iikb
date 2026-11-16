@@ -42,6 +42,6 @@ Never used in password or code fields.
 ## Backup
 
 docs/backup.md has the whole story.
-- `Backup` sends iikb's files to the server built in as `Resources/Keys/backup.key` (kept out of git; `scripts/phone` won't build without it, and `scripts/sync` keeps it off the Mac so simulators never send) each time they change: the keyboard as it goes away, the app as it starts and as it writes down a dictation or changes the Dictionary (`Backup.syncApp`, never a recording still being made).
+- `Backup` sends iikb's files to the server built in as `Resources/Keys/backup.key` (kept out of git; `scripts/phone` won't build without it, and `scripts/sync` keeps it off the Mac so simulators never send) each time they change: the keyboard as it goes away, the app as it starts, as it writes down a dictation or changes the Dictionary (`Backup.syncApp`, never a recording still being made), and as its microphone goes off or a dictation fails, with voice typing's log (`Backup.syncAppAndVoiceLog`).
 - It sends what the server lacks or holds at another size or modification time to the second, so a failed send goes with the next.
 - `server/backup.ts` keeps them in `~/.local/share/iikb/backup/mirror` as `scripts/backup` does, and moves a file it replaces to `versions/<time>/`, deleting nothing; `scripts/restore` puts them back, as they were at any time.

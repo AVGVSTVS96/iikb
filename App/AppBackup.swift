@@ -1,3 +1,4 @@
+import Foundation
 import KeyboardStore
 
 extension Backup {
@@ -5,6 +6,17 @@ extension Backup {
     static func syncApp() {
         sync(app + group, skip: unwritten)
         Task { await PersonalNetwork.fetch() }
+    }
+
+    /// Sends them with what voice typing logged up to now (`VoiceLog`), which takes seconds to read, so iOS is asked to
+    /// let it finish as iikb goes away.
+    static func syncAppAndVoiceLog() {
+        let skip = unwritten
+        ProcessInfo.processInfo.performExpiringActivity(withReason: "Backing up iikb") { expired in
+            guard !expired else { return }
+            VoiceLog.write()
+            sync(app + group, skip: skip)
+        }
     }
 
     /// Sends the app's files and the group's and says how it went.

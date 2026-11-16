@@ -121,7 +121,7 @@ import VoiceModels
             microphone.record(to: Transcripts.shared.recording(of: take.id))
         } catch {
             recording = nil
-            closeMic()
+            closeMic("it couldn't start")
             fail("Couldn’t listen", error.localizedDescription)
         }
     }
@@ -221,12 +221,14 @@ import VoiceModels
     func keepMicOn() {
         micOff?.cancel()
         guard microphone.isOn, recording == nil, writing.isEmpty else { return }
-        guard !deaf else { return closeMic() }
+        guard !deaf else { return closeMic("it gave no sound") }
         let seconds = SettingsStore.keepMicOn
-        guard held || (seconds > 0 && !micOffOnceWritten) else { return closeMic() }
+        guard held || (seconds > 0 && !micOffOnceWritten) else {
+            return closeMic(micOffOnceWritten ? "turned off" : "Keep Mic On is off")
+        }
         if screenRecorded {
             let wasHeld = held || heldWhenTaken == true
-            closeMic()
+            closeMic("the screen is recorded")
             heldWhenTaken = wasHeld
             return
         }
@@ -234,7 +236,7 @@ import VoiceModels
         micOff = Task {
             try? await Task.sleep(for: .seconds(seconds))  // timer: Keep Mic On
             guard !Task.isCancelled, recording == nil, writing.isEmpty else { return }
-            closeMic()
+            closeMic("Keep Mic On ran out")
         }
     }
 
@@ -275,7 +277,7 @@ import VoiceModels
         guard microphone.isOn else { return }
         let wasHeld = held
         await finish()
-        closeMic()
+        closeMic(comingBack ? "another app took it" : "it couldn't start again")
         if comingBack { heldWhenTaken = wasHeld }
     }
 
@@ -298,18 +300,24 @@ import VoiceModels
         }
     }
 
-    private func closeMic() {
+    /// Off, saying why in the log, which goes to the backup with it.
+    private func closeMic(_ why: String) {
         micOff?.cancel()
         micOff = nil
         micOffOnceWritten = false
         held = false
         deaf = false
+        guard microphone.isOn else { return }
         microphone.close()
         VoiceModel.shared.micIsOn = false
+        HostApp.log.notice("the microphone is off: \(why, privacy: .public)")
+        Backup.syncAppAndVoiceLog()
     }
 
     private func fail(_ title: String, _ reason: String) {
         failure = (title, reason)
+        HostApp.log.error("\(title, privacy: .public): \(reason, privacy: .public)")
+        Backup.syncAppAndVoiceLog()
         Dictation.leave(.notice(reason))
         publish()
     }

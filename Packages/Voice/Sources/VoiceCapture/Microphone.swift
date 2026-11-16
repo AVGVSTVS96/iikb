@@ -42,6 +42,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
                     AVAudioSession.InterruptionOptions(rawValue: $0).contains(.shouldResume)
                 } ?? false
             Task { @MainActor in
+                log.notice("interruption \(began ? "began" : resume ? "ended, may resume" : "ended", privacy: .public)")
                 if began { self?.onInterrupted() } else if resume { self?.onFreed() }
             }
         }
@@ -51,6 +52,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
                 AVAudioSession.RouteChangeReason.init)
             Task { @MainActor in
                 guard let self, self.isOn, let reason else { return }
+                log.notice("route change \(reason.rawValue): \(Self.route, privacy: .public)")
                 if let picked = SettingsStore.microphone, picked.kind != .iPhone,
                     reason == .newDeviceAvailable || reason == .oldDeviceUnavailable
                 {
@@ -114,6 +116,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         do {
             try begin(cause)
         } catch {
+            log.error("couldn't start, trying a new engine: \(error.localizedDescription, privacy: .public)")
             engine = AVAudioEngine()
             try begin(cause)
         }
@@ -168,11 +171,19 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
             node.removeTap(onBus: 0)
             throw error
         }
-        let route = session.currentRoute.inputs.first
-        let source = route?.selectedDataSource
+        let source = session.currentRoute.inputs.first?.selectedDataSource
         log.notice(
-            "hearing \(self.aimed?.rawValue ?? "as iOS picks", privacy: .public), from \(route?.portType.rawValue ?? "nothing", privacy: .public) \(source?.dataSourceName ?? "", privacy: .public) \(source?.selectedPolarPattern?.rawValue ?? "", privacy: .public), other audio \(session.isOtherAudioPlaying ? "playing" : "silent", privacy: .public)"
+            "hearing \(self.aimed?.rawValue ?? "as iOS picks", privacy: .public) \(source?.dataSourceName ?? "", privacy: .public) \(source?.selectedPolarPattern?.rawValue ?? "", privacy: .public): \(Self.route, privacy: .public)"
         )
+    }
+
+    /// The kinds of port iikb's session hears from and plays to, and whether another app is playing, for the log: never
+    /// a port's name, which is the device's and often a person's.
+    private static var route: String {
+        let session = AVAudioSession.sharedInstance()
+        let route = session.currentRoute
+        let ports = [route.inputs, route.outputs].map { $0.map(\.portType.rawValue).joined(separator: " + ") }
+        return "from \(ports[0]) to \(ports[1]), other audio \(session.isOtherAudioPlaying ? "playing" : "silent")"
     }
 
     /// iOS stops the engine when the hardware's format or route changes under it, and every audio object is dead after
@@ -189,6 +200,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         do {
             try beginOnAnyEngine(rebuilding ? "rebuilt" : "restarted")
         } catch {
+            log.error("couldn't start again: \(error.localizedDescription, privacy: .public)")
             onLost()
         }
     }
@@ -209,6 +221,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
     public func record(to url: URL) {
         recordingAs = aimed
         recordingMissed = missed
+        log.notice("recording \(Self.route, privacy: .public)")
         feed.start(file: url)
         Dictation.publish(level: 0, recorded: 0)
     }
