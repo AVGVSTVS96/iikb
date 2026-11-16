@@ -81,7 +81,8 @@ struct RecordingSection: View {
                         .row()
                     ActionRow(title: "Use This Transcript") {
                         Transcripts.shared.replace(
-                            transcript.id, with: again.text, heard: again.heard, model: again.model)
+                            transcript.id, with: again.text, heard: again.heard, model: again.model,
+                            clean: again.clean)
                         self.again = nil
                     }
                     CopyRow(text: again.text)

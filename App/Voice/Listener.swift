@@ -193,7 +193,7 @@ import VoiceModels
             Transcripts.shared.add(
                 written.text, heard: written.heard, id: take.id, at: take.started, seconds: seconds, typed: take.typed,
                 model: written.model, mic: take.mic, voiceProcessing: false, capture: take.capture,
-                unaimed: take.unaimed, levels: Recording.levels(samples), app: take.app)
+                unaimed: take.unaimed, levels: Recording.levels(samples), app: take.app, clean: written.clean)
             if take.typed, silent {
                 Dictation.leave(.notice("The microphone gave no sound: tap the mic again"))
             } else if take.typed, written.text.isEmpty {

@@ -29,14 +29,20 @@ private struct ModelSettings: View {
                 ChoiceRow(title: choice.title, detail: choice.detail, picked: choice == voice.model) {
                     voice.pick(choice)
                 } extra: {
-                    if choice == voice.model, voice.state != .ready { progress }
+                    if choice == voice.model { ModelProgress(state: voice.state) { voice.prepare() } }
                 }
             }
         }
     }
+}
 
-    @ViewBuilder private var progress: some View {
-        switch voice.state {
+/// A model's download, or why it couldn't get ready, under its row: a Parakeet's or Clean's. Nothing once it's ready.
+private struct ModelProgress: View {
+    let state: ModelState
+    let tryAgain: () -> Void
+
+    var body: some View {
+        switch state {
         case .downloading(let done):
             ProgressView(value: done) {
                 Text("Downloading, \(done.formatted(.percent.precision(.fractionLength(0))))")
@@ -57,7 +63,7 @@ private struct ModelSettings: View {
                 Text("Couldn’t get it ready: \(reason)")
                     .font(.footnote)
                     .foregroundStyle(.red)
-                Button("Try Again") { voice.prepare() }
+                Button("Try Again", action: tryAgain)
                     .font(.footnote.weight(.semibold))
                     .buttonStyle(.borderless)
             }
@@ -170,13 +176,20 @@ struct WritingSettings: View {
         Box(
             header: "Cleanup",
             footer:
-                "Clean also takes back what you cancel with “scratch that”. Cleanup is the same in every app."
+                "Clean runs a small language model on this \(ThisDevice.name), not a server, after a one-time download of about 400 MB. It also takes back what you cancel with “scratch that”. Cleanup is the same in every app."
         ) {
             ForEach(DictationEditing.allCases, id: \.self) { editing in
                 ChoiceRow(
                     title: editing.title, detail: quoted(Self.rambled) { $0.editing = editing },
                     picked: model.settings.dictationEditing == editing
-                ) { update(.cleanup) { $0.dictationEditing = editing } }
+                ) {
+                    update(.cleanup) { $0.dictationEditing = editing }
+                    CleanModel.shared.prepare()
+                } extra: {
+                    if editing.asksModel, let state = CleanModel.shared.state {
+                        ModelProgress(state: state) { CleanModel.shared.prepare() }
+                    }
+                }
             }
             MenuRow(
                 title: "Spoken Lists",

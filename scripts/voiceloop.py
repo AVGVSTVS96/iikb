@@ -13,8 +13,12 @@ scripts/formats.txt and the code that passes them, not accuracy.
 
 Each clip goes through Parakeet v3 as the app runs it (Tools/VoiceBench, on the Mac's Neural Engine, one turn at a
 time), once per clip and version of that path: what it wrote is kept in voicebench/cache/, keyed by the clip's sound
-and the path's code, so a run whose sound and Parakeet path are unchanged never touches the Mac. Then the rest of the
-iPhone's path here (Tools/VoiceBench/Text, on KeyboardCore): the app's writing style and Dictionary, then the keyboard's
+and the path's code, so a run whose sound and Parakeet path are unchanged never touches the Mac. Then Clean's model
+answers each text Parakeet wrote, and what the iPhone's Parakeet wrote where a set replays that, here as the app runs
+it (VoiceEdit, scripts/stages.py), once per text and version of its code and weights: its replies are kept in
+voicebench/cache/ too, since each takes about 0.65 s on this box. Then the rest of the iPhone's path here
+(Tools/VoiceBench/Text, on KeyboardCore): the app's writing style and Dictionary, which type the model's reply only
+where the settings replayed for that clip pick Clean and the reply is an edit of what was said, then the keyboard's
 reading of the field it went into, after the text before it there, with the words the keyboard has seen typed (its
 saved memory). His dictations are replayed with the settings, Dictionary and memory the iPhone had when each was said
 (the backup's copies, `then`), never today's: today's learned from what he typed after, his fixes of these very
@@ -23,7 +27,7 @@ the defaults and today's.
 
 Prints, for each set and each group of its clips, the share of words wrong (um and uh set aside, case and punctuation
 too) and the share of dictations typed exactly; for the real set the same for what the iPhone typed, and how often the
-bench wrote and typed what the iPhone did. Then every word wrong ranked by what kind of thing it was in the reference
+bench wrote and typed what the iPhone did; for each set, how many it typed Clean's model's reply for. Then every word wrong ranked by what kind of thing it was in the reference
 (emails, links, versions, times, money, digits, names, words misheard, dropped or added) and every word right but
 punctuated or capitalized wrong, written with examples to voicebench/categories.txt, and each dictation's texts to
 voicebench/<set>/loop.jsonl: Bassim's words stay there and on this terminal. Against his finals, which keep what the
@@ -33,6 +37,8 @@ are set aside (`diff`).
 import bisect, collections, concurrent.futures, datetime, difflib, fcntl, hashlib, importlib.util, json, os, plistlib, random, re, shutil, subprocess, sys, time
 from pathlib import Path
 import numpy as np
+
+import stages
 
 ROOT = Path(__file__).resolve().parent.parent
 BACKUP = Path(os.environ.get("IIKB_BACKUP", Path.home() / ".local/share/iikb/backup"))
@@ -236,41 +242,19 @@ def parakeet(sets, cached):
     return {key: cache[sound] for key, (sound, _) in sounds.items() if sound in cache}
 
 
-def text_stage():
-    """Tools/VoiceBench/Text built here on a package of KeyboardCore alone, as scripts/coretest builds its tests:
-    optimized but file by file, so a change to KeyboardCore rebuilds in about 30 s rather than 95 (SwiftPM's default
-    build system fails without whole-module optimization)."""
-    pkg = ROOT / "build/voicetext"
-    (pkg / "Sources/VoiceText").mkdir(parents=True, exist_ok=True)
-    for link, target in [(pkg / "Sources/KeyboardCore", ROOT / "Packages/KeyboardModules/Sources/KeyboardCore"),
-                         (pkg / "Sources/VoiceText/main.swift", ROOT / "Tools/VoiceBench/Text/main.swift")]:
-        if not link.is_symlink():
-            link.symlink_to(target)
-    (pkg / "Package.swift").write_text("""// swift-tools-version: 6.2
-import PackageDescription
-
-let package = Package(name: "VoiceText", targets: [
-    .target(name: "KeyboardCore", exclude: ["AGENTS.md"]),
-    .executableTarget(name: "VoiceText", dependencies: ["KeyboardCore"]),
-])
-""")
-    built = subprocess.run(["swift", "build", "-c", "release", "--build-system", "native", "-Xswiftc", "-no-whole-module-optimization",
-                            "--package-path", pkg], capture_output=True, text=True)
-    if built.returncode:
-        sys.exit(built.stdout + built.stderr)
-    return pkg / ".build/release/VoiceText"
-
-
-def typed(tool, folder, heard, state):
-    """What the keyboard types for each clip's `heard`, in its field, after the text before it there, with the
-    iPhone's state for it (`state`: its memory, Dictionary and settings)."""
+def typed(tool, folder, heard, state, replies):
+    """What the keyboard types for each clip's `heard`, given Clean's model's reply to it (`replies`, by text), in its
+    field, after the text before it there, with the iPhone's state for it (`state`: its memory, Dictionary and
+    settings), and how many it typed the reply for."""
     context = {c["id"]: c for c in rows(folder / "context.jsonl")}
-    given = "".join(json.dumps(dict(id=id, heard=text, field=context[id]["field"], content=context[id].get("content"),
-                                    before=context[id]["before"], **state[id])) + "\n" for id, text in heard.items())
+    given = "".join(json.dumps(dict(id=id, heard=text, edited=replies.get(text), field=context[id]["field"],
+                                    content=context[id].get("content"), before=context[id]["before"], **state[id])) + "\n"
+                    for id, text in heard.items())
     memory = BACKUP / "mirror" / MEMORY
     done = subprocess.run([tool, LEXICON, folder / "vocabulary.json", memory if memory.exists() else "-", *DEFAULTS], input=given,
                           capture_output=True, text=True, check=True)
-    return {r["id"]: r["typed"] for r in map(json.loads, filter(None, done.stdout.split("\n")))}
+    got = [json.loads(line) for line in done.stdout.split("\n") if line]
+    return {r["id"]: r["typed"] for r in got}, sum(r["edited"] for r in got)
 
 
 # Scoring
@@ -452,11 +436,11 @@ def main():
         print("waiting for another scripts/voiceloop, which shares voicebench/", flush=True)
         fcntl.flock(lock, fcntl.LOCK_EX)
     began = time.monotonic()
-    stages = {}
+    times = {}
 
     def stage(label):
         nonlocal began
-        stages[label] = time.monotonic() - began
+        times[label] = time.monotonic() - began
         began = time.monotonic()
 
     real()
@@ -466,10 +450,13 @@ def main():
     sets = ["real", "taps", "loud", "spoken"] + [n for n in ("labelled", "read") if (DATA / n / "clips.jsonl").exists()]
     heard = parakeet(sets, "--cached" in sys.argv)
     stage("parakeet")
-    tool = text_stage()
+    texts = set(heard.values()) | {c["heard"] for n in ("real", "labelled") if n in sets for c in rows(DATA / n / "context.jsonl")}
+    replies = {text: row.get("edited") for text, row in stages.edited({t: t for t in texts}, DATA / "cache").items()}
+    stage("Clean's model")
+    tool = stages.text_stage()
     stage("text stage build")
     memory, dictionary, kept = then(MEMORY), then(DICTIONARY), then(SETTINGS)
-    numbers, tally_all, read, runs = {}, {}, {}, {}
+    numbers, tally_all, read, runs, taken = {}, {}, {}, {}, {}
     pool = concurrent.futures.ThreadPoolExecutor()
     for name in sets:
         folder = DATA / name
@@ -486,16 +473,19 @@ def main():
                 state[id] = dict(memory=memory(when), vocabulary=dictionary(when), settings=settings(Path(kept(when))))
         knobs = "as on the iPhone then" if name != "spoken" else ", ".join(DEFAULTS)
         read[name] = clips, references, context, knobs
-        runs[name] = dict(bench=pool.submit(typed, tool, folder, {id: heard[name, id] for id in clips}, state))
+        runs[name] = dict(bench=pool.submit(typed, tool, folder, {id: heard[name, id] for id in clips}, state, replies))
         if name in ("real", "labelled"):
-            runs[name]["replay"] = pool.submit(typed, tool, folder, {id: context[id]["heard"] for id in clips}, state)
+            runs[name]["replay"] = pool.submit(typed, tool, folder, {id: context[id]["heard"] for id in clips}, state,
+                                               replies)
     print(f"his dictations replayed with the iPhone's memory, Dictionary and settings as each was said; said before the"
           f" backup's first copy, so given that one: {len(memory.early)}, {len(dictionary.early)} and {len(kept.early)}")
     for name in sets:
         folder = DATA / name
         clips, references, context, knobs = read[name]
         mine = {id: heard[name, id] for id in clips}
-        ways = {way: run.result() for way, run in runs[name].items()}
+        done = {way: run.result() for way, run in runs[name].items()}
+        ways = {way: texts for way, (texts, _) in done.items()}
+        taken[name] = done["bench"][1], len(clips)
         phone = {r["id"]: r["text"] for r in rows(folder / "typed.jsonl") if r["id"] in clips}
         if name in ("real", "labelled", "read"):
             ways["phone"] = phone
@@ -574,7 +564,9 @@ def main():
           f" {spoken_set['bench', 'condition', 'whisper in a quiet room']:.2f}% (in a loud room"
           f" {spoken_set['bench', 'condition', 'whisper in a loud room']:.2f}%), 18 dB softer in a loud room"
           f" {spoken_set['bench', 'condition', 'soft in a loud room']:.2f}%")
-    print("time: " + ", ".join(f"{k} {v:.0f} s" for k, v in stages.items()) + f", {sum(stages.values()):.0f} s in all")
+    for name, (replied, of) in taken.items():
+        print(f"{name}: Clean's model's reply typed for {replied} of {of} dictations")
+    print("time: " + ", ".join(f"{k} {v:.0f} s" for k, v in times.items()) + f", {sum(times.values()):.0f} s in all")
 
 
 if __name__ == "__main__":

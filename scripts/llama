@@ -1,0 +1,27 @@
+#!/bin/sh
+# llama.cpp for this Linux box at the release the app links (the tag in Packages/Voice/Package.swift), so scripts/clean
+# runs the app's own Editor against the llama.cpp the iPhone has. Built once per release for the CPU only, as the
+# iPhone runs it, with ggml's own threads as Apple's builds have (no OpenMP), into ~/.local/share/iikb/llama/<tag>,
+# which it prints. A build that stopped partway leaves nothing there, so the next run builds again.
+set -e
+root=$(cd "$(dirname "$0")/.." && pwd)
+tag=$(grep -o 'llama.cpp/releases/download/b[0-9]*' "$root/Packages/Voice/Package.swift" | cut -d/ -f4)
+[ -n "$tag" ] || { echo "no llama.cpp release in Packages/Voice/Package.swift" >&2; exit 1; }
+to=$HOME/.local/share/iikb/llama/$tag
+if [ ! -f "$to/lib/pkgconfig/llama.pc" ]; then
+  mkdir -p "$HOME/.cache"
+  src=$(mktemp -d "$HOME/.cache/iikb-llama.XXXXXX")
+  trap 'rm -rf "$src"' EXIT
+  echo "building llama.cpp $tag for this machine's CPU, once, into $to" >&2
+  curl -fsSL "https://github.com/ggml-org/llama.cpp/archive/refs/tags/$tag.tar.gz" | tar -xz -C "$src" --strip-components 1
+  cmake -S "$src" -B "$src/build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$to" -DCMAKE_INSTALL_LIBDIR=lib \
+    -DCMAKE_INSTALL_RPATH='$ORIGIN' -DGGML_OPENMP=OFF -DLLAMA_BUILD_COMMON=OFF -DLLAMA_BUILD_TOOLS=OFF \
+    -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_APP=OFF \
+    -DLLAMA_BUILD_MTMD=OFF -DLLAMA_CURL=OFF >&2
+  cmake --build "$src/build" -j "$(nproc)" >&2
+  DESTDIR="$src/stage" cmake --install "$src/build" >&2
+  mkdir -p "$(dirname "$to")"
+  rm -rf "$to"
+  mv "$src/stage$to" "$to"
+fi
+echo "$to"

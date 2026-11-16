@@ -22,6 +22,7 @@ nonisolated public struct Download: Sendable {
     }
 
     /// Downloads it to `place`, going on from `resumeData` when there's some, and saying how much has come, from 0 to 1.
+    /// Cancelling the task it runs in stops it as a broken-off download, with what came to go on from.
     public func fetch(
         to place: URL, resumingFrom resumeData: Data? = nil, progress: @escaping @Sendable (Double) -> Void
     ) async throws(Failure) {
@@ -93,10 +94,10 @@ nonisolated public struct Download: Sendable {
                 }
                 running.task = task
                 task.resume()
-                if Task.isCancelled { task.cancel() }
+                if Task.isCancelled { task.cancel(byProducingResumeData: { _ in }) }
             }
         } onCancel: {
-            running.task?.cancel()
+            running.task?.cancel(byProducingResumeData: { _ in })
         }
     }
 }

@@ -1,0 +1,55 @@
+#!/usr/bin/env -S python3 -B
+"""The gate on Clean's model: each `heard | typed` line of scripts/clean.txt through the app's own Editor with the
+weights the app ships, then KeyboardCore with Clean and the other settings at their defaults, as a message types it
+(scripts/stages.py). A line passes when iikb types `typed` and it typed the model's reply, not the transcript without
+one. The rows run on the weights fetched once into ~/.local/share/iikb/weights, so the gate also asks the URL in
+`Weights.shipped` for its headers and fails unless it serves a file of the size named there, as an iPhone would fetch
+it. Here on Linux or on the Mac. scripts/phone puts nothing that fails it on the install link."""
+
+import sys, urllib.error, urllib.request
+
+import stages
+
+SETTINGS = ["casual", "clean", "numbered", "on"]
+
+
+def published(named):
+    """Why `named`'s URL doesn't serve its file, or None when it does: one request for its headers, redirects
+    followed."""
+    try:
+        with urllib.request.urlopen(urllib.request.Request(named["url"], method="HEAD"), timeout=10) as answer:
+            size = answer.headers.get("Content-Length")
+    except urllib.error.HTTPError as error:
+        return f"answers {error.code}"
+    except OSError as error:
+        return f"doesn't answer: {getattr(error, 'reason', error)}"
+    return None if size == str(named["bytes"]) else f"answers with {size or 'no size'}"
+
+
+def main():
+    rows = [line.split(" | ") for line in (stages.ROOT / "scripts/clean.txt").read_text().splitlines()
+            if line.strip() and not line.startswith("#")]
+    heard = {str(i): said for i, (said, _) in enumerate(rows)}
+    edits = stages.edited(heard)
+    typed = stages.typed(stages.text_stage(), heard, SETTINGS, {id: row.get("edited") for id, row in edits.items()})
+    failed = 0
+    for i, (said, wanted) in enumerate(rows):
+        text, taken = typed[str(i)]
+        edit = edits[str(i)]
+        if text == wanted.replace("\\n", "\n") and taken:
+            print(f"pass  {said}")
+            continue
+        failed += 1
+        reply = repr(edit["edited"]) + ("" if taken else ", not taken") if "edited" in edit else f"none, {edit['failure']}"
+        print(f"FAIL  {said}\n      wanted {wanted}\n      typed  {text!r}\n      model  {reply}")
+    named = stages.shipped(stages.edit_stage())
+    unpublished = published(named)
+    if unpublished:
+        print(f"FAIL  {named['url']} {unpublished}, not the {named['bytes']}-byte file Weights.shipped names:"
+              " publish it there, or name the file that is")
+    print(f"clean: {len(rows) - failed} of {len(rows)} lines pass" + (", and the weights aren't published" if unpublished else ""))
+    sys.exit(1 if failed or unpublished else 0)
+
+
+if __name__ == "__main__":
+    main()

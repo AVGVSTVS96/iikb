@@ -32,6 +32,9 @@ struct Transcript: Codable, Identifiable, Hashable {
     var heard: String?
     /// The bundle ID of the app it was said for; nil when the keyboard couldn't tell, or before iikb kept it.
     var app: String?
+    /// How long Clean's model took for it and the app's memory then (`CleanModel.Cost`), for the backup to bring back;
+    /// nil when Clean didn't ask it, or before iikb kept it.
+    var clean: CleanModel.Cost?
     /// What the keyboard typed for it and what that became once its field was sent or left, every edit in it included;
     /// nil until then, when it wasn't typed, or before iikb kept it.
     var field: Field?
@@ -149,7 +152,7 @@ struct Transcript: Codable, Identifiable, Hashable {
                 try? Recording.write(samples, to: file)
                 add(
                     written.text, heard: written.heard, id: id, at: date, seconds: Double(samples.count) / 16_000,
-                    typed: false, model: written.model, mic: nil, recovered: true)
+                    typed: false, model: written.model, mic: nil, clean: written.clean, recovered: true)
                 Dictation.leave(.notice("A dictation cut off when iikb closed is in iikb › Transcripts"))
             } catch {
                 HostApp.log.error(
@@ -171,14 +174,15 @@ struct Transcript: Codable, Identifiable, Hashable {
     func add(
         _ text: String, heard: String, id: Transcript.ID, at date: Date, seconds: Double, typed: Bool, model: String,
         mic: String?, voiceProcessing: Bool? = nil, capture: Capture? = nil,
-        unaimed: String? = nil, levels: (room: Float, speech: Float)? = nil, app: String? = nil, recovered: Bool = false
+        unaimed: String? = nil, levels: (room: Float, speech: Float)? = nil, app: String? = nil,
+        clean: CleanModel.Cost? = nil, recovered: Bool = false
     ) {
         let transcript = Transcript(
             id: id, date: date, text: text, seconds: seconds, typed: typed, recovered: recovered ? true : nil,
             model: model, mic: mic, voiceProcessing: voiceProcessing,
             capture: capture?.rawValue, unaimed: unaimed, room: levels.map { Self.decibels($0.room) },
             speech: levels.map { Self.decibels($0.speech) },
-            heard: heard == text ? nil : heard, app: app
+            heard: heard == text ? nil : heard, app: app, clean: clean
         )
         all.insert(transcript, at: all.firstIndex { $0.date < date } ?? all.endIndex)
         trim()
@@ -229,12 +233,13 @@ struct Transcript: Codable, Identifiable, Hashable {
     }
 
     /// Puts a new writing of a transcript's recording in its place.
-    func replace(_ id: Transcript.ID, with text: String, heard: String, model: String) {
+    func replace(_ id: Transcript.ID, with text: String, heard: String, model: String, clean: CleanModel.Cost?) {
         guard let index = all.firstIndex(where: { $0.id == id }), !text.isEmpty else { return }
         all[index].replaced = all[index].replaced ?? Transcript.Replaced(model: all[index].model, text: all[index].text)
         all[index].text = text
         all[index].heard = heard == text ? nil : heard
         all[index].model = model
+        all[index].clean = clean
         save()
     }
 
@@ -249,9 +254,9 @@ struct Transcript: Codable, Identifiable, Hashable {
             guard
                 let written = try? await VoiceModel.shared.write(
                     Recording.read(recording(of: transcript.id)), for: transcript.app),
-                written.model != VoiceModel.Model.apple.title
+                !written.model.hasPrefix(VoiceModel.Model.apple.title)
             else { continue }
-            replace(transcript.id, with: written.text, heard: written.heard, model: written.model)
+            replace(transcript.id, with: written.text, heard: written.heard, model: written.model, clean: written.clean)
         }
     }
 

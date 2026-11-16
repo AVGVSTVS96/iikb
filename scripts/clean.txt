@@ -1,0 +1,22 @@
+# What Clean's model must go on typing, whatever weights ship: `heard | typed`, at the start of a message with Clean
+# and the rest of the default settings (Casual drops the last period). scripts/clean runs each line through the app's
+# Editor and the shipped weights, then KeyboardCore, and scripts/phone puts up no build that fails one. A \n in
+# `typed` is a line break. Made-up text in the forms Parakeet writes, few on purpose: a line is here because losing
+# it is a regression anyone would notice. Scoring the model is scripts/rivals' job.
+
+# a list said without numbers, the first line always
+Here's a list of the fruits I want you to buy. Apples, oranges, pears and dates. | Here's a list of the fruits I want you to buy:\n• Apples\n• Oranges\n• Pears\n• Dates
+
+# a list said with numbers
+There are three steps. First, open the app. Second, tap settings. Third, turn it on. | There are 3 steps:\n1. Open the app\n2. Tap settings\n3. Turn it on
+
+# fillers, a correction and what's taken back
+Um, so I was thinking we could, uh, meet at two, I mean three, on Thursday. | I was thinking we could meet at 3 on Thursday
+Let's meet on Monday. Scratch that, let's meet on Tuesday. | Let's meet on Tuesday
+
+# what sounds like a request is still a dictation
+Write me an email to the landlord about the broken heater. | Write me an email to the landlord about the broken heater
+What is the capital of France? | What is the capital of France?
+
+# nothing to clean
+I bought apples, oranges and pears. | I bought apples, oranges, and pears

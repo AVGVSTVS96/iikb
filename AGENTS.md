@@ -12,7 +12,8 @@ Each module keeps its own AGENTS.md beside its code, with what it holds and why.
 - `…/KeyboardUI`: UIKit parts any keyboard can build on, with no private API. On KeyboardCore and KeyboardEnglish. [KeyboardUI/AGENTS.md](Packages/KeyboardModules/Sources/KeyboardUI/AGENTS.md)
 - `…/FullKeyboard`: iikb's own keyboard (the view controller, its panels, sources, the host app). On the four above, and the only target that links the private `KeyboardArbiter`. [FullKeyboard/AGENTS.md](Packages/KeyboardModules/Sources/FullKeyboard/AGENTS.md)
 - `Packages/Voice/Sources/VoiceCapture`: voice typing's microphone and the `Recording` it makes. On KeyboardStore. [VoiceCapture/AGENTS.md](Packages/Voice/Sources/VoiceCapture/AGENTS.md)
-- `…/VoiceModels`: the models that write a finished recording down, the Parakeets through FluidAudio and Apple's. On VoiceCapture, KeyboardStore and FluidAudio. [VoiceModels/AGENTS.md](Packages/Voice/Sources/VoiceModels/AGENTS.md)
+- `…/VoiceModels`: the models that write a finished recording down, the Parakeets through FluidAudio and Apple's, and `CleanModel`, Clean's language model's download and memory. On VoiceCapture, VoiceEditor, KeyboardStore and FluidAudio. [VoiceModels/AGENTS.md](Packages/Voice/Sources/VoiceModels/AGENTS.md)
+- `…/VoiceEditor`: Clean's language model on the iPhone's CPU through llama.cpp (`Editor`, `Weights`). On llama.cpp alone, nothing of iOS, so the bench and `scripts/clean` build its files on Linux too. [VoiceEditor/AGENTS.md](Packages/Voice/Sources/VoiceEditor/AGENTS.md)
 - `App/`: the containing app, a folder per feature. On KeyboardEnglish, KeyboardStore, KeyboardUI, VoiceCapture and VoiceModels, never FullKeyboard. [App/AGENTS.md](App/AGENTS.md); voice typing in [App/Voice/AGENTS.md](App/Voice/AGENTS.md)
 - `Keyboard/`: the extension target, a one-line subclass. On FullKeyboard.
 - `Controls/`: the widget extension holding iikb Mic, a control for Control Center, the Lock Screen and the Action button that shows whether the app's microphone is on and turns it off (`Signal.micOff`), or opens the app with it on (`AppLink.mic`). On nothing of ours, so it doesn't carry the English data; it spells KeyboardStore's names itself (`ArchitectureTests`). Its App Intents metadata is committed in `Controls/Metadata.appintents`, since xtool can't make it: `scripts/build` fails when Xcode's differs and names the copy to commit.
@@ -48,6 +49,7 @@ scripts/coretest                                # KeyboardCore's tests here on L
 scripts/check                                   # this checkout built for the iPhone here on Linux, unsigned (a few minutes; one at a time)
 scripts/public-review.ts [--all|--text <where>]  # a reviewer reads what iikb shows the public: what changed since origin/main, all of it, or text going elsewhere (stdin)
 scripts/format [--check]                        # swift format on every tracked Swift file (.swift-format); --check is what scripts/check and CI run
+scripts/clean                                   # Clean's language model on scripts/clean.txt, the fruit list first: each line through the app's Editor and shipped weights, then KeyboardCore, pass or fail, and fails until Weights.shipped's URL serves the file; scripts/phone puts no build that fails it on the install link
 bun run check                                   # the TypeScript and JavaScript (after bun install): oxlint, oxfmt --check, tsc, bun test, as CI runs it
 bun run fix                                     # oxlint's fixes, then oxfmt
 scripts/phone                                   # main's last commit built, signed and put on the install link for the iPhone and iPad, then the build each device has (--rebuild even when nothing changed)
@@ -86,6 +88,8 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | Gaps between keys take taps (KeyboardUI) | `FirstTapTests` |
 | Keycaps use SF Compact from the system font file (KeyboardUI) | judgment: nothing enforces it |
 | The keyboard's height comes from Auto Layout content, never a plain height constraint (KeyboardUI) | judgment: nothing enforces it |
+| Only `VoiceEditor` links llama.cpp, and it imports nothing of iOS, so the bench and the gate run the app's own files (VoiceEditor) | Packages/Voice/Package.swift; `scripts/clean` builds it on Linux |
+| Clean's model goes on typing `scripts/clean.txt`, whatever weights ship (scripts) | `scripts/phone` runs `scripts/clean` |
 | Recording never waits for a model: the `Microphone` knows nothing of `VoiceModel` (App/Voice) | Packages/Voice/Package.swift: VoiceModels is on VoiceCapture, so VoiceCapture can't import it |
 | Never a Bluetooth microphone unless one is picked in Settings › Microphone (VoiceCapture) | judgment: nothing enforces it |
 | A page opened from another in its tab has one Back, in the Duo's side bar with the tabs on every screen (App) | `backInSideBar(_:)`, `BackTests` |
