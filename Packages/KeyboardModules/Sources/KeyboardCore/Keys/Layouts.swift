@@ -121,7 +121,7 @@ public struct LayoutContext: Hashable, Sendable {
         }
     }
 
-    /// What the bar's More button offers, top to bottom: the layouts that apply here (one hand or the other on an
+    /// What holding `123` or emoji offers (`menu`), top to bottom: the layouts that apply here (one hand or the other on an
     /// iPhone in portrait, Full and Split on the open Duo in landscape), the next keyboard where an iPhone needs one
     /// and its keys carry no globe that switches, then iikb's settings.
     public var moreMenu: [KeyboardEvent] {

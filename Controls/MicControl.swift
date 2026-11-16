@@ -12,7 +12,7 @@ struct Controls: WidgetBundle {
 }
 
 /// iikb's microphone in Control Center, the Lock Screen and the Action button: green while it's on, and a tap turns it
-/// off, the way Home's switch does. Off, a tap opens iikb with it on, since iOS starts a microphone only in front.
+/// off, the way the app's mic switch does. Off, a tap opens iikb with it on, since iOS starts a microphone only in front.
 struct MicControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Mic.control, provider: Provider()) { on in

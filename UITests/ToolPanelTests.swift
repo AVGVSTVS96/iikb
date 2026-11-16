@@ -52,7 +52,7 @@ final class ToolPanelTests: XCTestCase {
             FileManager.default.fileExists(
                 atPath: (ProcessInfo.processInfo.environment["SIMULATOR_ROOT"] ?? "") + "/Applications/MobileSMS.app")
         else {
-            throw XCTSkip("this simulator has no Messages: iOS 27.1, the only one with the iPhone Duo, leaves it out")
+            throw XCTSkip("this simulator has no Messages: iOS 27.1 leaves it out")
         }
         let messages = XCUIApplication(bundleIdentifier: "com.apple.MobileSMS")
         messages.launch()
