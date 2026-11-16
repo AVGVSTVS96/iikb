@@ -38,10 +38,13 @@ enum LaunchOptions {
     static var scrollsToEnd: Bool { defaults.bool(forKey: "iikbScrollToEnd") }
     /// The tab and page the app opens on: `-iikbTab transcripts`, `-iikbTaps YES` for Stats' Taps, `-iikbStats dictation`
     /// for another of its pills, `-iikbSettings typing` for a settings page (`YES` for the list), as `SettingsPage.Page`
-    /// names them.
+    /// names them, or `-iikbLink iikb://snippets/<id>` for a snippet's or quicklink's editor, as its `EditLink` opens it.
     static func route() {
         let router = Router.shared
         if let section = statsSection { return router.show(section) }
+        if let link = defaults.string(forKey: "iikbLink").flatMap(URL.init(string:)).flatMap(EditLink.init) {
+            return router.show(link)
+        }
         if let page = defaults.string(forKey: "iikbSettings") {
             return router.show(.settings, settings: SettingsPage.Page(rawValue: page))
         }
@@ -91,6 +94,21 @@ enum LaunchOptions {
         guard defaults.bool(forKey: "iikbResetSettings") else { return }
         SettingsStore.reset(to: KeyboardSettings())
         MemoryStore.reset()
+    }
+
+    /// `-iikbSnippets '{"snippets": [...], "quicklinks": [...]}'` keeps these in place of your snippets and quicklinks,
+    /// for screenshots of made-up ones (shots/demo/make.py).
+    static func applySnippets() {
+        struct Kept: Decodable {
+            var snippets: [Snippet]
+            var quicklinks: [Quicklink]
+        }
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let at = arguments.firstIndex(of: "-iikbSnippets"), at + 1 < arguments.count,
+            let kept = try? JSONDecoder().decode(Kept.self, from: Data(arguments[at + 1].utf8))
+        else { return }
+        SnippetStore.save(kept.snippets)
+        SnippetStore.save(kept.quicklinks)
     }
 
     /// `-iikbLanguage sv`, `-iikbOneHanded left` and `-iikbCompactPanels YES`, `-iikbAutoCapitalization YES`, `-iikbAutoCorrection YES`,

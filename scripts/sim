@@ -306,6 +306,10 @@ appearance -iikbSettings appearance
 languages -iikbSettings languages
 typing-settings -iikbSettings typing
 feedback -iikbSettings feedback
+snippets -iikbSettings snippets
+snippet -iikbLink iikb://snippets/demo-meet
+quicklinks -iikbSettings quicklinks
+quicklink -iikbLink iikb://quicklinks/demo-maps
 voice -iikbSettings voice
 writing -iikbSettings writing
 dictionary -iikbSettings dictionary
@@ -331,8 +335,9 @@ about -iikbSettings about"
 # Fills an installed app with what duoapp and ipadapp show: TOUCHES (a touch model, as the keyboard shares it), TYPING
 # (JSON lines of hours, as the keyboard shares them) and TRANSCRIPTS (JSON lines, as the app keeps them, with RECORDINGS a
 # folder of their <id>.wav sounds) fill Stats and Transcripts, MAC (a Keystroke typing-stats.json) Stats' Mac as the copy last read, and CLIPBOARD (a history.json, as
-# ClipboardStore keeps it) Clipboard, and APPNAMES (bundle IDs to names, as AppName keeps them) the apps' names without
-# asking the App Store. shots/demo/make.py writes a made-up set of each. The touch model also goes in the
+# ClipboardStore keeps it) Clipboard, APPNAMES (bundle IDs to names, as AppName keeps them) the apps' names without
+# asking the App Store, and SNIPPETS (snippets and quicklinks, as -iikbSnippets takes them) Snippets and Quicklinks,
+# kept by launching the app with them once. shots/demo/make.py writes a made-up set of each. The touch model also goes in the
 # keyboard's own memory, which it shares over the group's copy each time it closes; the clipboard empties the keyboard's
 # own history and the simulator's clipboard, which the keyboard and the app would add to it.
 fill() {
@@ -356,6 +361,15 @@ fill() {
   [ -n "${APPNAMES:-}" ] && mkdir -p "$data/Library/Caches" && cp -p "$APPNAMES" "$data/Library/Caches/app-names.json"
   [ -n "${CLIPBOARD:-}" ] && mkdir -p "$group/Library/clipboard" && cp -p "$CLIPBOARD" "$group/Library/clipboard/history.json" &&
     { [ -z "$keyboard" ] || rm -rf "$keyboard/Library/Application Support/clipboard"; } && xcrun simctl pbcopy "$id" </dev/null
+  [ -n "${SNIPPETS:-}" ] && xcrun simctl launch "$id" "$BUNDLE" -iikbSnippets "$(cat "$SNIPPETS")" >/dev/null && {
+    local kept= _
+    for _ in {1..30}; do
+      plutil -extract snippets raw "$data/Library/Preferences/$BUNDLE.plist" >/dev/null 2>&1 && kept=1 && break
+      sleep 1
+    done
+    [ -n "$kept" ] || echo "fill: the app didn't keep SNIPPETS in 30 s" >&2
+    xcrun simctl terminate "$id" "$BUNDLE"
+  }
   return 0
 }
 

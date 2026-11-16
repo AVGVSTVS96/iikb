@@ -8,12 +8,11 @@ import VoiceModels
 /// takes the first pane and the picked page the second; elsewhere a page opens on its own.
 struct SettingsPage: View {
     enum Page: String, CaseIterable, Hashable {
-        case appearance, languages, typing, feedback, voice, writing, dictionary, extensions, sources, access, privacy,
-            changelog,
-            about
+        case appearance, languages, typing, feedback, snippets, quicklinks, voice, writing, dictionary, extensions,
+            sources, access, privacy, changelog, about
 
         static let sections: [(title: String, pages: [Page])] = [
-            ("Keyboard", [.appearance, .languages, .typing, .feedback]),
+            ("Keyboard", [.appearance, .languages, .typing, .feedback, .snippets, .quicklinks]),
             ("Voice Typing", [.voice, .writing, .dictionary]),
             ("iikb", [.extensions, .sources, .access, .privacy, .changelog, .about]),
         ]
@@ -24,6 +23,8 @@ struct SettingsPage: View {
             case .languages: "Languages"
             case .typing: "Typing"
             case .feedback: ThisDevice.hasHaptics ? "Sound & Haptics" : "Sound"
+            case .snippets: "Snippets"
+            case .quicklinks: "Quicklinks"
             case .voice: "Voice"
             case .writing: "Writing Style"
             case .dictionary: "Dictionary"
@@ -42,6 +43,8 @@ struct SettingsPage: View {
             case .languages: ("globe", .blue)
             case .typing: ("character.cursor.ibeam", .cyan)
             case .feedback: (ThisDevice.hasHaptics ? "hand.tap.fill" : "speaker.wave.2.fill", .pink)
+            case .snippets: ("text.quote", .blue)
+            case .quicklinks: ("link", .green)
             case .voice: ("waveform", .red)
             case .writing: ("textformat", .orange)
             case .dictionary: ("character.book.closed.fill", .brown)
@@ -65,6 +68,8 @@ struct SettingsPage: View {
             case .typing: settings.autoCorrection ? "Auto-Correction On" : "Auto-Correction Off"
             case .privacy, .changelog: nil
             case .feedback: ThisDevice.hasHaptics ? settings.haptics.title : settings.sound ? "On" : "Off"
+            case .snippets: model.snippets.isEmpty ? "None" : model.snippets.count.formatted()
+            case .quicklinks: model.quicklinks.isEmpty ? "None" : model.quicklinks.count.formatted()
             case .voice: VoiceModel.shared.model.title
             case .writing: settings.dictationStyle.title
             case .dictionary: words == 1 ? "1 word" : "\(words.formatted()) words"
@@ -121,6 +126,7 @@ struct SettingsPage: View {
             .toolbarTitleDisplayMode(.inlineLarge)
         }
         .onAppear { model.reload() }
+        .sheet(item: $router.editor) { $0.view }
     }
 }
 
@@ -189,6 +195,8 @@ struct SettingsContent: View {
             case .languages: LanguageSettings()
             case .typing: TypingSettings()
             case .feedback: FeedbackSettings()
+            case .snippets: SnippetsPage()
+            case .quicklinks: QuicklinksPage()
             case .voice: VoiceSettings()
             case .writing: WritingSettings()
             case .dictionary: VocabularyView()

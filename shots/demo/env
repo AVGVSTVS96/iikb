@@ -8,3 +8,4 @@ RECORDINGS=build/demo/recordings
 MAC=build/demo/mac.json
 CLIPBOARD=build/demo/clipboard.json
 APPNAMES=build/demo/app-names.json
+SNIPPETS=build/demo/snippets.json
