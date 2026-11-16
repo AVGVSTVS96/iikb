@@ -21,7 +21,18 @@ public final class ProxyDocument: TextDocument {
         for _ in 0..<count { proxy().deleteBackward() }
     }
 
-    public func moveCursor(by offset: Int) { proxy().adjustTextPosition(byCharacterOffset: offset) }
+    /// The engine counts characters, but the host moves the caret by UTF-16 units, two for an emoji or a styled letter
+    /// (iOS 27.2 simulator, Nov 16: a move of 13 over "😀 hi 𝐛𝐨𝐥𝐝 end" stopped after 𝐝), so the offset is measured on
+    /// the text it crosses, as far as the host shows it.
+    public func moveCursor(by offset: Int) {
+        let proxy = proxy()
+        let crossed =
+            offset > 0
+            ? (proxy.documentContextAfterInput ?? "").prefix(offset)
+            : (proxy.documentContextBeforeInput ?? "").suffix(-offset)
+        let units = crossed.utf16.count + abs(offset) - crossed.count
+        proxy.adjustTextPosition(byCharacterOffset: offset < 0 ? -units : units)
+    }
 }
 
 extension InputTraits {
