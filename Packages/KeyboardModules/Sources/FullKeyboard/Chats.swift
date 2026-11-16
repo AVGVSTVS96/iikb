@@ -5,8 +5,9 @@ import Network
 /// The chats of the extensions you added (docs/extensions.md): every extension's list, pinned chats first, and the open
 /// chat's messages, which it asks for again as soon as each answer comes, so the extension holds the request until
 /// they change and a reply shows the moment it's written. It stops when the panel closes. A read that fails asks
-/// again when the network changes, you send, you touch the chat or the keyboard appears. What you send is kept until
-/// its extension has it (`UnsentStore`), and goes again whenever the keyboard appears or an extension answers.
+/// again when the network changes, you send, you touch the chat or the keyboard appears, never on a clock, so an
+/// extension keeps its own address answering through its restarts. What you send is kept until its extension has it
+/// (`UnsentStore`), and goes again whenever the keyboard appears or an extension answers.
 final class Chats {
     nonisolated struct Chat: Hashable, Sendable {
         let service: Extension

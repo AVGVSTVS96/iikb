@@ -26,8 +26,10 @@ import java.util.concurrent.Future
 /**
  * The chats of the extensions you added (docs/extensions.md), as iOS's `Chats` keeps them: every extension's list,
  * pinned first, and the open chat's messages, asked for again as soon as each answer comes, so the extension holds the
- * request until they change and a reply shows the moment it's written. It stops when the panel closes. What you send
- * is kept until its extension has it (`Unsent`), and goes again whenever the keyboard appears or an extension answers.
+ * request until they change and a reply shows the moment it's written. It stops when the panel closes. A read that
+ * fails asks again when the network changes, you send, you touch the chat or the keyboard appears, never on a clock.
+ * What you send is kept until its extension has it (`Unsent`), and goes again whenever the keyboard appears or an
+ * extension answers.
  * Compose state.
  */
 class Chats(private val context: Context) {
