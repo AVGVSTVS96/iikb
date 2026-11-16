@@ -1,7 +1,8 @@
 # scripts/gate: text typed so far|words the bar must show then. Before a word, up to three; partway through one, one or
 # two, beside the typed word. A line starting with ? is one Apple's bar gets and iikb doesn't yet: its miss is printed,
 # not a failure. A line starting with = is typed with autocorrect on and checks what the field then holds. In words
-# the bar must show, _ is a space.
+# the bar must show, _ is a space. A regression gate: lines came with the changes that pass them, so a pass says nothing
+# of text it doesn't hold, which scripts/eval's predictions score; nothing is tuned against it.
 i love |you
 thank |you
 how are |you

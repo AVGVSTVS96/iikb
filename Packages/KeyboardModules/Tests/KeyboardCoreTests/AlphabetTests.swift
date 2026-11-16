@@ -143,6 +143,8 @@ struct AlphabetTests {
         #expect(typed("mle") != "m'le")
     }
 
+    /// A regression check, not a measure: its words come from the list its lexicon is built from, so every one is
+    /// known, which reads 3 to 4 points above `scripts/eval languages` on Common Voice sentences the lexicon never saw.
     @Test(arguments: ["de", "es"]) func typesWithNoisyTaps(language: String) {
         let lexicon = language == "de" ? Self.german : Self.spanish
         let counts = Self.counts(language)
@@ -151,7 +153,7 @@ struct AlphabetTests {
         var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
         engine.corrector = Self.corrector(lexicon)
         let document = TestDocument()
-        var (words, keysRight, right, accented, restored) = (0, 0, 0, 0, 0)
+        var (words, right, accented, restored) = (0, 0, 0, 0)
         for _ in 0..<400 {
             var pick = random.unit() * total
             let word =
@@ -160,7 +162,6 @@ struct AlphabetTests {
                     return pick < 0
                 }?.word ?? counts[0].word
             let start = document.text.count
-            var typed = ""
             for character in word {
                 let key = Self.grid.key(holding: String(character).lowercased())!
                 let frame = Self.grid.frame(of: key)!
@@ -171,13 +172,11 @@ struct AlphabetTests {
                 guard let hit = engine.key(atX: x, y: y, in: Self.grid),
                     let label = Self.grid.rows[hit.row][hit.key].key.label, label != " "
                 else { continue }
-                typed += label
                 engine.perform(.character(label), in: document, tap: Tap(x: x, y: y, key: label))
             }
             engine.perform(.space, in: document)
             let final = String(document.text.dropFirst(start)).trimmingCharacters(in: .whitespaces)
             words += 1
-            if typed == word.map({ Self.grid.key(holding: String($0).lowercased())! }).joined() { keysRight += 1 }
             if final == word { right += 1 }
             if word.lowercased().contains(where: { !$0.isASCII }) {
                 accented += 1
@@ -185,9 +184,6 @@ struct AlphabetTests {
             }
         }
         let share = { (count: Int, of: Int) in Double(count) / Double(max(of, 1)) }
-        print(
-            "LANGUAGE \(language) words=\(words) keysRight=\(share(keysRight, words)) right=\(share(right, words)) accented=\(accented) restored=\(share(restored, accented))"
-        )
         #expect(share(right, words) > 0.9)
         #expect(share(restored, accented) > 0.8)
     }
