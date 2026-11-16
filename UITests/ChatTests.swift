@@ -69,7 +69,7 @@ final class ChatTests: XCTestCase {
         XCTAssertTrue(wait { !field.exists }, "More leaves the chat")
     }
 
-    func testAChatWhoseExtensionWentAwayReadsAgainAtATap() throws {
+    func testAChatWhoseExtensionCameBackShowsItsNextReplyUntouched() throws {
         let environment = ProcessInfo.processInfo.environment.filter { !$0.value.isEmpty }
         guard let url = environment["IIKB_EXTENSION"], environment["IIKB_CHAT"] == nil else {
             throw XCTSkip("Run through scripts/chattest, with its stand-in")
@@ -106,9 +106,16 @@ final class ChatTests: XCTestCase {
             .firstMatch
         stand("down")
         XCTAssertTrue(lost.waitForExistence(timeout: 20), "a read that fails says the extension can't be reached")
+        Thread.sleep(forTimeInterval: 5)
         stand("up")
-        messages.tap()
-        XCTAssertTrue(wait { !lost.exists }, "a tap on the chat reads it again")
+        stand("reply")
+        let written = Date()
+        let reply = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "the film is ready"))
+            .firstMatch
+        let shown = reply.waitForExistence(timeout: 15)
+        print("chat: the reply showed \(shown ? String(format: "%.1f s", Date().timeIntervalSince(written)) : "never in 15 s") after it was written, untouched")
+        XCTAssertTrue(shown, "a reply written once the extension is back shows without a touch")
+        XCTAssertFalse(lost.exists, "the chat no longer says it can't reach the extension")
     }
 
     func testAPhotoAttachedInAChatIsSentAndShows() throws {

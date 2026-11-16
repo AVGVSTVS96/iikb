@@ -216,6 +216,13 @@ const stand = new Map([
     },
   ],
   ["/stand-in/up", () => (down = false)],
+  [
+    "/stand-in/reply",
+    () => {
+      threads.get("notes")?.messages.push({ from: "notes", text: "Back: the film is ready" });
+      changed();
+    },
+  ],
 ]);
 
 const answered = async (request: Request) => {
