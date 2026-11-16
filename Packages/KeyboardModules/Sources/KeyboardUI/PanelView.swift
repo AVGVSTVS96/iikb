@@ -129,6 +129,14 @@ public final class PanelView: UIView {
         max(Double(height - 2 * inset) - Toolbar.fieldGap - field, 0)
     }
 
+    /// What a field of the panel's own leaves its results above it: a row of them.
+    private static let resultsRow: CGFloat = 46
+
+    /// How tall a panel over the keys is whose own field, `field` tall, leaves its results their row.
+    public static func height(over field: CGFloat, toolbar: Toolbar) -> Double {
+        toolbar.top + Toolbar.fieldGap + Double(resultsRow + field)
+    }
+
     override public func layoutSubviews() {
         super.layoutSubviews()
         let width = block.maxX - block.minX
@@ -140,7 +148,7 @@ public final class PanelView: UIView {
         let room = bottom - top - CGFloat(Toolbar.fieldGap)
         let fieldHeight =
             own.map {
-                let most = fieldFirst ? room : room - 46
+                let most = fieldFirst ? room : room - Self.resultsRow
                 return min(ceil($0.sizeThatFits(CGSize(width: fieldWidth, height: most)).height), most)
             }
             ?? CGFloat(toolbar.field)

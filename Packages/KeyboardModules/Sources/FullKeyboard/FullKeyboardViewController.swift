@@ -672,7 +672,8 @@ open class FullKeyboardViewController: UIInputViewController {
         var metrics = keys.metrics
         let wanted = metrics.toolbar.showing(engine.panel, compact: engine.settings.compactPanels)
         let inPlace = panelInKeysPlace
-        let tall = max(height + wanted.height, Double(screenSize.height) - roomForApp - beneath)
+        let overKeys = PanelView.height(over: MessageField.withPhotos, toolbar: wanted)
+        let tall = max(height + wanted.height + overKeys, Double(screenSize.height) - roomForApp - beneath)
         let ask =
             line != nil
             ? (keysUp ? tall - height : wanted.height) : inPlace || !panelOpen ? wanted.height : wanted.panelHeight

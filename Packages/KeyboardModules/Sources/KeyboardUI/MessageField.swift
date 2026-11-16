@@ -62,8 +62,10 @@ public final class MessageField: UIView, UITextViewDelegate {
     private static let thumbSize: CGFloat = 76
     private static let stripPadding: CGFloat = 8
     /// The photos' side as laid out: `thumbSize`, or less where the keyboard leaves the box less room than its photos
-    /// and a line of words need, as on the folded Duo turned sideways.
+    /// and a line of words need, as where iOS gives the keyboard less height than a chat asks for.
     private var thumbSide = MessageField.thumbSize
+    /// The box with a row of photos over a line of words.
+    public static let withPhotos = inset.top + thumbSize + stripPadding + lineHeight + inset.bottom
     private static let lines = {
         let style = NSMutableParagraphStyle()
         style.minimumLineHeight = lineHeight
