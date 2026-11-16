@@ -8,8 +8,7 @@ TYPE=${2:-iPhone-Duo}
 PORT=${PORT:-2599}
 ID=$(scripts/sim ensure "$NAME" "$TYPE")
 scripts/sim boot "$ID"
-scripts/sim use "$ID" iikb
-scripts/sim allow "$ID"
+scripts/sim ready "$ID" iikb
 slug=$(echo "$NAME" | tr 'A-Z ' 'a-z-')
 mkdir -p shots/raw/source build/uitest
 xcodegen generate -q

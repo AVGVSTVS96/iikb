@@ -25,9 +25,8 @@ xcodegen generate -q
 xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
   -derivedDataPath build/uitest -quiet
 scripts/sim boot "$ID"
-scripts/sim use "$ID" iikb
-scripts/sim allow "$ID" paste
-# After allow, which restarts the simulator to take Full Access, folding the Duo.
+scripts/sim ready "$ID" iikb paste
+# After ready, which restarts the simulator to take Full Access, folding the Duo.
 if [ -n "$hinge" ]; then
   scripts/sim unfold "$ID" 0
   [ "$hinge" = 0 ] || scripts/sim unfold "$ID" "$hinge"

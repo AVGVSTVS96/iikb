@@ -13,8 +13,7 @@ xcodegen generate -q
 xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest -quiet
 touch "$APP"
 scripts/sim boot "$ID"
-scripts/sim allow "$ID" paste
-scripts/sim use "$ID" iikb
+scripts/sim ready "$ID" iikb paste
 set -a; source shots/demo/env; set +a
 scripts/sim fill "$ID"
 PORT=${PORT:-2597}

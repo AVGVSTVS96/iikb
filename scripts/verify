@@ -31,8 +31,7 @@ xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "
   -derivedDataPath build/uitest -quiet IIKB_INSTALL_LINK=http://localhost:$port/
 
 scripts/sim boot "$ID"
-scripts/sim allow "$ID"
-scripts/sim use "$ID" iikb
+scripts/sim ready "$ID" iikb
 [ -n "${OPEN:-}" ] && scripts/sim unfold "$ID"
 python3 shots/demo/make.py build/demo
 TRANSCRIPTS=build/demo/transcripts.jsonl RECORDINGS=build/demo/recordings scripts/sim fill "$ID"

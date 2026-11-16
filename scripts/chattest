@@ -16,9 +16,8 @@ xcodegen generate -q
 xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
   -derivedDataPath build/uitest -quiet
 scripts/sim boot "$ID"
-scripts/sim use "$ID" iikb
+scripts/sim ready "$ID" iikb
 if [ -n "${OPEN:-}" ]; then scripts/sim unfold "$ID"; else scripts/sim unfold "$ID" 0; fi
-scripts/sim allow "$ID"
 xcrun simctl install "$ID" build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
 if [ -n "${PHOTOS:-}" ]; then
   find "/System/Library/Desktop Pictures" -name '*.heic' -not -path '*/.thumbnails/*' 2>/dev/null | head -3 | while read -r photo; do

@@ -86,36 +86,42 @@ stop() {
     --cellularMode notSupported --batteryState charged --batteryLevel 100
 }
 
-# Turns on Full Access (with paste, Paste from Other Apps too), which iOS keeps in TCC's database, written where Settings
-# writes it; a simulator without them restarts to take them.
-allow() {
-  local db=~/Library/Developer/CoreSimulator/Devices/$1/data/Library/TCC/TCC.db
-  local rows="('kTCCServiceKeyboardNetwork', '$BUNDLE'), ('kTCCServiceKeyboardNetwork', '$BUNDLE.keyboard')"
-  [ "${2:-}" = paste ] && rows="$rows, ('kTCCServicePasteboard', '$BUNDLE')"
-  perl -e 'alarm shift; exec @ARGV' 1800 xcrun simctl bootstatus "$1" -b >/dev/null
-  [ "$(sqlite3 "$db" "select count(*) = $(grep -o '(' <<<"$rows" | wc -l) from access where auth_value = 2 and (service, client) in (values $rows)")" = 1 ] && return
-  down "$1"
-  sqlite3 "$db" "insert or replace into access (service, client, client_type, auth_value, auth_reason, auth_version, flags)
-    select column1, column2, 0, 2, 4, 1, 0 from (values $rows)"
-  boot "$1"
-}
-
-use() {
-  local id=$1 keyboards
-  case $2 in
-    iikb) keyboards=("com.shahidy.iikb.keyboard" "en_US@sw=QWERTY;hw=Automatic") ;;
-    system) keyboards=("en_US@sw=QWERTY;hw=Automatic") ;;
-    system:*) keyboards=("${2#system:};hw=Automatic") ;;
-  esac
-  local current expanded
-  current=$(xcrun simctl spawn "$id" defaults read .GlobalPreferences AppleKeyboards 2>/dev/null | sed '1d;$d' | tr -d ' ",\n' || true)
-  expanded=$(xcrun simctl spawn "$id" defaults read .GlobalPreferences AppleKeyboardsExpanded 2>/dev/null || true)
-  [ "$current" = "$(printf %s "${keyboards[@]}")" ] && [ "$expanded" = 1 ] && return
-  xcrun simctl spawn "$id" defaults write .GlobalPreferences AppleKeyboards -array "${keyboards[@]}"
-  xcrun simctl spawn "$id" defaults write .GlobalPreferences AppleKeyboardsExpanded -int 1
+# Full Access (with paste, Paste from Other Apps too), which iOS keeps in TCC's database, written where Settings writes
+# it, and the keyboards, in the global preferences: a simulator reads both only as it boots, so ready sets what differs
+# and restarts it once. ready <id> <keyboard> [paste]; allow <id> [paste] and use <id> <keyboard> set one.
+ready() {
+  local id=$1 keyboard=$2 access=${3:-full} db=~/Library/Developer/CoreSimulator/Devices/$1/data/Library/TCC/TCC.db
+  local rows= keyboards current expanded restart=
+  perl -e 'alarm shift; exec @ARGV' 1800 xcrun simctl bootstatus "$id" -b >/dev/null
+  if [ "$access" != none ]; then
+    rows="('kTCCServiceKeyboardNetwork', '$BUNDLE'), ('kTCCServiceKeyboardNetwork', '$BUNDLE.keyboard')"
+    [ "$access" = paste ] && rows="$rows, ('kTCCServicePasteboard', '$BUNDLE')"
+    [ "$(sqlite3 "$db" "select count(*) = $(grep -o '(' <<<"$rows" | wc -l) from access where auth_value = 2 and (service, client) in (values $rows)")" = 1 ] && rows= || restart=1
+  fi
+  if [ -n "$keyboard" ]; then
+    case $keyboard in
+      iikb) keyboards=("com.shahidy.iikb.keyboard" "en_US@sw=QWERTY;hw=Automatic") ;;
+      system) keyboards=("en_US@sw=QWERTY;hw=Automatic") ;;
+      system:*) keyboards=("${keyboard#system:};hw=Automatic") ;;
+    esac
+    current=$(xcrun simctl spawn "$id" defaults read .GlobalPreferences AppleKeyboards 2>/dev/null | sed '1d;$d' | tr -d ' ",\n' || true)
+    expanded=$(xcrun simctl spawn "$id" defaults read .GlobalPreferences AppleKeyboardsExpanded 2>/dev/null || true)
+    if [ "$current" != "$(printf %s "${keyboards[@]}")" ] || [ "$expanded" != 1 ]; then
+      xcrun simctl spawn "$id" defaults write .GlobalPreferences AppleKeyboards -array "${keyboards[@]}"
+      xcrun simctl spawn "$id" defaults write .GlobalPreferences AppleKeyboardsExpanded -int 1
+      restart=1
+    fi
+  fi
+  [ -n "$restart" ] || return 0
   down "$id"
+  [ -z "$rows" ] || sqlite3 "$db" "insert or replace into access (service, client, client_type, auth_value, auth_reason, auth_version, flags)
+    select column1, column2, 0, 2, 4, 1, 0 from (values $rows)"
   boot "$id"
 }
+
+allow() { ready "$1" "" "${2:-full}"; }
+
+use() { ready "$1" "$2" none; }
 
 # A screenshot of the simulator's screen (DISPLAY_ID picks the Duo's), taken once the app has drawn and stopped moving:
 # a launch can take far longer than usual on GitHub's Macs, and a fixed wait shot those launches blank. Shoots again
@@ -367,8 +373,7 @@ duoapp() {
   local tag=$1 id; shift
   id=$(ensure "${SIM:-iPhone Duo}" iPhone-Duo)
   boot "$id"
-  allow "$id" paste
-  use "$id" iikb
+  ready "$id" iikb paste
   unfold "$id" 0
   fill "$id"
   local look="-iikbTheme standard -iikbThemeAppearance automatic"
@@ -398,8 +403,7 @@ phoneapp() {
   local tag=$1 phone=${PHONE:-iPhone 17} id look="-iikbTheme standard -iikbThemeAppearance automatic"
   id=$(ensure "$phone" "${phone// /-}")
   boot "$id"
-  allow "$id" paste
-  use "$id" iikb
+  ready "$id" iikb paste
   fill "$id"
   [[ "${ARGS:-}" == *-iikbTheme* ]] && look=
   mkdir -p shots/raw/phone/app
@@ -446,8 +450,7 @@ ipadapp() {
       [ -n "$last" ] || { xcodegen generate -q
         xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$id" -derivedDataPath build/uitest -quiet && touch "$APP"; }
       boot "$id"
-      allow "$id" paste
-      use "$id" iikb
+      ready "$id" iikb paste
       fill "$id"
       last=$device
     fi
