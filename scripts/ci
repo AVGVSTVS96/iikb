@@ -31,7 +31,18 @@ url=$(grep -o 'https://[^ ]*/actions/runs/[0-9]*' <<<"$out")
 id=${url##*/}
 echo "$url" >&2
 trap 'gh run cancel "$id" >/dev/null 2>&1; exit 130' INT TERM
-until [ "$(gh run view "$id" --json status --jq .status 2>/dev/null)" = completed ]; do sleep 60; done
+# Every waiting scripts/ci on this machine reads one listing of the workflow's runs, fetched at most every 30 s, since a
+# poll each ran through GitHub's 5,000 calls an hour once 30 were waiting.
+runs=${XDG_RUNTIME_DIR:-/tmp}/iikb-ci-runs.json
+status() {
+  (
+    flock 9
+    [ -s "$runs" ] && [ $(($(date +%s) - $(stat -c %Y "$runs"))) -lt 30 ] ||
+      { gh run list -w sim.yml -L 200 --json databaseId,status > "$runs.new" 2>/dev/null && mv "$runs.new" "$runs"; }
+  ) 9>"$runs.lock"
+  jq -r --argjson id "$id" '.[] | select(.databaseId == $id) | .status' "$runs" 2>/dev/null
+}
+until [ "$(status)" = completed ]; do sleep 30; done
 gh run view "$id" --log | awk -F'\t' '$2 == "check" { sub(/^[^ ]+ /, "", $3); print $3 }'
 mkdir -p shots/raw
 gh run download "$id" -n shots -D shots/raw 2>/dev/null || true
