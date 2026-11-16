@@ -19,6 +19,12 @@ public final class Corrector {
     }
 
     let lexicon: Lexicon?
+    /// The languages typed, each with its own words; with several, `lexicon` holds all their words. None for a
+    /// corrector made of a bare source.
+    public let languages: [LanguagePack]
+    /// How likely the word being typed is in each of `languages`, read from the text before it (`follow`).
+    var shares: [Double]
+    var followed: String?
     /// How many of the words in `memory` the lexicon doesn't know, counted once and then kept up to date.
     private var novel: Int?
     private var typedIndex: Vocabulary.TypedIndex?
@@ -37,15 +43,32 @@ public final class Corrector {
 
     /// With a `Lexicon` as its source, the corrector decodes your taps against your own touch model and words;
     /// any other source (like `UITextChecker`) only corrects spelling. The `Network` tells it what words come next.
-    public init(source: any CandidateSource, network: Network? = nil) {
+    public convenience init(source: any CandidateSource, network: Network? = nil) {
+        self.init(source: source, network: network, languages: [])
+    }
+
+    /// A corrector for the languages typed at once: a word of any of them is a word, read as likely as the languages
+    /// the text before it is in make it (`shares`). `words` holds all their words in one (`Lexicon(merging:)`, which
+    /// makes it when none is given). For now one network speaks, the first language's that has one, for that
+    /// language's share of the next word.
+    public convenience init(typing languages: [LanguagePack], words: Lexicon? = nil) {
+        let all = languages.count > 1 ? words ?? Lexicon(merging: languages.map(\.lexicon)) : languages[0].lexicon
+        self.init(source: all, network: languages.lazy.compactMap(\.network).first, languages: languages)
+    }
+
+    private init(source: any CandidateSource, network: Network?, languages: [LanguagePack]) {
         self.source = source
         self.network = network
         self.lexicon = source as? Lexicon
+        self.languages = languages
+        shares = languages.map { _ in 1 / Double(languages.count) }
     }
 
     /// A corrector with the same words, touches and grid, and caches of its own.
     func snapshot() -> Corrector {
-        let copy = Corrector(source: source, network: network)
+        let copy = Corrector(source: source, network: network, languages: languages)
+        copy.shares = shares
+        copy.followed = followed
         copy.reading = reading
         copy.unknown = unknown
         copy.letterKeys = letterKeys
@@ -122,9 +145,10 @@ public final class Corrector {
         forgetRankings()
     }
 
-    private func forgetRankings() {
+    /// `keys` too, unless what changed leaves where taps land as it was.
+    func forgetRankings(keys: Bool = true) {
         rankings = [:]
-        keyShares = [:]
+        if keys { keyShares = [:] }
         generation += 1
     }
 
@@ -146,6 +170,7 @@ public final class Corrector {
 
     /// `context` is the text before the word, when known.
     public func correction(for word: TypedWord, context: String? = nil, guessing: Bool = true) -> String? {
+        follow(context)
         let text = Substring(word.text)
         let lower = word.text.lowercased()
         if let phrase = replacements[lower] { return phrase == word.text ? nil : phrase }
@@ -174,7 +199,7 @@ public final class Corrector {
                 return Words.matchCase(contraction, to: text)
             }
             guard best.word != word.text else { return nil }
-            if best.isLiteral { return lexicon.canonical(lower) == best.word && best.word != lower ? best.word : nil }
+            if best.isLiteral { return canonical(lower) == best.word && best.word != lower ? best.word : nil }
             if isKnown(word), let literal = ranked.first(where: \.isLiteral),
                 literal.logLikelihood >= best.logLikelihood
             {
@@ -190,6 +215,7 @@ public final class Corrector {
     func suggestions(
         for word: TypedWord, context: String? = nil, correcting: Bool, applying: Bool = true, guessing: Bool
     ) -> [Suggestion] {
+        follow(context)
         let typed = Substring(word.text)
         var seen: Set<String> = [word.text.lowercased()]
         var alternatives: [Suggestion] = []
@@ -223,6 +249,7 @@ public final class Corrector {
     }
 
     func predictions(after previous: String?, earlier: String?, context: String) -> [Suggestion] {
+        follow(context)
         var seen: Set<String> = []
         var words =
             TypingMemory.contexts(previous, earlier).reversed().flatMap(memory.predictions(after:))
@@ -230,9 +257,11 @@ public final class Corrector {
         if let lexicon {
             let expected = expected(after: context)
             let predict = languageModel(lexicon).predictor(after: previous, earlier: earlier, expected: expected)
-            let likeliest = (expected?.likeliest(12) ?? []).map { lexicon.canonical($0) ?? $0 }
-            words = (words + likeliest + lexicon.mostFrequent(count: 6))
-                .map { ($0, predict($0)) }
+            let likeliest = (expected?.likeliest(12) ?? []).map { canonical($0) ?? $0 }
+            let common =
+                languages.count > 1
+                ? languages.flatMap { $0.lexicon.mostFrequent(count: 6) } : lexicon.mostFrequent(count: 6)
+            words = (words + likeliest + common).map { ($0, predict($0)) }
                 .sorted { $0.1 > $1.1 }
                 .map(\.0)
         }
@@ -270,7 +299,7 @@ public final class Corrector {
         let following =
             TypingMemory.contexts(typed.previous, earlier).flatMap(memory.predictions(after:))
             .filter { $0.lowercased().hasPrefix(literal) }
-            + (expected?.likeliest(24, startingWith: typed.text) ?? []).map { lexicon.canonical($0) ?? $0 }
+            + (expected?.likeliest(24, startingWith: typed.text) ?? []).map { canonical($0) ?? $0 }
             + names(startingWith: typed.text)
         for word in following where fits[word] == nil && word.lowercased() != literal {
             fits[word] = Decoder.logLikelihood(
@@ -307,6 +336,7 @@ public final class Corrector {
     }
 
     private func next(at state: Network.State, _ network: Network, _ lexicon: Lexicon) -> Network.Next {
+        let lexicon = speaking.map { languages[$0].lexicon } ?? lexicon
         let unknown =
             unknown ?? 1
             - (Network.specials.count..<network.words).reduce(0) {
@@ -362,7 +392,7 @@ extension Corrector {
         let words = alone ? TypingMemory() : memory
         let model =
             alone
-            ? LanguageModel(lexicon: lexicon, memory: words, letters: letters(lexicon).letters)
+            ? LanguageModel(lexicon: lexicon, memory: words, letters: letters(lexicon).letters, among: among)
             : languageModel(lexicon)
         let taps = evidence(for: typed, touches: memory.touches)
         let literal = typed.text.lowercased()
@@ -381,11 +411,12 @@ extension Corrector {
             Decoder.logLikelihood(of: word, given: taps, touches: memory.touches, on: keys, completing: completing)
         }
         for result in Decoder(lexicon: lexicon).decode(taps, budget: inRun ? Decoder.wordBudget : Decoder.budget) {
+            let word = languages.count > 1 ? canonical(result.word) ?? result.word : result.word
             consider(
-                result.word, logLikelihood: likelihood(result.word, completing: result.isCompletion),
+                word, logLikelihood: likelihood(word, completing: result.isCompletion),
                 isCompletion: result.isCompletion)
         }
-        let literalWord = lexicon.canonical(literal) ?? typed.text
+        let literalWord = canonical(literal) ?? typed.text
         consider(literalWord, logLikelihood: likelihood(literalWord), isCompletion: false)
         for word in words.familiar where word.count + 1 >= taps.count && lexicon.logProbability(of: word) == nil {
             if inRun {
@@ -455,7 +486,9 @@ extension Corrector {
     /// A word that stands on its own, which autocorrect replaces only when your touches fit the other word better: one
     /// you've kept, or a real word that, typed dead center on its keys, still reads as itself. Reading it with an
     /// apostrophe added ("its" → "it's"), or with a letter the same key holds ("schon" → "schön"), doesn't count
-    /// against it, since the touches can't tell those apart.
+    /// against it, since the touches can't tell those apart. With several languages, a letter the same key holds does
+    /// count against a word of a language that isn't the one being written (`isWritten`): where no key shows ü, "fur"
+    /// after German words is how "für" is typed.
     /// A word typed without its elision's apostrophe, as Italian's letters have no key for it: "dellinformazione"
     /// read as "dell'informazione", when that beats every reading of it as one word, as "dont" is read as "don't". An
     /// elision only comes before a vowel or h, so the word after it starts with one.
@@ -503,10 +536,15 @@ extension Corrector {
             let frame = grid.frame(of: label)
             return Tap(x: frame?.midX ?? 0, y: frame?.midY ?? 0, key: label)
         }
-        guard let perfect = ranked(TypedWord(word.text, taps: centers), alone: true).first(where: { !$0.isCompletion }),
-            !perfect.isLiteral
+        let readings = ranked(TypedWord(word.text, taps: centers), alone: true)
+        guard let perfect = readings.first(where: { !$0.isCompletion }), !perfect.isLiteral,
+            let literal = readings.first(where: \.isLiteral)
         else { return true }
-        return perfect.word.contains("'") || perfect.word.map(keys.key(of:)) == word.text.map(keys.key(of:))
+        return perfect.word.contains("'")
+            || perfect.word.map(keys.key(of:)) == word.text.map(keys.key(of:))
+                && isWritten(
+                    word.text.lowercased(), not: perfect.word.lowercased(),
+                    logOdds: perfect.logPosterior - literal.logPosterior)
     }
 
     /// What each tap says about the letter it meant: where it landed, or for a word typed without its taps (one you went
@@ -575,7 +613,17 @@ extension Corrector {
         self.novel = novel
         return LanguageModel(
             lexicon: lexicon, memory: memory, novel: novel, app: app.flatMap { memory.apps?[$0] },
-            letters: letters(lexicon).letters)
+            letters: letters(lexicon).letters, among: among, speaking: speaking)
+    }
+
+    /// Which of several languages the network reads the words before as: the first that has one.
+    private var speaking: Int? {
+        languages.count > 1 ? languages.firstIndex { $0.network != nil } : nil
+    }
+
+    /// Each language's own words with its share, for the language model; none with one language.
+    private var among: [(lexicon: Lexicon, share: Double)] {
+        languages.count > 1 ? zip(languages, shares).map { ($0.lexicon, $1) } : []
     }
 }
 
@@ -750,6 +798,7 @@ extension Corrector {
     /// what's between the keys is neither a word nor a typo of one, as in a handle, or you've kept the run. Without
     /// `correcting` (Auto-Correction off), each word stays as typed.
     func spaced(_ run: TypedWord, context: String, correcting: Bool) -> String? {
+        follow(context)
         let letters = Array(run.text)
         guard let lexicon, run.taps.count == letters.count, !memory.isKept(run.text) else { return nil }
         let keys = memory.touches.layout(grid)

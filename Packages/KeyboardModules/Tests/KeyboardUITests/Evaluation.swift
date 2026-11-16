@@ -78,6 +78,63 @@ struct Evaluation {
         }
     }
 
+    /// English and one other language typed at once (`SEVERAL` names it), against each typed alone: English's phrases
+    /// on QWERTY, the other's on its own layout, and both in one message on QWERTY (an English phrase and the other's,
+    /// either first), where typing English alone is what a person who writes both had before. English's network speaks
+    /// in each. It prints what several cost each language alone and gain a message in two. `RUN` picks one of its
+    /// twelve runs, so scripts/eval runs each in its own process.
+    @Test func several() throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let folder = environment["LANGUAGES"], let id = environment["SEVERAL"] else { return }
+        let other = Language.named(id)
+        let file = URL(fileURLWithPath: folder).appending(path: "\(other.id).lexicon")
+        let english = LanguagePack(.english, lexicon: .english, network: .english)
+        let second = LanguagePack(other, lexicon: try #require(Lexicon(bytes: [UInt8](Data(contentsOf: file)))))
+        let words = Lexicon(merging: [english.lexicon, second.lexicon])
+        let phrases = (english: try Self.phrases(), other: try Self.phrases("phrases.\(other.id)"))
+        let messages = zip(phrases.english, phrases.other).enumerated().map { index, pair in
+            let parts = [(Language.english, pair.0), (other, pair.1)]
+            return index.isMultiple(of: 2) ? parts : parts.reversed()
+        }
+        let texts: [(name: String, first: Language, messages: [[(Language, String)]])] = [
+            ("en", .english, phrases.english.map { [(.english, $0)] }),
+            (other.id, other, phrases.other.map { [(other, $0)] }),
+            ("en+\(other.id)", .english, messages),
+        ]
+        var run = 0
+        for (name, first, messages) in texts {
+            let alone = first == .english ? english : second
+            for packs in [[alone], first == .english ? [english, second] : [second, english]] {
+                var context = LayoutContext(device: .phone, layer: .letters)
+                context.languages = packs.map(\.language)
+                context.letters = first.layouts[0]
+                for noise in [0.0, 0.25] {
+                    defer { run += 1 }
+                    guard environment["RUN"].map({ Int($0) == run }) ?? true else { continue }
+                    var user = SimulatedUser(width: Self.width, noise: noise, seed: 2026, context: context)
+                    var session = Session(
+                        .decoder, grid: user.grid, typing: packs, words: packs.count > 1 ? words : nil)
+                    var scores: [Language: Score] = [:]
+                    for message in messages {
+                        session.startPhrase()
+                        for (language, phrase) in message {
+                            session.score = scores[language] ?? Score()
+                            for word in phrase.split(separator: " ") {
+                                session.type(String(word), by: &user, tappingSpace: false)
+                            }
+                            scores[language] = session.score
+                        }
+                    }
+                    for (language, score) in scores.sorted(by: { $0.key.id < $1.key.id }) {
+                        print(
+                            "EVAL several text=\(name) typing=\(packs.map(\.language.id).joined(separator: "+")) layout=\(context.letters.id) noise=\(noise) \(language.id): \(score)"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     /// Main-thread cost per keystroke of what the extension runs for one key: hit-testing on touch down, the key on
     /// touch up, and the document refresh the host's `textDidChange` triggers.
     @Test func latency() throws {
@@ -438,6 +495,15 @@ struct Session {
     var document = Document()
     var score = Score()
     var window = Score()
+
+    /// The languages in `typing` at once, with `words` all of theirs in one.
+    init(_ keyboard: Evaluation.Keyboard, grid: KeyGrid, typing: [LanguagePack], words: Lexicon?) {
+        self.keyboard = keyboard
+        self.grid = grid
+        let corrector = Corrector(typing: typing, words: words)
+        corrector.grid = grid
+        engine.corrector = corrector
+    }
 
     /// With `lexicon`, another language's words and no next-word network.
     init(_ keyboard: Evaluation.Keyboard, grid: KeyGrid, lexicon: Lexicon? = nil) {

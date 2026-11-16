@@ -131,7 +131,7 @@ public struct TypingEngine {
                     write("", replacing: 1, in: document)
                     typed = "—"
                 } else {
-                    typed = Self.smartQuote(typed, after: text.before, in: settings.languages[0])
+                    typed = Self.smartQuote(typed, after: text.before, in: writing)
                 }
             }
             if Self.wordEnders.contains(typed) {

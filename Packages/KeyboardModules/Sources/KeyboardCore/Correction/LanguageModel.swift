@@ -15,14 +15,22 @@ struct LanguageModel {
     let letters: [String]
     /// ln P(each letter) of such a word.
     let spellingLogProbability: Double
+    /// With several languages typed, each one's own words and how likely the next word is in it (`Corrector.shares`);
+    /// `lexicon` then holds the words of them all, and a word is as likely as the languages make it, each by its share.
+    let among: [(lexicon: Lexicon, share: Double)]
+    /// Which of `among` the network reads the words before as. The others' words come as often as they are.
+    let speaking: Int?
 
     static let discount = 0.5
 
     /// `novel` is `novel(in:lexicon:)`, when the caller keeps it counted.
     init(
-        lexicon: Lexicon, memory: TypingMemory, novel: Int? = nil, app: AppWords? = nil, letters: [String]? = nil
+        lexicon: Lexicon, memory: TypingMemory, novel: Int? = nil, app: AppWords? = nil, letters: [String]? = nil,
+        among: [(lexicon: Lexicon, share: Double)] = [], speaking: Int? = nil
     ) {
         self.app = app
+        self.among = among
+        self.speaking = speaking
         self.lexicon = lexicon
         self.memory = memory
         self.letters = letters ?? lexicon.letters
@@ -47,14 +55,18 @@ struct LanguageModel {
     /// `previous` is "" at a sentence's start and nil when unknown; `earlier` is the word before it, read the same way.
     func predictor(after previous: String?, earlier: String?, expected: Network.Next?) -> (String) -> Double {
         { word in
-            let below = unigram(word)
             guard let expected else {
-                return Math.log(probability(word, after: previous, earlier: earlier, over: below))
+                return Math.log(probability(word, after: previous, earlier: earlier, over: unigram(word)))
             }
-            return Math.log(
-                probability(
-                    word, after: previous, earlier: earlier, over: expected.probability(of: word, below: below),
-                    trusting: 8))
+            let read =
+                among.isEmpty
+                ? expected.probability(of: word, below: unigram(word))
+                : among.enumerated().reduce(0) { sum, language in
+                    let below = unigram(word, lexical: lexical(word, in: language.element.lexicon))
+                    let read = language.offset == speaking ? expected.probability(of: word, below: below) : below
+                    return sum + language.element.share * read
+                }
+            return Math.log(probability(word, after: previous, earlier: earlier, over: read, trusting: 8))
         }
     }
 
@@ -75,37 +87,56 @@ struct LanguageModel {
     }
 
     private func unigram(_ word: String) -> Double {
-        let p = lexical(word)
+        unigram(word, lexical: lexical(word))
+    }
+
+    /// A word as often as you've typed it, over how likely `p` its words make it.
+    private func unigram(_ word: String, lexical p: Double) -> Double {
         guard memory.total > 0 else { return p }
         let types = Double(memory.counts.count)
         return (Double(memory.count(of: word)) + types * p) / (Double(memory.total) + types)
     }
 
     func lexical(_ word: String) -> Double {
+        among.isEmpty ? lexical(word, in: lexicon) : among.reduce(0) { $0 + $1.share * lexical(word, in: $1.lexicon) }
+    }
+
+    /// How likely a word is as one of `lexicon`'s, or one it doesn't know.
+    func lexical(_ word: String, in lexicon: Lexicon) -> Double {
         let known = lexicon.logProbability(of: word).map(Math.exp) ?? 0
         return (1 - novelty) * known + novelty * Math.exp(spellingLogProbability * Double(word.count + 1))
     }
 
     /// P(next letter | the letters so far), over the lexicon and novel spellings, and P(the word ends here) as `" "`.
-    /// Before a word starts, `" "` is how often you type a second space, by the rule of succession.
+    /// Before a word starts, `" "` is how often you type a second space, by the rule of succession. With several
+    /// languages the letters are each one's by its share, so the key map leans to the language being written.
     func next(after prefix: String) -> [String: Double] {
         let length = Double(prefix.count)
-        let node = lexicon.node(for: prefix)
+        let words = (among.isEmpty ? [(lexicon: lexicon, share: 1.0)] : among).map {
+            (lexicon: $0.lexicon, share: $0.share, node: $0.lexicon.node(for: prefix))
+        }
         let novel = { (letters: Double) in novelty * Math.exp(spellingLogProbability * letters) }
-        let mass = { (node: Lexicon.Node?) in node.map { (1 - novelty) * Math.exp(lexicon.logMass($0)) } ?? 0 }
-        let total = mass(node) + novel(length)
+        /// What the languages have, each by its share, of what `log` reads at its node for the prefix.
+        func mass(_ log: (Lexicon, Lexicon.Node) -> Double?) -> Double {
+            words.reduce(0) { sum, language in
+                guard let node = language.node, let log = log(language.lexicon, node) else { return sum }
+                return sum + language.share * (1 - novelty) * Math.exp(log)
+            }
+        }
+        let total = mass { $0.logMass($1) } + novel(length)
         var result: [String: Double] = [:]
-        for (index, letter) in letters.enumerated() {
-            let child = index < lexicon.letters.count ? node.flatMap { lexicon.child($0, UInt8(index)) } : nil
-            result[letter] = (mass(child) + novel(length + 1)) / total
+        for letter in letters {
+            let under = mass { lexicon, node in
+                letter.first.flatMap(lexicon.index(of:)).flatMap { lexicon.child(node, $0) }.map(lexicon.logMass)
+            }
+            result[letter] = (under + novel(length + 1)) / total
         }
         if prefix.isEmpty {
             let space = (Double(memory.spacesAfterSpace) + 1) / (Double(memory.keysAfterSpace) + 2)
             for (key, p) in result { result[key] = p * (1 - space) }
             result[" "] = space
         } else {
-            let ends = node.flatMap(lexicon.logWord).map { (1 - novelty) * Math.exp($0) } ?? 0
-            result[" "] = (ends + novel(length + 1)) / total
+            result[" "] = (mass { $0.logWord($1) } + novel(length + 1)) / total
         }
         return result
     }

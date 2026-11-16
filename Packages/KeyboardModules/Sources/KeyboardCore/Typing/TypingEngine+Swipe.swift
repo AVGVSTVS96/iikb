@@ -89,7 +89,7 @@ extension TypingEngine {
 extension Corrector {
     /// A word as the keyboard spells it: a name, or the lexicon's capitals ("I", "London").
     func spelling(of word: String) -> String {
-        names[word.lowercased()] ?? lexicon?.canonical(word) ?? word
+        names[word.lowercased()] ?? canonical(word) ?? word
     }
 
     /// Whether the text ends in an elision the lexicon lists, French's "l’" or Italian's "dell’", which the next word

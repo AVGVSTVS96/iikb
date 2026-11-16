@@ -182,10 +182,6 @@ extension Lexicon {
             node.probability += p
             if capital { node.capital = true } else { node.lowercase = true }
         }
-
-        func quantize(_ p: Double) -> UInt8 {
-            p <= 0 ? 0 : UInt8(min(max((-Math.log(p) * 10).rounded(), 1), 255))
-        }
         var order: [(node: Building, letter: UInt8, last: Bool)] = [(root, 0, true)]
         var firstChild: [Int] = []
         var cursor = 0
@@ -198,17 +194,16 @@ extension Lexicon {
             }
             cursor += 1
         }
-        func u32(_ value: Int) -> [UInt8] {
-            stride(from: 0, to: 32, by: 8).map { UInt8(truncatingIfNeeded: value >> $0) }
-        }
-        let spelled = Array(letters.joined(separator: "\n").utf8)
-        var bytes = Self.header + u32(order.count) + u32(spelled.count) + spelled
-        bytes += [UInt8](repeating: 0, count: (8 - bytes.count % 8) % 8)
+        var bytes = Self.heading(letters)
+        Self.write(order.count, at: 4, in: &bytes)
         for (index, entry) in order.enumerated() {
             let capitalized = entry.node.capital && !entry.node.lowercase
             let flags: UInt8 = (entry.last ? 1 : 0) | (capitalized ? 2 : 0)
-            bytes += [entry.letter, quantize(entry.node.probability), quantize(min(entry.node.mass, 1)), flags]
-            bytes += u32(firstChild[index])
+            bytes += [
+                entry.letter, Self.quantize(entry.node.probability), Self.quantize(min(entry.node.mass, 1)), flags,
+                0, 0, 0, 0,
+            ]
+            Self.write(firstChild[index], at: bytes.count - 4, in: &bytes)
         }
         self.init(bytes: bytes)!
     }

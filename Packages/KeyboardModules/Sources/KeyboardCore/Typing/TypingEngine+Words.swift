@@ -78,11 +78,15 @@ struct PendingWord: Hashable {
 extension TypingEngine {
     var correcting: Bool { settings.autoCorrection && traits.allowsCorrection }
 
+    /// The language being written at the caret, whose quotes and apostrophe smart punctuation types: of several, the
+    /// one the text before the caret is likeliest in (`Corrector.language(writing:)`).
+    var writing: Language { corrector?.language(writing: text.before) ?? settings.languages[0] }
+
     /// A word the corrector wrote, with its apostrophes curled where punctuation is smart, as typed ones are. The
     /// corrector reads and writes them straight.
     func written(_ word: String) -> String {
         guard settings.smartPunctuation, traits.smartPunctuation else { return word }
-        let apostrophe = settings.languages[0].quotes[3]
+        let apostrophe = writing.quotes[3]
         return word.map { $0 == "'" ? apostrophe : String($0) }.joined()
     }
 
@@ -228,6 +232,9 @@ extension TypingEngine {
     /// either way, since the next touch reads it.
     public mutating func suggestionsChanged() {
         revision += 1
+        if let corrector, corrector.languages.count > 1 {
+            corrector.follow(String(text.before.dropLast(Words.current(in: text.before).count)))
+        }
         if defersSuggestions { suggestionsAreStale = true } else { refreshSuggestions() }
         keyMap = corrector?.keyMap(after: wordForKeys)
     }
