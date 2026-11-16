@@ -31,4 +31,15 @@ public enum KeyboardEvent: Hashable, Sendable {
     /// the field's reading takes: `DictationReading`), the same when nil. One with its transcript's `id` is followed
     /// until its field is sent or left, for what it became (`TypingEngine.takeDictations`).
     case dictated(String, plain: String? = nil, id: String? = nil)
+    /// A snippet picked in the Snippets panel, typed at the caret once its arguments are filled in.
+    case snippet(Snippet)
+    /// A quicklink picked in the Quicklinks panel: its link typed at the caret, or opened, once its arguments are filled
+    /// in (`TypingEngine.takeFinished`).
+    case quicklink(Quicklink, opening: Bool)
+    /// Create Snippet: a new snippet of the selected text, or all the field shows, once it's named.
+    case createSnippet
+    /// A fill's field tapped, which the keys type into from then.
+    case field(Int)
+    /// A fill finished as its fields stand, by its button.
+    case submit
 }

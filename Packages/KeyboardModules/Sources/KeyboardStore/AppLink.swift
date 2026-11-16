@@ -10,6 +10,15 @@ public enum AppLink {
     public static let appearance = URL(string: "iikb://keyboard/appearance")!
     /// Opens iikb with its microphone on, from Control Center's iikb Mic.
     public static let mic = URL(string: "iikb://mic")!
+    /// Opens iikb's Snippets settings, on the snippet with `id` when there is one, as holding one in the keyboard's Edit
+    /// does.
+    public static func snippets(_ id: String? = nil) -> URL {
+        URL(string: "iikb://snippets" + (id.map { "/" + $0 } ?? ""))!
+    }
+    /// Opens iikb's Quicklinks settings, on the quicklink with `id` when there is one.
+    public static func quicklinks(_ id: String? = nil) -> URL {
+        URL(string: "iikb://quicklinks" + (id.map { "/" + $0 } ?? ""))!
+    }
 
     /// Opens iikb to ask iOS for access to your photos, which the keyboard's Chats shares, then reopens `back`, the app
     /// you were typing in.

@@ -47,6 +47,10 @@ public struct KeyboardSettings: Hashable, Sendable {
     /// Text Mode's words where no style types them with `dictationStyle`, as Excited! with Abbreviated, kept so
     /// dictations type as they did until another style is picked (`fold`).
     public var dictationWords: DictationTextMode?
+    /// How a snippet's keyword you type becomes its text.
+    public var snippetExpansion = SnippetExpansion.immediately
+    /// What starts a snippet's keyword ("!addr"): after it the bar offers your keywords, and the snippet key types it.
+    public var snippetPrefix = "!"
 
     public init() {}
 

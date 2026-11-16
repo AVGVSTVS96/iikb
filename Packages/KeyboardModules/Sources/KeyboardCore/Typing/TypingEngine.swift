@@ -1,12 +1,21 @@
 public struct TypingEngine {
-    public private(set) var layer: KeyboardLayer = .letters
+    public internal(set) var layer: KeyboardLayer = .letters
     public private(set) var shift: ShiftState = .off
     public var emojiHistory = EmojiHistory()
     /// Finds emoji for the word in the suggestion bar.
     public var emojiCatalog: EmojiCatalog?
-    /// The panel open over the bar, and what its search holds.
-    public private(set) var panel: Panel?
-    public private(set) var query = ""
+    /// The panel open over the bar, `.form` while a fill is open, and what its field holds.
+    public var panel: Panel? { fill != nil ? .form : opened }
+    public internal(set) var query = ""
+    /// The panel opened from a key, the bar or the menu, which a fill opens over.
+    var opened: Panel?
+    /// The fields the keys type into before a snippet or quicklink goes in, or a new snippet is kept.
+    public internal(set) var fill: Fill?
+    /// What a fill finished asks of the keyboard (`takeFinished`).
+    var finished: Fill.Finished?
+    /// Your snippets, whose keywords the engine expands as you type them (`KeyboardSettings.snippetExpansion`) and the bar
+    /// offers after the prefix.
+    public var snippets: [Snippet] = []
     public private(set) var traits: InputTraits
     public internal(set) var suggestions: [Suggestion] = []
     /// Emoji for the word being typed, or the one just typed, which take the bar's last slot.
@@ -39,7 +48,7 @@ public struct TypingEngine {
     /// host's reports through `documentChanged`.
     public private(set) var text = TextState()
     /// What the keyboard wrote here, for the undo and redo keys.
-    private var history = EditHistory()
+    var history = EditHistory()
     public var canUndo: Bool { history.canUndo }
     public var canRedo: Bool { history.canRedo }
     /// What your typing did so far, as counts, for the app's stats.
@@ -107,7 +116,7 @@ public struct TypingEngine {
         case .character, .space, .return, .tab, .delete:
             break
         }
-        if panel != nil, action != .delete || !query.isEmpty { return search(action) }
+        if fill != nil || panel != nil && (action != .delete || !query.isEmpty) { return search(action, in: document) }
         if panel != nil, deleteHeldInSearch { return }
         tally.keys += 1
 
@@ -134,6 +143,10 @@ public struct TypingEngine {
                     typed = Self.smartQuote(typed, after: text.before, in: Language.named(settings.language))
                 }
             }
+            if Self.wordEnders.contains(typed), expands(.afterDelimiter, trailing: typed, in: document) {
+                tally.characters += typed.count
+                break
+            }
             if Self.wordEnders.contains(typed) {
                 // WHY: an address goes on after a period ("john@gmail.com"), so its run stays as typed.
                 if typed == "." { typing.before = [] }
@@ -152,6 +165,7 @@ public struct TypingEngine {
             self.revert?.trailing = typed
             if layer != .letters, Self.returnsToLetters.contains(key) { layer = .letters }
             if shiftHold != nil { shiftHold = .typedWhileHeld }
+            _ = expands(.immediately, trailing: "", in: document)
         case .space:
             if wasSpace, let tap, joinBack(space: tap, in: document) {
                 lastSpace = .typed
@@ -160,6 +174,8 @@ public struct TypingEngine {
             {
                 write(". ", replacing: 1, in: document)
                 stray = tap.map { StraySpace(tap: $0, swallowed: ". ", restored: " ", counted: true) }
+            } else if expands(.afterDelimiter, trailing: " ", in: document) {
+                if fill == nil, text.owned >= 1 { lastSpace = .typed }
             } else {
                 let blank = text.before.last.map(\.isWhitespace) ?? true
                 commitWord(in: document, ending: tap)
@@ -171,6 +187,10 @@ public struct TypingEngine {
             tally.characters += 1
             if layer != .letters { layer = .letters }
         case .return:
+            if expands(.afterDelimiter, trailing: "\n", in: document) {
+                tally.characters += 1
+                break
+            }
             commitWord(in: document)
             let held = draft
             write("\n", in: document)
@@ -265,7 +285,7 @@ public struct TypingEngine {
             perform(.character(text), in: document)
             if self.layer == layer { perform(.layer(.letters), in: document) }
         case .trigger(let key) where key.action == .emoji:
-            show(panel == .emoji ? nil : .emoji)
+            show(panel == .emoji ? nil : .emoji, in: document)
         case .trigger(let key):
             guard [.return, .tab, .undo, .redo].contains(key.action) else { return false }
             perform(key.action, in: document)
@@ -284,7 +304,17 @@ public struct TypingEngine {
         case .settings, .nextKeyboard, .keep:
             perform(.layer(.letters), in: document)
         case .panel(let panel):
-            show(panel)
+            show(panel, in: document)
+        case .snippet(let snippet):
+            type(snippet, replacing: "", trailing: "", in: document)
+        case .quicklink(let link, let opening):
+            open(link, opening: opening, in: document)
+        case .createSnippet:
+            createSnippet()
+        case .field(let index):
+            pick(field: index)
+        case .submit:
+            submit(in: document)
         case .emoji(let emoji, let base):
             emojiHistory.use(emoji, base: base)
             tally.emoji += 1
@@ -327,7 +357,7 @@ public struct TypingEngine {
     }
 
     public mutating func deleteWord(in document: some TextDocument) {
-        if panel != nil, !query.isEmpty {
+        if fill != nil || panel != nil && !query.isEmpty {
             query = String(query.dropLast(Self.wordLength(before: query)))
             return suggestionsChanged()
         }
@@ -420,7 +450,7 @@ public struct TypingEngine {
 
     /// The keys while a panel is open: they edit its search, and return closes it. Delete with the search empty deletes
     /// in the app, so a wrong pick can be undone without leaving the panel.
-    private mutating func search(_ action: KeyAction) {
+    private mutating func search(_ action: KeyAction, in document: some TextDocument) {
         switch action {
         case .character(let key):
             query += shift.isUppercase && layer == .letters ? key.uppercased() : key
@@ -430,24 +460,32 @@ public struct TypingEngine {
             layer = .letters
         case .delete:
             query = String(query.dropLast())
+        case .return where fill != nil:
+            return nextField(in: document)
         case .return:
-            return show(nil)
+            return show(nil, in: document)
         default:
             return
         }
+        if let at = fill?.at { fill?.values[at] = query }
         if shiftHold != nil { shiftHold = .typedWhileHeld }
         refreshShift()
         suggestionsChanged()
     }
 
-    /// Opens a panel, or closes it with nil, which brings back the keys the field opens with.
-    private mutating func show(_ panel: Panel?) {
+    /// Opens a panel, or closes it with nil, which brings back the keys the field opens with. An open fill closes first,
+    /// as back does to it alone, leaving the panel it came from.
+    mutating func show(_ panel: Panel?, in document: some TextDocument) {
+        if fill != nil {
+            cancelFill(in: document)
+            if panel == nil { return }
+        }
         if panel != nil {
             layer = .letters
         } else if self.panel != nil {
             layer = Self.initialLayer(for: traits.kind)
         }
-        self.panel = panel
+        opened = panel
         query = ""
         refreshShift()
         suggestionsChanged()

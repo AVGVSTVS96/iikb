@@ -277,6 +277,9 @@ extension Panel {
         case .transcripts: .systemPink
         case .gif: .systemPurple
         case .chats: .systemIndigo
+        case .snippets: .systemBlue
+        case .quicklinks: .systemGreen
+        case .form: .systemGray
         default: .systemBlue
         }
     }

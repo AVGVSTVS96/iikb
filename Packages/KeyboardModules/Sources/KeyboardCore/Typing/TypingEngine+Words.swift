@@ -119,8 +119,9 @@ extension TypingEngine {
     /// While a panel is open, the keys are a plain text keyboard whose return closes it.
     public func faces(on device: DeviceClass) -> KeyFaceContext {
         if panel != nil {
+            let returnKind: ReturnKind = fill.map { $0.isLast ? .done : .next } ?? .default
             return KeyFaceContext(
-                device: device, layer: layer, kind: .text, shift: shift, returnKind: .default, returnEnabled: true)
+                device: device, layer: layer, kind: .text, shift: shift, returnKind: returnKind, returnEnabled: true)
         }
         let returnEnabled = !traits.returnRequiresText || !text.before.isEmpty || !(text.after ?? "").isEmpty
         var faces = KeyFaceContext(
@@ -134,6 +135,7 @@ extension TypingEngine {
     /// A suggestion takes the place of the word the bar is for, and the caret ends after it and one space.
     public mutating func accept(_ suggestion: Suggestion, in document: some TextDocument) {
         attach(document)
+        if suggestion.kind == .snippet { return accept(snippet: suggestion.text, in: document) }
         let text = self.text.before
         let (word, tail) = suggested
         guard text[..<word.startIndex] == suggestionsBefore else { return }
@@ -152,7 +154,7 @@ extension TypingEngine {
             corrector?.changeMemory { $0.keep(whole) }
             hold(whole, typed: whole)
             tally.words += 1
-        case .correction, .candidate:
+        case .correction, .candidate, .snippet:
             write(suggestion.text, replacing: whole.count, in: document)
             hold(suggestion.text, typed: whole)
             tally.words += suggestion.text.split(separator: " ").count
@@ -456,6 +458,8 @@ extension TypingEngine {
         }
         let text = self.text.before
         let (word, tail) = suggested
+        suggestions = snippetSuggestions
+        guard suggestions.isEmpty else { return }
         guard showsSuggestions, isWords(self.text.selected) else {
             suggestions = []
             return
