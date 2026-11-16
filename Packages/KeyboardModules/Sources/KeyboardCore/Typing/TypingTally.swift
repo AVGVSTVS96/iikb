@@ -48,6 +48,9 @@ public struct TypingHour: Codable, Hashable, Sendable {
     public var app: String
     public var tally: TypingTally
     public var seconds: Double
+    /// The build that typed it (main's commit count), so each build's typing can be set beside the one before
+    /// (`scripts/typing`); older hours have none.
+    public var build: Int?
 
     public init(day: String, hour: Int, app: String, tally: TypingTally = TypingTally(), seconds: Double = 0) {
         self.day = day

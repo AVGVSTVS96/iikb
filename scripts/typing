@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""scripts/typing: how each build typed for Bassim, from the typing stats the backup keeps (typing.jsonl): words, and
+per word the deletes, bar picks, emoji, corrections and corrections undone. A build that makes typing worse shows as
+more deletes per word than the one before, on his real typing rather than a corpus. Hours from before builds were kept
+in the stats count under "older".
+
+Usage: scripts/typing [typing.jsonl]
+"""
+import json, os, sys
+from collections import defaultdict
+
+path = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser("~/.local/share/iikb/backup/mirror/group/Library/typing.jsonl")
+builds = defaultdict(lambda: defaultdict(int))
+for line in open(path):
+    hour = json.loads(line)
+    for name, count in hour["tally"].items():
+        builds[hour.get("build", 0)][name] += count
+print(f"{'build':>6} {'words':>7} {'deletes':>8} {'picked':>7} {'emoji':>6} {'corrected':>9} {'undone':>7}")
+for build in sorted(builds):
+    tally = builds[build]
+    words = max(tally["words"], 1)
+    per = lambda name: f"{tally[name] / words:.3f}"
+    print(f"{build or 'older':>6} {tally['words']:>7} {per('deletes'):>8} {per('picked'):>7} {per('emoji'):>6} {per('corrected'):>9} {per('undone'):>7}")

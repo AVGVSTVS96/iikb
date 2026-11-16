@@ -33,7 +33,13 @@ public enum TypingStats {
     package static func save(_ hours: [TypingHour], sharing: Bool) {
         guard !hours.isEmpty else { return }
         let encoder = JSONEncoder()
-        let lines = Data(hours.compactMap { try? encoder.encode($0) + [UInt8(ascii: "\n")] }.joined())
+        let build = (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String).flatMap(Int.init)
+        let lines = Data(
+            hours.compactMap { hour in
+                var hour = hour
+                hour.build = build
+                return try? encoder.encode(hour) + [UInt8(ascii: "\n")]
+            }.joined())
         guard sharing, let sharedURL else {
             append(lines, to: ownURL)
             return

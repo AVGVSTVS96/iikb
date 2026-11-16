@@ -1,0 +1,32 @@
+# scripts/eval on each push to main that changes what it scores, so a change that moves its numbers without updating
+# scripts/eval.expected fails here instead of waiting for someone to run it. A push waits for the run before it, and a
+# newer push replaces it in the wait. The UITextChecker baseline lines need a Mac and don't change with iikb's code, so
+# they're left to scripts/ci scripts/eval.
+name: eval
+on:
+  push:
+    branches: [main]
+    paths:
+      - Packages/KeyboardModules/Sources/KeyboardCore/**
+      - Packages/KeyboardModules/Sources/KeyboardEnglish/**
+      - Packages/KeyboardModules/Tests/KeyboardUITests/**
+      - scripts/eval
+      - scripts/eval.expected
+      - scripts/realtyping.py
+      - .github/workflows/eval.yml
+  workflow_dispatch:
+concurrency:
+  group: eval
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    container: swift:6.4.0-noble
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/cache@v4
+        with:
+          path: build/real
+          key: real-${{ hashFiles('scripts/realtyping.py') }}
+      - run: command -v python3 || (apt-get update && apt-get install -y python3)
+      - run: scripts/eval
