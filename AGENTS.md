@@ -33,15 +33,15 @@ Each module keeps its own AGENTS.md beside its code, with what it holds and why.
 
 Development happens on a Linux box. Simulator builds, tests and screenshots run on GitHub's free Macs, never Bassim's; the iPhone build is made here, signed on the Mac and put on the install link and in hangar with `scripts/phone`, which says whether hangar installs it by itself or waits for his tap.
 - `scripts/ci '<command>'` runs the command on one of GitHub's Macs on this checkout's tree, uncommitted changes included, prints the run's link and output, and copies its screenshots back to `shots/raw/` (scripts/AGENTS.md, "Simulators"). Runs go at once, each on its own Mac, up to five; past two waiting on GitHub, the next waits on this box, so main's check goes first.
-- A change is checked here first: `scripts/coretest` for KeyboardCore, `scripts/check` for whether everything builds for the iPhone. Then it goes to main as soon as it's ready, and a push to main puts it on the install link by itself: hex's pipeline (`projects/pipeline` in hex) hears GitHub's push and runs `scripts/phone`, with `--now` when the commit is a `fix`. A change is tried on the phone once it has a build with it: hangar installs it by itself while his Automatic installs is on, and otherwise waits for his tap (`scripts/phone` prints the build on each device the Mac reaches).
+- A change is checked here first: `scripts/coretest` for KeyboardCore, `scripts/check` for whether everything builds for the iPhone. Then it goes to main as soon as it's ready, and a push to main puts it on the install link by itself: hex's pipeline (`projects/pipeline` in hex) hears GitHub's push and runs `scripts/phone`, with `--now` when a commit in the push is a `fix`. A change is tried on the phone once it has a build with it: hangar installs it by itself while his Automatic installs is on, and otherwise waits for his tap (`scripts/phone` prints the build on each device the Mac reaches).
 - Simulator checks run by default: a change gets the verify skill's row for what it touches, through `scripts/ci`, and is then checked on the iPhone. Every push to main also runs `scripts/verify` there, the newest commit waiting while one runs.
-- Device builds take the team from `Config/Team.xcconfig` (`DEVELOPMENT_TEAM = …`, not committed), which syncing leaves in place.
+- Device builds made by Xcode (Xcode Cloud's, or one run in Xcode) take the team from `Config/Team.xcconfig` (`DEVELOPMENT_TEAM = …`, not committed), which `scripts/sync` leaves in place on the Mac; the install link's build is signed through xtool instead (scripts/AGENTS.md, "scripts/phone").
 - To prove a change works, follow the `verify` skill (`.claude/skills/verify`).
 - Follow and use pstack's skills (the pstack Claude Code plugin) when doing work on iikb.
 
 Prefer committing straight to main, merge parallel work like a zipper on new projects
 
-TestFlight's public link gets the `beta` branch, a commit of main Bassim OKs: Xcode Cloud builds every push to it (`ci_scripts/`, without private API), and after 24 hours with no push to beta, `.github/workflows/beta.yml` moves it to main's latest. Its testers' note and iikb's description there are `TestFlight/WhatToTest.en-US.txt` and `TestFlight/Description.en-US.txt`; App Store Connect takes the description from main's copy.
+TestFlight's public link gets the `beta` branch, a commit of main: Xcode Cloud builds every push to it (`ci_scripts/`, without private API). Bassim moves beta when he wants; when he hasn't for 24 hours and main has moved, a new beta is cut from main's latest by hex's `iikb-beta-cut` schedule (`schedules.json` in hex), which writes the testers' note to main first. `.github/workflows/beta.yml` only tags the commit beta left as `beta-prev`, so Xcode Cloud can refuse a beta that repeats the last one's note. The note is `TestFlight/WhatToTest.en-US.txt`; iikb's description there is `TestFlight/Description.en-US.txt`, which nothing sends to App Store Connect, so a change to it goes there by hand.
 
 ```sh
 scripts/ci scripts/build                        # xcodegen and a build for the simulator, on GitHub's Mac
@@ -53,11 +53,11 @@ scripts/clean                                   # Clean's language model on scri
 bun run check                                   # the TypeScript and JavaScript (after bun install): oxlint, oxfmt --check, tsc, bun test, as CI runs it
 bun run fix                                     # oxlint's fixes, then oxfmt
 scripts/phone                                   # main's last commit built, signed and put on the install link for the iPhone and iPad, then the build each device has (--rebuild even when nothing changed)
-scripts/rollback                                # the build before the latest back on the install link and in hangar, which puts it on the iPhone; again goes forward. Revert the commit too, or the next build puts it back
+scripts/rollback                                # the build before the latest back on the install link and in hangar, whose Automatic installs put it on the iPhone; again goes forward. Revert the commit too, or the next build puts it back
 scripts/backup <udid>                           # the iPhone's iikb data copied to ~/.local/share/iikb/backup here, never deleted, replaced files kept in versions/
 scripts/restore <udid> [--at <time>|now] [name…]  # the backup put back on the iPhone, all of it or the files named, as it is or as it was at a time; leaves out a copy much smaller than one replaced in the day after an install left iikb a new, empty container (docs/backup.md)
-scripts/ci scripts/verify                       # main's last commit on one iPhone Duo simulator: package and UI tests, light and dark, shots in shots/raw/verify/ (every push to main runs its parts side by side on four Macs; PARTS="typing dark" picks some)
-scripts/ci scripts/test                         # KeyboardCore and KeyboardUI package tests on an iOS simulator
+scripts/ci scripts/verify                       # main's last commit on one iPhone Duo simulator: package and UI tests, light and dark, shots in shots/raw/verify/ (every push to main runs its parts side by side on four Macs, three when nothing that draws changed; PARTS="typing dark" picks some)
+scripts/ci scripts/test                         # KeyboardUI's package tests on the iPhone Duo simulator, without the autocorrect scorer
 scripts/ci scripts/uitest                       # type through the real extension (the iPhone Duo by default)
 ```
 
@@ -95,7 +95,7 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | A page opened from another in its tab has one Back, in the Duo's side bar with the tabs on every screen (App) | `backInSideBar(_:)`, `BackTests` |
 | A new use of the host app goes through `FullKeyboardViewController.hostApp` (FullKeyboard) | judgment: nothing enforces it |
 | Drawing never reads `textDocumentProxy`: only UIKit's calls in and taps do, keeping what drawing needs in `hostField`, since a late answer can draw after iOS tore the proxy down (FullKeyboard) | `ArchitectureTests` |
-| Only main's last commit reaches the phone, or the build before it when Bassim asks for a rollback (`scripts/rollback`), and only through the link or hangar, by his tap or his Automatic installs: no agent installs on his devices, a device test (`scripts/chatdevice`) included, unless he asks; never linked below iOS 27.1 (scripts) | `scripts/phone`: builds main in its own worktree and only offers it, refuses without `backup.key` or below 27.1; judgment for the rest |
+| Only main's last commit reaches the phone, or the build before it when Bassim asks for a rollback (`scripts/rollback`), and only through the link or hangar, by his tap or his Automatic installs: no agent installs on his devices, a device test (`scripts/chatdevice`) included, unless he asks; never linked against an iOS SDK below 27.1, though iikb runs on iOS 26 (scripts) | `scripts/phone`: builds main in its own worktree and only offers it, refuses without `backup.key` or linked against an iOS SDK below 27.1; judgment for the rest |
 | Restore only once the device has a build from the link: an old build can't read a memory restored without its token | judgment: nothing enforces it |
 | Comments only for a decision or fact the code can't show (one `WHY:` line or a link) | `tools/oxlint/no-comments.ts` in TypeScript; judgment in Swift |
 | Every AGENTS.md names only code that exists, and no file keeps a conflict marker | `ArchitectureTests` |
