@@ -153,9 +153,9 @@ def parakeet(clips):
         for sound, path in missing.items():
             shutil.copy(path, pending / f"audio/{sound}.wav")
         (pending / "clips.jsonl").write_text("".join(json.dumps(dict(id=s, audio_path=f"audio/{s}.wav")) + "\n" for s in missing))
-        subprocess.run([DATA / "tool/.build/release/VoiceBench", pending, "dictation", "100"], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run([DATA / "tool/.build/release/VoiceBench", pending, "dictation"], check=True, stdout=subprocess.DEVNULL)
         with cache_path.open("a") as f:
-            for r in rows(pending / "outputs/dictation-100.jsonl"):
+            for r in rows(pending / "outputs/dictation.jsonl"):
                 f.write(json.dumps(dict(sound=r["id"], text=r["text"])) + "\n")
                 cache[r["id"]] = r["text"]
         shutil.rmtree(pending)

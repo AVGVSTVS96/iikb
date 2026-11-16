@@ -225,8 +225,8 @@ def parakeet(sets, cached):
                         "mac:Developer/voicebench/tool/"], check=True)
         subprocess.run(["rsync", "-a", "--delete", f"{pending}/", "mac:Developer/voicebench/pending/"], check=True)
         subprocess.run(["ssh", "mac", "cd ~/Developer/voicebench && swift build -c release --package-path tool >/dev/null && "
-                        "~/.local/bin/turn tool/.build/release/VoiceBench pending dictation 100"], check=True, stdin=subprocess.DEVNULL)
-        subprocess.run(["rsync", "-a", "mac:Developer/voicebench/pending/outputs/dictation-100.jsonl", f"{pending}/written.jsonl"], check=True)
+                        "~/.local/bin/turn tool/.build/release/VoiceBench pending dictation"], check=True, stdin=subprocess.DEVNULL)
+        subprocess.run(["rsync", "-a", "mac:Developer/voicebench/pending/outputs/dictation.jsonl", f"{pending}/written.jsonl"], check=True)
         subprocess.run(["ssh", "mac", "rm -rf ~/Developer/voicebench/pending"], check=True, stdin=subprocess.DEVNULL)
         written = rows(pending / "written.jsonl")
         with cache_path.open("a") as f:

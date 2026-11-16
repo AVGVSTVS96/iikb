@@ -3,7 +3,8 @@
 # [way[-percent loudness]…], where <corpus> holds clips.jsonl ({id, audio_path} and labels to group by), the audio,
 # references.jsonl ({id, text}), and when it has them typed.jsonl (what iikb typed) and vocabulary.json (the Dictionary);
 # scripts/voicecorpus.py builds Bassim's own, real and loud, in voicebench/ beside the backup. Without ways it
-# runs FluidAudio's own and iikb's at full loudness and 10 and 30 times quieter. Each runs on the Mac (Neural Engine),
+# runs FluidAudio's own and iikb's at full loudness and 10 and 30 times quieter in the same room (`voicecorpus.py
+# quieter`: turning the samples down alone loses nothing leveling can't undo). Each runs on the Mac (Neural Engine),
 # one at a time in a turn, with Tools/VoiceBench, and only what this run wrote comes back to be scored here
 # (scripts/voicescore.py), beside the corpus's earlier outputs (scripts/voicecorpus.py clears them when it rebuilds).
 set -e
@@ -13,13 +14,23 @@ name=${corpus##*/}
 shift
 [ $# -gt 0 ] || set -- asis-100 asis-10 asis-3 dictation-100 dictation-10 dictation-3
 cd "$(dirname "$0")/.."
+made=" 100 "
+for run; do
+  percent=${run##*-}
+  case "$run $made" in
+    *-[0-9]*" $percent "*) ;;
+    *-[0-9]*) uv run -q --with numpy python3 -B scripts/voicecorpus.py quieter "$corpus" "$percent" && made="$made$percent " ;;
+  esac
+done
 rsync -aL --delete --exclude .build Tools/VoiceBench/ mac:Developer/voicebench/tool/
 rsync -a --exclude outputs "$corpus"/ mac:Developer/voicebench/"$name"/
 ssh mac 'cd ~/Developer/voicebench && swift build -c release --package-path tool >/dev/null'
 mkdir -p "$corpus"/outputs
 for run; do
   case $run in *-[0-9]*) ;; *) run=$run-100 ;; esac
-  ssh mac "cd ~/Developer/voicebench && ~/.local/bin/turn tool/.build/release/VoiceBench $name ${run%-*} ${run##*-}"
-  rsync -a mac:Developer/voicebench/"$name"/outputs/"$run".jsonl "$corpus"/outputs/
+  clips=$name
+  [ "${run##*-}" = 100 ] || clips=$name/quieter-${run##*-}
+  ssh mac "cd ~/Developer/voicebench && ~/.local/bin/turn tool/.build/release/VoiceBench $clips ${run%-*}"
+  rsync -a mac:Developer/voicebench/"$clips"/outputs/"${run%-*}".jsonl "$corpus"/outputs/"$run".jsonl
 done
 python3 -I scripts/voicescore.py "$corpus"

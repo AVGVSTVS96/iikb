@@ -8,7 +8,7 @@ rsync -aL --delete --exclude .build Tools/VoiceBench/ mac:Developer/voicebench/t
 rsync -a Tools/FieldBench/ mac:Developer/fieldbench/
 ssh mac 'cd ~/Developer/fieldbench && python3 make.py corpus cases.jsonl &&
   cd ~/Developer/voicebench && swift build -c release --package-path tool >/dev/null &&
-  tool/.build/release/VoiceBench ~/Developer/fieldbench/corpus dictation 100'
+  tool/.build/release/VoiceBench ~/Developer/fieldbench/corpus dictation'
 mkdir -p build/fieldbench
-rsync -a mac:Developer/fieldbench/corpus/outputs/dictation-100.jsonl build/fieldbench/
-FIELD_CASES=$PWD/Tools/FieldBench/cases.jsonl FIELD_BENCH=$PWD/build/fieldbench/dictation-100.jsonl scripts/coretest --filter FieldBenchTests
+rsync -a mac:Developer/fieldbench/corpus/outputs/dictation.jsonl build/fieldbench/
+FIELD_CASES=$PWD/Tools/FieldBench/cases.jsonl FIELD_BENCH=$PWD/build/fieldbench/dictation.jsonl scripts/coretest --filter FieldBenchTests

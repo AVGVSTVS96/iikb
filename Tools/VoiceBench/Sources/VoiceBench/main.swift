@@ -2,8 +2,8 @@ import FluidAudio
 import Foundation
 import VoiceCapture
 
-/// `VoiceBench <corpus> <way> [percent loudness]`: writes every clip in `<corpus>/clips.jsonl` at the given loudness
-/// into `<corpus>/outputs/<way>-<percent>.jsonl`, with the milliseconds each took, in one way:
+/// `VoiceBench <corpus> <way>`: writes every clip in `<corpus>/clips.jsonl` into `<corpus>/outputs/<way>.jsonl`, with the
+/// milliseconds each took, in one way:
 /// - `asis`: Parakeet v3 as FluidAudio does by itself;
 /// - `dictation`: as iikb's dictation does (`Dictation.write`, the app's own file);
 /// - `vocab`: dictation, then FluidAudio's CTC keyword spotter boosting the Dictionary (`<corpus>/vocabulary.json`) with
@@ -36,7 +36,6 @@ struct Vocabulary: Decodable {
 let arguments = CommandLine.arguments
 let corpus = URL(fileURLWithPath: arguments[1])
 let way = arguments[2]
-let loudness = arguments.count > 3 ? Float(arguments[3])! : 100
 let clips = try String(contentsOf: corpus.appending(path: "clips.jsonl"), encoding: .utf8)
     .split(separator: "\n").map { try JSONDecoder().decode(Clip.self, from: Data($0.utf8)) }
 let manager = AsrManager(config: way == "asis" ? .default : .dictation)
@@ -72,7 +71,7 @@ func peak() -> Int {
 let loaded = peak()
 var lines: [String] = []
 for clip in clips {
-    var samples = try converter.resampleAudioFile(corpus.appending(path: clip.audioPath)).map { $0 * loudness / 100 }
+    var samples = try converter.resampleAudioFile(corpus.appending(path: clip.audioPath))
     let start = ContinuousClock.now
     let text: String
     switch way {
@@ -104,5 +103,5 @@ for clip in clips {
 let outputs = corpus.appending(path: "outputs")
 try FileManager.default.createDirectory(at: outputs, withIntermediateDirectories: true)
 try (lines.joined(separator: "\n") + "\n").write(
-    to: outputs.appending(path: "\(way)-\(Int(loudness)).jsonl"), atomically: true, encoding: .utf8)
-print("\(way)-\(Int(loudness)): \(clips.count) clips, peak memory \(loaded) MB loaded, \(peak()) MB after")
+    to: outputs.appending(path: "\(way).jsonl"), atomically: true, encoding: .utf8)
+print("\(way): \(clips.count) clips, peak memory \(loaded) MB loaded, \(peak()) MB after")

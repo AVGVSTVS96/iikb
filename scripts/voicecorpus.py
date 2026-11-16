@@ -26,6 +26,9 @@ change that writes words there (filler such as "Yeah." or "Thank you.") shows. I
 labelled: the dictations he labelled by ear (scripts/voicelabel, `heldout/labels.jsonl` beside the backup), each
 against what he said: the one set that scores words wrong rather than words he went on to change.
 
+`voicecorpus.py quieter <corpus> <percent>` makes the corpus's clips as said that much quieter in the same room, for
+scripts/voicebench.
+
 read: his dictations of `heldout/read.txt`'s lines (a script written blind, never seen by whoever tunes dictation),
 each against what that line should type: his voice and rooms on text nothing was fitted to.
 """
@@ -41,6 +44,7 @@ HELDOUT = BACKUP.parent / "heldout"
 EPOCH = datetime.datetime(2001, 1, 1, tzinfo=datetime.timezone.utc)
 VOICE_PROCESSING = datetime.datetime(2026, 11, 3, 12, 24, tzinfo=datetime.timezone.utc)
 LOUD_ROOM = -40
+GATED = -90
 TOKEN = re.compile(r"[A-Za-z0-9'’]+")
 
 
@@ -236,6 +240,33 @@ def loud(folder, clips, references, typed, context, count=120):
           f"({len(bed) / 16_000:.0f} s of it from {len(noisy)} dictations) said at {said:.0f} dBFS and 6, 12, 18 dB quieter")
 
 
+def quieter(corpus, percent):
+    """<corpus>/quieter-<percent>/: each clip's speech turned down to `percent`, its own room (its stretches without
+    speech, looped) added back as it was, and rounded to 16 bits, as the iPhone's file of someone talking that quietly
+    there would be. Turned down alone, a clip loses nothing that leveling can't multiply back, so it can't show what
+    quiet speech costs. A clip with no half second without speech, or whose room voice processing gated to digital
+    silence, is left out: it has no room to add back."""
+    out = corpus / f"quieter-{percent}"
+    shutil.rmtree(out, ignore_errors=True)
+    (out / "audio").mkdir(parents=True)
+    clips = [json.loads(line) for line in open(corpus / "clips.jsonl")]
+    kept = []
+    for clip in clips:
+        samples = read(corpus / clip["audio_path"])
+        clip["room_db"] = levels(samples)[0]
+        try:
+            bed = room(corpus, [clip])
+        except ValueError:
+            continue
+        if clip["room_db"] <= GATED:
+            continue
+        noise = np.resize(np.roll(bed, -random.Random(clip["id"]).randrange(len(bed))), len(samples))
+        write(out / clip["audio_path"], samples * percent / 100 + noise)
+        kept.append(clip)
+    lines(out / "clips.jsonl", kept)
+    print(f"quieter-{percent}: {len(kept)} of {len(clips)} clips, the rest with no room to add back")
+
+
 def taps():
     folder = OUT / "taps"
     shutil.rmtree(folder, ignore_errors=True)
@@ -323,7 +354,9 @@ def reading():
     print(f"read: {len(clips)} dictations of heldout/read.txt's {len(script)} lines")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and sys.argv[1:2] == ["quieter"]:
+    quieter(Path(sys.argv[2]), int(sys.argv[3]))
+elif __name__ == "__main__":
     loud(*real())
     taps()
     labelled()
