@@ -16,7 +16,7 @@ extension Evaluation {
     }
 
     /// Real taps replayed on iikb's iPhone 17 grid, each where it landed on the keyboard it was typed on, measured from
-    /// the q key's center in key pitches. Each person types on a keyboard of their own, so the learning one learns them.
+    /// the q key's center in key pitches, and a space's from the space bar's. Each person types on a keyboard of their own, so the learning one learns them.
     /// Each word is scored as its space leaves it, and each phrase by its words' error rate once typed, after any later
     /// space read a tap again (a space tap on v is a missed space only the next word shows).
     @Test func realTaps() throws {
@@ -25,9 +25,14 @@ extension Evaluation {
         let q = grid.frame(of: "q")!
         let w = grid.frame(of: "w")!
         let a = grid.frame(of: "a")!
+        let bar = grid.frame(of: " ")!
         func point(_ text: Substring) -> (Double, Double) {
             let pitches = text.split(separator: ",").map { Double($0)! }
             return (q.midX + pitches[0] * (w.midX - q.midX), q.midY + pitches[1] * (a.midY - q.midY))
+        }
+        func space(_ text: Substring) -> (Double, Double) {
+            let offset = text.split(separator: ",").map { Double($0)! }
+            return (bar.midX + offset[0] * bar.width / 2, bar.midY + offset[1] * (a.midY - q.midY))
         }
         for source in ["tsi", "vertanen"] {
             let people = Dictionary(grouping: lines.filter { $0[0] == source }, by: { $0[1] })
@@ -44,7 +49,7 @@ extension Evaluation {
                             let parts = taps.split(separator: "/", omittingEmptySubsequences: false)
                             session.type(
                                 word, taps: parts[0].split(separator: " ").map(point),
-                                space: parts.count > 1 ? point(parts[1]) : nil)
+                                space: parts.count > 1 ? space(parts[1]) : nil)
                         }
                         words += meant.count
                         wrong += Tally.distance(

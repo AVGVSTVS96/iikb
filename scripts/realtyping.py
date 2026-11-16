@@ -3,7 +3,9 @@
 taps.txt       source, person, the words they meant, and their taps: Google's TSI (16 people on a Pixel 6 Pro typing the
                MacKenzie phrases, each tap matched to its letter) and Vertanen & Kristensson's noisy phone typing (a
                Nexus 4 and an iPhone 4, Enron mobile emails), both CC BY 4.0. Each tap is in key pitches from the q key's
-               center, so it lands on iikb's grid where it landed on theirs; a word's space tap follows a slash.
+               center, so it lands on iikb's grid where it landed on theirs. A word's space tap follows a slash, measured
+               from the space bar's center, across in halves of its width and down in key pitches, since the bars
+               differ in width and a thumb aims at the bar.
 typed.txt      split, person, the sentence they meant, and what they typed, capitals kept: Aalto's ITE typing dataset (CC BY 4.0),
                people on their own phones whose keyboards were seen to make no autocorrection or prediction.
 autocorrect.txt  split, the text before the word, the word typed, what the phone's own autocorrect made it, and the word
@@ -100,7 +102,9 @@ def tsi():
             tap = first[trial].get(index)
             point = place(*tap[1], center["q"], center["w"], center["a"]) if tap else None
             if character == " ":
-                taps.append(" ".join(current) + ("/" + point if point else ""))
+                space = keys["SPACE"]
+                bar = (space["key_center_x"], space["key_center_y"], space["key_width"] / 2, center["a"][1] - center["q"][1])
+                taps.append(" ".join(current) + (f"/{(tap[1][0] - bar[0]) / bar[2]:.3f},{(tap[1][1] - bar[1]) / bar[3]:.3f}" if tap else ""))
                 current = []
             elif point:
                 current.append(point)
