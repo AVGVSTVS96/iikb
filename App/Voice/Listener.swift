@@ -9,8 +9,9 @@ import VoiceModels
 /// and once you stop, the `VoiceModel` writes its finished `Recording` down, whatever state it was in when you started.
 /// Dictations still being written are typed in the order you said them. After you dictate the microphone stays on for
 /// as long as Keep Mic On says, so the keyboard can start the next dictation (`start`) without opening the app, which
-/// is the only place iOS lets a recording begin. Only the app turns the microphone off: Home's switch, or Keep Mic On
-/// running out. The keyboard can only start a dictation.
+/// is the only place iOS lets a recording begin. Only the app turns the microphone off: the mic switch (`MicSwitch`),
+/// Control Center's iikb Mic, Keep Mic On running out, or the microphone itself going deaf or taken. The keyboard can
+/// only start a dictation.
 @Observable @MainActor final class Listener {
     static let shared = Listener()
 
@@ -24,13 +25,13 @@ import VoiceModels
     private var writing: [Take] = []
     /// The last of `writing`, which each dictation waits for before it's written, so they're typed in order.
     private var written: Task<Void, Never>?
-    /// Home's switch turned the microphone off: it goes off once what you said is written down, keeping iikb running
+    /// The mic switch turned the microphone off: it goes off once what you said is written down, keeping iikb running
     /// till then.
     private var micOffOnceWritten = false
-    /// Home's switch turned the microphone on: it stays on until the switch turns it off, whatever Keep Mic On says.
+    /// The mic switch turned the microphone on: it stays on until the switch turns it off, whatever Keep Mic On says.
     private var held = false
     /// Another app took the microphone while it was on (an answered call): it comes back on by itself once iOS says
-    /// that app is done, held by Home's switch if it was then. Nil when it doesn't come back.
+    /// that app is done, held by the mic switch if it was then. Nil when it doesn't come back.
     private var heldWhenTaken: Bool?
     /// iOS's own screen recording fails to save ("asset writer being in the wrong state") while another app holds the
     /// microphone, as Keep Mic On has it held: while the screen is recorded, the microphone is on only for a dictation,
@@ -216,7 +217,7 @@ import VoiceModels
     }
 
     /// Starts Keep Mic On's countdown over, or turns the microphone off now when it's Off, once nothing is being
-    /// recorded or written, unless Home's switch holds it on and it isn't deaf. Until then the microphone stays on: that
+    /// recorded or written, unless the mic switch holds it on and it isn't deaf. Until then the microphone stays on: that
     /// keeps iikb running in the background to write, and its lock tells the keyboard iikb is still there. While the
     /// screen is recorded it goes off at once, to come back on once the recording ends.
     func keepMicOn() {
@@ -247,7 +248,7 @@ import VoiceModels
         microphone.restart()  // restart: in front
     }
 
-    /// Home's switch, on: the microphone on with nothing recorded, so the keyboard starts each dictation in place, and
+    /// The mic switch, on: the microphone on with nothing recorded, so the keyboard starts each dictation in place, and
     /// kept on until the switch turns it off.
     func turnMicOn() async throws {
         micOff?.cancel()
@@ -260,8 +261,9 @@ import VoiceModels
         held = true
     }
 
-    /// Home's switch, or Control Center's iikb Mic, off: what you're saying is kept, for the next keyboard to show to type, and the microphone goes
-    /// off once every dictation is written down, so the next one opens the app and starts it afresh.
+    /// The mic switch, or Control Center's iikb Mic, off: what you're saying is kept, for the next keyboard to show to
+    /// type, and the microphone goes off once every dictation is written down, so the next one opens the app and starts
+    /// it afresh.
     func turnMicOff() async {
         held = false
         heldWhenTaken = nil

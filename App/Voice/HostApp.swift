@@ -2,8 +2,8 @@ import OSLog
 import UIKit
 
 /// Opens the app you were typing in, which the keyboard names in its `Dictation.Request`. `LSApplicationWorkspace`
-/// isn't API: where it won't open the app by its bundle ID, the app's own link does, and with neither the dictation
-/// screen stays up for you to swipe back.
+/// isn't API: where it won't open the app by its bundle ID, the app's own link does, and with neither iikb stays on
+/// whatever page it was on, for you to swipe back.
 enum HostApp {
     nonisolated static let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
 

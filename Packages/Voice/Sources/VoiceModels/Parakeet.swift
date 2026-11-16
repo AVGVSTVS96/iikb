@@ -60,7 +60,8 @@ nonisolated struct Dictation: Sendable {
 
 nonisolated extension AsrModelVersion {
     /// Where this Parakeet's files live: the App Group's container, whose path outlives an install, where the app's own
-    /// container gets a new one with each, and Core ML keys what it compiles by the path a model loads from (App/Voice/AGENTS.md).
+    /// container gets a new one with each, and Core ML keys what it compiles by the path a model loads from
+    /// (VoiceModels/AGENTS.md).
     var folder: URL {
         Self.clearCompiled
         let own = AsrModels.defaultCacheDirectory(for: self)

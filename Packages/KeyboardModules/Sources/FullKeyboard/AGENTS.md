@@ -19,7 +19,7 @@ iikb's own keyboard, on KeyboardUI and KeyboardStore, and the only target that l
 ## Opening apps and knowing the host
 
 - Apps can't be opened from a keyboard through public API; iikb walks the responder chain to the host's `UIApplication`, as Wispr Flow and others do.
-- Since iOS 26.4 a keyboard's own properties don't name the app you were typing in, and a keyboard can't reopen it. So `KeyboardHost` matches its host's process ID to the app UIKit's keyboard arbiter names, which the C target `KeyboardArbiter` switches on as the keyboard loads, and names it in the dictation link (App/Voice/AGENTS.md).
+- Since iOS 26.4 a keyboard's own properties don't name the app you were typing in, and a keyboard can't reopen it. So `KeyboardHost` matches its host's process ID to the app UIKit's keyboard arbiter names, which the C target `KeyboardArbiter` switches on as the keyboard loads, and names it in the dictation link (App/Voice/AGENTS.md). None of it is API, so the App Store build (`APP_STORE`, ci_scripts/) leaves it out: there the host is unknown, nothing below gets it, and voice typing leaves you in iikb to swipe back.
 
 Host identity is keyboard-wide context, not voice typing's alone: `KeyboardHost` resolves it on appearance and UIKit text/selection events, and whatever gains from knowing the app takes it from there.
 - Sources receive its bundle ID (`app`, empty when unknown).

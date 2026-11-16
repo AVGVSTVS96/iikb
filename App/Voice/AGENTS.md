@@ -23,7 +23,7 @@ Each is a module of its own in Packages/Voice: the microphone in [VoiceCapture/A
 
 ## The app's timers
 
-The only ones (rule table, root AGENTS.md):
+The only ones (rule table, root AGENTS.md), besides the probes' own, which time a session on purpose and are marked `// timer: unlisted (…)` (`JudgeProbe`):
 - Keep Mic On's countdown.
 - The second a stop waits for quiet before it cuts.
 - One clock reading: a Parakeet that takes over 0.5 s to write a second of silence is taken to be off the Neural Engine and loaded again, up to three times (`VoiceModel`).
