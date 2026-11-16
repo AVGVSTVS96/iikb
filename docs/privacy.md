@@ -15,8 +15,10 @@ Deleting iikb deletes all of it.
 
 ## What leaves your iPhone, and only when you use it
 
-- **Voice models.** The first time you dictate, iikb downloads its speech model from Hugging Face. Nothing you say is
-  sent; the model runs on the iPhone.
+- **Voice models.** The first time you open the iikb app, it downloads its speech model and a small voice detector
+  from Hugging Face. Apple's speech model, if you pick it, comes from Apple. Clean, if you pick it in Settings › Writing
+  Style › Cleanup, downloads its model from iikb's releases on GitHub. Nothing you say is sent; the models run on the
+  iPhone.
 - **Languages.** A language you download in iikb's Settings › Languages comes from iikb's releases on GitHub. Nothing
   you type is sent.
 - **GIF search.** What you type into GIF search goes to KLIPY, which returns the GIFs, with a random ID made for this
@@ -34,20 +36,21 @@ Deleting iikb deletes all of it.
 ## Full Access
 
 iOS asks you to allow Full Access for a keyboard that uses the network or shares data with its app. iikb needs it for
-haptics, voice typing, GIFs, the clipboard history, Stats, sources and languages other than English. Without it, iikb still types and corrects,
-with nothing leaving the keyboard.
+haptics, voice typing, GIFs, the clipboard history, Stats, sources, chats and languages other than English. Without
+it, iikb still types and corrects, with nothing leaving the keyboard.
 
 ## On Android
 
 The same holds on Android, with these differences:
 
 - No Full Access: Android has no such switch. The microphone asks for its own permission the first time you dictate.
+  The speech model downloads from Hugging Face, and its voice detector from GitHub, the first time you dictate or open
+  Settings › Voice. Clean downloads no model there.
 - Android's speech recognizer, when you pick it in Settings › Voice instead of Parakeet, is Google's, on the phone where
   it can be. Where it can't, Google's recognizer may send the recording to Google.
-- Android's own backup copies iikb's settings and what it learned to your Google account, as it does for every app
-  that allows it. Recordings and the voice models are left out. Turn it off in Android's Settings › Backup.
+- Android's own backup copies what iikb keeps to your Google account, as it does for every app that allows it.
+  Recordings, unsent chat messages and photos, and the voice models are left out. Turn it off in Android's Settings › Backup.
 - Apps are named by Android itself, so nothing is sent for app names.
-- There are no computers to add.
 
 ## Contact
 
