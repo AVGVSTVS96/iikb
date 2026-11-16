@@ -13,7 +13,7 @@ description: Prove a change to iikb works the way a user meets it, with the chea
 
 ## GitHub's Macs
 
-`scripts/ci '<command>'` runs the command on one of GitHub's free Macs (`.github/workflows/sim.yml`) on this checkout's tree, uncommitted changes included, prints the run's link and the command's output, copies `shots/raw/` back and exits as the command did. Bassim's Mac runs no simulators; `scripts/sim` refuses anywhere but GitHub. Each run has a Mac of its own, so runs go at once. `gh run view <id> --log-failed` and the run's `logs` artifact hold what a failed run left.
+`scripts/ci '<command>'` runs the command on one of GitHub's free Macs (`.github/workflows/sim.yml`) on this checkout's tree, uncommitted changes included, prints the run's link and the command's output, copies `shots/raw/` back and exits as the command did. Bassim's Mac runs no simulators; `scripts/sim` refuses anywhere but GitHub. Each run has a Mac of its own, up to five at once; while two runs wait in GitHub's queue, the next waits on this box instead, so main's check after a push goes first. `gh run view <id> --log-failed` and the run's `logs` artifact hold what a failed run left.
 
 ## Drive
 
