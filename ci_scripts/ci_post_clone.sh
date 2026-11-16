@@ -1,9 +1,9 @@
 #!/bin/sh
-# Xcode Cloud runs this after cloning beta, the commit of main approved for TestFlight (main itself goes straight to
-# the phone). Its workflow, set in App Store Connect, archives the iikb scheme with Xcode 27.1 and hands the build to
-# TestFlight's Public group, the one behind the public link, which sends it to beta review. The workflow's
+# Xcode Cloud runs this after cloning beta, the commit of main that goes to TestFlight (main itself goes to the install
+# link and hangar). Its workflow, set in App Store Connect, archives the iikb scheme with Xcode 27.1 and hands the build
+# to TestFlight's Public group, the one behind the public link, which sends it to beta review. The workflow's
 # XCODE_XCCONFIG_FILE points xcodebuild at appstore.xcconfig, which compiles in APP_STORE for every target, packages
-# included; ci_post_xcodebuild.sh checks no private API is left and writes the What to Test note.
+# included; ci_post_xcodebuild.sh checks no private API is left and the What to Test note is this beta's own.
 set -eu
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 backup=Packages/KeyboardModules/Sources/KeyboardStore/Resources/Keys/backup.key
