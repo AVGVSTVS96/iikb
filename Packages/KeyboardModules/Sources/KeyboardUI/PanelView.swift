@@ -276,9 +276,9 @@ private final class SearchField: UIView {
     }
 }
 
-/// The search field's text field, which takes focus while it's not taking touches: a tap on the field brings the keys
-/// up, and the engine keeps the caret.
-private final class SearchInput: UITextField {
+/// A panel field's text field, which takes focus while it's not taking touches: a tap on the field brings the keys up,
+/// and the engine keeps the caret.
+final class SearchInput: UITextField {
     override var canBecomeFirstResponder: Bool { true }
 }
 

@@ -10,6 +10,7 @@ One file per feature a user meets, each with how to reach it and the test that p
 | Settings shared between the app, Settings and the keyboard | [settings.md](settings.md) |
 | Emoji: the bar's emoji and the emoji key's panel | [emoji.md](emoji.md) |
 | GIF search and the clipboard panels | [panels.md](panels.md) |
+| Snippets and Quicklinks: keywords, the Snippet key, their panels and the form | [snippets.md](snippets.md) |
 | Themes: Raycast's five | [themes.md](themes.md) |
 | Key haptics and their strength | [haptics.md](haptics.md) |
 | The iPhone Duo, in every pose | [duo.md](duo.md) |
