@@ -3,6 +3,7 @@
 #   scripts/swipe [build]     rebuild Packages/KeyboardModules/Sources/KeyboardEnglish/Resources/en.swipe: downloads FUTO's two
 #                             models (4 MB), reads their weights with scripts/swipe.py and packs them with Tools/SwipeBuilder
 #   scripts/swipe data        download swipe.futo.org's test and validation splits (570 MB) as compact files for scripts/eval swipe
+#   scripts/swipe languages   download its swipe-5 run (330 MB: German, French, Spanish and more, on their layouts) for scripts/eval swipeLanguages
 #   scripts/swipe parity [n]  ExecuTorch's own output for n real test swipes (default 200) against KeyboardCore's, in SwipeTests
 # SWIPE_DATA is where downloads go (default build/swipe); keep it on disk, not in /tmp, which is memory.
 set -euo pipefail
@@ -18,6 +19,9 @@ case "${1:-build}" in
   data)
     swipepy data "$SWIPE_DATA" test
     swipepy data "$SWIPE_DATA" dev
+    ;;
+  languages)
+    swipepy languages "$SWIPE_DATA"
     ;;
   parity)
     swipepy extract "$SWIPE_DATA"

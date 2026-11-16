@@ -18,7 +18,9 @@ extension TypingEngine {
         lastSpace = nil
         revert = nil
         commitWord(in: document)
-        let joins = text.before.last.map { !$0.isWhitespace && !Words.openers.contains($0) } ?? false
+        let joins =
+            text.before.last.map { !$0.isWhitespace && !Words.openers.contains($0) } ?? false
+            && !corrector.elides(text.before)
         let continues = corrector.continuation(after: text.before + (joins ? " " : ""))
         let starting = corrector.continuation(after: "")
         var seen: Set<String> = []
@@ -53,18 +55,17 @@ extension TypingEngine {
             let layout = corrector.grid.swipeLayout(near: path),
             let emissions = model.emissions(of: path, on: layout)
         else { return nil }
-        var found = Swipe.rank(emissions, in: lexicon, .refined, limit: 10)
+        var found = Swipe.rank(emissions, in: lexicon, limit: 10)
         if let own = ownWords(corrector, besides: lexicon) {
-            found += Swipe.rank(emissions, in: own, .refined, limit: 3)
+            found += Swipe.rank(emissions, in: own, limit: 3)
         }
         return found.isEmpty ? nil : found
     }
 
     private mutating func ownWords(_ corrector: Corrector, besides lexicon: Lexicon) -> Lexicon? {
         let words = Set(
-            (Array(corrector.memory.familiar) + Array(corrector.names.values)).filter { word in
-                word.allSatisfy { Swipe.index(of: $0.lowercased()) != nil || $0 == "'" }
-                    && lexicon.logProbability(of: word) == nil
+            (Array(corrector.memory.familiar) + Array(corrector.names.values)).filter {
+                lexicon.logProbability(of: $0) == nil
             })
         guard !words.isEmpty else { return nil }
         if ownedWords?.words != words { ownedWords = (words, Lexicon(counts: words.map { (word: $0, count: 1.0) })) }
@@ -91,6 +92,13 @@ extension Corrector {
         names[word.lowercased()] ?? lexicon?.canonical(word) ?? word
     }
 
+    /// Whether the text ends in an elision the lexicon lists, French's "l’" or Italian's "dell’", which the next word
+    /// goes on without a space.
+    func elides(_ text: String) -> Bool {
+        guard let lexicon, let last = text.last, Words.apostrophes.contains(last) else { return false }
+        return lexicon.isWord(Words.plain(String(Words.current(in: text))).lowercased())
+    }
+
     /// log P(word | the text before it) as the bar ranks the words that come next. `text` ends where the word starts.
     func continuation(after text: String) -> (String) -> Double {
         guard let lexicon else { return { _ in 0 } }
@@ -113,16 +121,16 @@ extension KeyGrid {
         guard let box = SwipeLayout(grid: self), !path.isEmpty else { return nil }
         let x = path.reduce(0) { $0 + $1.x } / Double(path.count)
         let y = path.reduce(0) { $0 + $1.y } / Double(path.count)
-        var nearest: [Character: Rect] = [:]
+        var nearest: [String: Rect] = [:]
         for (key, frame) in rows.joined() {
-            guard let label = key.label?.lowercased(), label.utf8.count == 1, let letter = label.first, letter.isASCII,
-                letter.isLowercase
-            else { continue }
+            guard let letter = key.swiped else { continue }
             if let known = nearest[letter], known.distanceSquared(toX: x, y: y) <= frame.distanceSquared(toX: x, y: y) {
                 continue
             }
             nearest[letter] = frame
         }
-        return SwipeLayout(centers: nearest.mapValues { ($0.midX, $0.midY) }, frame: box.frame)
+        return SwipeLayout(
+            centers: nearest.mapValues { ($0.midX, $0.midY) }, frame: box.frame,
+            under: box.keys.compactMapValues { box.letters[$0] })
     }
 }

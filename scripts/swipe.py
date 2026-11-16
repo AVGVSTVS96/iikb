@@ -8,6 +8,7 @@ for the scorer, and `reference` runs the ExecuTorch programs on some of those sw
 Usage: uv run --no-project --python 3.12 --with executorch --with numpy --with torch python3 scripts/swipe.py <command> <dir> ...
   extract <dir>                       download the .pte files into <dir>, write <dir>/weights.{txt,f32}
   data <dir> <split> [limit]          download <split> (test, dev) and write <dir>/<split>.swipes
+  languages <dir>                     download swipe-5 and write <dir>/swipe5/<language>-<layout>.swipes
   reference <dir> <split> <count> [out]  ExecuTorch's emissions for <count> swipes of <split>, to [out] (<dir>/<split>.reference)
 """
 
@@ -218,6 +219,35 @@ def data(directory, split, limit=None):
         out.write("\n".join(contexts[: len(swipes)]) + "\n")
 
 
+def languages(directory):
+    """swipe-5's one-finger swipes, which FUTO collected in other languages and on other layouts, a file per language
+    and layout as `data` writes a split: <dir>/swipe5/<language>-<layout>.swipes and .context."""
+    source = fetch(DATASET, "swipe-5/swipe5.jsonl", directory)
+    groups = {}
+    with open(source) as lines:
+        for line in lines:
+            record = json.loads(line)
+            if record["dual_finger"] or len(record["data"]) < 2:
+                continue
+            groups.setdefault(f"{record['language']}-{record['layout']}", []).append(record)
+    os.makedirs(os.path.join(directory, "swipe5"), exist_ok=True)
+    for layout in sorted({r["layout"] for records in groups.values() for r in records}):
+        fetch(DATASET, f"swipe-5/layouts/{layout}.json", directory)
+    for name, records in sorted(groups.items()):
+        path = os.path.join(directory, "swipe5", name)
+        with open(path + ".swipes", "wb") as out:
+            out.write(b"SWP1" + struct.pack("<I", len(records)))
+            for record in records:
+                points = np.array([[p["x"], p["y"], p["t"]] for p in record["data"]], np.float64)
+                points[:, 2] -= points[0, 2]
+                raw = record["word"].encode()
+                out.write(struct.pack("<HH", len(raw), len(points)) + raw)
+                out.write(points.astype("<f4").tobytes())
+        with open(path + ".context", "w") as out:
+            out.write("\n".join(" ".join(r["sentence"].split()[: r["word_idx"]]) for r in records) + "\n")
+        print(f"{name}: {len(records)} swipes")
+
+
 def resample(points, size=64):
     """The model card's input: a uniform 60 Hz resampling, then `size` evenly spaced points, as [2, size]."""
     x, y, t = points[:, 0], points[:, 1], points[:, 2]
@@ -265,4 +295,4 @@ def reference(directory, split, count, path=None):
 
 if __name__ == "__main__":
     command, directory, *rest = sys.argv[1:]
-    {"extract": extract, "data": data, "reference": reference}[command](directory, *rest)
+    {"extract": extract, "data": data, "languages": languages, "reference": reference}[command](directory, *rest)

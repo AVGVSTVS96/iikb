@@ -464,7 +464,8 @@ open class FullKeyboardViewController: UIInputViewController {
 
     /// Corrects in the languages picked in the app, each with its downloaded words, leaving out one whose words aren't
     /// here (or can't be reached without Full Access) and typing English when none are, keeping what you've taught it.
-    /// For now it types the first of them alone, and the next-word network and Slide to Type are English's.
+    /// For now it types the first of them alone, and the next-word network is English's. Slide to Type reads any
+    /// language's words on its keys, with English's decoder only while English is typed alone (`Swipe.decodes`).
     private func useLanguages() {
         let here = engine.settings.languages.compactMap { language in
             LanguageFiles.lexicon(language.id).map { (language, $0) }
@@ -483,7 +484,7 @@ open class FullKeyboardViewController: UIInputViewController {
             corrector.grid = old.grid
         }
         engine.corrector = corrector
-        engine.swipeModel = english ? .english : nil
+        engine.swipeModel = typed.count == 1 && english ? .english : Swipe.english.withoutDecoder
     }
 
     /// A look picked in the menu, kept where the app reads it too, so its Appearance page shows it at once. A new theme

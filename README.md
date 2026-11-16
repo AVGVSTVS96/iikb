@@ -71,7 +71,7 @@ A source is a web service you plug into the keyboard. iikb sends it the text of 
 - Return, email, URL and search fields get the keys Apple gives them.
 - Typing predictions and Parakeet speech recognition run on device. Network access covers model and language downloads, GIF search, app names from the App Store, copied links' site icons (only the site's name is sent), sources and extensions you add, and a backup server in builds configured with one. Sources receive field text; configured backups can include typing data, clipboard history, transcripts and recordings. See [backup behavior](docs/backup.md).
 
-Swipe typing: slide across the letters and lift. On 400 real swipes replayed into both keyboards, its first guess was the word meant 88.2% of the time; Apple's keyboard got 88.0% on the same swipes. On iPhone and iPad, Spanish, French, German, Portuguese, Italian and Swedish download in the iikb app's Settings › Languages, each on Apple's layout. Swipe typing and the next-word model are English only for now.
+Swipe typing: slide across the letters and lift. On 400 real swipes replayed into both keyboards, its first guess was the word meant 88.2% of the time; Apple's keyboard got 88.0% on the same swipes. On iPhone and iPad, Spanish, French, German, Portuguese, Italian and Swedish download in the iikb app's Settings › Languages, each on Apple's layout. Swipe typing works in each of them, on its own keys; the next-word model is English only for now.
 
 ## Install
 

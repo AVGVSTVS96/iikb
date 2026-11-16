@@ -47,8 +47,9 @@ extension Evaluation {
 
         init(items: [Item]) { self.items = items }
 
-        /// The swipes whose word is letters and apostrophes, after trimming punctuation, of at least two letters.
-        init(_ split: String, limit: Int = .max) throws {
+        /// The swipes whose word is letters and apostrophes, after trimming punctuation, of at least two letters: a–z's
+        /// alone unless `anyLetters`.
+        init(_ split: String, limit: Int = .max, anyLetters: Bool = false) throws {
             let data = [UInt8](try Data(contentsOf: Self.directory.appendingPathComponent("\(split).swipes")))
             func u32(_ at: Int) -> Int {
                 Int(data[at]) | Int(data[at + 1]) << 8 | Int(data[at + 2]) << 16 | Int(data[at + 3]) << 24
@@ -67,7 +68,7 @@ extension Evaluation {
                 at += count * 12
                 let word = raw.lowercased().replacingOccurrences(of: "’", with: "'").trimmingCharacters(
                     in: CharacterSet.letters.union(CharacterSet(charactersIn: "'")).inverted)
-                guard word.allSatisfy({ Swipe.index(of: String($0)) != nil || $0 == "'" }),
+                guard word.allSatisfy({ ($0.isLetter && (anyLetters || $0.isASCII)) || $0 == "'" }),
                     word.count(where: { $0 != "'" }) >= 2
                 else { continue }
                 items.append(
@@ -151,7 +152,7 @@ extension Evaluation {
         )
         for refined in [false, true] {
             let emissions = Self.parallel(swipes.items.count) {
-                model.emissions(of: swipes.items[$0].path, on: layout, refined: refined)!
+                (refined ? model : model.withoutDecoder).emissions(of: swipes.items[$0].path, on: layout)!
             }
             for (name, lexicon) in [("ours", ours)]
                 + [25.5, 18.0, 12.0].map({ ("forced at -\($0)", Self.lexicon(adding: targets, at: $0)) })
@@ -168,6 +169,169 @@ extension Evaluation {
         }
     }
 
+    /// The swipes FUTO collected in other languages and on other layouts (swipe-5, `scripts/swipe languages`), each read
+    /// on the keys of the keyboard it was swiped on (its `layouts/` file), with the long-press letters of iikb's layout
+    /// of it in its language and its apostrophe key where it has one, and its language's words (`LANGUAGES`, as
+    /// `scripts/eval languages` downloads them): top 1/3/10 from a–z's keys alone with the decoder, as swipe read before
+    /// it read every key (the language's own, and each letter on the key it's under: é on e), then with every key by the
+    /// encoder alone and with the decoder where the keys are a–z's. `keysOff` is how far iikb's own keys are from that
+    /// keyboard's, in the box around them.
+    @Test(.enabled(if: Swipes.exists("swipe5/de-german") && ProcessInfo.processInfo.environment["LANGUAGES"] != nil))
+    func swipeLanguages() throws {
+        let model = Swipe.english
+        for set in try Self.languageSets() {
+            print(
+                "EVAL swipe language=\(set.name) layout=\(set.layout) swipes=\(set.swipes.count) inLexicon=\(String(format: "%.2f", set.inLexicon))% keysOff=\(String(format: "%.3f", set.keysOff))"
+            )
+            for (name, on, refined) in [
+                ("a-z keys+decoder", set.aToZ, true), ("encoder", set.keys, false), ("encoder+decoder", set.keys, true),
+            ] where name != "encoder+decoder" || set.keys.isAToZ {
+                let ranked = Self.parallel(set.swipes.count) {
+                    (refined ? model : model.withoutDecoder).emissions(of: set.swipes[$0].path, on: on).map {
+                        Swipe.rank($0, in: set.lexicon, limit: 10).map { $0.word.lowercased() }
+                    } ?? []
+                }
+                var accuracy = Accuracy()
+                for (item, words) in zip(set.swipes, ranked) { accuracy.add(words, item.word) }
+                print("EVAL swipe language=\(set.name) \(name) \(accuracy.summary)")
+            }
+        }
+    }
+
+    /// Each language's own phrases (`phrases.<id>.txt`, and English's phrase set) swiped word by word on iikb's keys
+    /// for it by a finger drawn from key to key, each corner a little off its key's center (seeded), since swipe-5 has
+    /// no swipes in Portuguese, Italian or Swedish. Read as the keyboard reads it, with the decoder for English alone;
+    /// German's, French's, Spanish's and English's lines say how far a drawn finger sits from real ones.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["LANGUAGES"] != nil))
+    func swipeDrawn() throws {
+        let folder = URL(fileURLWithPath: ProcessInfo.processInfo.environment["LANGUAGES"]!)
+        for language in Language.all {
+            let english = language == .english
+            let lexicon =
+                english
+                ? Lexicon.english
+                : try #require(
+                    Lexicon(bytes: [UInt8](Data(contentsOf: folder.appending(path: "\(language.id).lexicon")))))
+            var context = LayoutContext(device: .phone, layer: .letters)
+            context.languages = [language]
+            context.letters = language.layouts[0]
+            let layout = try #require(
+                SwipeLayout(
+                    grid: KeyGrid(
+                        Layouts.layout(for: context), width: width, metrics: KeyboardMetrics.phone(width: width).grid,
+                        signature: context.signature)))
+            var random = SplitMix64(seed: 2026)
+            var items: [Swipes.Item] = []
+            let kept = CharacterSet.letters.union(CharacterSet(charactersIn: "'")).inverted
+            for phrase in try Self.phrases(english ? "phrases" : "phrases.\(language.id)") {
+                for token in phrase.split(separator: " ") {
+                    let word = Words.plain(String(token)).trimmingCharacters(in: kept)
+                    guard word.count(where: \.isLetter) >= 2, word.allSatisfy({ $0.isLetter || $0 == "'" }) else {
+                        continue
+                    }
+                    let keys = word.compactMap { layout.keys[String($0)] }
+                    guard keys.count == word.count(where: { $0 != "'" || layout.keys["'"] != nil }) else { continue }
+                    let corners = keys.map {
+                        (
+                            x: layout.centers[$0].x + 0.025 * random.gaussian(),
+                            y: layout.centers[$0].y + 0.05 * random.gaussian()
+                        )
+                    }
+                    var path: [SwipePoint] = []
+                    for (from, to) in zip(corners, corners.dropFirst() + [corners.last!]) {
+                        let steps = max(Int((hypot(to.x - from.x, to.y - from.y) / 0.02).rounded(.up)), 1)
+                        for step in 0..<steps {
+                            let share = Double(step) / Double(steps)
+                            path.append(
+                                SwipePoint(
+                                    x: layout.frame.x + (from.x + (to.x - from.x) * share) * layout.frame.width,
+                                    y: layout.frame.y + (from.y + (to.y - from.y) * share) * layout.frame.height,
+                                    time: Double(path.count) * 0.01))
+                        }
+                    }
+                    items.append(Swipes.Item(word: word, path: path))
+                }
+            }
+            let model = english ? Swipe.english : Swipe.english.withoutDecoder
+            let ranked = Self.parallel(items.count) {
+                model.emissions(of: items[$0].path, on: layout).map {
+                    Swipe.rank($0, in: lexicon, limit: 3).map { $0.word.lowercased() }
+                } ?? []
+            }
+            var accuracy = Accuracy()
+            for (item, words) in zip(items, ranked) { accuracy.add(words, item.word) }
+            print(
+                "EVAL swipe drawn language=\(language.id) layout=\(context.letters.id) words=\(items.count) \(accuracy.topThree)"
+            )
+        }
+    }
+
+    struct LanguageSet {
+        let name: String
+        let language: Language
+        let layout: String
+        let lexicon: Lexicon
+        let swipes: [Swipes.Item]
+        /// The keys it was swiped on, and a–z's of them alone.
+        let keys: SwipeLayout
+        let aToZ: SwipeLayout
+        let inLexicon: Double
+        let keysOff: Double
+    }
+
+    static func languageSets() throws -> [LanguageSet] {
+        let folder = URL(fileURLWithPath: ProcessInfo.processInfo.environment["LANGUAGES"]!)
+        let sets: [(name: String, language: Language, layout: LetterLayout, theirs: String)] = [
+            ("de-german", .german, .german, "german"), ("de-qwertz", .german, .qwertz, "qwertz"),
+            ("de-qwerty", .german, .qwerty, "qwerty"), ("fr-azerty", .french, .french, "azerty"),
+            ("fr-qwerty", .french, .qwerty, "qwerty"), ("es-spanish", .spanish, .spanish, "spanish"),
+            ("en-qwerty", .english, .qwerty, "qwerty"), ("en-qwertz", .english, .qwertz, "qwertz"),
+            ("en-azerty", .english, .azerty, "azerty"),
+        ]
+        return try sets.filter { Swipes.exists("swipe5/\($0.name)") }.map { set in
+            let lexicon =
+                set.language == .english
+                ? Lexicon.english
+                : try #require(
+                    Lexicon(bytes: [UInt8](Data(contentsOf: folder.appending(path: "\(set.language.id).lexicon")))))
+            var context = LayoutContext(device: .phone, layer: .letters)
+            context.languages = [set.language]
+            context.letters = set.layout
+            let ours = try #require(
+                SwipeLayout(
+                    grid: KeyGrid(
+                        Layouts.layout(for: context), width: width, metrics: KeyboardMetrics.phone(width: width).grid,
+                        signature: context.signature)))
+            let file = try JSONSerialization.jsonObject(
+                with: Data(contentsOf: Swipes.directory.appending(path: "swipe-5/layouts/\(set.theirs).json")))
+            let theirs = try #require(file as? [String: Any])["keys"] as? [[String: Any]] ?? []
+            var centers: [String: (x: Double, y: Double)] = [:]
+            for key in theirs {
+                guard let letter = key["letter"] as? String, letter.first?.isLetter == true || ours.keys[letter] != nil,
+                    let x = key["cx"] as? Double, let y = key["cy"] as? Double
+                else { continue }
+                centers[letter] = (x, y)
+            }
+            let unit = Rect(x: 0, y: 0, width: 1, height: 1)
+            let under = ours.keys.mapValues { ours.letters[$0] }
+            let keys = try #require(SwipeLayout(centers: centers, frame: unit, under: under))
+            let aToZ = try #require(
+                SwipeLayout(centers: centers.filter { Swipe.alphabet.contains($0.key) }, frame: unit))
+            let off =
+                zip(ours.letters, ours.centers).compactMap { letter, center -> Double? in
+                    centers[letter].map { max(abs($0.x - center.x), abs($0.y - center.y)) }
+                }.max() ?? 0
+            let swipes = try Swipes("swipe5/\(set.name)", anyLetters: true).items
+            let inLexicon =
+                100 * Double(swipes.count { lexicon.logProbability(of: $0.word) != nil })
+                / Double(max(swipes.count, 1))
+            return LanguageSet(
+                name: set.name, language: set.language, layout: set.layout.id, lexicon: lexicon, swipes: swipes,
+                keys: keys, aToZ: aToZ,
+                inLexicon: inLexicon, keysOff: off)
+        }
+    }
+
     /// One decode's cost on one core, from the points to the ranked words.
     @Test(.enabled(if: Swipes.exists("test")))
     func swipeLatency() throws {
@@ -181,7 +345,7 @@ extension Evaluation {
             var search: [Double] = []
             for item in swipes.items {
                 let start = clock.now
-                let emissions = model.emissions(of: item.path, on: layout, refined: refined)!
+                let emissions = (refined ? model : model.withoutDecoder).emissions(of: item.path, on: layout)!
                 let middle = clock.now
                 _ = Swipe.rank(emissions, in: lexicon, refined ? .refined : .encoderOnly, limit: 10)
                 let end = clock.now
@@ -202,31 +366,48 @@ extension Evaluation {
         }
     }
 
-    /// Retunes `Swipe.Scoring` on the validation split by coordinate search, keeping the best of top 1 and top 3 together:
-    /// `SWIPE_TUNE=refined|encoder scripts/eval swipeTune`, printing the constants to put in `Swipe.Scoring`.
+    /// Retunes `Swipe.Scoring` by coordinate search, keeping the best of top 1 and top 3 together, and prints the
+    /// constants to put in it: `SWIPE_TUNE=refined|encoder scripts/eval swipeTune` on the validation split, or
+    /// `SWIPE_TUNE=languages` on every other swipe of swipe-5's in other languages, read by the encoder alone, then
+    /// scored on the swipes it left out.
     @Test(.enabled(if: Swipes.exists("dev") && ProcessInfo.processInfo.environment["SWIPE_TUNE"] != nil))
     func swipeTune() throws {
-        let refined = ProcessInfo.processInfo.environment["SWIPE_TUNE"] == "refined"
-        let layout = Self.layout
-        let model = Swipe.english
-        let lexicon = Lexicon.english
-        let swipes = try Swipes("dev", limit: Int(ProcessInfo.processInfo.environment["SWIPE_LIMIT"] ?? "") ?? 8000)
-            .placed(on: layout)
-        let emissions = Self.parallel(swipes.count) {
-            model.emissions(of: swipes[$0].path, on: layout, refined: refined)!
+        let tune = ProcessInfo.processInfo.environment["SWIPE_TUNE"]!
+        let model = tune == "refined" ? Swipe.english : Swipe.english.withoutDecoder
+        typealias Read = (emissions: Swipe.Emissions, lexicon: Lexicon, word: String)
+        var reads: [Read] = []
+        var held: [Read] = []
+        if tune == "languages" {
+            for set in try Self.languageSets() where set.language != .english {
+                let emissions = Self.parallel(set.swipes.count) {
+                    model.emissions(of: set.swipes[$0].path, on: set.keys)!
+                }
+                for (index, (item, emissions)) in zip(set.swipes, emissions).enumerated() {
+                    let read = (emissions, set.lexicon, item.word)
+                    if index.isMultiple(of: 2) { reads.append(read) } else { held.append(read) }
+                }
+            }
+        } else {
+            let layout = Self.layout
+            let swipes = try Swipes(
+                "dev", limit: Int(ProcessInfo.processInfo.environment["SWIPE_LIMIT"] ?? "") ?? 8000
+            ).placed(on: layout)
+            let emissions = Self.parallel(swipes.count) { model.emissions(of: swipes[$0].path, on: layout)! }
+            reads = zip(swipes, emissions).map { ($1, Lexicon.english, $0.word) }
         }
-        func score(_ scoring: Swipe.Scoring) -> (Double, Accuracy) {
-            let ranked = Self.parallel(swipes.count) {
-                Swipe.rank(emissions[$0], in: lexicon, scoring, limit: 3).map { $0.word.lowercased() }
+        func score(_ scoring: Swipe.Scoring, on reads: [Read]) -> (Double, Accuracy) {
+            let ranked = Self.parallel(reads.count) {
+                Swipe.rank(reads[$0].emissions, in: reads[$0].lexicon, scoring, limit: 3).map { $0.word.lowercased() }
             }
             var accuracy = Accuracy()
-            for (item, words) in zip(swipes, ranked) { accuracy.add(words, item.word) }
+            for (read, words) in zip(reads, ranked) { accuracy.add(words, read.word) }
             return (Double(accuracy.first + accuracy.three) / Double(accuracy.total), accuracy)
         }
-        var best = refined ? Swipe.Scoring.refined : .encoderOnly
+        var best = tune == "refined" ? Swipe.Scoring.refined : .encoderOnly
         if let b = ProcessInfo.processInfo.environment["SWIPE_BEAM"] { best.beam = Int(b)! }
         if let c = ProcessInfo.processInfo.environment["SWIPE_CUTOFF"] { best.cutoff = Float(c)! }
-        var (value, accuracy) = score(best)
+        let start = best
+        var (value, accuracy) = score(best, on: reads)
         print("EVAL tune start \(accuracy.summary) \(best)")
         let fields: [WritableKeyPath<Swipe.Scoring, Double>] = [\.gamma, \.lambda, \.beta, \.pruneGamma, \.pruneBeta]
         for factor in [1.5, 1.25, 1.1] {
@@ -234,11 +415,16 @@ extension Evaluation {
                 for direction in [factor, 1 / factor] {
                     var trial = best
                     trial[keyPath: field] *= direction
-                    let (trialValue, trialAccuracy) = score(trial)
+                    let (trialValue, trialAccuracy) = score(trial, on: reads)
                     if trialValue > value { (best, value, accuracy) = (trial, trialValue, trialAccuracy) }
                 }
             }
             print("EVAL tune factor=\(factor) \(accuracy.summary) \(best)")
+        }
+        if !held.isEmpty {
+            print(
+                "EVAL tune held out: start \(score(start, on: held).1.summary) | tuned \(score(best, on: held).1.summary)"
+            )
         }
     }
 
