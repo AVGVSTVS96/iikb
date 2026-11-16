@@ -121,6 +121,7 @@ public final class MessageField: UIView, UITextViewDelegate {
         strip.alwaysBounceHorizontal = true
         strip.clipsToBounds = true
         strip.isHidden = true
+        strip.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapPhotos)))
         addSubview(strip)
         field.onPastePhotos = { [unowned self] in onPastePhotos($0) }
     }
@@ -284,6 +285,11 @@ public final class MessageField: UIView, UITextViewDelegate {
         if attach.frame.insetBy(dx: -4, dy: -4).contains(point) { return attach }
         if !strip.isHidden, let hit = strip.hitTest(convert(point, to: strip), with: event) { return hit }
         return super.hitTest(point, with: event)
+    }
+
+    /// The photos' row is the box's too: a tap on it, away from a ✕, is a tap on the box.
+    @objc private func tapPhotos() {
+        if !field.focusable { onTap() }
     }
 
     public func textViewShouldBeginEditing(_ textView: UITextView) -> Bool {
