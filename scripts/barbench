@@ -1,0 +1,14 @@
+#!/bin/bash
+# The bar on your own typing it never learned from (BarBenchTests): your record's lines as scripts/personal reads them,
+# the last 10% scored, over the shipped network and your own. scripts/barbench [record.jsonl [en.network]]
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+data=${IIKB_DATA:-$HOME/.local/share/iikb}
+record=${1:-$data/record.jsonl}
+mkdir -p "$root/build/barbench"
+export BAR_LINES=$root/build/barbench/lines.txt BAR_NETWORK=${2:-$data/backup/mirror/personal/en.network}
+PYTHONDONTWRITEBYTECODE=1 uv run --no-project --with numpy python3 -c \
+  'import sys; sys.path.insert(0, sys.argv[1]); from personal import lines; print("\n".join(lines(sys.argv[2])))' \
+  "$root/scripts" "$record" >"$BAR_LINES"
+[ -n "${BAR_HITS:-}" ] && export BAR_HITS=$(realpath -m "$BAR_HITS")
+exec "$root/scripts/coretest" --filter BarBenchTests
