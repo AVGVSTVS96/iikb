@@ -16,7 +16,8 @@
 # every 10 minutes, so builds that land meanwhile go up as one; --now skips the wait, --rebuild builds even when nothing
 # changed; the wait comes before the queue, so a run with --now goes up ahead of one waiting. Its build doesn't wait for a turn (~/.local/bin/turn): a build that waited for one while holding the lock
 # could wait on runs queued behind it.
-# Before building it runs scripts/gate, scripts/formats and scripts/clean on that commit, and puts up nothing that fails one.
+# Before building it runs scripts/gate, scripts/formats and scripts/clean on that commit, and puts up nothing that fails one, except a gate case the build on the link fails too: that comes from what the
+# iPhone learned (the gate's `phone` run), not from main, and holding main back fixes nothing.
 # When main can't get onto the link (a failed check, build or signing, or the Mac not answering), Config/notify, if set
 # up, is told why once, again only if the reason changes, and once more when a build goes up again.
 # It also puts the build in hangar, the app on the iPhone that installs all of Bassim's development apps,
@@ -102,9 +103,22 @@ if [ -z "$rebuild" ] && { [ "$offered" = "$number" ] ||
   on_devices
   exit 0
 fi
-git -C "$build" checkout -q -f --detach "$commit"
 why="gate build $number fails the typing check (scripts/gate)"
-"$build/scripts/gate" || { echo "build $number (main $commit) fails scripts/gate, so it doesn't go up" >&2; exit 1; }
+gate() {
+  git -C "$build" checkout -q -f --detach "$1"
+  { "$build/scripts/gate" || echo "gate failed"; } | tee /dev/stderr | grep -E ' FAIL |^gate failed|error:' |
+    sed 's/, bar: .*//' | sort > "$2"
+}
+gate "$commit" "$build.gate"
+if [ -s "$build.gate" ]; then
+  [ -z "$from" ] || gate "$from" "$build.gate-before"
+  git -C "$build" checkout -q -f --detach "$commit"
+  if [ -z "$from" ] || comm -23 "$build.gate" "$build.gate-before" | grep -q .; then
+    echo "build $number (main $commit) fails scripts/gate, so it doesn't go up" >&2
+    exit 1
+  fi
+  echo "build $number fails scripts/gate only where build $offered (main $from) on the link fails too, so it goes up" >&2
+fi
 why="formats build $number fails the dictation formats check (scripts/formats)"
 "$build/scripts/formats" || { echo "build $number (main $commit) fails scripts/formats, so it doesn't go up" >&2; exit 1; }
 why="clean build $number fails the check on Clean's model (scripts/clean)"
