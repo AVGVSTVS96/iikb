@@ -1,3 +1,7 @@
-- Dictation: the small iikb strip over other apps is gone. Turn on the mic switch at the top of Home and the microphone stays on, so you can dictate from the keyboard in any app.
-- Dictate with music playing on the iPhone, a Bluetooth speaker or headphones, even a speaker you connect after the mic is on. Tell us if the music or the mic stops.
-- Transcripts: if your voice model is Parakeet, dictations that older builds wrote with Apple's model while Parakeet loaded are rewritten with Parakeet, as long as their recording is still kept.
+- Sounds: with Sound on in iOS Settings › Sounds & Haptics › Keyboard Feedback, keys play Apple's own sounds: one for letters, one for delete, one for space, return and the rest.
+- Custom Keys, in iikb's Settings: try an action row above the letters, a period key, the bottom row in any order, hiding the menu button, and Secondary mode.
+- Layouts: English adds Dvorak, Colemak, Colemak-DH and Workman, in iikb's Settings › Languages. On iPhone, turn on Number Hints in Appearance and hold a top-row letter to type its digit.
+- Holds: hold the period in an email or search field, or .com in a web address, for .com and your country's endings. Hold the emoji key for your recent emoji. Slide left from delete to delete whole words.
+- Slide to Type works in every downloaded language. Try French: l'école in one swipe.
+- Instagram: @ and # sit beside space, and an @ or # hit by accident between two words is read as the space.
+- Chats: tap the photos attached in a chat's message box to bring the keys up. On iPhone Duo, folded and sideways, a chat keeps its tabs and box in view.
