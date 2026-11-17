@@ -13,6 +13,7 @@ enum KeyboardHost {
         static func appeared() {}
         static func harvest() {}
         static func app(of keyboard: UIInputViewController) -> String? { nil }
+        static func process(of keyboard: UIInputViewController) -> Int32 { 0 }
         static func returns(to app: String?, apps: [String]) -> Bool { true }
     #else
         private static var names: [Int: String] = [:]
@@ -39,8 +40,12 @@ enum KeyboardHost {
 
         static func app(of keyboard: UIInputViewController) -> String? {
             harvest()
-            let id = (value(keyboard, "_hostProcessIdentifier") as? NSNumber)?.intValue ?? 0
-            return names[id]
+            return names[Int(process(of: keyboard))]
+        }
+
+        /// The host app's process ID, 0 when the view controller doesn't hold it.
+        static func process(of keyboard: UIInputViewController) -> Int32 {
+            (value(keyboard, "_hostProcessIdentifier") as? NSNumber)?.int32Value ?? 0
         }
 
         /// Whether iikb, opened to start the microphone, can bring you back to `app` as you left it. Only an app

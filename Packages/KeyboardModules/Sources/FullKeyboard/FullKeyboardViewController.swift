@@ -342,7 +342,9 @@ open class FullKeyboardViewController: UIInputViewController {
             line == nil ? fieldLines.lineHeight : nil
         }
         keyboardView.onTrackpad = { [unowned self] in
-            if line == nil { fieldLines.check(app: hostApp, before: engine.text.before) }
+            if line == nil {
+                fieldLines.check(app: hostApp, process: KeyboardHost.process(of: self), before: engine.text.before)
+            }
         }
         fieldLines.apply = { [unowned self] offset in
             if engine.handle(.cursor(offset: offset), in: document) { render() }
@@ -440,7 +442,7 @@ open class FullKeyboardViewController: UIInputViewController {
         super.viewDidAppear(animated)
         updateHost()
         syncWithDocument()
-        fieldLines.check(app: hostApp, before: engine.text.before)
+        fieldLines.check(app: hostApp, process: KeyboardHost.process(of: self), before: engine.text.before)
         if hapticsEnabled { haptics.start() }
         stopSystemGesturesDelayingTouches()
         TouchTrace.shared.watch(view.window)
@@ -1107,7 +1109,7 @@ open class FullKeyboardViewController: UIInputViewController {
         case .nextKeyboard:
             advanceToNextInputMode()
         case .cursorLines(let count) where line == nil && fieldLines.lineHeight != nil:
-            return fieldLines.move(count, before: engine.text.before)
+            return fieldLines.move(count, process: KeyboardHost.process(of: self), before: engine.text.before)
         default:
             break
         }

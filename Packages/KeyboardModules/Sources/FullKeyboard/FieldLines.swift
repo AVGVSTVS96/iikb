@@ -18,17 +18,17 @@ import UIKit
     private nonisolated let queue = DispatchQueue(label: "iikb.field-lines")
 
     #if APP_STORE
-        func check(app: String?, before: String) {}
-        func move(_ count: Int, before: String) {}
+        func check(app: String?, process: Int32, before: String) {}
+        func move(_ count: Int, process: Int32, before: String) {}
     #else
         /// Asks whether the app's field answers, as the keyboard comes up in it and again as the trackpad starts, since
         /// an empty field has no lines to answer with. Which apps answered is kept once the field holds text.
-        func check(app: String?, before: String) {
+        func check(app: String?, process: Int32, before: String) {
             goal = nil
             queue.async {
                 var height: CGFloat?
                 let answer: String
-                switch Field.find(matching: before) {
+                switch Field.find(in: process, matching: before) {
                 case .success(let field):
                     let caret = field.rect(field.caret).height
                     height = caret > 0 ? caret : nil
@@ -43,7 +43,7 @@ import UIKit
 
         /// Moves the caret `count` lines down, up when negative, keeping its x through a run of moves as a text view
         /// does, through `apply`.
-        func move(_ count: Int, before: String) {
+        func move(_ count: Int, process: Int32, before: String) {
             pending += count
             guard !moving else { return }
             moving = true
@@ -51,7 +51,7 @@ import UIKit
             let goal = goal
             pending = 0
             queue.async {
-                let move = try? Field.find(matching: before).get().move(count, goal: goal)
+                let move = try? Field.find(in: process, matching: before).get().move(count, goal: goal)
                 Task { @MainActor in
                     self.moving = false
                     guard let move else {
@@ -92,18 +92,24 @@ import UIKit
             case noField = "no field"
             case noText = "no text"
             case otherText = "other text"
+            case noFieldByProcess = "no field by process"
+            case noTextByProcess = "no text by process"
         }
 
-        /// The field, when its text before the caret ends as `before` does, so it's the field the keyboard types in.
-        static func find(matching before: String) -> Result<Field, Stop> {
+        /// The field, when its text before the caret ends as `before` does, so it's the field the keyboard types in:
+        /// the focused app's, else the host `process`'s, asked directly.
+        static func find(in process: Int32, matching before: String) -> Result<Field, Stop> {
             guard dlopen("/System/Library/PrivateFrameworks/AXRuntime.framework/AXRuntime", RTLD_NOW) != nil,
                 let ax = NSClassFromString("AXElement")
             else { return .failure(.noRuntime) }
-            guard let app = call(ax, "primaryApp") else { return .failure(.noApp) }
-            guard let element = call(app, "firstResponder") else { return .failure(.noField) }
+            let focused = call(ax, "primaryApp")
+            guard let app = focused ?? host(process, ax) else { return .failure(.noApp) }
+            guard let element = call(app, "firstResponder") else {
+                return .failure(focused == nil ? .noFieldByProcess : .noField)
+            }
             guard let text = call(element, "value") as? NSString,
                 let caret = range(element, "selectedTextRange")?.location, caret <= text.length
-            else { return .failure(.noText) }
+            else { return .failure(focused == nil ? .noTextByProcess : .noText) }
             let shown = String(before.suffix(32))
             guard text.substring(to: caret).hasSuffix(shown) else { return .failure(.otherText) }
             return .success(Field(element: element, text: text, caret: caret))
@@ -202,6 +208,17 @@ import UIKit
             let selector = NSSelectorFromString("boundsForTextRange:")
             guard let method = class_getInstanceMethod(object_getClass(element), selector) else { return .null }
             return unsafeBitCast(method_getImplementation(method), to: Bounds.self)(element, selector, range)
+        }
+
+        private static func host(_ process: Int32, _ ax: AnyClass) -> AnyObject? {
+            typealias ForProcess = @convention(c) (AnyClass, Selector, Int32) -> AnyObject?
+            let selector = NSSelectorFromString("uiApplicationWithPid:")
+            guard process > 0, let type = NSClassFromString("AXUIElement"),
+                let method = class_getClassMethod(type, selector),
+                let app = unsafeBitCast(method_getImplementation(method), to: ForProcess.self)(type, selector, process)
+            else { return nil }
+            return (ax as AnyObject).perform(NSSelectorFromString("elementWithUIElement:"), with: app)?
+                .takeUnretainedValue()
         }
 
         private static func call(_ target: AnyObject, _ name: String) -> AnyObject? {
