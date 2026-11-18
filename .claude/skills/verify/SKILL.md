@@ -25,7 +25,7 @@ For one change, the row that applies:
 | --- | --- | --- |
 | anything in `KeyboardCore` | `scripts/coretest` | `Test run with N tests … passed`. `TextStateStressTests` (3,000 seeded runs against a host that reports late and cut off) is one of them. |
 | anything in the app or keyboard | `scripts/check` | it ends with `Wrote to …/iikb.app`. |
-| the decoder, models, key map, autocorrect or what a touch types | `scripts/eval`, here (about 20 minutes; `scripts/ci scripts/eval` also scores the UITextChecker baseline) | it ends with `EVAL matches eval.expected`. A change that moves the numbers must beat them and updates `scripts/eval.expected` in the same commit. |
+| the decoder, models, key map, autocorrect or what a touch types | `scripts/eval`, here (about 20 minutes; `scripts/ci scripts/eval` also scores the UITextChecker baseline), then `scripts/eval owner`, Bassim's own typing (about an hour) | they end with `EVAL matches eval.expected` and `EVAL owner matches eval.expected`. A change that moves the numbers must beat them and updates `scripts/eval.expected` in the same commit. |
 | how the keyboard looks on the Duo | `scripts/ci 'scripts/sim duo <tag>'` (`KEYBOARDS=iikb`, `APPEARANCES=dark` narrow it) | `shots/raw/duo/` reads right in every pose. |
 | how the app looks on the Duo | `scripts/ci 'scripts/sim duoapp <tag>'` (`PAGES=` narrows it) | `shots/raw/duo/app/` reads right in every pose. |
 | typing through the real extension | `scripts/ci scripts/uitest` (`-only-testing:AppUITests/<Class>` after the device names one class) | every `Test Case … passed`, none failed. |

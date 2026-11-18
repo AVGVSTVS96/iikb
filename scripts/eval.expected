@@ -19,6 +19,8 @@ EVAL noise=0.25 keyboard=learning words=2714 raw=88.7% autocorrect=97.2% top3=99
 EVAL noise=0.35 keyboard=baseline words=2714 raw=35.1% autocorrect=59.5% top3=62.8% next3=6.5% fixed=664 broken=1 ["claus→class"]
 EVAL noise=0.35 keyboard=decoder words=2714 raw=60.4% autocorrect=89.3% top3=96.2% next3=28.4% fixed=787 broken=3 ["prayer→prayed", "see→are", "took→tool"]
 EVAL noise=0.35 keyboard=learning words=2714 raw=60.8% autocorrect=91.9% top3=96.8% next3=29.1% fixed=846 broken=2 ["took→tool", "merger→meter"]
+EVAL owner split=dev sentences=1438 words=9285 raw=96.3% autocorrect=94.7% top3=98.3% fixed=203 broken=347: apostrophe=245 known=6 new=96
+EVAL owner split=test sentences=831 words=5149 raw=98.0% autocorrect=95.3% top3=98.9% fixed=52 broken=189: apostrophe=112 known=3 new=74
 EVAL predict corpus=chat user=learning words=7233 top1=22.8% top3=36.6%
 EVAL predict corpus=chat user=new words=7233 top1=19.6% top3=31.3%
 EVAL predict corpus=phrases user=learning words=2714 top1=18.2% top3=30.8%

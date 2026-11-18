@@ -8,7 +8,10 @@
 # scripts/swipe data and languages, and SWIPE_DATA, takes minutes), which is only diffed against eval.expected's swipe
 # lines, or languages: each other language's phrases (phrases.<id>.txt) typed
 # on its own layout with its own words, downloaded from the release the manifest names into build/languages/, each
-# language in its own process (about 12 minutes), only diffed against eval.expected's language lines. A full run must match eval.expected, its baseline lines only on a
+# language in its own process (about 12 minutes), only diffed against eval.expected's language lines, or owner: Bassim's
+# own messages with his taps, memory and network (OwnerTyping), from scripts/owner.py's folder here, written the first
+# time from the record and the backup, dev and test each in its own process, only diffed against eval.expected's owner
+# lines. A full run must match eval.expected, its baseline lines only on a
 # Mac; a change that moves the numbers updates that file in the same commit.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -21,6 +24,11 @@ if [ -f "$mirror/personal/en.network" ] && [ -f "$mirror/keyboard/support/typing
   export PHONE_NETWORK=$mirror/personal/en.network PHONE_MEMORY=$mirror/keyboard/support/typing-memory.json
 fi
 [ ! -f "$HOME/.local/share/iikb/record.jsonl" ] || export RECORD=$HOME/.local/share/iikb/record.jsonl
+unset OWNER_DATA
+if [ "${1:-}" = owner ]; then
+  export OWNER_DATA=$HOME/.local/share/iikb/owner
+  [ -f "$OWNER_DATA/test/text.txt" ] || python3 -I "$root/scripts/owner.py" "$OWNER_DATA"
+fi
 case "${1:-real}" in real*) [ -f "$REAL_DATA/autocorrect.txt" ] || python3 -I "$root/scripts/realtyping.py" "$REAL_DATA" ;; esac
 if [ "${1:-}" = languages ] || [ "${1:-}" = swipe ]; then
   export LANGUAGES=$root/build/languages
@@ -46,7 +54,7 @@ else
   mkdir -p "$pkg/Sources" "$pkg/Tests/KeyboardUITests"
   ln -sfn "$src/Sources/KeyboardCore" "$pkg/Sources/KeyboardCore"
   ln -sfn "$src/Sources/KeyboardEnglish" "$pkg/Sources/KeyboardEnglish"
-  for file in "$src"/Tests/KeyboardUITests/{Evaluation.swift,RealTyping.swift,SwipeEvaluation.swift,chat.txt} "$src"/Tests/KeyboardUITests/phrases*.txt; do ln -sf "$file" "$pkg/Tests/KeyboardUITests/"; done
+  for file in "$src"/Tests/KeyboardUITests/{Evaluation.swift,RealTyping.swift,OwnerTyping.swift,SwipeEvaluation.swift,chat.txt} "$src"/Tests/KeyboardUITests/phrases*.txt; do ln -sf "$file" "$pkg/Tests/KeyboardUITests/"; done
   cat > "$pkg/Package.swift" <<'SWIFT'
 // swift-tools-version: 6.2
 import PackageDescription
@@ -65,6 +73,13 @@ SWIFT
     done
     wait
     cat "$root"/build/eval.*.txt | grep -E "error:|EVAL|✘" | tee "$out"
+  elif [ "${1:-}" = owner ]; then
+    swift build -c release -Xswiftc -enable-testing --build-tests 2>&1 | grep -E "error:" || true
+    for split in dev test; do
+      OWNER_SPLIT=$split .build/release/KeyboardUITests-test-runner --testing-library swift-testing --filter Evaluation/owner > "$root/build/owner.$split.txt" 2>&1 &
+    done
+    wait
+    cat "$root"/build/owner.*.txt | grep -E "error:|EVAL|✘" | tee "$out"
   else
     swift test -c release -Xswiftc -enable-testing --filter "Evaluation${1:+/$1}" 2>&1 | grep -E "error:|EVAL|✘" | tee "$out"
   fi
@@ -74,9 +89,13 @@ if [ "${1:-}" = languages ]; then
   diff -u <(grep '^EVAL language' "$root/scripts/eval.expected") <(grep '^EVAL language' "$out") && echo "EVAL languages match eval.expected"
   exit
 fi
+if [ "${1:-}" = owner ]; then
+  diff -u <(grep '^EVAL owner' "$root/scripts/eval.expected") <(grep '^EVAL owner' "$out" | sort) && echo "EVAL owner matches eval.expected"
+  exit
+fi
 if [ "${1:-}" = swipe ]; then
   diff -u <(grep '^EVAL swipe' "$root/scripts/eval.expected" | sort) <(grep '^EVAL swipe' "$out" | sort) && echo "EVAL swipe matches eval.expected"
   exit
 fi
 [ -z "${1:-}" ] || exit 0
-diff -u <(grep -E "$scored" "$root/scripts/eval.expected" | grep -v '^EVAL swipe' | grep -v '^EVAL language' | sort) <(grep '^EVAL' "$out" | grep -vE '^EVAL (latency|phone)' | grep -v '^EVAL swipe' | sort) && echo "EVAL matches eval.expected"
+diff -u <(grep -E "$scored" "$root/scripts/eval.expected" | grep -v '^EVAL swipe' | grep -vE '^EVAL (language|owner)' | sort) <(grep '^EVAL' "$out" | grep -vE '^EVAL (latency|phone)' | grep -v '^EVAL swipe' | sort) && echo "EVAL matches eval.expected"
