@@ -159,28 +159,6 @@ final class ToolPanelTests: XCTestCase {
         try shot("action-row-clipboard")
     }
 
-    func testSecondaryShowsWhatWasCopiedEachTimeItIsShown() throws {
-        UIPasteboard.general.string = "Sightglass at 4, bring the deck"
-        addTeardownBlock { _ = self.launch(["-iikbMode", "primary"]) }
-        let app = launch(["-iikbMode", "secondary"])
-        let first = app.descendants(matching: .any).matching(
-            NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.Sightglass at 4'")
-        ).firstMatch
-        XCTAssertTrue(first.waitForExistence(timeout: 10), "Secondary opens on the menu with what you copied")
-        XCTAssertFalse(key("space", in: app).exists && key("space", in: app).isHittable, "and no letters")
-        try shot("secondary")
-
-        app.buttons["home-done"].tap()
-        XCTAssertTrue(first.waitForNonExistence(timeout: 5), "Done puts the keyboard away")
-        UIPasteboard.general.string = "Blue Bottle at 5 instead"
-        app.textViews["Try iikb"].tap()
-        let second = app.descendants(matching: .any).matching(
-            NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.Blue Bottle at 5'")
-        ).firstMatch
-        XCTAssertTrue(second.waitForExistence(timeout: 10), "shown again, its shelves have what was copied meanwhile")
-        try shot("secondary-again")
-    }
-
     func testHoldingAShelfItemShowsAllOfIt() throws {
         UIPasteboard.general.string =
             "Meet at Sightglass on 7th, 4pm? Bring the deck and both printouts, and ask Sam about Thursday."

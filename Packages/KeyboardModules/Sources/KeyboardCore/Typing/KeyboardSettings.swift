@@ -40,9 +40,6 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var actionRowInLandscape = false
     /// The tools the action row and the bar offer, in their order.
     public var actions = Panel.standardActions
-    public var mode = KeyboardMode.primary
-    /// In Secondary mode, the next keyboard comes up once something in the menu is used.
-    public var switchOnClose = true
     /// The emoji and GIF panels as one row that scrolls sideways on every screen, as they are in landscape.
     public var compactPanels = false
     /// What a clipboard item's length is counted in, beside its age in the keyboard's clipboard and the app's.

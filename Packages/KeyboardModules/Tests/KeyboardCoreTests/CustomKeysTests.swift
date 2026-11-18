@@ -2,7 +2,7 @@ import Testing
 
 @testable import KeyboardCore
 
-/// Raycast's Custom Keys and Mode (docs/design.md, "Custom Keys"): what each setting does to the keys on the Duo's four
+/// Raycast's Custom Keys (docs/design.md, "Custom Keys"): what each setting does to the keys on the Duo's four
 /// screens, and that iikb as it was is what you get until you turn one on.
 struct CustomKeysTests {
     private func keys(
@@ -107,14 +107,6 @@ struct CustomKeysTests {
         let between = (first.x + first.width + second.x) / 2
         #expect(grid.key(atX: between, y: tool.y + 1)?.isTool == true, "the gap between two pills takes a tap")
         #expect(grid.key(atX: first.x + 2, y: tool.y + tool.height - 1)?.isTool == true)
-    }
-
-    @Test func secondaryHasNoActions() {
-        var settings = actionRow
-        settings.predictiveText = false
-        settings.mode = .secondary
-        #expect(settings.actionPlace(phone: true, landscape: false) == .none)
-        #expect(keys(settings).layout.shortRows == 0)
     }
 
     @Test func theKeysAroundSpaceGoWhereTheyWereArranged() {

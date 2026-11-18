@@ -138,7 +138,7 @@ enum LaunchOptions {
 
     /// `-iikbTheme mechanical -iikbThemeAppearance dark -iikbCharacterPreview detached -iikbNumberRow YES -iikbSkinTone medium
     /// -iikbKeySpacing tighter -iikbKeyRoundness rounder -iikbStopAnimation drain -iikbLanguage de -iikbLayout qwertz
-    /// -iikbMode secondary -iikbLeadingButton hidden -iikbAroundSpace period,space,emoji -iikbCurrency euro` set the
+    /// -iikbLeadingButton hidden -iikbAroundSpace period,space,emoji -iikbCurrency euro` set the
     /// keyboard's look for screenshots.
     static func applyLook() {
         var settings = SettingsStore.load()
@@ -164,7 +164,6 @@ enum LaunchOptions {
         }
         if let language = defaults.string(forKey: "iikbLanguage") { settings.languages = [.named(language)] }
         if let layout = defaults.string(forKey: "iikbLayout") { settings.layout = layout.isEmpty ? nil : layout }
-        if let mode = defaults.string(forKey: "iikbMode").flatMap(KeyboardMode.init) { settings.mode = mode }
         if let button = defaults.string(forKey: "iikbLeadingButton").flatMap(LeadingButton.init) {
             settings.leadingButton = button
         }

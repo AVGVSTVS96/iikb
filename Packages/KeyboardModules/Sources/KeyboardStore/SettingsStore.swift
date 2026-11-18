@@ -28,7 +28,6 @@ public enum SettingsStore {
         ("snippetKey", \.snippetKey),
         ("actionRow", \.actionRow),
         ("actionRowInLandscape", \.actionRowInLandscape),
-        ("switchOnClose", \.switchOnClose),
     ]
 
     /// The settings with a value picked from a list, each kept as its raw value. Character Preview and Haptic Feedback
@@ -51,7 +50,6 @@ public enum SettingsStore {
     /// WHY: a key of its own, not Keyboard Menu's, whose Hold 123 never hid the More button on iOS, so no one who picked
     /// it loses the menu.
     private static let leadingButton = Choice(key: "leadingButton", path: \.leadingButton)
-    private static let mode = Choice(key: "mode", path: \.mode)
     private static let actions = Order(key: "actions", path: \.actions)
     private static let aroundSpace = Order(key: "aroundSpace", path: \.aroundSpace)
     private static let clipboardLength = Choice(key: "clipboardLength", path: \.clipboardLength)
@@ -63,7 +61,7 @@ public enum SettingsStore {
     private static let snippetExpansion = Choice(key: "snippetExpansion", path: \.snippetExpansion)
     private static let choices: [any Picked] = [
         theme, themeAppearance, stopAnimation, characterPreview, haptics, keySpacing, keyRoundness, dictationStyle,
-        dictationEditing, dictationLists, leadingButton, clipboardLength, globeKey, mode, actions, aroundSpace,
+        dictationEditing, dictationLists, leadingButton, clipboardLength, globeKey, actions, aroundSpace,
         currency, emojiGrid, snippetExpansion,
     ]
     private static let skinToneKey = "skinTone"

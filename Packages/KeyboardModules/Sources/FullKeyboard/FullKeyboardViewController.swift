@@ -46,10 +46,7 @@ open class FullKeyboardViewController: UIInputViewController {
         let panel = GifPanel(klipy: klipy)
         panel.fullAccess = { [unowned self] in hasFullAccess }
         panel.app = { [unowned self] in hostApp }
-        panel.onCopied = { [unowned self] in
-            clipboard.skip(changeCount: $0)
-            switchOnClose()
-        }
+        panel.onCopied = { [unowned self] in clipboard.skip(changeCount: $0) }
         panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
         panel.changed = { [unowned self] in noticed(panel.notice) }
         panel.clearSearch = { [unowned self] in handle(.panel(.gif)) }
@@ -59,7 +56,6 @@ open class FullKeyboardViewController: UIInputViewController {
         let panel = ClipboardPanel(store: clipboard)
         panel.fullAccess = { [unowned self] in hasFullAccess }
         panel.onPaste = { [unowned self] in paste($0) }
-        panel.onCopied = { [unowned self] in switchOnClose() }
         panel.onTurnOn = { [unowned self] in open(AppLink.settings) }
         panel.changed = { [unowned self] in noticed(panel.notice) }
         panel.length = { [unowned self] in engine.settings.clipboardLength }
@@ -135,8 +131,6 @@ open class FullKeyboardViewController: UIInputViewController {
     private lazy var host = ProxyDocument { [unowned self] in textDocumentProxy }
     /// The chats panel's message line while it's open, which the keys type into in place of the app's field.
     private var line: LineDocument?
-    /// A pick from a panel is waiting on its arguments, so the keyboard switches back once it's typed.
-    private var pickWaits = false
     private var document: any TextDocument { line ?? host }
     /// What you'd begun in each chat you switched away from, by chat id.
     private var drafts: [String: String] = [:]
@@ -543,7 +537,6 @@ open class FullKeyboardViewController: UIInputViewController {
         Dictation.keep(engine.takeDraft(), in: field)
         field = nil
         closePanels(in: document)
-        pickWaits = false
         menuOpen = false
         menuView.isHidden = true
         keysUp = false
@@ -859,7 +852,7 @@ open class FullKeyboardViewController: UIInputViewController {
         suggestionBar.update(
             chats: line != nil && !keysUp ? chats.list.map(\.name) : nil,
             open: chats.list.firstIndex { $0 == chats.open }, fresh: fresh, theme: theme)
-        hasMore = context.showsMoreButton || secondary
+        hasMore = context.showsMoreButton
         let leading = hasMore || line != nil
         suggestionBar.update(more: (line == nil || !keysUp) && leading, on: menuShown || inPlace)
         suggestionBar.update(offered: updateOffered && !narrow)
@@ -906,17 +899,8 @@ open class FullKeyboardViewController: UIInputViewController {
     /// The bar has its More button.
     private var hasMore = true
 
-    /// Secondary mode keeps the menu out in the keys' place, with no letters (`KeyboardMode`).
-    private var secondary: Bool { engine.settings.mode == .secondary }
-
-    /// The menu is in the keys' place: opened with More, or always in Secondary, while no panel is.
-    private var menuShown: Bool { (menuOpen || secondary) && !panelOpen }
-
-    /// Once something in the menu or a panel is used, Secondary, with no keys to give back, brings up the next keyboard
-    /// where Switch Keyboard on Close is on.
-    private func switchOnClose() {
-        if secondary, engine.settings.switchOnClose { advanceToNextInputMode() }
-    }
+    /// The menu is in the keys' place: opened with More, while no panel is.
+    private var menuShown: Bool { menuOpen && !panelOpen }
 
     /// The menu in the keys' place while it's open: the clipboard's, Transcripts' and the GIFs' shelves, then what the
     /// More button offers.
@@ -926,7 +910,6 @@ open class FullKeyboardViewController: UIInputViewController {
         photos.shown?.isHidden = !picking
         if open != !menuView.isHidden {
             menuView.isHidden = !open
-            if open, secondary, hasChats { self.chats.start(opening: false) }
             if open {
                 let chats: [(Panel, PanelResults)] = hasChats ? [(.chats, chatShelf)] : []
                 let kept: [Panel] = [.snippets] + (quicklinks.isEmpty ? [] : [.quicklinks])
@@ -942,7 +925,7 @@ open class FullKeyboardViewController: UIInputViewController {
             minX: CGFloat(metrics.margin.leading + metrics.sideInset),
             maxX: width - CGFloat(metrics.margin.trailing + metrics.sideInset)
         )
-        menuView.show(settings: context.menu.isEmpty || secondary, theme: theme, metrics: metrics, block: block)
+        menuView.show(settings: context.menu.isEmpty, theme: theme, metrics: metrics, block: block)
         let dark = hostField.appearance == .dark || traitCollection.userInterfaceStyle == .dark
         menuView.show(look: engine.settings, dark: dark, theme: theme)
     }
@@ -960,7 +943,6 @@ open class FullKeyboardViewController: UIInputViewController {
             menuOpen = false
             return closePanel()
         }
-        if secondary { return advanceToNextInputMode() }
         menuOpen.toggle()
         if menuOpen, hasFullAccess { clipboard.catchUp() }
         if menuOpen, hasChats { chats.start(opening: false) }
@@ -1045,7 +1027,6 @@ open class FullKeyboardViewController: UIInputViewController {
         feedback(.input)
         menuOpen = false
         handle(.paste(text))
-        switchOnClose()
     }
 
     /// A panel's notice, like a GIF's "Copied": in its search row while the panel is open, in the bar once the menu,
@@ -1111,8 +1092,7 @@ open class FullKeyboardViewController: UIInputViewController {
                 notice = "To paste, set Settings › Apps › iikb › Paste from Other Apps to Allow"
                 return render()
             }
-            handle(.paste(text))
-            return switchOnClose()
+            return handle(.paste(text))
         }
         let text = selection
         if !text.isEmpty {
@@ -1121,7 +1101,6 @@ open class FullKeyboardViewController: UIInputViewController {
             if edit == .cut { engine.perform(.delete, in: document) }
         }
         render()
-        if !text.isEmpty { switchOnClose() }
     }
 
     private var theme: KeyboardTheme {
@@ -1231,10 +1210,6 @@ open class FullKeyboardViewController: UIInputViewController {
         case nil:
             break
         }
-        if pickWaits, engine.fill == nil {
-            pickWaits = false
-            if case .panel = event {} else { switchOnClose() }
-        }
     }
 
     /// A snippet or quicklink picked in its panel or shelf is typed, once any arguments are filled in, and the menu
@@ -1243,7 +1218,6 @@ open class FullKeyboardViewController: UIInputViewController {
         feedback(.input)
         menuOpen = false
         handle(event)
-        if engine.fill == nil { switchOnClose() } else { pickWaits = true }
     }
 
     /// Closes a form, then the panel it came from.

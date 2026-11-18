@@ -1,4 +1,4 @@
-/// Raycast's Custom Keys and Mode, as iikb has them (docs/design.md, "Custom Keys").
+/// Raycast's Custom Keys, as iikb has them (docs/design.md, "Custom Keys").
 
 /// The More button at the bar's left, which opens the menu, or nothing there, the suggestions taking its room and the
 /// menu's panels opening only from your actions. An iPad keeps its button.
@@ -32,19 +32,6 @@ public enum BottomKey: String, CaseIterable, Hashable, Sendable {
     }
 }
 
-/// Primary is iikb as your keyboard. Secondary keeps your other keyboard for typing: iikb opens on its menu, with no
-/// letters, for what it has that the other doesn't, and goes back to the other when you're done.
-public enum KeyboardMode: String, CaseIterable, Hashable, Sendable {
-    case primary, secondary
-
-    public var title: String {
-        switch self {
-        case .primary: "Primary"
-        case .secondary: "Secondary"
-        }
-    }
-}
-
 /// Where the actions show: a row of keys of their own above the letters, at the bar's left as its tools, or nowhere.
 public enum ActionPlace: Hashable, Sendable {
     case row, bar, none
@@ -52,9 +39,8 @@ public enum ActionPlace: Hashable, Sendable {
 
 extension KeyboardSettings {
     /// The action row where it's on, an iPhone's only, upright unless it's kept in landscape too, else the bar's left;
-    /// without it, the bar's left with Predictive Text off, in the suggestions' room. Secondary has neither.
+    /// without it, the bar's left with Predictive Text off, in the suggestions' room.
     public func actionPlace(phone: Bool, landscape: Bool) -> ActionPlace {
-        if mode == .secondary { return .none }
         if actionRow, phone { return !landscape || actionRowInLandscape ? .row : .bar }
         return predictiveText ? .none : .bar
     }

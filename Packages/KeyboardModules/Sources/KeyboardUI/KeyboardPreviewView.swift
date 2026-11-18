@@ -3,8 +3,7 @@ import UIKit
 
 /// iikb as it looks with some settings, for the app's "Tap to try": the bar and the letter keys the keyboard lays out
 /// on the device and screen the app is on (the Duo's folded or open screen, split or one-handed as set), drawn by the keyboard's
-/// own views at the width iOS gives the keyboard there and scaled to fit; in Secondary, the menu's shelves in the keys'
-/// place and its edits in the bar, as the keyboard opens there. Nothing in it takes a touch.
+/// own views at the width iOS gives the keyboard there and scaled to fit. Nothing in it takes a touch.
 public final class KeyboardPreviewView: UIView {
     /// The card's margin around the keys, in the points the preview is drawn at, so the card's rounded corners clear
     /// the corner keys however small a wide keyboard (an iPad's, the open Duo's) is drawn.
@@ -13,9 +12,6 @@ public final class KeyboardPreviewView: UIView {
     private let content = UIView()
     private let bar = SuggestionBar()
     private let keyboard = KeyboardView()
-    private let shelves = [Panel.clipboard, .transcripts, .gif].map { panel in
-        MenuShelf(panel.title, id: "\(panel)", image: panel.icon(16), color: panel.color, UIView())
-    }
     private var settings = KeyboardSettings.initial
     private var screen = Size(width: 390, height: 844)
     private var dark = false
@@ -34,7 +30,6 @@ public final class KeyboardPreviewView: UIView {
         layer.cornerCurve = .continuous
         content.addSubview(bar)
         content.addSubview(keyboard)
-        shelves.forEach(content.addSubview)
         addSubview(content)
         isAccessibilityElement = true
         accessibilityLabel = "Keyboard preview"
@@ -64,14 +59,7 @@ public final class KeyboardPreviewView: UIView {
         keyboard.update(layout: keys.layout, signature: "preview", metrics: keys.metrics, faces: faces, theme: theme)
         bar.toolbar = keys.metrics.toolbar
         bar.keys = keys.grid.barRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
-        let secondary = settings.mode == .secondary
-        bar.update(more: keys.context.showsMoreButton || secondary, on: secondary)
-        bar.update(edits: secondary ? SuggestionBar.Edits(cut: false, copy: false, paste: true) : nil, theme: theme)
-        keyboard.isHidden = secondary
-        for shelf in shelves {
-            shelf.isHidden = !secondary
-            shelf.show(theme)
-        }
+        bar.update(more: keys.context.showsMoreButton)
         bar.micInBar = settings.dictationButton && !keys.context.showsMicKey
         let place = settings.actionPlace(phone: keys.context.device == .phone, landscape: keys.context.isLandscape)
         bar.update(tools: place == .bar ? settings.actions : [], theme: theme)
@@ -98,26 +86,9 @@ public final class KeyboardPreviewView: UIView {
         content.frame = CGRect(x: 0, y: 0, width: keys.width, height: top + keys.height)
         bar.frame = CGRect(x: 0, y: 0, width: keys.width, height: top)
         keyboard.frame = CGRect(x: 0, y: top, width: keys.width, height: keys.height)
-        placeShelves(in: keyboard.frame, block: keys.grid.typingRow)
         let scale = (bounds.width - 2 * Self.margin.side) / keys.width
         content.transform = CGAffineTransform(scaleX: scale, y: scale)
         content.center = CGPoint(x: bounds.midX, y: Self.margin.top + scale * content.bounds.height / 2)
-    }
-
-    /// The shelves as the menu sets them in the keys' place: as many whole ones as fit, sharing its height.
-    private func placeShelves(in area: CGRect, block row: [(key: Key, frame: Rect)]) {
-        guard let first = row.first?.frame, let last = row.last?.frame else { return }
-        let gap: CGFloat = 8
-        let room = area.height - gap
-        let fits = Int(room / (MenuShelf.shortest + MenuShelf.chrome + gap))
-        let shown = max(min(fits, shelves.count), 1)
-        let height = room / CGFloat(shown) - gap
-        for (index, shelf) in shelves.enumerated() {
-            shelf.alpha = index < shown ? 1 : 0
-            shelf.frame = CGRect(
-                x: first.x, y: area.minY + gap + CGFloat(index) * (height + gap), width: last.x + last.width - first.x,
-                height: height)
-        }
     }
 
     /// The keyboard's own keys on `screen`, at the width iOS gives it there, down to their bottom edge.

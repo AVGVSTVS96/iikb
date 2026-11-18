@@ -2,50 +2,27 @@ import KeyboardCore
 import KeyboardUI
 import SwiftUI
 
-/// Raycast's Mode and Custom Keys on one page: whether iikb is the keyboard you type with, and the keys and buttons
-/// around the letters (docs/design.md, "Custom Keys").
+/// Raycast's Custom Keys: the keys and buttons around the letters (docs/design.md, "Custom Keys").
 struct CustomKeysSettings: View {
     private let model = SettingsModel.shared
 
-    private var settings: KeyboardSettings { model.settings }
-    private var secondary: Bool { settings.mode == .secondary }
-
     var body: some View {
         let here = KeysHere()
-        Box(header: "Mode") {
-            ChoiceRow(
-                title: KeyboardMode.primary.title, detail: "iikb is the keyboard you type with.", picked: !secondary
-            ) { withAnimation(.snappy) { model.update { $0.mode = .primary } } }
-            ChoiceRow(
-                title: KeyboardMode.secondary.title,
-                detail:
-                    "Keep your other keyboard for typing. iikb opens on its menu: your clipboard, GIFs, transcripts and chats. They need Allow Full Access.",
-                picked: secondary
-            ) { withAnimation(.snappy) { model.update { $0.mode = .secondary } } }
-            if secondary {
-                ToggleRow(
-                    title: "Switch Keyboard on Close",
-                    detail: "Back to your other keyboard once you paste or pick something.",
-                    isOn: model.binding(\.switchOnClose))
-            }
-        }
         Box(
             header: "Top Row",
-            footer: here.leadingButton && !secondary
+            footer: here.leadingButton
                 ? "Hidden gives the menu button’s room to the suggestions. Your actions still open the clipboard, transcripts and GIFs: show the action row, or turn off Predictive Text."
                 : nil
         ) {
-            if here.leadingButton && !secondary {
+            if here.leadingButton {
                 MenuRow(
                     title: "Leading Button", selection: model.binding(\.leadingButton), choices: LeadingButton.allCases
                 ) { $0.title }
             }
             ToggleRow(title: "Dictation Button", isOn: model.binding(\.dictationButton))
         }
-        if !secondary {
-            ActionSettings(phone: here.actionRow)
-            BottomRowSettings(here: here)
-        }
+        ActionSettings(phone: here.actionRow)
+        BottomRowSettings(here: here)
     }
 }
 
