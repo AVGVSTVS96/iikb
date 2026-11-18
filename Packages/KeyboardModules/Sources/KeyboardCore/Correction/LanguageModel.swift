@@ -1,11 +1,12 @@
 /// P(word | previous word), from the lexicon and what you've typed.
 ///
 /// Every level backs off to the next with Witten-Bell weights, which come from the counts themselves (a context
-/// seen N times with T different words trusts itself N / (N + T)): your next-word counts → your word counts → the
-/// lexicon → a word the lexicon doesn't know, spelled letter by letter from the lexicon's letters. Each word's count
-/// in a context gives `discount` to the level below (absolute discounting), since a word seen there once is mostly
-/// chance and shouldn't outrank a word the level below knows far better. How often you keep new words is itself
-/// learned: (new + 1) / (all + 2), Laplace's rule of succession.
+/// seen N times with T different words trusts itself N / (N + T)): your next-word counts in the app you're in → your
+/// next-word counts → your word counts in the app → your word counts → the lexicon → a word the lexicon doesn't know,
+/// spelled letter by letter from the lexicon's letters. Each word's count in a context gives `discount` to the level
+/// below (absolute discounting), since a word seen there once is mostly chance and shouldn't outrank a word the level
+/// below knows far better. How often you keep new words is itself learned: (new + 1) / (all + 2), Laplace's rule of
+/// succession.
 struct LanguageModel {
     let lexicon: Lexicon
     let memory: TypingMemory
@@ -63,22 +64,31 @@ struct LanguageModel {
     ) -> Double {
         var p = corpus
         for context in TypingMemory.contexts(previous, earlier) {
-            let (count, total, types) = memory.count(of: word, after: context)
-            let below = trust * Double(types)
-            if total > 0 {
-                p =
-                    (max(Double(count) - Self.discount, 0) + (below + Self.discount * Double(types)) * p)
-                    / (Double(total) + below)
-            }
+            p = Self.context(memory.count(of: word, after: context), over: p, trusting: trust)
         }
-        return app?.probability(of: word, after: previous, below: p) ?? p
+        guard let app, let previous else { return p }
+        return Self.context(app.count(of: word, after: previous), over: p, trusting: trust)
+    }
+
+    private static func context(
+        _ seen: (count: Int, total: Int, types: Int), over p: Double, trusting trust: Double
+    ) -> Double {
+        guard seen.total > 0 else { return p }
+        let below = trust * Double(seen.types)
+        return (max(Double(seen.count) - discount, 0) + (below + discount * Double(seen.types)) * p)
+            / (Double(seen.total) + below)
     }
 
     private func unigram(_ word: String) -> Double {
-        let p = lexical(word)
-        guard memory.total > 0 else { return p }
-        let types = Double(memory.counts.count)
-        return (Double(memory.count(of: word)) + types * p) / (Double(memory.total) + types)
+        var p = lexical(word)
+        if memory.total > 0 { p = Self.words((memory.count(of: word), memory.total, memory.counts.count), over: p) }
+        if let app { p = Self.words(app.count(of: word), over: p) }
+        return p
+    }
+
+    private static func words(_ seen: (count: Int, total: Int, types: Int), over p: Double) -> Double {
+        guard seen.total > 0 else { return p }
+        return (Double(seen.count) + Double(seen.types) * p) / Double(seen.total + seen.types)
     }
 
     func lexical(_ word: String) -> Double {

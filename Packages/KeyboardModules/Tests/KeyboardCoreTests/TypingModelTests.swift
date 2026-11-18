@@ -600,6 +600,39 @@ struct DecoderTests {
         let expected = (3 - 0.5 + (2 + 2 * 0.5) * unigram) / (4 + 2)
         #expect(abs(Math.exp(model.logProbability("home", after: "go")) - expected) < 1e-12)
     }
+
+    @Test func anAppsWordsCountWhereTheyWereTyped() {
+        var memory = TypingMemory()
+        for _ in 0..<3 { memory.record("home", after: "go") }
+        memory.record("work", after: "go")
+        var app = AppWords()
+        for (word, previous) in [("come", nil), ("home", "come"), ("to", "home"), ("the", "to")] {
+            app.record(word, after: previous)
+        }
+        let model = LanguageModel(lexicon: testLexicon, memory: memory, app: app)
+        #expect(model.logProbability("work", after: "go") > model.logProbability("the", after: "go"))
+        for _ in 0..<3 { app.record("work", after: "go") }
+        let inApp = LanguageModel(lexicon: testLexicon, memory: memory, app: app)
+        let everywhere = LanguageModel(lexicon: testLexicon, memory: memory)
+        #expect(inApp.logProbability("work", after: "go") > inApp.logProbability("home", after: "go"))
+        #expect(everywhere.logProbability("work", after: "go") < everywhere.logProbability("home", after: "go"))
+    }
+
+    @Test func anAppNamedLateKeepsTheWordInProgress() {
+        func typed(namingAppAt index: Int?) -> (String, Int) {
+            var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
+            engine.corrector = Corrector(source: testLexicon)
+            let document = TestDocument("")
+            for (at, character) in "go helo ".enumerated() {
+                if at == index { engine.changeApp("com.apple.MobileSMS") }
+                type(String(character), into: &engine, document)
+            }
+            return (document.text, engine.corrector!.memory.total)
+        }
+        let unnamed = typed(namingAppAt: nil)
+        #expect(unnamed.0 == "go hello ")
+        #expect(typed(namingAppAt: 6) == unnamed)
+    }
 }
 
 struct LexiconTests {

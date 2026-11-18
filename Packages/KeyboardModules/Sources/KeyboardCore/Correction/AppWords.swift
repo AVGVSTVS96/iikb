@@ -1,4 +1,4 @@
-/// Words you kept in one app. Shared vocabulary remains the fallback for a new app or context.
+/// Words you kept in one app, each count a level above the same count across apps (`LanguageModel`).
 public struct AppWords: Codable, Hashable, Sendable {
     private(set) var counts: [String: Int] = [:]
     private(set) var following: [String: [String: Int]] = [:]
@@ -29,16 +29,18 @@ public struct AppWords: Codable, Hashable, Sendable {
         }
     }
 
-    func probability(of word: String, after previous: String?, below fallback: Double) -> Double {
-        func blend(_ counts: [String: Int], total: Int, below p: Double) -> Double {
-            guard total > 0 else { return p }
-            let capitalized =
-                word.first?.isLowercase == true ? counts[word.prefix(1).uppercased() + word.dropFirst(), default: 0] : 0
-            return (Double(counts[word, default: 0] + capitalized) + Double(counts.count) * p)
-                / Double(total + counts.count)
-        }
-        let p = blend(counts, total: total, below: fallback)
-        guard let previous, let next = following[previous] else { return p }
-        return blend(next, total: next.values.reduce(0, +), below: p)
+    func count(of word: String) -> (count: Int, total: Int, types: Int) {
+        (Self.count(of: word, in: counts), total, counts.count)
+    }
+
+    func count(of word: String, after previous: String) -> (count: Int, total: Int, types: Int) {
+        guard let next = following[previous] else { return (0, 0, 0) }
+        return (Self.count(of: word, in: next), next.values.reduce(0, +), next.count)
+    }
+
+    private static func count(of word: String, in counts: [String: Int]) -> Int {
+        let capitalized =
+            word.first?.isLowercase == true ? counts[word.prefix(1).uppercased() + word.dropFirst(), default: 0] : 0
+        return counts[word, default: 0] + capitalized
     }
 }

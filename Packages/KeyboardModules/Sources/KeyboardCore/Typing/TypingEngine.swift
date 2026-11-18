@@ -581,15 +581,18 @@ public struct TypingEngine {
         sessionEnded = true
     }
 
-    /// Finish learning in the old app before adopting another host’s field and language.
+    /// Finish learning in the old app before adopting another host’s field and language. An app named where none was is
+    /// the host the keyboard was already typing in, named late (FullKeyboard's `KeyboardHost`), so its typing goes on.
     public mutating func changeApp(_ app: String?) {
         self.app = app
         guard corrector?.app != app else { return }
-        endSession()
-        text = TextState()
-        history.clear()
-        forgetWord()
-        sessionEnded = false
+        if corrector?.app != nil {
+            endSession()
+            text = TextState()
+            history.clear()
+            forgetWord()
+            sessionEnded = false
+        }
         corrector?.app = app
         suggestionsChanged()
     }
