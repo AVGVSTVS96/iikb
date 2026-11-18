@@ -26,6 +26,11 @@ if (!shipped.success) {
 
 const onIphone = new Set(shipped.stdout.toString().split("\n"));
 
+const reworded = (await Bun.file(new URL("../App/Settings/changelog.tsv", import.meta.url)).text())
+  .split("\n")
+  .filter((line) => line !== "")
+  .map((line) => line.split("\t"));
+
 const commits = log.stdout
   .toString()
   .split(COMMIT)
@@ -45,13 +50,16 @@ if (!head || !first) {
 
 const changes = commits
   .filter(({ sha }) => onIphone.has(sha))
-  .flatMap(({ sha, at, trailers }) =>
-    trailers.split(TRAILER).map((text) => ({
+  .flatMap(({ sha, at, trailers }) => {
+    const entry = reworded.find(([hash = ""]) => sha.startsWith(hash));
+    const lines = entry === undefined ? trailers.split(TRAILER) : [entry[1] ?? ""];
+
+    return lines.map((text) => ({
       sha,
       at,
       text: text.trim().replace(/\.$/u, "").replaceAll("'", "’"),
-    })),
-  )
+    }));
+  })
   .filter(({ text }) => text !== "")
   .slice(0, NEWEST_CHANGES);
 

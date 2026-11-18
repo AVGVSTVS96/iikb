@@ -137,13 +137,16 @@ build, commit = sys.argv[1], sys.argv[2]
 def git(*args):
     return subprocess.run(["git", "-C", build, *args], capture_output=True, text=True, check=True).stdout
 paths = [line for line in open(f"{build}/scripts/iphone-paths.txt").read().splitlines() if not line.startswith("#")]
+reworded = dict(line.rstrip("\n").partition("\t")[::2] for line in open(f"{build}/App/Settings/changelog.tsv", encoding="utf-8") if line.strip())
 entries = []
-for line in git("log", "--format=%h%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)", commit, "--", *paths).split("\n")[:-1]:
+for line in git("log", "--format=%H%x1f%cs%x1f%(trailers:key=Changelog,valueonly,separator=%x1e)", commit, "--", *paths).split("\n")[:-1]:
     sha, day, trailers = line.split("\x1f")
-    entries += [(sha, day, change) for change in trailers.split("\x1e") if change]
-for line in open(f"{build}/App/Settings/changelog.tsv", encoding="utf-8"):
-    sha, change = line.rstrip("\n").split("\t", 1)
-    entries.append((sha, git("log", "-1", "--format=%cs", sha).strip(), change))
+    short = next((short for short in reworded if sha.startswith(short)), None)
+    changes = [reworded.pop(short)] if short else trailers.split("\x1e")
+    entries += [(sha, day, change) for change in changes if change]
+for sha, change in reworded.items():
+    if change:
+        entries.append((sha, git("log", "-1", "--format=%cs", sha).strip(), change))
 rows = [{"build": int(git("rev-list", "--count", sha)), "date": day, "change": change} for sha, day, change in entries]
 rows = sorted(rows, key=lambda row: row["build"], reverse=True)[:60]
 path = f"{build}/Config/xtool/iikb-Info.plist"

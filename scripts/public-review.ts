@@ -42,7 +42,7 @@ const CHANGELOGS = [
     where:
       "Changelog lines for iPhone: the iOS app's Changelog page and the changelog on iikb.vercel.app",
     paths: IPHONE,
-    reworded: null,
+    reworded: "App/Settings/changelog.tsv",
   },
   {
     where:
@@ -114,15 +114,12 @@ const pieceOf = async (base: string, head: string, path: string) => {
 const changelog = async (
   commits: readonly string[],
   paths: readonly string[],
-  reworded: string | null,
+  reworded: string,
 ) => {
-  const entries =
-    reworded === null
-      ? []
-      : (await Bun.file(new URL(`../${reworded}`, import.meta.url)).text())
-          .split("\n")
-          .filter((line) => line !== "")
-          .map((line) => line.split("\t"));
+  const entries = (await Bun.file(new URL(`../${reworded}`, import.meta.url)).text())
+    .split("\n")
+    .filter((line) => line !== "")
+    .map((line) => line.split("\t"));
 
   const log = await $`git log ${TRAILERS} ${commits} -- ${paths}`.text();
 
