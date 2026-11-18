@@ -43,6 +43,10 @@ public struct TypingEngine {
     public var swipeModel: Swipe?
     var ownedWords: (words: Set<String>, lexicon: Lexicon)?
     var swiped: Swiped?
+    /// How the field wraps its text, where the keyboard knows it (`MeasuredField`): up and down then move by line, and
+    /// by sentence where it doesn't.
+    public var lineLayout: (any LineLayout)?
+    private var lineGoal: LineGoal?
     /// Which way the last move up or down stepped past the text the host showed: once the host shows it, the caret
     /// goes on to the nearest stop (`Sentences`).
     private var crossing: Int?
@@ -315,6 +319,8 @@ public struct TypingEngine {
             return slideDelete(words, in: document)
         case .cursor(let offset):
             moveCursor(by: offset, in: document)
+        case .cursorLines(let count) where lineLayout != nil:
+            moveCursor(lines: count, in: document)
         case .cursorLines(let count):
             moveCursor(sentences: count, in: document)
         case .oneHanded(let hand):
@@ -463,6 +469,7 @@ public struct TypingEngine {
         guard panel == nil else { return }
         attach(document)
         crossing = nil
+        lineGoal = nil
         moveCaret(by: offset, in: document)
         forgetWord()
         refreshShift()
@@ -480,6 +487,16 @@ public struct TypingEngine {
         document.moveCursor(by: offset)
         text.moveCursor(by: offset)
         draft?.moveCursor(by: offset)
+    }
+
+    /// Moves the caret down `count` lines, up when negative, as the space bar trackpad does (`Lines`).
+    mutating func moveCursor(lines count: Int, in document: some TextDocument) {
+        guard panel == nil, let lineLayout else { return }
+        attach(document)
+        guard text.isKnown else { return }
+        let move = Lines.move(count, before: text.before, after: text.after ?? "", goal: lineGoal, layout: lineLayout)
+        if move.offset != 0 { moveCursor(by: move.offset, in: document) }
+        lineGoal = move.goal
     }
 
     /// Moves the caret down `count` sentences, up when negative, as the space bar trackpad does (`Sentences`).
@@ -594,6 +611,7 @@ public struct TypingEngine {
             refreshShift()
             suggestionsChanged()
         }
+        if let goal = lineGoal, goal.landing == nil, text.isKnown { moveCursor(lines: 0, in: document) }
         if let step = crossing, text.isKnown {
             crossing = nil
             let offset = Sentences.settle(step, before: text.before, after: text.after ?? "")
@@ -623,6 +641,7 @@ public struct TypingEngine {
         }
         sessionEnded = false
         crossing = nil
+        lineGoal = nil
         beforeReturn = nil
         if count > 0 {
             document.deleteBackward(count)

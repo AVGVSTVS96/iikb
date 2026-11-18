@@ -10,8 +10,8 @@ public enum KeyboardEvent: Hashable, Sendable {
     /// words before the caret, so sliding further takes out more and sliding back brings them back.
     case deleteSlide(words: Int)
     case cursor(offset: Int)
-    /// Moves the caret down that many lines, up when negative. The engine can't see where the field wraps, so it moves
-    /// a sentence for each; FullKeyboard asks the field itself where it answers (`FieldLines`).
+    /// Moves the caret down that many lines, up when negative: by the field's own lines where FullKeyboard can ask the
+    /// field (`FieldLines`), by the engine's `lineLayout` where the field is measured, else a sentence for each.
     case cursorLines(Int)
     case oneHanded(OneHanded)
     /// A hand picked from the layer key's menu. The key switched layers as it went down, so the letters come back.
