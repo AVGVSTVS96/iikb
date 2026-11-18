@@ -66,6 +66,9 @@ final class HomeViewController: UIHostingController<AnyView>, UIGestureRecognize
             field.keyboardAppearance = style == .dark ? .dark : .light
         }
         if LaunchOptions.focus { field.becomeFirstResponder() }
+        if let caret = UserDefaults.standard.string(forKey: "iikbCaret").flatMap({ Int($0) }) {
+            field.selectedRange = NSRange(location: caret, length: 0)
+        }
     }
 
     @objc private func refresh() {
