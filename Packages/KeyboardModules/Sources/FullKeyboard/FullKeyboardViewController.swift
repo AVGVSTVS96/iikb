@@ -1295,9 +1295,10 @@ open class FullKeyboardViewController: UIInputViewController {
     /// Back to the app's field, as the keyboard found it.
     private func closeChat() {
         guard line != nil else { return }
-        Self.keptChat.remove()
         photos.clear()
         leaveChat()
+        // After the photos, since clearing them keeps the chat again (`photos.changed`).
+        Self.keptChat.remove()
         syncWithDocument()
     }
 
