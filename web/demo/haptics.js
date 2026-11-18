@@ -1,7 +1,4 @@
-/* iOS has no navigator.vibrate. A switch plays the system haptic when a trusted click toggles it,
-and since iOS 26.5 a script's label.click() no longer counts
-(https://github.com/WebKit/WebKit/commit/fc1ef83eae), so a real tap has to land on a label that
-holds the switch. iOS makes that click when the finger lifts, so the tick comes on key up. */
+// WARNING: since iOS 26.5 a script's label.click() plays no switch haptic, so a real tap lands on a label holding the switch: https://github.com/WebKit/WebKit/commit/fc1ef83eae
 export const haptics = (surface) => {
   const touch = matchMedia("(pointer: coarse)").matches;
   const bySwitch = touch && "switch" in HTMLInputElement.prototype;

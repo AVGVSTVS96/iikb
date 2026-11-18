@@ -159,7 +159,8 @@ const nextChange = async () => {
   await Promise.race([promise, Bun.sleep(HELD_FOR_A_CHANGE)]);
 };
 
-const chatOf = (id: string, { name, line, pinned }: Thread): Chat => ({ id, name, line, pinned });
+const chatOf = (id: string, { name, line, pinned }: Thread) =>
+  ({ id, name, line, pinned }) satisfies Chat;
 
 const extension = chats({
   name: "Notes",

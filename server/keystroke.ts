@@ -51,7 +51,7 @@ const Transcript = z.object({
 
 const FOUNDATION_EPOCH = Date.UTC(2001, 0, 1);
 
-const lines = async <T>(schema: z.ZodType<T>, file: string): Promise<T[]> => {
+const lines = async <T>(schema: z.ZodType<T>, file: string) => {
   const text = await Bun.file(file)
     .text()
     .catch(() => "");

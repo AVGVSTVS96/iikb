@@ -12,7 +12,12 @@ export default defineConfig({
     "web/site/.next/**",
     "web/site/out/**",
   ],
-  jsPlugins: [{ name: "no-comments", specifier: "./tools/oxlint/no-comments.ts" }],
+  jsPlugins: [
+    { name: "landmines-testing", specifier: "@interfere/landmines/testing" },
+    { name: "landmines-style", specifier: "@interfere/landmines/style" },
+    { name: "landmines-structure", specifier: "@interfere/landmines/structure" },
+    { name: "landmines-types", specifier: "@interfere/landmines/types" },
+  ],
   overrides: [
     {
       files: ["web/site/components/ui/**"],
@@ -39,7 +44,16 @@ export default defineConfig({
     "unicorn/prefer-number-coercion": "off",
     "unicorn/no-await-expression-member": "off",
     "import/no-cycle": "error",
-    "no-comments/no-comments": "error",
+    "landmines-structure/colocated-tests": "error",
+    "landmines-structure/package-exports": "error",
+    "landmines-structure/test-file-names": "error",
+    "landmines-style/no-comments": "error",
+    "landmines-testing/no-fixed-sleep": "error",
+    "landmines-testing/no-flake-masking": "error",
+    "landmines-testing/no-test-doubles": "error",
+    "landmines-testing/no-unsignaled-poll": "error",
+    "landmines-testing/strict-msw": "error",
+    "landmines-types/no-explicit-return-types": "error",
     "oxc/no-accumulating-spread": "error",
   },
 });

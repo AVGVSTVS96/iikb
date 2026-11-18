@@ -103,7 +103,7 @@ const route = async (extension: Chats, request: Request, chat: string, after: st
   return status(204);
 };
 
-export const answer = async (extension: Chats, request: Request, token = ""): Promise<Response> => {
+export const answer = async (extension: Chats, request: Request, token = "") => {
   if (token !== "" && request.headers.get("authorization") !== `Bearer ${token}`) {
     return status(401);
   }

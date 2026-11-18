@@ -82,7 +82,7 @@ const addedLines = async (base: string, head: string, path: string, keep: RegExp
     .join("\n");
 };
 
-const pieceOf = async (base: string, head: string, path: string): Promise<Piece | null> => {
+const pieceOf = async (base: string, head: string, path: string) => {
   const surface = surfaceOf(path);
 
   if (surface !== undefined) {
@@ -138,7 +138,7 @@ const changelog = async (
     .join("\n");
 };
 
-const changed = async (base: string, head: string): Promise<Piece[]> => {
+const changed = async (base: string, head: string) => {
   const files = (await $`git diff --name-only ${base} ${head}`.text())
     .split("\n")
     .filter((path) => path !== "");
@@ -168,7 +168,7 @@ const changed = async (base: string, head: string): Promise<Piece[]> => {
   ];
 };
 
-const everything = async (): Promise<Piece[]> => {
+const everything = async () => {
   const files = (await $`git ls-files`.text())
     .split("\n")
     .filter((path) => surfaceOf(path) !== undefined);
@@ -265,7 +265,7 @@ const pushed = async (lines: string) => {
   return found.flat();
 };
 
-const piecesFor = async ([first, second]: readonly string[]): Promise<Piece[]> => {
+const piecesFor = async ([first, second]: readonly string[]) => {
   if (first === "--text") {
     return [{ where: second ?? "public text", text: await Bun.stdin.text() }];
   }

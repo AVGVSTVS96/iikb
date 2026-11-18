@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test";
 
 import { Input, record, start } from "./record.ts";
-import type { Entry, ShortcutsAppOpened, State, Update } from "./record.ts";
+import type { Entry, ShortcutsAppOpened, Update } from "./record.ts";
 
 let clock = 0;
 
-const update = (before: string, by: Update["by"] = "keyboard", field = "a"): Update => {
+const update = (before: string, by: Update["by"] = "keyboard", field = "a") => {
   clock += 1;
 
   return {
@@ -19,7 +19,7 @@ const update = (before: string, by: Update["by"] = "keyboard", field = "a"): Upd
   };
 };
 
-const after = (...inputs: (Update | ShortcutsAppOpened)[]): State => {
+const after = (...inputs: (Update | ShortcutsAppOpened)[]) => {
   let state = start;
 
   for (const input of inputs) {
@@ -29,7 +29,7 @@ const after = (...inputs: (Update | ShortcutsAppOpened)[]): State => {
   return state;
 };
 
-const entries = (...updates: Update[]): Pick<Entry, "event" | "text">[] => {
+const entries = (...updates: Update[]) => {
   const out: Pick<Entry, "event" | "text">[] = [];
   let state = start;
 

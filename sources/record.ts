@@ -52,14 +52,15 @@ export const start: State = { last: null, typedSinceLastEntry: false, appOpened:
 
 const text = (update: Update) => update.before + update.after;
 
-const entry = ({ update, app }: Typed, event: Entry["event"]): Entry => ({
-  at: update.at,
-  event,
-  text: text(update),
-  ...(app !== "" && { app }),
-  kind: update.kind,
-  returnKey: update.returnKey,
-});
+const entry = ({ update, app }: Typed, event: Entry["event"]) =>
+  ({
+    at: update.at,
+    event,
+    text: text(update),
+    ...(app !== "" && { app }),
+    kind: update.kind,
+    returnKey: update.returnKey,
+  }) satisfies Entry;
 
 const inSameField = (last: Typed | null, update: Update, host: string) => {
   if (last?.update.field !== update.field) {
@@ -72,7 +73,7 @@ const inSameField = (last: Typed | null, update: Update, host: string) => {
   return !bothNameTheirApp || last.app === host;
 };
 
-const entryFor = (last: Typed | null, sent: boolean, left: boolean): Entry | null => {
+const entryFor = (last: Typed | null, sent: boolean, left: boolean) => {
   if (last === null) {
     return null;
   }
@@ -84,9 +85,9 @@ const entryFor = (last: Typed | null, sent: boolean, left: boolean): Entry | nul
   return left ? entry(last, "typed") : null;
 };
 
-export const record = (state: State, input: Update | ShortcutsAppOpened): Recorded => {
+export const record = (state: State, input: Update | ShortcutsAppOpened) => {
   if (!("field" in input)) {
-    return { state: { ...state, appOpened: input.app }, entry: null };
+    return { state: { ...state, appOpened: input.app }, entry: null } satisfies Recorded;
   }
 
   const { last, typedSinceLastEntry, appOpened } = state;
@@ -102,7 +103,7 @@ export const record = (state: State, input: Update | ShortcutsAppOpened): Record
       appOpened,
     },
     entry: entryFor(last, sent, settled && !sameField),
-  };
+  } satisfies Recorded;
 };
 
 if (import.meta.main) {

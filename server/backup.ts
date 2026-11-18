@@ -14,7 +14,7 @@ export const Held = z.record(z.string(), z.tuple([z.number(), z.number()]));
 
 export type Held = z.infer<typeof Held>;
 
-const held = async (mirror: string): Promise<Held> => {
+const held = async (mirror: string) => {
   const entries = await readdir(mirror, { recursive: true, withFileTypes: true }).catch(() => []);
 
   const files = entries
@@ -121,7 +121,7 @@ export const backup = (dir: string, token: string, now = () => new Date()) => {
     }
   };
 
-  return async (request: Request): Promise<Response> => {
+  return async (request: Request) => {
     if (request.headers.get("authorization") !== `Bearer ${token}`) {
       return status(401);
     }
