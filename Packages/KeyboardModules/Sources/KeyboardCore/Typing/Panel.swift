@@ -20,7 +20,7 @@ public enum Panel: String, Hashable, Sendable, CaseIterable {
     case textStyles
     case changeCase
 
-    /// Every tool, in the order Customize Actions lists them: the actions you can pick for the action row and the bar.
+    /// Every tool, in the order Customize Actions lists them: the actions you can pick for the bar.
     public static let tools: [Panel] = [
         .emoji, .gif, .transcripts, .clipboard, .snippets, .quicklinks, .textStyles, .changeCase,
     ]

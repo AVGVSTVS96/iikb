@@ -134,7 +134,7 @@
 		</dict>
 		<dict>
 			<key>FooterText</key>
-			<string>Hidden gives the menu button’s room to the suggestions. Your actions still open the clipboard, transcripts and GIFs: show the action row, or turn off Predictive Text.</string>
+			<string>Hidden gives the menu button’s room to the suggestions. To still reach your actions, show them in the bar or turn off Predictive Text.</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

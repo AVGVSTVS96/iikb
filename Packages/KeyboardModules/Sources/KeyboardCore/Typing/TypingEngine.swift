@@ -119,7 +119,7 @@ public struct TypingEngine {
             layer = target
             suggestionsChanged()
             return
-        case .nextKeyboard, .globeSpacer, .dictate, .dismiss, .emoji, .tool:
+        case .nextKeyboard, .globeSpacer, .dictate, .dismiss, .emoji:
             return
         case .undo:
             return replay(history.undo(before: text.before).map { ($0.removed, $0.inserted.count) }, in: document)

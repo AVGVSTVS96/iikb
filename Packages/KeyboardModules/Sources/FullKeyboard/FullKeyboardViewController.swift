@@ -774,10 +774,8 @@ open class FullKeyboardViewController: UIInputViewController {
         noteTyping()
         let device = device
         let screen = Size(width: screenSize.width, height: screenSize.height)
-        var laidOut = engine.layout(on: device, screen: screen, showsGlobe: showsGlobe)
-        if line != nil { laidOut.actions = [] }
         let keys = KeyboardGeometry(
-            laidOut, screen: screen,
+            engine.layout(on: device, screen: screen, showsGlobe: showsGlobe), screen: screen,
             window: view.bounds.width, style: .current)
         let (context, layout, height) = (keys.context, keys.layout, keys.height)
         var metrics = keys.metrics
@@ -884,12 +882,12 @@ open class FullKeyboardViewController: UIInputViewController {
         keyMic.isHidden = !keyed
     }
 
-    /// The bar's tools: on iPad the emoji's, where the emoji key is on, then your actions where they sit at the bar's left
-    /// (`KeyboardSettings.actionPlace`), outside a chat, whose tabs take that room.
+    /// The bar's tools: on iPad the emoji's, where the emoji key is on, then your actions where the bar shows them
+    /// (`KeyboardSettings.showsActions`), outside a chat, whose tabs take that room.
     private func barTools(_ context: LayoutContext) -> [Panel] {
         let emoji: [Panel] = engine.settings.emojiKey && context.device != .phone ? [.emoji] : []
-        let place = engine.settings.actionPlace(phone: context.device == .phone, landscape: context.isLandscape)
-        let actions = place == .bar && line == nil ? engine.settings.actions.filter { !emoji.contains($0) } : []
+        let actions =
+            engine.settings.showsActions && line == nil ? engine.settings.actions.filter { !emoji.contains($0) } : []
         return (emoji + actions).filter { panels[$0] != nil }
     }
 
@@ -1172,9 +1170,6 @@ open class FullKeyboardViewController: UIInputViewController {
             return advanceToNextInputMode()
         case .trigger(let key) where key.action == .dictate:
             return toggleVoice()
-        case .trigger(let key) where key.isTool:
-            if case .tool(let panel) = key.action { show(panel, backToMenu: false) }
-            return
         case .trigger(let key)
         where key.action == .return && keysUp && line == nil && engine.panel != nil && engine.panel != .emoji
             && engine.panel != .form:

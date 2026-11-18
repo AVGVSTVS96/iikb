@@ -23,9 +23,6 @@ public enum KeyAction: Hashable, Sendable {
     case undo, redo
     /// Opens the emoji panel, or closes it when it's open.
     case emoji
-    /// An action in the action row, which opens its tool as the bar's does; the keyboard handles it, so the engine never
-    /// sees it.
-    case tool(Panel)
     /// The snippet key beside space, which starts a keyword: it types the snippet prefix at a word's start, so the bar
     /// offers the keywords that go on from it (`KeyboardSettings.snippetPrefix`).
     case snippetPrefix(String)
@@ -86,8 +83,6 @@ public struct Key: Hashable, Sendable {
         return value
     }
 
-    public var isTool: Bool { if case .tool = action { true } else { false } }
-
     public var isInput: Bool {
         switch action {
         case .character, .space: true
@@ -110,7 +105,7 @@ public enum RowItem: Hashable, Sendable {
 
 public struct KeyboardLayout: Hashable, Sendable {
     public var rows: [[RowItem]]
-    /// How many of the top rows are short ones, 0.8 of a key: the action row and the number row.
+    /// How many of the top rows are short ones, 0.8 of a key: the number row.
     public var shortRows: Int
     /// Keys more than the device's usual rows hold, as Swedish's å and ä: Apple narrows every key to fit them.
     public var extraColumns: Double

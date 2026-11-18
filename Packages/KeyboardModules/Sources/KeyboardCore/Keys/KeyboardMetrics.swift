@@ -56,7 +56,7 @@ public struct KeyboardMetrics: Hashable, Sendable {
             numberRowHeight: numberRowHeight, topInset: topInset, bottomRowCut: bottomRowCut, margin: margin)
     }
 
-    /// The keys' height with `rows` rows, the top `shortRows` of them short (the action row, the number row).
+    /// The keys' height with `rows` rows, the top `shortRows` of them short (the number row).
     public func height(rows: Int, shortRows: Int) -> Double {
         let keys = Double(rows) * keyHeight - Double(shortRows) * (keyHeight - numberRowHeight) - bottomRowCut
         return topInset + keys + Double(rows - 1) * rowGap + bottomInset

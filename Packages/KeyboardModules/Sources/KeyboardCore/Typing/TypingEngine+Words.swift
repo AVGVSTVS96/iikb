@@ -114,13 +114,11 @@ extension TypingEngine {
         keyMap = corrector.keyMap(after: wordForKeys)
     }
 
-    /// The keys as the settings lay them out here; while a panel is open, with no action row, as the keys type into it.
+    /// The keys as the settings lay them out here; while a panel is open, as the keys type into it.
     public func layout(on device: DeviceClass, screen: Size, showsGlobe: Bool = false) -> LayoutContext {
-        var context = LayoutContext(
+        LayoutContext(
             device: device, layer: layer, kind: panel == nil ? traits.kind : .text, showsGlobe: showsGlobe,
             screen: screen, settings: settings, region: region)
-        if panel != nil { context.actions = [] }
-        return context
     }
 
     /// While a panel is open, the keys are a plain text keyboard whose return closes it.

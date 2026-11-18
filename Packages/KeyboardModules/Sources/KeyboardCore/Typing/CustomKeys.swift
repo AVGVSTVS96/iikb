@@ -32,16 +32,10 @@ public enum BottomKey: String, CaseIterable, Hashable, Sendable {
     }
 }
 
-/// Where the actions show: a row of keys of their own above the letters, at the bar's left as its tools, or nowhere.
-public enum ActionPlace: Hashable, Sendable {
-    case row, bar, none
-}
-
 extension KeyboardSettings {
-    /// The action row where it's on, an iPhone's only, upright unless it's kept in landscape too, else the bar's left;
-    /// without it, the bar's left with Predictive Text off, in the suggestions' room.
-    public func actionPlace(phone: Bool, landscape: Bool) -> ActionPlace {
-        if actionRow, phone { return !landscape || actionRowInLandscape ? .row : .bar }
-        return predictiveText ? .none : .bar
+    /// Whether the bar holds your actions at its left: where they're put there, or with Predictive Text off, in the
+    /// suggestions' room.
+    public var showsActions: Bool {
+        actionsInBar || !predictiveText
     }
 }

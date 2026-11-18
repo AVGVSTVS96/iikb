@@ -141,22 +141,17 @@ final class ToolPanelTests: XCTestCase {
         try shot("clipboard-preview")
     }
 
-    func testAnActionRowPillOpensItsPanelAndTheRowsMarginsTakeNoTaps() throws {
-        addTeardownBlock { _ = self.launch(["-iikbActionRow", "NO"]) }
-        let app = launch(["-iikbActionRow", "YES", "-iikbActionRowInLandscape", "YES"])
-        let pill = key("Clipboard", in: app)
-        XCTAssertTrue(pill.waitForExistence(timeout: 10), "the action row shows above the letters")
-        try shot("action-row")
-        let first = key("GIFs", in: app).frame
-        let q = key("q", in: app).frame
-        XCTAssertGreaterThan(first.minX - q.minX, 8, "the pills leave a margin above q")
-        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: q.minX + 4, dy: first.midY)).tap()
+    func testAnActionInTheBarOpensItsPanel() throws {
+        addTeardownBlock { _ = self.launch(["-iikbActionsInBar", "NO"]) }
+        let app = launch(["-iikbActionsInBar", "YES"])
+        let tool = app.buttons["iikb.tool.clipboard"]
+        XCTAssertTrue(tool.waitForExistence(timeout: 10), "the actions sit at the bar's left")
+        XCTAssertLessThan(tool.frame.maxY, key("q", in: app).frame.minY, "above the letters, with no row of their own")
+        try shot("actions-in-bar")
+        tool.tap()
         let list = app.descendants(matching: .any).matching(identifier: "iikb.clipboard").firstMatch
-        XCTAssertFalse(list.waitForExistence(timeout: 1.5), "a tap in the margin opens nothing")
-        XCTAssertTrue(key("space", in: app).isHittable, "and leaves the keys")
-        pill.tap()
-        XCTAssertTrue(list.waitForExistence(timeout: 5), "a pill opens its panel")
-        try shot("action-row-clipboard")
+        XCTAssertTrue(list.waitForExistence(timeout: 5), "an action opens its panel")
+        try shot("actions-in-bar-clipboard")
     }
 
     func testHoldingAShelfItemShowsAllOfIt() throws {

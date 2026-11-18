@@ -4,8 +4,6 @@ public struct KeyFace: Hashable, Sendable {
         case text(String)
         case smallText(String)
         case symbol(String)
-        /// An action's tool, drawn as the bar draws it.
-        case tool(Panel)
         case none
     }
 
@@ -113,8 +111,6 @@ extension KeyFace {
             self.init(content: .symbol("keyboard.chevron.compact.down"), alignment: edge)
         case .emoji:
             self.init(content: .symbol("face.smiling"), alignment: edge)
-        case .tool(let panel):
-            self.init(content: .tool(panel))
         case .snippetPrefix(let prefix):
             self.init(content: prefix.count == 1 ? .letter(prefix) : .text(prefix))
         case .undo:

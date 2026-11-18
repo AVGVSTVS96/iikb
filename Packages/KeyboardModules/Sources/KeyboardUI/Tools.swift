@@ -212,22 +212,6 @@ extension Panel {
         }
     }
 
-    /// The tool's glyph on an action key, in outline as the keys' glyphs are, at one size with every tool's.
-    package func keyIcon(_ side: CGFloat) -> UIImage? {
-        switch self {
-        case .emoji: Self.symbol("face.smiling", side)
-        case .gif: Self.gifGlyph(side)
-        case .clipboard: Self.symbol("list.clipboard", side)
-        case .transcripts: Self.symbol("text.bubble", side)
-        case .chats: Self.symbol("bubble.left.and.bubble.right", side)
-        case .snippets: Self.symbol("text.quote", side)
-        case .quicklinks: Self.symbol("link", side)
-        case .form: nil
-        case .textStyles: Self.symbol("bold.italic.underline", side)
-        case .changeCase: Self.symbol("textformat", side)
-        }
-    }
-
     /// A symbol scaled so its glyph, without the margins a symbol image carries, covers as much as a square 0.8 of
     /// `side` and stands no taller than that square, so a tall one (the clipboard) and a wide one (the bubble) read as one
     /// size beside each other; in its light appearance's shape, since iOS draws some filled in dark (`face.smiling`).

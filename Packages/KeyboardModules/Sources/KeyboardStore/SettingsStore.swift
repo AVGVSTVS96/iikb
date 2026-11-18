@@ -26,8 +26,8 @@ public enum SettingsStore {
         ("dictationButton", \.dictationButton),
         ("periodKey", \.periodKey),
         ("snippetKey", \.snippetKey),
-        ("actionRow", \.actionRow),
-        ("actionRowInLandscape", \.actionRowInLandscape),
+        // WHY: the key the action row was kept under, so whoever had it on keeps their actions, now in the bar.
+        ("actionRow", \.actionsInBar),
     ]
 
     /// The settings with a value picked from a list, each kept as its raw value. Character Preview and Haptic Feedback

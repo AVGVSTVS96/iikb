@@ -34,11 +34,9 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var periodKey = false
     /// The snippet key in the bottom row of an iPhone's letters, typing the snippet prefix.
     public var snippetKey = false
-    /// The actions as a row of keys above an iPhone's letters (`actionPlace`).
-    public var actionRow = false
-    /// The action row in landscape too, where it otherwise moves to the bar's left.
-    public var actionRowInLandscape = false
-    /// The tools the action row and the bar offer, in their order.
+    /// Your actions as buttons at the bar's left, beside the suggestions, on every screen (`showsActions`).
+    public var actionsInBar = false
+    /// The tools the bar offers as your actions, in their order.
     public var actions = Panel.standardActions
     /// The emoji and GIF panels as one row that scrolls sideways on every screen, as they are in landscape.
     public var compactPanels = false

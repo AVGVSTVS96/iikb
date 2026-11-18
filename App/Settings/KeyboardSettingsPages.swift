@@ -451,7 +451,7 @@ private struct LayoutSettings: View {
 /// show only those: an iPad's keyboard keeps its own globe, menu button and one-row panels, with none of an iPhone's
 /// extra keys, rows or layouts.
 struct KeysHere {
-    let numberRow, emojiKey, recordKey, globeKey, leadingButton, actionRow, arrangesBottomRow: Bool
+    let numberRow, emojiKey, recordKey, globeKey, leadingButton, arrangesBottomRow: Bool
     let split, oneHanded, largePanels, characterPreview, currency: Bool
 
     @MainActor init() {
@@ -466,7 +466,6 @@ struct KeysHere {
         emojiKey = all.showsEmoji
         globeKey = all.showsGlobeKey
         leadingButton = all.leadingButton == .hidden
-        actionRow = device == .phone
         arrangesBottomRow = device == .phone
         recordKey = LayoutContext(device: device, layer: .letters, showsGlobe: true, showsMicKey: true).showsMicKey
         split = LayoutContext(device: device, layer: .letters, isLandscape: true, isOpen: true).allowsSplit

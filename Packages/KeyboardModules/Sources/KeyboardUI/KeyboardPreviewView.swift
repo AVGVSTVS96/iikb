@@ -61,8 +61,7 @@ public final class KeyboardPreviewView: UIView {
         bar.keys = keys.grid.barRow.map { (minX: $0.frame.x, maxX: $0.frame.x + $0.frame.width) }
         bar.update(more: keys.context.showsMoreButton)
         bar.micInBar = settings.dictationButton && !keys.context.showsMicKey
-        let place = settings.actionPlace(phone: keys.context.device == .phone, landscape: keys.context.isLandscape)
-        bar.update(tools: place == .bar ? settings.actions : [], theme: theme)
+        bar.update(tools: settings.showsActions ? settings.actions : [], theme: theme)
         bar.update(mic: .off, recorded: 0, saved: [], waitingFor: nil, notice: nil, theme: theme)
         bar.update(
             words.map { Suggestion($0, .candidate) }, emoji: [],

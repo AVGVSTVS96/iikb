@@ -104,7 +104,6 @@ extension KeyFace.Content {
         case .text: "text"
         case .smallText: "smallText"
         case .symbol: "symbol"
-        case .tool: "tool"
         case .none: "none"
         }
     }
@@ -112,7 +111,6 @@ extension KeyFace.Content {
     var value: String {
         switch self {
         case .letter(let text), .text(let text), .smallText(let text), .symbol(let text): text
-        case .tool(let panel): panel.rawValue
         case .none: ""
         }
     }
@@ -146,7 +144,6 @@ extension KeyAction {
         case .undo: "undo"
         case .redo: "redo"
         case .emoji: "emoji"
-        case .tool(let panel): panel.rawValue
         case .snippetPrefix: "snippet"
         }
     }

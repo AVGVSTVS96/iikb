@@ -38,8 +38,6 @@ public struct LayoutContext: Hashable, Sendable {
     public var keyRoundness = KeyRoundness.standard
     /// The More button at the bar's left, or none; an iPad keeps its button.
     public var leadingButton: LeadingButton
-    /// The actions as a row of keys above the letters, in their order; none where they show elsewhere (`actionPlace`).
-    public var actions: [Panel] = []
     /// The keys beside space in their order, space among them, as Settings arranges them (`BottomKey`).
     public var order = BottomKey.standard
     /// A period key in the bottom row, in fields with none of their own.
@@ -96,9 +94,6 @@ public struct LayoutContext: Hashable, Sendable {
             globeIsSpacer: settings.globeKey == .spacer, showsMicKey: settings.micKey && settings.dictationButton,
             showsNumberRow: settings.numberRow, leadingButton: settings.leadingButton
         )
-        if device == .phone, settings.actionPlace(phone: true, landscape: isLandscape) == .row {
-            actions = settings.actions
-        }
         order = settings.aroundSpace
         showsPeriodKey = settings.periodKey && device == .phone
         snippetPrefix = settings.snippetKey && device == .phone ? settings.snippetPrefix : ""
@@ -301,34 +296,7 @@ public enum Layouts {
         if [.email, .url, .webSearch].contains(context.kind) {
             local = local.ending(context.region.endings(typing: context.languages[0]))
         }
-        return local.withActions(context)
-    }
-}
-
-extension KeyboardLayout {
-    /// The action row on top, as Raycast's: short pills centered over the letters, or on the open Duo's split keys half
-    /// on each side, each half's centered over its letters. A pill is 1.6 letters wide, narrower when that many don't fit.
-    func withActions(_ context: LayoutContext) -> KeyboardLayout {
-        guard !context.actions.isEmpty else { return self }
-        let group = { (panels: ArraySlice<Panel>, columns: Double) -> (keys: [RowItem], margin: RowItem) in
-            let pitch = min(1.6, columns / Double(max(panels.count, 1)))
-            let keys = panels.map { RowItem.key(Key(.tool($0), width: .pitch(pitch))) }
-            return (keys, .spacer(.pitch((columns - pitch * Double(panels.count)) / 2)))
-        }
-        let row: [RowItem]
-        if context.isSplit {
-            let half = 5 + extraColumns / 2
-            let left = group(context.actions.prefix((context.actions.count + 1) / 2), half)
-            let right = group(context.actions.dropFirst((context.actions.count + 1) / 2), half)
-            row = [left.margin] + left.keys + [.flexible] + right.keys + [right.margin]
-        } else {
-            let all = group(context.actions[...], 10 + extraColumns)
-            row = [.flexible] + all.keys + [.flexible]
-        }
-        var layout = self
-        layout.rows.insert(row, at: 0)
-        layout.shortRows += 1
-        return layout
+        return local
     }
 }
 

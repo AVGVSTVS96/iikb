@@ -19,94 +19,27 @@ struct CustomKeysTests {
         (geometry.grid.rows.last ?? []).map(\.key.action)
     }
 
-    private var actionRow: KeyboardSettings {
-        var settings = KeyboardSettings.initial
-        settings.actionRow = true
-        return settings
-    }
-
     @Test func untouchedSettingsLayOutTheKeysAsBefore() {
         let settings = KeyboardSettings.initial
         for screen in Duo.Screen.allCases {
-            let grid = keys(settings, on: screen).grid
-            #expect(!grid.rows.joined().contains { $0.key.isTool }, "\(screen.name)")
-            #expect(keys(settings, on: screen).layout.shortRows == 0)
-        }
-        #expect(bottom(keys(settings)) == [.globeSpacer, .layer(.numbers), .emoji, .space, .return])
-        #expect(settings.actionPlace(phone: true, landscape: false) == .none)
-    }
-
-    @Test func theActionRowSitsAboveTheLettersUprightInTheActionsOrder() {
-        var settings = actionRow
-        settings.actions = [.clipboard, .gif, .emoji]
-        for screen in [Duo.Screen.foldedPortrait, .openPortrait] {
-            let without = keys(.initial, on: screen)
-            let with = keys(settings, on: screen)
-            let row = with.grid.rows[0]
-            #expect(row.map(\.key.action) == [.tool(.clipboard), .tool(.gif), .tool(.emoji)], "\(screen.name)")
-            #expect(row.allSatisfy { $0.frame.height == with.metrics.numberRowHeight })
-            #expect(with.height == without.height + with.metrics.numberRowHeight + with.metrics.rowGap)
-            let (q, p) = (with.grid.frame(of: "q")!, with.grid.frame(of: "p")!)
-            let pitch = with.grid.frame(of: "w")!.x - q.x
-            #expect(
-                row.allSatisfy { abs($0.frame.width - (1.6 * pitch - with.metrics.keyGap)) < 0.5 }, "Raycast's pills")
-            #expect(
-                abs(row[1].frame.x + row[1].frame.width / 2 - (q.x + p.x + p.width) / 2) < 1,
-                "centered over the letters")
-            #expect(with.grid.typingRow.first?.key.action == .character("q"))
-            #expect(with.grid.barRow.map(\.frame) == with.grid.typingRow.map(\.frame), "the bar skips the action row")
-        }
-    }
-
-    @Test func inLandscapeTheActionsGoToTheBarUnlessKeptInTheirRow() {
-        var settings = actionRow
-        for screen in [Duo.Screen.foldedLandscape, .openLandscape] {
             #expect(keys(settings, on: screen).layout.shortRows == 0, "\(screen.name)")
         }
-        #expect(settings.actionPlace(phone: true, landscape: true) == .bar)
-        settings.actionRowInLandscape = true
-        for screen in [Duo.Screen.foldedLandscape, .openLandscape] {
-            #expect(keys(settings, on: screen).grid.rows[0].allSatisfy { $0.key.isTool }, "\(screen.name)")
+        #expect(bottom(keys(settings)) == [.globeSpacer, .layer(.numbers), .emoji, .space, .return])
+        #expect(!settings.showsActions)
+    }
+
+    /// Your actions are the bar's buttons, never a row of keys: the keys stay as tall as without them on every screen.
+    @Test func theActionsSitInTheBarAndTakeNoRow() {
+        var settings = KeyboardSettings.initial
+        settings.actionsInBar = true
+        #expect(settings.showsActions)
+        for screen in Duo.Screen.allCases {
+            let (with, without) = (keys(settings, on: screen), keys(.initial, on: screen))
+            #expect(with.height == without.height && with.grid.rows[0].first?.key.action == .character("q"))
         }
-        #expect(settings.actionPlace(phone: false, landscape: false) == .none, "an iPad has no action row")
+        settings.actionsInBar = false
         settings.predictiveText = false
-        #expect(
-            settings.actionPlace(phone: false, landscape: false) == .bar, "its bar has them with Predictive Text off")
-    }
-
-    @Test func theActionRowStaysOnEveryLayerAboveTheNumberRow() {
-        var settings = actionRow
-        settings.numberRow = true
-        let letters = keys(settings)
-        #expect(letters.layout.shortRows == 2 && letters.grid.rows[0].allSatisfy { $0.key.isTool })
-        #expect(letters.grid.rows[1].first?.key.action == .character("1"))
-        #expect(keys(settings, layer: .numbers).grid.rows[0].allSatisfy { $0.key.isTool })
-    }
-
-    @Test func theSplitKeysHaveHalfTheActionsOnEachSide() {
-        var settings = actionRow
-        settings.actionRowInLandscape = true
-        settings.split = true
-        settings.actions = [.emoji, .gif, .transcripts, .clipboard]
-        let split = keys(settings, on: .openLandscape).grid
-        let row = split.rows[0]
-        #expect(row.count == 4)
-        func middle(_ a: Rect, _ b: Rect) -> Double { (a.x + b.x + b.width) / 2 }
-        let frame = { split.frame(of: $0)! }
-        #expect(abs(middle(row[0].frame, row[1].frame) - middle(frame("q"), frame("t"))) < 1, "over q to t")
-        #expect(abs(middle(row[2].frame, row[3].frame) - middle(frame("y"), frame("p"))) < 1, "over y to p")
-    }
-
-    @Test func aReachForTheTopLettersNeverOpensATool() {
-        let grid = keys(actionRow).grid
-        let q = grid.frame(of: "q")!
-        let tool = grid.rows[0][0].frame
-        #expect(grid.key(atX: q.x + 4, y: tool.y + tool.height + 1)?.action == .character("q"))
-        #expect(grid.key(atX: q.x + 4, y: tool.y + tool.height - 1) == nil, "the margin beside the pills is empty")
-        let (first, second) = (grid.rows[0][0].frame, grid.rows[0][1].frame)
-        let between = (first.x + first.width + second.x) / 2
-        #expect(grid.key(atX: between, y: tool.y + 1)?.isTool == true, "the gap between two pills takes a tap")
-        #expect(grid.key(atX: first.x + 2, y: tool.y + tool.height - 1)?.isTool == true)
+        #expect(settings.showsActions, "with Predictive Text off, they take the suggestions' room")
     }
 
     @Test func theKeysAroundSpaceGoWhereTheyWereArranged() {

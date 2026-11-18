@@ -112,7 +112,7 @@ enum LaunchOptions {
     }
 
     /// `-iikbLanguage sv`, `-iikbOneHanded left` and `-iikbCompactPanels YES`, `-iikbAutoCapitalization YES`, `-iikbAutoCorrection YES`,
-    /// `-iikbMicKey YES`, `-iikbPredictiveText NO`, `-iikbNumberHints YES` or Custom Keys' switches (`-iikbActionRow YES`,
+    /// `-iikbMicKey YES`, `-iikbPredictiveText NO`, `-iikbNumberHints YES` or Custom Keys' switches (`-iikbActionsInBar YES`,
     /// `-iikbPeriodKey YES`) set those settings for a test.
     static func applySettings() {
         if let hand = defaults.string(forKey: "iikbOneHanded").flatMap(OneHanded.init) { SettingsStore.set(hand) }
@@ -126,8 +126,7 @@ enum LaunchOptions {
             ("iikbCompactPanels", \.compactPanels), ("iikbAutoCapitalization", \.autoCapitalization),
             ("iikbAutoCorrection", \.autoCorrection), ("iikbMicKey", \.micKey),
             ("iikbPredictiveText", \.predictiveText), ("iikbNumberHints", \.numberHints),
-            ("iikbActionRow", \.actionRow),
-            ("iikbActionRowInLandscape", \.actionRowInLandscape),
+            ("iikbActionsInBar", \.actionsInBar),
             ("iikbPeriodKey", \.periodKey), ("iikbSnippetKey", \.snippetKey),
             ("iikbDictationButton", \.dictationButton), ("iikbSplit", \.split),
         ]
