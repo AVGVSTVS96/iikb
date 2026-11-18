@@ -1,7 +1,7 @@
 """How dictations fared on the iPhone, from the backup server's copy of Transcripts: python3 scripts/voicehealth.py [days]
 
-Per day: dictations, ones whose recording holds no sound at all (no sample past 100 of 32767: no real microphone is
-that quiet, and none of 628 dictations with speech came within 200), ones written down as nothing, ones recovered after
+Per day: dictations, ones whose recording holds no sound at all (nothing but zeros: a working microphone always hears
+the room, peaking under 100 of 32767 only when nothing is said), ones written down as nothing, ones recovered after
 iikb ended mid-dictation, and ones whose recording file is shorter than the dictation was. Then the same per capture,
 the microphone and whether voice processing heard it, the last silent ones, and why the ones the iPhone's microphones
 weren't aimed for weren't (their transcript's `unaimed`, `Unaimed`), most often first.
@@ -23,7 +23,6 @@ from collections import Counter, defaultdict
 from voicescore import edits, words
 
 APP = os.path.expanduser("~/.local/share/iikb/backup/mirror/app")
-SILENT = 100
 LOUD_ROOM = -19
 NEARBY = 15 * 60
 EPOCH = datetime.datetime(2001, 1, 1, tzinfo=datetime.timezone.utc)
@@ -47,7 +46,7 @@ def outcomes(row):
     sound = samples(path)
     if len(sound) / 16_000 < row["seconds"] - 0.5:
         found.append("recording short")
-    if max(map(abs, sound), default=0) < SILENT:
+    if not any(sound):
         found.append("silent")
     return found
 

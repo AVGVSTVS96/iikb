@@ -116,7 +116,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         do {
             try begin(cause)
         } catch {
-            log.error("couldn't start, trying a new engine: \(error.localizedDescription, privacy: .public)")
+            log.error("couldn't start, trying a new engine: \(error, privacy: .public)")
             engine = AVAudioEngine()
             try begin(cause)
         }
@@ -126,22 +126,24 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         .mixWithOthers, .allowBluetoothA2DP, .allowAirPlay, .defaultToSpeaker,
     ]
 
-    /// `cause` is what started it, kept with why the microphones weren't aimed: opened, restarted or rebuilt.
+    /// `cause` is what started it, kept with why the microphones weren't aimed: opened, restarted or rebuilt. It changes
+    /// only what isn't so already: from the background iOS refuses a change to an active session (OSStatus 560557684),
+    /// and a change can stop the engine. On Nov 18 the microphone came back on after another app had it and went off
+    /// 0.3 s later: setting its category again had put it back in `.default` mode, iOS stopped the engine for the
+    /// change, and refused both the aim and the restart.
     private func begin(_ cause: String) throws {
         let session = AVAudioSession.sharedInstance()
         let picked = SettingsStore.microphone
         let bluetooth: AVAudioSession.CategoryOptions = [.allowBluetoothHFP, .bluetoothHighQualityRecording]
-        try session.setCategory(
-            .playAndRecord, mode: .default,
-            options: picked?.kind == .bluetooth ? Self.options.union(bluetooth) : Self.options)
-        try? session.setPrefersNoInterruptionsFromSystemAlerts(true)
+        try Self.categorize(session, picked?.kind == .bluetooth ? Self.options.union(bluetooth) : Self.options)
+        if !session.prefersNoInterruptionsFromSystemAlerts {
+            try? session.setPrefersNoInterruptionsFromSystemAlerts(true)
+        }
         try session.setActive(true)
         var input = picked.flatMap { picked in session.availableInputs?.first(where: picked.matches) }
-        if picked?.kind == .bluetooth, input == nil {
-            try session.setCategory(.playAndRecord, mode: .default, options: Self.options)
-        }
+        if picked?.kind == .bluetooth, input == nil { try Self.categorize(session, Self.options) }
         if picked != nil, input == nil { input = session.availableInputs?.first { $0.portType == .builtInMic } }
-        try? session.setPreferredInput(input)
+        if session.preferredInput?.uid != input?.uid { try? session.setPreferredInput(input) }
         do {
             aimed = try Capture.aim(session)
             missed = nil
@@ -155,7 +157,9 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
             recordingMissed = "\(recordingMissed ?? "aimed"); then \(missed ?? "aimed")"
         }
         let node = engine.inputNode
-        try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
+        if !session.allowHapticsAndSystemSoundsDuringRecording {
+            try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
+        }
         let heard = node.outputFormat(forBus: 0)
         guard heard.sampleRate > 0, heard.channelCount > 0 else { throw Unrecordable(format: heard.description) }
         node.installTap(
@@ -175,6 +179,12 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         log.notice(
             "hearing \(self.aimed?.rawValue ?? "as iOS picks", privacy: .public) \(source?.dataSourceName ?? "", privacy: .public) \(source?.selectedPolarPattern?.rawValue ?? "", privacy: .public): \(Self.route, privacy: .public)"
         )
+    }
+
+    /// Recording and playing with `options`, in whatever mode it's in, which `Capture.aim` sets.
+    private static func categorize(_ session: AVAudioSession, _ options: AVAudioSession.CategoryOptions) throws {
+        guard session.category != .playAndRecord || session.categoryOptions != options else { return }
+        try session.setCategory(.playAndRecord, mode: session.mode, options: options)
     }
 
     /// The kinds of port iikb's session hears from and plays to, and whether another app is playing, for the log: never
@@ -200,7 +210,7 @@ nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "v
         do {
             try beginOnAnyEngine(rebuilding ? "rebuilt" : "restarted")
         } catch {
-            log.error("couldn't start again: \(error.localizedDescription, privacy: .public)")
+            log.error("couldn't start again: \(error, privacy: .public)")
             onLost()
         }
     }

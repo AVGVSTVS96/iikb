@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+ID=$(scripts/sim ensure "iPhone Duo" iPhone-Duo)
+xcodegen generate -q
+xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest -quiet
+scripts/sim boot "$ID"
+scripts/sim allow "$ID"
+xcrun simctl privacy "$ID" grant microphone com.shahidy.iikb || true
+xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
+  -derivedDataPath build/uitest -only-testing:AppUITests/MicSessionCheck > build/uitest/mic.log 2>&1 || failed=1
+grep -E "error:|XCTAssert|Test Case .*(passed|failed)|Executed" build/uitest/mic.log | cut -c1-2000 || true
+xcrun simctl spawn "$ID" log show --last 10m --style compact --predicate 'subsystem == "com.shahidy.iikb" AND category == "voice"' | tail -60
+xcrun simctl shutdown "$ID" || true
+exit "${failed:-0}"

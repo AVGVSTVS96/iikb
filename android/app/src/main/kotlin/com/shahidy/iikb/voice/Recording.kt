@@ -3,17 +3,16 @@ package com.shahidy.iikb.voice
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.abs
 
 /** A finished dictation's sound: 16 kHz mono samples in -1...1, kept as a 16-bit WAV beside its transcript. */
 class Recording(val samples: FloatArray) {
     val seconds get() = samples.size / RATE.toDouble()
 
     /**
-     * A second or more with no sample past 100 of 32767: the microphone gave no sound, as iOS's `Listener` tells it (each
-     * of his 628 real dictations had one past 200).
+     * A second or more of nothing but zeros: the microphone gave no sound, as iOS's `Listener` tells it (a working one
+     * always hears the room).
      */
-    val deaf get() = seconds >= 1 && samples.none { abs(it) > SILENCE }
+    val deaf get() = seconds >= 1 && samples.all { it == 0f }
 
     /** The samples as 16-bit little-endian PCM, as the WAV holds them. */
     fun pcm16(): ByteArray {
@@ -36,7 +35,6 @@ class Recording(val samples: FloatArray) {
 
     companion object {
         const val RATE = 16_000
-        private const val SILENCE = 100f / 32767
 
         /** A WAV this class wrote; null when it can't be read as one. */
         fun read(file: File): Recording? {

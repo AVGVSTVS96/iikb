@@ -18,7 +18,8 @@ public nonisolated enum Capture: String {
     }
 
     /// Aims the iPhone's microphones at you, a cardioid on the front one, while they're what hears and the iPhone offers
-    /// one; else leaves iOS's own pick in `.default` mode and throws `Unaimed`.
+    /// one; else leaves iOS's own pick in `.default` mode and throws `Unaimed`. It changes only what isn't so already
+    /// (`Microphone.begin`).
     @MainActor static func aim(_ session: AVAudioSession) throws -> Capture {
         let port = session.availableInputs?.first { $0.portType == .builtInMic }
         let ownHears =
@@ -27,15 +28,15 @@ public nonisolated enum Capture: String {
         let sources = port?.dataSources?.filter { $0.supportedPolarPatterns?.contains(.cardioid) == true } ?? []
         guard ownHears, let port, let source = sources.first(where: { $0.orientation == .front }) ?? sources.first
         else {
-            try session.setMode(.default)
+            if session.mode != .default { try session.setMode(.default) }
             throw Unaimed(session: session, port: port)
         }
-        try session.setMode(.measurement)
+        if session.mode != .measurement { try session.setMode(.measurement) }
         for other in port.dataSources ?? [] where other != source && other.preferredPolarPattern != nil {
             try? other.setPreferredPolarPattern(nil)
         }
-        try source.setPreferredPolarPattern(.cardioid)
-        try port.setPreferredDataSource(source)
+        if source.preferredPolarPattern != .cardioid { try source.setPreferredPolarPattern(.cardioid) }
+        if port.preferredDataSource?.dataSourceID != source.dataSourceID { try port.setPreferredDataSource(source) }
         return .cardioid
     }
 }

@@ -26,4 +26,5 @@ Each is a module of its own in Packages/Voice: the microphone in [VoiceCapture/A
 Besides the probes', which time a session on purpose (`// timer: probe`, `JudgeProbe`), the app waits on a clock only for these (rule table, root AGENTS.md):
 - Keep Mic On's countdown.
 - The second a stop waits for quiet before it cuts.
+- A second between tries to come back on after another app had the microphone, three tries in all, since iOS can say that app is done before it has let go (`Listener.comeBack`).
 - One clock reading: a Parakeet that takes over 0.5 s to write a second of silence is taken to be off the Neural Engine and loaded again, up to three times (`VoiceModel`).

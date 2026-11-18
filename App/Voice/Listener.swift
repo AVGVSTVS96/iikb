@@ -38,11 +38,10 @@ import VoiceModels
     /// and comes back on as it was once the recording ends, as after a call.
     private var screenRecorded = false
     /// The last recording held no sound at all, so the microphone's input is taken to be dead: it goes off once nothing
-    /// is being recorded or written, and the next dictation opens it fresh.
+    /// is being recorded or written, and the next dictation opens it fresh. A second or more of nothing but zeros is
+    /// that: each of the 9 dead recordings in his backups up to Nov 18 was zeros throughout, while 50 he said nothing
+    /// into still held the room, peaking under 100 of 32767 in the quietest.
     private var deaf = false
-    /// Every one of 628 real dictations had a sample past 200 of 32767; a recording of a second or more with none past
-    /// 100, or with no sound at all, is the input gone deaf.
-    private static let silence: Float = 100 / 32767
     /// Why the last dictation couldn't be made or written down, for the app's `DictationBar` until you dismiss it or
     /// dictate again.
     private var failure: (title: String, reason: String)?
@@ -185,8 +184,7 @@ import VoiceModels
     /// One that can't be written now is written the next time the app opens, since its recording is still on disk.
     private func deliver(_ take: Take, _ samples: [Float]) async {
         let seconds = Double(samples.count) / Recording.format.sampleRate
-        let sounded = samples.contains { abs($0) > Self.silence }
-        let silent = take.stopped.timeIntervalSince(take.started) >= 1 && !sounded
+        let silent = take.stopped.timeIntervalSince(take.started) >= 1 && !samples.contains { $0 != 0 }
         deaf = silent
         do {
             let written = try await VoiceModel.shared.write(samples, for: take.app)
@@ -285,21 +283,38 @@ import VoiceModels
     }
 
     /// The app that took the microphone, or the screen recording, is done with it: on again as it was, from the
-    /// background, where iOS lets an interrupted recording go on. If it doesn't, the next dictation opens the app as
-    /// when the microphone is off.
-    private func comeBack() {
+    /// background, where iOS lets an interrupted recording go on. iOS can say so before that app has let go (Nov 17:
+    /// "Session activation failed" 0.02 s after), so a failed start tries again each second, three times in all, with
+    /// iikb kept running till then. If none starts, the next dictation opens the app as when the microphone is off.
+    /// Either way the log goes to the backup, which otherwise waits for the microphone to go off again.
+    private func comeBack(tries: Int = 3) {
         guard let wasHeld = heldWhenTaken, !microphone.isOn, !screenRecorded else { return }
-        heldWhenTaken = nil
         do {
             try microphone.open()
+            heldWhenTaken = nil
             VoiceModel.shared.micIsOn = true
             held = wasHeld
             HostApp.log.notice("the microphone came back on after another app had it")
+            Backup.syncAppAndVoiceLog()
             keepMicOn()
         } catch {
             HostApp.log.error(
-                "the microphone couldn't come back on after another app had it: \(error.localizedDescription, privacy: .public)"
+                "the microphone couldn't come back on after another app had it, \(tries - 1) tries left: \(error, privacy: .public)"
             )
+            guard tries > 1 else {
+                heldWhenTaken = nil
+                return Backup.syncAppAndVoiceLog()
+            }
+            nonisolated(unsafe) var background = UIBackgroundTaskIdentifier.invalid
+            background = UIApplication.shared.beginBackgroundTask {
+                UIApplication.shared.endBackgroundTask(background)
+                background = .invalid
+            }
+            Task {
+                defer { if background != .invalid { UIApplication.shared.endBackgroundTask(background) } }
+                try? await Task.sleep(for: .seconds(1))  // timer: come back
+                comeBack(tries: tries - 1)
+            }
         }
     }
 
