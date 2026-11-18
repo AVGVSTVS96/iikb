@@ -13,6 +13,9 @@ const Facts = z.object({
     iikbCurve: z.array(z.number()),
     baselineCurve: z.array(z.number()),
   }),
+  realTaps: z.object({
+    sets: z.array(z.object({ name: z.string(), people: z.number(), iikb: z.number() })),
+  }),
   emoji: z.number(),
   lexiconWords: z.number(),
   tests: z.object({ core: z.number() }),

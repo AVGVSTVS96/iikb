@@ -33,7 +33,7 @@ iPhone gets familiar key positions. iPad gets a number row and flick-down second
 
 Each key remembers where your thumb really lands, from the words you keep and the letters you fix. If your grip changes, it catches up within a few taps. Autocorrect reads every tap with that in mind, and it only changes a word you spelled right when your taps fit another word better.
 
-A test types 500 phrases twice with off-target thumbs. A keyboard that takes the nearest key and corrects with Apple's spell checker gets 85.2% of words right; iikb gets 97.6%. This is a recorded simulated-tap benchmark against a spell-checker baseline, not a comparison with Apple's complete keyboard. [PROGRESS.md](PROGRESS.md) has the numbers and how they're measured.
+A test types 500 phrases twice with off-target thumbs. A keyboard that takes the nearest key and corrects with Apple's spell checker gets 85.2% of words right; iikb gets 97.7%. That's simulated taps against a spell-checker baseline, not Apple's complete keyboard ([how it's measured](PROGRESS.md)). On real people's taps, recorded on other phones and replayed on iikb's layout, iikb learns each person and gets 95.4% of words right on Google's tap typing set (10 people) and 93.7% on Vertanen & Kristensson's (26 people) ([where they're from](scripts/realtyping.py)).
 
 The suggestion bar combines a small on-device language model with your learned word and phrase counts. It offers completions, next words, and corrections for runs with missed or mistyped spaces. A build from source also learns per app.
 

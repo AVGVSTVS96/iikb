@@ -64,6 +64,25 @@ const curve = (keyboard: string) =>
     (match) => number(match.groups?.n),
   );
 
+const realTaps = (source: string) => {
+  const where = `scripts/eval.expected's ${source} real taps`;
+
+  const line = evals.find(
+    (candidate) =>
+      candidate.startsWith(`EVAL real=taps source=${source} split=test `) &&
+      candidate.includes(" keyboard=learning "),
+  );
+
+  if (line === undefined) {
+    throw new Error(`${where} have no learning keyboard`);
+  }
+
+  return {
+    people: number(groups(line, /people=(?<n>\d+)/u, where).n),
+    iikb: number(groups(line, /autocorrect=(?<n>[\d.]+)%/u, where).n),
+  };
+};
+
 const themeCount = said(THEMES, /enum ThemeName[^{]*\{\s*case (?<names>[^\n]+)/u).names?.split(
   ",",
 ).length;
@@ -150,6 +169,14 @@ const facts = {
     iikb: learning.autocorrect,
     baselineCurve: curve("baseline"),
     iikbCurve: curve("learning"),
+  },
+  realTaps: {
+    source:
+      "scripts/eval.expected, EVAL real=taps split=test keyboard=learning (KeyboardUITests/RealTyping.realTaps)",
+    sets: [
+      { name: "Google tap typing", ...realTaps("tsi") },
+      { name: "Vertanen & Kristensson", ...realTaps("vertanen") },
+    ],
   },
   missesToMoveAKey: 3,
   themes,

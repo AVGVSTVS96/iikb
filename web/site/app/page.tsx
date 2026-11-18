@@ -108,7 +108,7 @@ const GET = [
 ];
 
 export default function Page() {
-  const { accuracy, voice, tests, lexiconWords } = facts;
+  const { accuracy, realTaps, voice, tests, lexiconWords } = facts;
 
   return (
     <>
@@ -159,6 +159,13 @@ export default function Page() {
               >
                 How it’s measured
               </a>
+            </p>
+            <p className="font-mono text-xs text-muted-foreground">
+              Words right on real people’s taps, recorded on other phones and replayed on iikb’s
+              layout:{" "}
+              {realTaps.sets
+                .map((set) => `${set.iikb}% (${set.name}, ${set.people} people)`)
+                .join(", ")}
             </p>
           </Body>
         </Section>

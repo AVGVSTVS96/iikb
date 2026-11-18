@@ -10,7 +10,7 @@
     "words": 5428,
     "blockWords": 500,
     "baseline": 85.2,
-    "iikb": 97.6,
+    "iikb": 97.7,
     "baselineCurve": [
       83.2,
       85.4,
@@ -24,16 +24,31 @@
       83.6
     ],
     "iikbCurve": [
-      96.6,
-      97,
-      97.2,
-      97.8,
+      96.8,
       97.4,
       97.4,
       97.4,
-      98.2,
+      97.6,
+      97.6,
+      97.4,
+      98,
       97.6,
       99
+    ]
+  },
+  "realTaps": {
+    "source": "scripts/eval.expected, EVAL real=taps split=test keyboard=learning (KeyboardUITests/RealTyping.realTaps)",
+    "sets": [
+      {
+        "name": "Google tap typing",
+        "people": 10,
+        "iikb": 95.4
+      },
+      {
+        "name": "Vertanen & Kristensson",
+        "people": 26,
+        "iikb": 93.7
+      }
     ]
   },
   "missesToMoveAKey": 3,
@@ -53,8 +68,8 @@
   "emojiWords": 6785,
   "lexiconWords": 137578,
   "tests": {
-    "core": 413,
-    "ui": 107,
+    "core": 556,
+    "ui": 161,
     "coreSeconds": 25
   },
   "voice": {
