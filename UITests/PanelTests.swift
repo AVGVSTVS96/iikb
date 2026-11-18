@@ -54,6 +54,8 @@ final class PanelTests: XCTestCase {
         let app = launchAndType("hi ")
         openEmoji(in: app)
         for letter in "hand" { key(String(letter), in: app).tap() }
+        let search = app.descendants(matching: .any).matching(identifier: "iikb.panel.search").firstMatch
+        XCTAssertTrue(wait { (search.value as? String) == "hand" }, "the results are hand's, not a word on the way")
         let cells = app.collectionViews["iikb.emoji"].cells
         XCTAssertTrue(cells.firstMatch.waitForExistence(timeout: 3))
         let top = cells.firstMatch.frame.minY
@@ -148,8 +150,10 @@ final class PanelTests: XCTestCase {
         try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(prefix)-\(name).png"))
     }
 
+    /// The key on screen by that name: while the panel opens, iOS can still hold a copy of the letters off screen.
     private func key(_ name: String, in app: XCUIApplication) -> XCUIElement {
-        app.keys.matching(NSPredicate(format: "identifier == %@ OR label ==[c] %@", "iikb.\(name)", name)).firstMatch
+        let keys = app.keys.matching(NSPredicate(format: "identifier == %@ OR label ==[c] %@", "iikb.\(name)", name))
+        return keys.allElementsBoundByIndex.first(where: \.isHittable) ?? keys.firstMatch
     }
 
     /// The results sit in one row, and a swipe moves them sideways.
