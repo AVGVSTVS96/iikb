@@ -2,7 +2,9 @@ import XCTest
 
 /// Types through the real extension with synthesized HID touches at a fixed rate and checks every letter lands. The
 /// simulator turns overlapping paths into one finger that slides between keys, so each finger lifts before the next
-/// lands here; `TouchReplayTests` covers overlapping fingers.
+/// lands here; `TouchReplayTests` covers overlapping fingers. Each word goes at the rate with its space, and the next
+/// word once the space is in: the simulator types every tap with one finger, and UIKit merges that finger's taps when
+/// they queue while the keyboard corrects at a space, where a phone's fingers each make their own touch.
 final class FastTypingTests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -31,16 +33,24 @@ final class FastTypingTests: XCTestCase {
         let centers = keyCenters(for: Set(text))
         let interval = 60 / (wordsPerMinute * 5)
         let before = value
-        let record = XCSynthesizedEventRecord(name: "\(Int(wordsPerMinute)) wpm", interfaceOrientation: .portrait)
-        for (index, character) in text.enumerated() {
-            let down = 0.05 + Double(index) * interval
-            let path = XCPointerEventPath(forTouchAt: centers[character]!, offset: down)
-            path.liftUp(atOffset: down + dwell)
-            record.add(path)
-        }
-        try record.synthesize()
-        let typed = settled()
         let expected = before + Self.capitalizingFirst(text, after: before)
+        let words = text.split(separator: " ")
+        var sent = before.count
+        for (number, word) in words.enumerated() {
+            let keys = number < words.count - 1 ? word + " " : String(word)
+            let record = XCSynthesizedEventRecord(name: keys, interfaceOrientation: .portrait)
+            for (index, character) in keys.enumerated() {
+                let down = 0.05 + Double(index) * interval
+                let path = XCPointerEventPath(forTouchAt: centers[character]!, offset: down)
+                path.liftUp(atOffset: down + dwell)
+                record.add(path)
+            }
+            try record.synthesize()
+            sent += keys.count
+            let deadline = Date.now.addingTimeInterval(10)
+            while value.count < sent, Date.now < deadline {}
+        }
+        let typed = settled()
         XCTAssertEqual(typed, expected, Self.difference(typed, expected))
     }
 
