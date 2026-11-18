@@ -169,15 +169,27 @@ struct AutocorrectTests {
         #expect(document.text == "I help world")
     }
 
-    @Test func aWordYouGoBackIntoIsRankedWhole() {
+    @Test func aWordYouGoBackIntoIsRankedUpToTheCaretAndReplacedWhole() {
         var engine = TypingEngine.correcting()
         let document = TestDocument("so helo world")
         document.cursor = 5
         engine.documentChanged(document)
+        #expect(engine.suggestions.first?.text == "he")
         let hello = engine.suggestions.first { $0.text == "hello" }
         #expect(hello?.kind == .candidate)
         engine.accept(hello!, in: document)
         #expect(document.text == "so hello world")
+    }
+
+    @Test func aCaretInFrontOfAWordPredictsFromTheTextBeforeIt() {
+        var engine = TypingEngine.correcting()
+        let document = TestDocument("x ")
+        engine.type("see you. see you. see world", in: document)
+        document.cursor -= 5
+        engine.documentChanged(document)
+        #expect(engine.suggestions.first == Suggestion("you", .candidate))
+        engine.accept(engine.suggestions[0], in: document)
+        #expect(document.text == "x see you. See you. See you world")
     }
 
     @Test func expandsTextReplacements() {
@@ -360,7 +372,7 @@ struct MissedSpaceTests {
         var engine = TypingEngine()
         engine.corrector = corrector
         let document = TestDocument("done inalsonuodated ok")
-        document.cursor = 5
+        document.cursor = 19
         engine.documentChanged(document)
         #expect(engine.suggestions.map(\.text).contains("i also updated"))
     }

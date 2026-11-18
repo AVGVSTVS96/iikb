@@ -218,11 +218,12 @@ extension TypingEngine {
     /// Whether the keyboard typed the word before the caret, or the space before it, rather than you went back there.
     var isTyping: Bool { text.owned >= max(Words.current(in: text.before).count, 1) }
 
-    /// The word the bar is for, which a tap on it replaces: the word before the caret, then the selection and the rest of
-    /// its word, or the rest of a word you went back to, but not text you're typing a new word in front of.
+    /// The word a tap on the bar replaces: the word before the caret, then the selection and the rest of its word, or the
+    /// rest of a word you went back into, but not a word the caret is in front of or you're typing a new word in front of.
     var suggested: (word: Substring, tail: String) {
         let word = Words.current(in: text.before)
-        return (word, isTyping ? "" : text.selected + (text.after ?? "").prefix(while: Words.isWordCharacter))
+        guard !isTyping, !word.isEmpty || !text.selected.isEmpty else { return (word, "") }
+        return (word, text.selected + (text.after ?? "").prefix(while: Words.isWordCharacter))
     }
 
     /// Puts the caret at the end of the word the bar is for, typing the selection over itself, and returns the word.
@@ -489,7 +490,7 @@ extension TypingEngine {
             return
         }
         suggestionsBefore = String(text[..<word.startIndex])
-        let whole = word + tail
+        let whole = word + (self.text.selected.isEmpty ? "" : tail)
         let named = whole.isEmpty && text.hasSuffix(" ") ? Words.current(in: String(text.dropLast())) : whole
         emojiSuggestions = emojiCatalog?.suggestions(for: String(named), history: emojiHistory, limit: 30) ?? []
         if let swiped = swipedWord {

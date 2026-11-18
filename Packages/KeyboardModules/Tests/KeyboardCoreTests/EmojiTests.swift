@@ -36,11 +36,11 @@ struct EmojiTests {
         #expect(catalog.suggestions(for: "dog", history: history) == ["🐕", "🌭", "🐶"])
     }
 
-    @Test func anEmojiTakesTheWholeWordYouWentBackInto() {
+    @Test func anEmojiTakesTheWordYouWentBackTo() {
         var engine = TypingEngine()
         engine.emojiCatalog = catalog
         let document = TestDocument("i love pizza now")
-        document.cursor = 9
+        document.cursor = 12
         engine.documentChanged(document)
         #expect(engine.emojiSuggestions == ["🍕"])
         engine.accept(emoji: "🍕", in: document)
