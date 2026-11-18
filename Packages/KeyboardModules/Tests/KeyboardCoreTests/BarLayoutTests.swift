@@ -12,6 +12,8 @@ struct BarLayoutTests {
         var window: Double
         var oneHanded = OneHanded.off
         var split = false
+        /// The open Duo in landscape, whose bar has the Split/Full button.
+        var splits: Bool { device == .phone && width == 951 }
     }
 
     private static let screens: [Screen] = [
@@ -48,7 +50,7 @@ struct BarLayoutTests {
             [false, true].flatMap { more in
                 [false, true].map { update in
                     let layout = BarLayout(
-                        metrics.toolbar, keys: keys, tools: tools, more: more, update: update,
+                        metrics.toolbar, keys: keys, tools: tools, more: more, split: screen.splits, update: update,
                         maximumSlot: screen.device == .phone ? .infinity : 154.5)
                     return (
                         metrics, layout, keys,
@@ -68,7 +70,10 @@ struct BarLayoutTests {
         for screen in Self.screens {
             for (metrics, layout, keys, label) in layouts(screen) {
                 let toolbar = metrics.toolbar
-                let leading = (layout.more.map { [$0] } ?? []) + layout.tools + (layout.update.map { [$0] } ?? [])
+                let leading =
+                    (layout.more.map { [$0] } ?? []) + (layout.split.map { [$0] } ?? []) + layout.tools
+                    + (layout.update.map { [$0] } ?? [])
+                #expect((layout.split != nil) == screen.splits, "\(label): Split/Full where the keys can split")
                 for button in leading + [layout.cancel] + (layout.mic.map { [$0] } ?? []) {
                     #expect(button.width == toolbar.button && button.height == toolbar.button, "\(label): one size")
                     #expect(near(button.midY, toolbar.top + toolbar.bar / 2), "\(label): centered in the bar")
@@ -125,7 +130,7 @@ struct BarLayoutTests {
     @Test func nothingOverlaps() {
         for screen in Self.screens {
             for (_, layout, keys, label) in layouts(screen) {
-                let held = (layout.more.map { [$0] } ?? []) + layout.tools
+                let held = (layout.more.map { [$0] } ?? []) + (layout.split.map { [$0] } ?? []) + layout.tools
                 let cells = held + (layout.update.map { [$0] } ?? [])
                 let edge = cells.last.map { $0.x + $0.width } ?? keys[0].minX
                 let toolsEdge = held.last.map { $0.x + $0.width } ?? keys[0].minX
@@ -204,4 +209,15 @@ struct BarLayoutTests {
         }
     }
 
+    /// Split, as Raycast's, the buttons stay over the left half and the suggestions sit over the right half, between
+    /// its first key and the mic.
+    @Test func splitPutsTheSuggestionsOverTheRightHalf() {
+        let screen = Self.screens.first { $0.split }!
+        for (_, layout, keys, label) in layouts(screen) {
+            let gap = zip(keys, keys.dropFirst()).max { $0.1.minX - $0.0.maxX < $1.1.minX - $1.0.maxX }!
+            let leading = (layout.more.map { [$0] } ?? []) + (layout.split.map { [$0] } ?? []) + layout.tools
+            #expect(leading.allSatisfy { $0.x + $0.width <= gap.0.maxX }, "\(label): the buttons on the left half")
+            #expect(near(layout.minX, gap.1.minX), "\(label): the suggestions start over the right half")
+        }
+    }
 }

@@ -335,6 +335,10 @@ open class FullKeyboardViewController: UIInputViewController {
             toggleVoice()
         }
         suggestionBar.onTool = { [unowned self] in open($0, backToMenu: hasMore) }
+        suggestionBar.onSplit = { [unowned self] in
+            feedback(.other)
+            handle(.split($0))
+        }
         suggestionBar.onEdit = { [unowned self] in edit($0) }
         suggestionBar.onStyle = { [unowned self] in pickStyle($0.map { DictationStyle.allCases[$0] }) }
         suggestionBar.onChat = { [unowned self] index in
@@ -843,6 +847,7 @@ open class FullKeyboardViewController: UIInputViewController {
         suggestionBar.toolbar = toolbar
         suggestionBar.maximumSlotWidth = metrics.toolbar.slot
         suggestionBar.update(tools: tools, open: engine.panel, theme: theme)
+        suggestionBar.update(split: context.allowsSplit ? context.isSplit : nil)
         let fresh = line != nil ? seen.update(chats) : []
         chatPanel.fresh = fresh
         chatPanel.tabsRow = (suggestionBar.chatRow.minX - block.minX, suggestionBar.chatRow.maxX - block.minX)

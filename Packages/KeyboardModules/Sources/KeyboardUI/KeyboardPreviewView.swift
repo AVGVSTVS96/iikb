@@ -62,6 +62,7 @@ public final class KeyboardPreviewView: UIView {
         bar.update(more: keys.context.showsMoreButton)
         bar.micInBar = settings.dictationButton && !keys.context.showsMicKey
         bar.update(tools: settings.showsActions ? settings.actions : [], theme: theme)
+        bar.update(split: keys.context.allowsSplit ? keys.context.isSplit : nil)
         bar.update(mic: .off, recorded: 0, saved: [], waitingFor: nil, notice: nil, theme: theme)
         bar.update(
             words.map { Suggestion($0, .candidate) }, emoji: [],

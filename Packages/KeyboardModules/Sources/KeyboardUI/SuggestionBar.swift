@@ -7,7 +7,8 @@ import UIKit
 /// the waveform of your voice, and lets out a cancel button before it. Once you stop, dictations still waiting for the
 /// model stack as cards in its place. While the menu is out (the More button), cut, copy and paste stand over the
 /// suggestions as labeled pills, fading in where they sit. A build with a newer one on its install link shows the
-/// update's button after the tools, which opens the link.
+/// update's button after the tools, which opens the link. Where the keys can split, the Split/Full button after More
+/// shows the layout a tap gives, as Raycast's does.
 public final class SuggestionBar: UIView {
     public enum Edit: CaseIterable, Sendable {
         case cut, copy, paste
@@ -40,6 +41,8 @@ public final class SuggestionBar: UIView {
     public var onTool: (Panel) -> Void = { _ in }
     public var onMore: () -> Void = {}
     public var onUpdate: () -> Void = {}
+    /// The Split/Full button was tapped: whether the keys should split.
+    public var onSplit: (Bool) -> Void = { _ in }
     public var onEdit: (Edit) -> Void = { _ in }
     /// A chat's pill was tapped, by its index.
     public var onChat: (Int) -> Void = { _ in }
@@ -82,6 +85,12 @@ public final class SuggestionBar: UIView {
     public private(set) var chatMore = CGRect.zero
     private var tools: [(panel: Panel, button: BarButton)] = []
     private let more = BarButton("More", draw: Panel.moreGlyph)
+    /// Split, shown while the keys are whole, and Full, while they're split.
+    private let splitButtons = [true, false].map { split in
+        BarButton(split ? "Split Keyboard" : "Full Keyboard") { keysGlyph($0, split: split) }
+    }
+    /// Whether the keys are split, or nil where they can't be.
+    private var split: Bool?
     private let updateButton = BarButton("Update iikb") {
         Panel.symbol("arrow.down", $0)?.withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
     }
@@ -142,6 +151,12 @@ public final class SuggestionBar: UIView {
         more.isHidden = true
         more.accessibilityIdentifier = "iikb.more"
         addSubview(more)
+        for (button, splits) in zip(splitButtons, [true, false]) {
+            button.addAction(UIAction { [unowned self] _ in onSplit(splits) }, for: .touchUpInside)
+            button.isHidden = true
+            button.accessibilityIdentifier = splits ? "iikb.split" : "iikb.full"
+            addSubview(button)
+        }
         updateButton.addAction(UIAction { [unowned self] _ in onUpdate() }, for: .touchUpInside)
         updateButton.isHidden = true
         updateButton.glassy = true
@@ -207,6 +222,7 @@ public final class SuggestionBar: UIView {
         self.emoji.forEach { $0.theme = theme }
         dividers.forEach { $0.backgroundColor = theme.candidateDivider.ui }
         more.theme = theme
+        splitButtons.forEach { $0.theme = theme }
         updateButton.theme = theme
         if theme.dark != glassDark {
             glassDark = theme.dark
@@ -338,6 +354,13 @@ public final class SuggestionBar: UIView {
         setNeedsLayout()
     }
 
+    /// Whether the keys are split, for the Split/Full button, or nil where they can't split and the bar has none.
+    public func update(split: Bool?) {
+        guard split != self.split else { return }
+        self.split = split
+        setNeedsLayout()
+    }
+
     /// Whether the update's button shows: while a newer build is on the install link (`InstallLink`).
     public func update(offered: Bool) {
         guard offered == updateButton.isHidden else { return }
@@ -347,6 +370,9 @@ public final class SuggestionBar: UIView {
 
     /// The update's button has its place in the bar, which the chats' tabs take while they show.
     private var updateShown: Bool { !updateButton.isHidden && chatNames == nil }
+
+    /// The Split/Full button has its place in the bar, which the chats' tabs take while they show.
+    private var splitShown: Bool { split != nil && chatNames == nil }
 
     public func hear(_ level: Float, recorded: Double) {
         heard = recorded
@@ -516,7 +542,8 @@ public final class SuggestionBar: UIView {
         let out = edits != nil && !more.isHidden
         more.isOn = out || moreOn
         let gap: CGFloat = 8
-        let start = (updateShown ? updateButton.frame : tools.last?.button.frame ?? more.frame).maxX + gap
+        let leading = splitShown ? splitButtons[0].frame : more.frame
+        let start = (updateShown ? updateButton.frame : tools.last?.button.frame ?? leading).maxX + gap
         let width = max((end - start - gap * CGFloat(editButtons.count - 1)) / CGFloat(editButtons.count), 0)
         let height = min(toolbar.bar - 4, toolbar.button + 8)
         for (index, (_, button)) in editButtons.enumerated() {
@@ -611,8 +638,8 @@ public final class SuggestionBar: UIView {
         let scale = traitCollection.displayScale
         guard !keys.isEmpty else { return }
         let layout = BarLayout(
-            toolbar, keys: keys, tools: tools.count, more: !more.isHidden, mic: micInBar, style: styleNames != nil,
-            update: updateShown, maximumSlot: maximumSlotWidth)
+            toolbar, keys: keys, tools: tools.count, more: !more.isHidden, split: splitShown, mic: micInBar,
+            style: styleNames != nil, update: updateShown, maximumSlot: maximumSlotWidth)
         let micPlace = CGRect(mic.phase == .listening ? layout.recording : layout.mic ?? layout.recording)
         mic.bounds.size = micPlace.size
         mic.center = CGPoint(x: micPlace.midX, y: micPlace.midY)
@@ -624,6 +651,10 @@ public final class SuggestionBar: UIView {
         )
         placeTools(layout, reach: reach)
         if let frame = layout.more { more.place(CGRect(frame), glyph: toolbar.glyph, reach: reach) }
+        for (button, splits) in zip(splitButtons, [true, false]) {
+            button.isHidden = !splitShown || split == splits
+            if let frame = layout.split { button.place(CGRect(frame), glyph: toolbar.glyph, reach: reach) }
+        }
         updateButton.alpha = updateShown && !recording ? 1 : 0
         if let frame = layout.update {
             updateButton.glassSide = CGFloat(toolbar.button)
@@ -742,13 +773,14 @@ private final class EmojiPick: UIControl {
 }
 
 /// A suggestion: the middle one, which a space would type, in the label color and medium weight, the others in the
-/// secondary color.
+/// secondary color. One too long for its slot shows its end, the rest fading off the slot's left edge, as Raycast's do.
 private final class SuggestionSlot: UIControl {
     private(set) var suggestion: Suggestion?
     var onHighlight: () -> Void = {}
     private let index: Int
     private let label = UILabel()
     private let pill = UIView()
+    private let fade = CAGradientLayer()
     private var theme = KeyboardTheme.lightCurrent
 
     init(index: Int) {
@@ -758,7 +790,10 @@ private final class SuggestionSlot: UIControl {
         isAccessibilityElement = true
         accessibilityTraits = .keyboardKey
         pill.isUserInteractionEnabled = false
-        label.lineBreakMode = .byTruncatingMiddle
+        label.lineBreakMode = .byClipping
+        fade.colors = [UIColor.clear.cgColor, UIColor.black.cgColor]
+        fade.startPoint = CGPoint(x: 0, y: 0.5)
+        fade.endPoint = CGPoint(x: 1, y: 0.5)
         label.font = .systemFont(ofSize: 17, weight: index == 1 ? .medium : .regular)
         addSubview(pill)
         addSubview(label)
@@ -769,6 +804,9 @@ private final class SuggestionSlot: UIControl {
     /// Apple's pills stop 8px (@3x) short of each slot's edge, so neighbors sit 16px apart and the outer ones keep
     /// clear of the keyboard's edge (iOS 27 simulator, held suggestions).
     private static let pillInset: CGFloat = 8 / 3
+    /// Text keeps this far from the slot's edges, and a long one's start fades out over `fadeWidth` from there.
+    private static let textInset: CGFloat = 4
+    private static let fadeWidth: CGFloat = 20
 
     var showsPill: Bool { suggestion != nil && (suggestion?.kind == .correction || isHighlighted) }
 
@@ -801,10 +839,43 @@ private final class SuggestionSlot: UIControl {
         pill.layer.cornerRadius = pill.bounds.height / 2
         guard let font = label.font else { return }
         let baseline = (bounds.midY + font.capHeight / 2).rounded(scale: traitCollection.displayScale)
-        let width = min(label.intrinsicContentSize.width, bounds.width - 8)
-        label.frame = CGRect(
-            x: (bounds.width - width) / 2, y: baseline - font.ascender, width: width, height: font.lineHeight)
+        let width = label.intrinsicContentSize.width.rounded(.up)
+        let overflows = width > bounds.width - 2 * Self.textInset
+        let x = overflows ? bounds.width - Self.textInset - width : (bounds.width - width) / 2
+        label.frame = CGRect(x: x, y: baseline - font.ascender, width: width, height: font.lineHeight)
+        label.layer.mask = overflows ? fade : nil
+        guard overflows else { return }
+        let start = (Self.textInset - x) / width
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        fade.frame = label.bounds
+        fade.locations = [start, start + Self.fadeWidth / width].map { NSNumber(value: Double($0)) }
+        CATransaction.commit()
     }
+}
+
+/// Raycast's Split/Full glyph: a keyboard's outline with its keys as one bar across its lower half, or as two halves
+/// split, the layout a tap gives, as wide as GIF's and in its line, so it reads at one size with the tools.
+@MainActor private func keysGlyph(_ side: CGFloat, split: Bool) -> UIImage {
+    let unit = 0.88 * side / 18.4
+    let size = CGSize(width: 18.4 * unit, height: 14.4 * unit)
+    return UIGraphicsImageRenderer(size: size).image { _ in
+        UIColor.black.set()
+        let outline = UIBezierPath(
+            roundedRect: CGRect(origin: .zero, size: size).insetBy(dx: 0.65 * unit, dy: 0.65 * unit),
+            cornerRadius: 3.6 * unit)
+        outline.lineWidth = 1.3 * unit
+        outline.stroke()
+        let keys = CGRect(x: 3.6 * unit, y: 7 * unit, width: 11.2 * unit, height: 3.8 * unit)
+        let halves =
+            split
+            ? [
+                keys.divided(atDistance: 4.6 * unit, from: .minXEdge).slice,
+                keys.divided(atDistance: 4.6 * unit, from: .maxXEdge).slice,
+            ]
+            : [keys]
+        for half in halves { UIBezierPath(roundedRect: half, cornerRadius: 1.2 * unit).fill() }
+    }.withRenderingMode(.alwaysTemplate)
 }
 
 extension SuggestionBar.Edit {
