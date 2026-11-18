@@ -25,7 +25,8 @@ public final class Corrector {
     private var rankings: [Ranking: [Candidate]] = [:]
     private var keyShares: [String: [Double]] = [:]
     private var generation = 0
-    private var reading: (tokens: [Int], state: Network.State, next: Network.Next)?
+    /// The network's last reading: the tokens before the text, the one it began reading at, and what it read.
+    private var reading: (tokens: [Int], start: Int, state: Network.State, next: Network.Next)?
     private var unknown: Double?
     private var letterKeys: LetterKeys?
 
@@ -295,20 +296,24 @@ public final class Corrector {
     }
 
     /// What the network expects after `text`. It goes on from what it read for the text before when this text only adds
-    /// to it, up to twice `Network.window` tokens, as long as the windows it learned from, and otherwise reads the last
-    /// `Network.window` tokens afresh.
+    /// to it, while it has read at most twice `Network.window` tokens since it began, as long as the windows it learned
+    /// from, and otherwise begins again at the last `Network.window` tokens, so a long text costs a fresh reading once
+    /// every `Network.window` words rather than at every word.
     func expected(after text: String) -> Network.Next? {
         guard let network, let lexicon else { return nil }
         let tokens = network.tokens(before: text)
         if let reading, reading.tokens == tokens { return reading.next }
-        let state =
-            if let reading, tokens.count <= 2 * Network.window, tokens.starts(with: reading.tokens) {
-                network.read(tokens[reading.tokens.count...], from: reading.state)
+        let (start, state) =
+            if let reading, tokens.count - reading.start <= 2 * Network.window, tokens.starts(with: reading.tokens) {
+                (reading.start, network.read(tokens[reading.tokens.count...], from: reading.state))
             } else {
-                network.read(tokens.suffix(Network.window), from: network.start)
+                (
+                    max(tokens.count - Network.window, 0),
+                    network.read(tokens.suffix(Network.window), from: network.start)
+                )
             }
         let next = next(at: state, network, lexicon)
-        reading = (tokens, state, next)
+        reading = (tokens, start, state, next)
         return next
     }
 
