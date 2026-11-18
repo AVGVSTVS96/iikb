@@ -296,12 +296,21 @@ extension TypingEngine {
         var typedText = final
         var context = Words.context(before: word, in: text)
         let owned = self.text.owned
-        guard correcting, owned >= word.count, Words.isCorrectable(word, in: text), swipedWord == nil,
-            calculation == nil
-        else {
+        guard owned >= word.count, Words.isCorrectable(word, in: text), swipedWord == nil, calculation == nil else {
             return settle(final, typed: final, after: context, ending: ending)
         }
         let typed = TypedWord(final, taps: typing.letters, previous: context.previous)
+        guard correcting else {
+            if traits.allowsCorrection,
+                let words = corrector.spacedOut(typed, context: String(text.dropLast(word.count))).map(written)
+            {
+                write(words, replacing: word.count, in: document)
+                revert = Revert(original: final, replacement: words)
+                final = words
+                tally.corrected += 1
+            }
+            return settle(final, typed: typedText, after: context, ending: ending)
+        }
         if let stray, owned >= word.count + stray.swallowed.count, text.dropLast(word.count).hasSuffix(stray.swallowed),
             case let head = String(text.dropLast(word.count + stray.swallowed.count)),
             case let before = Words.current(in: head).lowercased(),

@@ -645,8 +645,20 @@ extension Corrector {
         missedSpaces(typed, context: context)?.words
     }
 
+    /// The words a run spells when a tap on a key touching the space bar meant the space ("winnfirst" → "win first"),
+    /// each spelled out as typed, as the space applies them: which key a tap meant is read with Auto-Correction off too.
+    func spacedOut(_ typed: TypedWord, context: String) -> String? {
+        let named = typed.text.contains(where: \.isUppercase) && typed.previous != ""
+        guard memory.count(of: typed.text.lowercased()) == 0, !memory.isKept(typed.text.lowercased()), !named,
+            let split = missedSpaces(typed, context: context), split.odds >= Self.splitLogOdds,
+            split.words.count(where: { $0 != " " }) < typed.text.count
+        else { return nil }
+        return split.words
+    }
+
     /// The split and its log odds over the likeliest reading of the run as one word, a word nobody has typed included;
-    /// none when it reads a typo or a letter as a space, since only a run of words each spelled out is clearly a missed space.
+    /// none when it reads a typo, since only a run of words each spelled out is clearly a missed space, whether the space
+    /// was missed or hit as a key touching the space bar.
     func missedSpaces(_ typed: TypedWord, context: String? = nil) -> (words: String, odds: Double)? {
         let letters = Array(typed.text)
         let spaced = letters.contains(" ")
@@ -740,9 +752,23 @@ extension Corrector {
         guard let (best, score) = likely.map({ ($0, scored($0)) }).max(by: { $0.1 < $1.1 }) else { return nil }
         let words = best.words.joined(separator: " ")
         guard words.lowercased() != typed.text.lowercased() else { return nil }
-        let spelled =
-            best.words.joined().lowercased().filter { $0 != "'" } == typed.text.lowercased().filter { $0 != "'" }
-        guard spelled else { return (Words.matchCase(words, to: Substring(typed.text)), -.infinity) }
+        let plain = letters.indices.filter { letters[$0] != "'" }
+        func spells(_ word: String, at position: Int) -> Bool {
+            let spelling = Array(word.lowercased().filter { $0 != "'" })
+            return position + spelling.count <= plain.count
+                && zip(plain[position...], spelling).allSatisfy { String(letters[$0]).lowercased() == String($1) }
+        }
+        func spelledOut(_ words: ArraySlice<String>, at position: Int) -> Bool {
+            guard let word = words.first else { return position == plain.count }
+            guard spells(word, at: position) else { return false }
+            let next = position + word.filter { $0 != "'" }.count
+            return spelledOut(words.dropFirst(), at: next)
+                || words.count > 1 && next < plain.count && asSpace(plain[next]) != nil
+                    && spelledOut(words.dropFirst(), at: next + 1)
+        }
+        guard spelledOut(best.words[...], at: 0) else {
+            return (Words.matchCase(words, to: Substring(typed.text)), -.infinity)
+        }
         let one =
             alone.map { scored(Run(words: [$0.word], likelihood: $0.logLikelihood, score: $0.logPosterior)) }
             ?? -.infinity

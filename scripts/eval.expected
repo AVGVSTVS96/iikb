@@ -1,8 +1,8 @@
-EVAL aimShift keyboard=learning after: words=2714 raw=75.8% autocorrect=95.7% top3=95.5% next3=40.6% fixed=542 broken=2 ["cat→catc", "has→hes"]
-EVAL aimShift keyboard=learning per 100 words to 500, then per 500 (raw/final): 68.0%/89.0% 81.0%/95.0% 83.0%/97.0% 76.0%/92.0% 71.0%/95.0% 78.0%/96.4% 75.0%/97.2% 75.6%/94.8% 75.2%/96.8%
+EVAL aimShift keyboard=learning after: words=2714 raw=75.8% autocorrect=95.7% top3=95.5% next3=40.7% fixed=542 broken=1 ["cat→catc"]
+EVAL aimShift keyboard=learning per 100 words to 500, then per 500 (raw/final): 68.0%/89.0% 81.0%/95.0% 83.0%/97.0% 76.0%/92.0% 71.0%/95.0% 78.0%/96.4% 75.0%/97.2% 75.6%/95.0% 75.2%/96.8%
 EVAL emoji corpus=chat words=7233 withEmoji=26.7%
 EVAL emoji corpus=phrases words=2714 withEmoji=24.6%
-EVAL missedSpaces spaces=1 keyboard=decoder runs=500 withTypo=150 aSpaceReadAsSpace=53.6% allAsLetters: shown=84.5% firstAlternative=77.6%
+EVAL missedSpaces spaces=1 keyboard=decoder runs=500 withTypo=150 aSpaceReadAsSpace=53.6% allAsLetters: shown=84.5% firstAlternative=82.8%
 EVAL missedSpaces spaces=1 untyped keyboard=decoder runs=500 withTypo=191 aSpaceReadAsSpace=0.0% allAsLetters: shown=79.2% firstAlternative=72.4%
 EVAL missedSpaces spaces=2 keyboard=decoder runs=500 withTypo=201 aSpaceReadAsSpace=63.0% allAsLetters: shown=89.2% firstAlternative=89.2%
 EVAL missedSpaces spaces=2 untyped keyboard=decoder runs=500 withTypo=293 aSpaceReadAsSpace=0.0% allAsLetters: shown=84.6% firstAlternative=84.6%
@@ -19,20 +19,20 @@ EVAL noise=0.25 keyboard=learning words=2714 raw=88.8% autocorrect=97.3% top3=98
 EVAL noise=0.35 keyboard=baseline words=2714 raw=35.1% autocorrect=59.5% top3=62.8% next3=6.5% fixed=664 broken=1 ["claus→class"]
 EVAL noise=0.35 keyboard=decoder words=2714 raw=60.4% autocorrect=89.8% top3=96.2% next3=28.4% fixed=800 broken=3 ["prayer→prayed", "see→are", "took→tool"]
 EVAL noise=0.35 keyboard=learning words=2714 raw=60.7% autocorrect=92.3% top3=96.9% next3=29.2% fixed=860 broken=2 ["took→tool", "merger→meter"]
-EVAL owner split=dev sentences=1438 words=9285 raw=96.3% autocorrect=94.7% top3=98.3% fixed=203 broken=355: apostrophe=246 known=7 new=102
-EVAL owner split=test sentences=831 words=5149 raw=98.0% autocorrect=95.3% top3=98.9% fixed=52 broken=192: apostrophe=112 known=3 new=77
+EVAL owner split=dev sentences=1438 words=9285 raw=96.3% autocorrect=94.6% top3=98.3% fixed=203 broken=355: apostrophe=244 known=7 new=104
+EVAL owner split=test sentences=831 words=5149 raw=97.8% autocorrect=95.1% top3=98.7% fixed=53 broken=194: apostrophe=111 known=3 new=80
 EVAL predict corpus=chat user=learning words=7233 top1=22.8% top3=36.7%
 EVAL predict corpus=chat user=new words=7233 top1=19.6% top3=31.3%
 EVAL predict corpus=phrases user=learning words=2714 top1=18.2% top3=30.8%
 EVAL predict corpus=phrases user=new words=2714 top1=17.6% top3=30.5%
 EVAL real=phone split=dev words=3000 asMeant: typed=8.4% phone=83.4% iikb=74.2% inIikbsBar=88.0% brokeCorrect: phone=161 iikb=12 ["plauns→plains (plane)", "merchanjsed→merchandised (mechanised)", "widelut→widely (wideout)", "w→w (we)", "anu→anu (any)", "form→form (from)", "ne→ne (me)", "ofthe→of the (the)"]
 EVAL real=phone split=test words=3000 asMeant: typed=8.9% phone=83.8% iikb=75.2% inIikbsBar=88.9% brokeCorrect: phone=174 iikb=3 ["put→put (out)", "ate→ate (are)", "Vill→vill (bill)", "momentz→moments (moment)", "hun→hun (him)", "lovm→lovm (lock)", "se→she (we)", "whje→whje (when)"]
-EVAL real=taps source=tsi people=16 keyboard=decoder phrasesWer=13.3% words=6825 raw=86.8% autocorrect=89.0% top3=91.7% next3=24.7% fixed=449 broken=302 ["an→anx", "occasional→occasionalx", "to→toc", "i→in", "hate→nate", "do→don", "did→didn", "that→thatb"]
-EVAL real=taps source=tsi people=16 keyboard=learning phrasesWer=6.3% words=6825 raw=90.2% autocorrect=94.8% top3=96.8% next3=26.6% fixed=411 broken=99 ["an→anx", "occasional→occasionalx", "to→toc", "racketball→racket ball", "i→in", "racketball→racket ball", "short→shortc", "that→thatx"]
+EVAL real=taps source=tsi people=16 keyboard=decoder phrasesWer=11.5% words=6825 raw=86.8% autocorrect=89.0% top3=91.7% next3=24.9% fixed=448 broken=299 ["an→anx", "occasional→occasionalx", "to→toc", "i→in", "do→don", "did→didn", "that→thatb", "is→isn"]
+EVAL real=taps source=tsi people=16 keyboard=learning phrasesWer=4.9% words=6825 raw=90.3% autocorrect=95.1% top3=97.1% next3=26.9% fixed=416 broken=94 ["an→anx", "occasional→occasionalx", "to→toc", "racketball→racket ball", "i→in", "racketball→racket ball", "short→shortc", "that→thatx"]
 EVAL real=taps source=vertanen people=62 keyboard=decoder phrasesWer=6.7% words=7442 raw=83.1% autocorrect=93.8% top3=96.1% next3=34.7% fixed=796 broken=3 ["shop→ship", "zainy→saint", "zainy→dainty"]
 EVAL real=taps source=vertanen people=62 keyboard=learning phrasesWer=6.2% words=7442 raw=84.7% autocorrect=94.2% top3=96.0% next3=34.9% fixed=712 broken=5 ["zainy→zany", "undeliverable→un deliverable", "in→on", "undeliverable→un deliverable", "zainy→zany"]
-EVAL real=typed split=dev sentences=3000 words=23537 wer: typed=5.5% autocorrected=3.9% typos=1045 fixed=45.9% inBar=61.1% broken=99 of 22420 ["chrebet→current", "acme→came", "brookins→brookings", "crestone→firestone", "cosworth→bosworth", "jonassaint→jonas saint", "fastow→castle", "guterres→gutierrez"]
-EVAL real=typed split=test sentences=3000 words=23648 wer: typed=5.5% autocorrected=3.7% typos=1026 fixed=51.1% inBar=65.1% broken=114 of 22558 ["oughta→ought", "eott→sort", "pioline→pipeline", "penskes→penises", "penske→pensive", "westport\'s→west port\'s", "rivard→richard", "neuro→negro"]
+EVAL real=typed split=dev sentences=3000 words=23537 wer: typed=5.5% autocorrected=3.8% typos=1045 fixed=45.9% inBar=61.1% broken=99 of 22420 ["chrebet→current", "acme→came", "brookins→brookings", "crestone→firestone", "cosworth→bosworth", "jonassaint→jonas saint", "fastow→castle", "guterres→gutierrez"]
+EVAL real=typed split=test sentences=3000 words=23648 wer: typed=5.5% autocorrected=3.6% typos=1026 fixed=51.1% inBar=65.1% broken=114 of 22558 ["oughta→ought", "eott→sort", "pioline→pipeline", "penskes→penises", "penske→pensive", "westport\'s→west port\'s", "rivard→richard", "neuro→negro"]
 EVAL strayKeys keyboard=folded runs=500 withTypo=184 readAsSpace=58.0% spelledRight: readAsSpace=91.8% meantTheKey: kept=0.9%
 EVAL strayKeys keyboard=split runs=500 withTypo=183 readAsSpace=36.2% spelledRight: readAsSpace=57.1% meantTheKey: kept=69.2%
 EVAL thumbs keyboard=baseline per 500 words (raw/final): 68.2%/83.2% 71.4%/85.4% 68.6%/85.0% 65.4%/83.4% 70.2%/85.4% 72.8%/87.4% 68.6%/84.8% 70.2%/86.6% 69.0%/85.8% 70.2%/83.6%

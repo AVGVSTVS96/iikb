@@ -391,13 +391,23 @@ struct MissedSpaceTests {
         #expect(corrector.correction(for: TypedWord("2day")) == nil)
     }
 
-    @Test func theSpaceAppliesOnlyMissedSpaces() {
+    @Test func theSpaceAppliesOnlyMissedSpacesBetweenWordsSpelledOut() {
         var engine = TypingEngine()
         engine.corrector = corrector
         let document = TestDocument()
         engine.documentChanged(document)
-        engine.type("greatday 1hrbut freatvday ", in: document)
-        #expect(document.text == "Great day 1hr but freatvday ")
+        engine.type("greatday 1hrbut greatvday freatvday ", in: document)
+        #expect(document.text == "Great day 1hr but great day freatvday ")
+    }
+
+    @Test func withAutoCorrectionOffTheSpaceReadsOnlyAKeyHitForIt() {
+        var engine = TypingEngine()
+        engine.settings.autoCorrection = false
+        engine.corrector = corrector
+        let document = TestDocument()
+        engine.documentChanged(document)
+        engine.type("greatvday greatday freatvday ", in: document)
+        #expect(document.text == "Great day greatday freatvday ")
     }
 
     @Test func neverSplitsAWordYouKept() {
