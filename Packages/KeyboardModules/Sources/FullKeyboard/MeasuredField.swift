@@ -30,7 +30,7 @@ struct MeasuredField: Decodable {
 
     private static let rows: [String: [String: MeasuredField]] = {
         guard let url = Bundle.module.url(forResource: "fields", withExtension: "json"),
-            let data = try? Data(contentsOf: url)
+            let data = try? Data(contentsOf: url)  // file: bundled field widths
         else { return [:] }
         return (try? JSONDecoder().decode([String: [String: MeasuredField]].self, from: data)) ?? [:]
     }()
