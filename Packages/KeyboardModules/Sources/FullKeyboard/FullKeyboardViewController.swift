@@ -243,6 +243,8 @@ open class FullKeyboardViewController: UIInputViewController {
     private let sources = Sources()
     private var hostApp: String?
     private let fieldLines = FieldLines()
+    /// The field's measured layout, where there is one, for the trackpad's moves up and down.
+    private var measuredField: MeasuredField?
     /// When iikb last opened to ask iOS for the photos, kept with the chat (`KeptChat.asked`).
     private var asked: Date?
     /// The field the keyboard is typing in (`documentIdentifier`), so dictations end with the field they were typed in,
@@ -395,7 +397,7 @@ open class FullKeyboardViewController: UIInputViewController {
         keyboardView.micKey = keyMic
         keyboardView.advance = { [unowned self] step in HostText.width(of: engine.character(crossedBy: step)) }
         keyboardView.lineHeight = { [unowned self] in
-            line == nil ? fieldLines.lineHeight : nil
+            line == nil ? fieldLines.lineHeight ?? measuredField?.lineHeight : nil
         }
         keyboardView.onTrackpad = { [unowned self] in
             if line == nil {
@@ -437,6 +439,13 @@ open class FullKeyboardViewController: UIInputViewController {
                 x: keys.minX, y: keys.minY, width: keys.width, height: view.bounds.maxY - keys.minY)
         }
         TouchTrace.shared.layout(view)
+        fitLines()
+    }
+
+    private func fitLines() {
+        measuredField = MeasuredField.measured(
+            in: hostApp, on: Duo.Screen(width: screenSize.width, height: screenSize.height))
+        engine.lineLayout = measuredField?.layout
     }
 
     override open func viewWillAppear(_ animated: Bool) {
@@ -625,6 +634,7 @@ open class FullKeyboardViewController: UIInputViewController {
         guard app != hostApp else { return }
         engine.changeApp(app)
         hostApp = app
+        fitLines()
         engine.emojiHistory.app = app
         engine.suggestionsChanged()
     }

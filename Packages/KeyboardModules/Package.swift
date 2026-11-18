@@ -33,7 +33,7 @@ let package = Package(
         .target(
             name: "FullKeyboard",
             dependencies: ["KeyboardCore", "KeyboardEnglish", "KeyboardStore", "KeyboardUI", "KeyboardArbiter"],
-            exclude: ["AGENTS.md"], resources: [.copy("Resources/Keys")],
+            exclude: ["AGENTS.md"], resources: [.copy("Resources/Keys"), .copy("Resources/fields.json")],
             swiftSettings: onMain),
         .target(
             name: "MinimalKeyboard", dependencies: ["KeyboardCore", "KeyboardEnglish", "KeyboardUI"],

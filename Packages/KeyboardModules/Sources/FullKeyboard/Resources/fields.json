@@ -1,0 +1,74 @@
+{
+  "com.apple.MobileSMS": {
+    "foldedPortrait": {
+      "width": 254.67,
+      "font": "system",
+      "size": 17,
+      "dynamicType": true
+    },
+    "foldedLandscape": {
+      "width": 466.67,
+      "font": "system",
+      "size": 17,
+      "dynamicType": true
+    },
+    "openPortrait": {
+      "width": 197.67,
+      "font": "system",
+      "size": 17,
+      "dynamicType": true
+    },
+    "openLandscape": {
+      "width": 340.67,
+      "font": "system",
+      "size": 17,
+      "dynamicType": true
+    }
+  },
+  "ph.telegra.Telegraph": {
+    "foldedPortrait": {
+      "width": 320,
+      "font": "system",
+      "size": 17,
+      "dynamicType": true
+    },
+    "foldedLandscape": {
+      "width": 532,
+      "font": "system",
+      "size": 17,
+      "dynamicType": true
+    },
+    "openPortrait": {
+      "width": 523,
+      "font": "system",
+      "size": 17,
+      "dynamicType": true
+    },
+    "openLandscape": {
+      "width": 485,
+      "font": "system",
+      "size": 17,
+      "dynamicType": true
+    }
+  },
+  "org.whispersystems.signal": {
+    "foldedPortrait": {
+      "width": 248,
+      "font": "system",
+      "size": 17,
+      "dynamicType": true
+    },
+    "foldedLandscape": {
+      "width": 460,
+      "font": "system",
+      "size": 17,
+      "dynamicType": true
+    },
+    "openPortrait": {
+      "width": 519,
+      "font": "system",
+      "size": 17,
+      "dynamicType": true
+    }
+  }
+}

@@ -67,7 +67,7 @@ A source is a web service you plug into the keyboard. iikb sends it the text of 
 - A menu in the keys' place: cut, copy and paste in the bar, then your clipboard history, transcripts, GIFs, chats and themes, the newest a tap away, and held, any of them shown in full. The app's Clipboard tab shows the same history, pinned items first.
 - A number row, Character Preview and skin tones.
 - One-handed keyboard: hold 123 and slide left or right.
-- Hold the space bar and slide to move the cursor, hold delete to erase whole words, flick down on iPad keys for their second character.
+- Hold the space bar and slide to move the cursor, up and down by line or sentence ([docs/trackpad.md](docs/trackpad.md)), hold delete to erase whole words, flick down on iPad keys for their second character.
 - Return, email, URL and search fields get the keys Apple gives them.
 - Typing predictions and Parakeet speech recognition run on device. Network access covers model and language downloads, GIF search, app names from the App Store, copied links' site icons (only the site's name is sent), sources and extensions you add, and a backup server in builds configured with one. Sources receive field text; configured backups can include typing data, clipboard history, transcripts and recordings. See [backup behavior](docs/backup.md).
 
