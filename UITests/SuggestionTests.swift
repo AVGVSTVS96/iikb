@@ -68,7 +68,7 @@ final class SuggestionTests: XCTestCase {
         let toggle = app.switches["Auto-Correction"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
         toggle.switches.firstMatch.tap()
-        XCTAssertEqual(toggle.value as? String, "0")
+        wait(for: [expectation(for: NSPredicate(format: "value == '0'"), evaluatedWith: toggle)], timeout: 5)
         app.terminate()
         app.launchArguments = ["-iikbFocus", "YES"]
         app.launchWithIikb()
