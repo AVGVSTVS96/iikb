@@ -237,8 +237,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     /// Asks iOS for access to the photos, which only an app in front can, for Chats on the keyboard to show them, then
     /// reopens the app you were typing in. The keyboard goes down while iOS asks, since its question squeezed above the
-    /// keys hides its buttons, and comes back after only when you stay here: raised on the way out, it would take the
-    /// chat the keyboard kept for the app you go back to.
+    /// keys hides its buttons.
     private func allowPhotos(back host: String?) async {
         guard PHPhotoLibrary.authorizationStatus(for: .readWrite) != .denied else {
             // iOS asks only once: after Don't Allow, only Settings turns photos on.

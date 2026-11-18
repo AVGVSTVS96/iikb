@@ -2,6 +2,7 @@ import KeyboardCore
 import KeyboardEnglish
 import KeyboardStore
 import KeyboardUI
+import OSLog
 import UIKit
 
 open class FullKeyboardViewController: UIInputViewController {
@@ -224,13 +225,20 @@ open class FullKeyboardViewController: UIInputViewController {
         var drafts: [String: String]
         var photos: [UnsentPhoto]?
         var picking: Bool?
-        /// The app it was open in, and when iikb opened to ask iOS for the photos from it: back in that app soon after,
-        /// the chat opens again even in a field iOS now names anew, as Contacts' are on coming back.
-        var host: String?
-        var asked: Date?
+        /// The process ID of the app iikb was opened from to ask iOS for the photos, until they're allowed: back in it,
+        /// the chat opens again even in a field iOS names anew, as Safari's and Contacts' are on coming back, and it
+        /// waits through the fields of other apps, iikb's own included. The process, not the app's name: a keyboard iOS
+        /// has just started holds its host's process ID from the start, but the name can come only later or, in iikb's
+        /// own app, never. 0 where the keyboard can't tell (the App Store build), so the chat waits for its own field.
+        var askedFrom: Int32?
+
+        func opens(in field: String, of process: Int32) -> Bool {
+            field == self.field || (process > 0 && process == askedFrom)
+        }
     }
     private static let keptChat = StoredFile<KeptChat>(
         URL.applicationSupportDirectory.appending(path: "chat-kept.json"))
+    private static let log = Logger(subsystem: "com.shahidy.iikb", category: "chats")
     private var engine = TypingEngine()
     /// The languages the corrector's words are, and the list each came from, which `useLanguages` keeps to those picked.
     private var typing: String?
@@ -248,8 +256,8 @@ open class FullKeyboardViewController: UIInputViewController {
     private let fieldLines = FieldLines()
     /// The field's measured layout, where there is one, for the trackpad's moves up and down.
     private var measuredField: MeasuredField?
-    /// When iikb last opened to ask iOS for the photos, kept with the chat (`KeptChat.asked`).
-    private var asked: Date?
+    /// The open chat's `KeptChat.askedFrom`.
+    private var askedFrom: Int32?
     /// The field the keyboard is typing in (`documentIdentifier`), so dictations end with the field they were typed in,
     /// and the next keyboard in the same field goes on following them.
     private var field: String?
@@ -665,17 +673,17 @@ open class FullKeyboardViewController: UIInputViewController {
             }
             keepDictations()
             if let field, let kept = Self.keptChat.read().value {
-                Self.keptChat.remove()
-                updateHost()
-                // A keyboard that has only just started may not know its app yet, and then it's taken to be the app
-                // the chat was in.
-                let back =
-                    kept.asked.map { -$0.timeIntervalSinceNow < 300 } == true
-                    && (hostApp == nil || kept.host == hostApp)
-                // Kept while it holds, since the keyboard can come back to the app before iikb has even opened, as on
-                // the iPad, and the return after iOS answers still has to find the chat.
-                asked = back ? kept.asked : nil
-                if hasFullAccess, kept.field == field || back {
+                let process = KeyboardHost.process(of: self)
+                let opens = kept.opens(in: field, of: process)
+                let waits = !opens && kept.askedFrom != nil
+                if !waits { Self.keptChat.remove() }
+                Self.log.notice(
+                    "kept chat \(opens ? "opens" : waits ? "waits" : "goes", privacy: .public) in process \(process) of \(self.hostApp ?? "an unnamed app", privacy: .public), asked from \(kept.askedFrom.map { "\($0)" } ?? "none", privacy: .public)"
+                )
+                if hasFullAccess, opens {
+                    // Kept until the photos are allowed, since the keyboard can come back to the app before iikb has
+                    // even opened, as on the iPad, and the return after iOS answers still has to find the chat.
+                    askedFrom = Dictation.photosAllowed ? nil : kept.askedFrom
                     drafts = kept.drafts
                     photos.restore(kept.photos ?? [])
                     openChat(kept.text, at: kept.chat, keysUp: kept.keysUp)
@@ -1002,7 +1010,7 @@ open class FullKeyboardViewController: UIInputViewController {
             notice = "Opening iikb would close this. Turn on photos from Chats in another app."
             return render()
         }
-        asked = Date()
+        askedFrom = KeyboardHost.process(of: self)
         keepChat()
         open(AppLink.Photos(back: hostApp).url)
     }
@@ -1268,7 +1276,7 @@ open class FullKeyboardViewController: UIInputViewController {
         Self.keptChat.save(
             KeptChat(
                 field: field, chat: chats.open?.id, text: line.text, keysUp: keysUp && !picking, drafts: drafts,
-                photos: photos.attached, picking: picking, host: hostApp, asked: asked))
+                photos: photos.attached, picking: picking, askedFrom: askedFrom))
     }
 
     /// Another chat from its pill, the line you'd begun kept with the chat you left and the one you'd begun in this chat
@@ -1301,6 +1309,7 @@ open class FullKeyboardViewController: UIInputViewController {
         engine.leaveField()
         line = nil
         keysUp = false
+        askedFrom = nil
     }
 
     /// What the box's ↑ took from the line goes to the open chat with the photos attached, which keeps them until its
