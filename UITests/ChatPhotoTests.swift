@@ -179,9 +179,11 @@ final class ChatPhotoTests: XCTestCase {
 
     /// Run with the library's access reset. Allow Photos opens iikb and iOS asks there, and you say no and type in
     /// iikb's own field instead: the keyboard there comes up with its keys, and the chat waits for the app it was in,
-    /// where it's open again.
+    /// where it's open again until More leaves it.
     func testAChatAwayForPhotosStaysOutOfOtherApps() throws {
         guard environment["IIKB_NO_ACCESS"] != nil else { throw XCTSkip("Run with the library's access reset") }
+        // WHY: two trips from Safari can take it past the 300 s scripts/phototest gives a test by default.
+        executionTimeAllowance = 420
         try openChat(inSafari: true)
         element("iikb.chat.attach").tap()
         let notice = label("Photos need their own permission")
@@ -193,19 +195,26 @@ final class ChatPhotoTests: XCTestCase {
         try shot("away")
         try openAnotherApp()
         app = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
-        app.activate()
         let chat = element("iikb.chat.attach")
         let keys = app.keys.matching(identifier: "iikb.space").firstMatch
-        if !wait(60, { chat.exists || keys.exists }) {
-            let box = app.webViews.textViews.firstMatch
-            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: box.frame.midX, dy: box.frame.midY))
-                .tap()
-        }
+        backToSafari(chat: chat, keys: keys)
         XCTAssertTrue(chat.waitForExistence(timeout: 60), "back in Safari, the chat is open again")
         try shot("back")
         let atop = element("iikb.chat.more")
         (atop.exists ? atop : element("iikb.more")).tap()
-        XCTAssertTrue(wait { !chat.exists }, "and More leaves it, so it isn't kept")
+        XCTAssertTrue(wait { !chat.exists }, "and More leaves it")
+        XCUIApplication().activate()
+        backToSafari(chat: chat, keys: keys)
+        XCTAssertFalse(wait(5) { chat.exists }, "back in Safari once more, the chat More left stays closed")
+        XCTAssertTrue(keys.waitForExistence(timeout: 30), "and the keys come up")
+    }
+
+    /// Safari in front again, its box tapped when the keyboard doesn't come back up in it by itself.
+    private func backToSafari(chat: XCUIElement, keys: XCUIElement) {
+        app.activate()
+        guard !wait(60, { chat.exists || keys.exists }) else { return }
+        let box = app.webViews.textViews.firstMatch
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: box.frame.midX, dy: box.frame.midY)).tap()
     }
 
     /// iikb's own field, in another app than the chat's: the keyboard comes up there with its keys. iOS's question, still
