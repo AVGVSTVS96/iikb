@@ -170,9 +170,10 @@ final class ToolPanelTests: XCTestCase {
         XCTAssertFalse(key("space", in: app).exists && key("space", in: app).isHittable, "and no letters")
         try shot("secondary")
 
-        XCUIDevice.shared.press(.home)
+        app.buttons["home-done"].tap()
+        XCTAssertTrue(first.waitForNonExistence(timeout: 5), "Done puts the keyboard away")
         UIPasteboard.general.string = "Blue Bottle at 5 instead"
-        app.activate()
+        app.textViews["Try iikb"].tap()
         let second = app.descendants(matching: .any).matching(
             NSPredicate(format: "identifier BEGINSWITH 'iikb.clip.Blue Bottle at 5'")
         ).firstMatch
