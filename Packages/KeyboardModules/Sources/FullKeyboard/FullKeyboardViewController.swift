@@ -657,7 +657,8 @@ open class FullKeyboardViewController: UIInputViewController {
         hostField = HostField(
             isPrivate: proxy.isPrivate, appearance: proxy.keyboardAppearance, selected: proxy.selectedText ?? "")
         if line != nil {
-            guard textDocumentProxy.field != field else { return render() }
+            // WHY: iOS takes the field from a keyboard it's about to end (the iPad, back in an app), which isn't a move.
+            guard let now = textDocumentProxy.field, now != field else { return render() }
             return closeChat()
         }
         engine.update(InputTraits(textDocumentProxy))
