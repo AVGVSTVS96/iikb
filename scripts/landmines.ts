@@ -12,7 +12,7 @@ const kinds = [
     pattern: /\bexecutionTimeAllowance\s*=/u,
   },
   {
-    files: /^scripts\//u,
+    files: /^scripts\/(?!landmines\.ts$)/u,
     instead: "a test that passes on a rerun is a flake to fix, not to retry",
     kind: "retries",
     pattern: /-retry-tests-on-failure|-test-iterations|-run-tests-until-failure/u,
