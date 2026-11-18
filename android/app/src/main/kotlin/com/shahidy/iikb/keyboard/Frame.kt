@@ -99,7 +99,6 @@ data class Bar(
     val tools: List<Tool>,
     val slots: List<Box>,
     val emoji: Box,
-    val emojiBeside: Boolean,
     val cancel: Box,
     val recording: Box,
     /** The writing style's place, where the bar has room for it (`BarLayout.style`). */

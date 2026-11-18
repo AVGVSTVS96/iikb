@@ -342,7 +342,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val bar = frame.toolbar
         val theme = frame.theme
         val showsEmoji = frame.emoji.isNotEmpty()
-        val slots = if (showsEmoji && !bar.emojiBeside) bar.slots.dropLast(1) else bar.slots
+        val slots = if (showsEmoji) bar.slots.dropLast(1) else bar.slots
         text.typeface = painter.labels
         text.textSize = 17f
         for ((index, box) in slots.withIndex()) {
@@ -376,7 +376,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         for (index in 0 until 2) {
             val box = bar.slots[index]
             val pill = { at: Int -> frame.panel == null && (frame.chips.getOrNull(at)?.kind == "correction" || pressedBar == "slot$at") }
-            val emojiNext = index + 1 == 2 && showsEmoji && !bar.emojiBeside
+            val emojiNext = index + 1 == 2 && showsEmoji
             if (pill(index) || if (emojiNext) pressedBar == "emoji0" else pill(index + 1)) continue
             val x = (box.x + box.width).toFloat()
             canvas.drawRect(x - 0.5f, box.midY.toFloat() - 14, x + 0.5f, box.midY.toFloat() + 14, fill)
@@ -449,7 +449,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
         val box = frame.toolbar.emoji
         val total = EMOJI_PITCH * frame.emoji.size
         val room = box.width.toFloat()
-        val start = box.x.toFloat() + maxOf(if (frame.toolbar.emojiBeside) room - total else (room - total) / 2, 0f) - emojiScroll
+        val start = box.x.toFloat() + maxOf((room - total) / 2, 0f) - emojiScroll
         return frame.emoji.mapIndexed { index, emoji -> emoji to start + EMOJI_PITCH * (index + 0.5f) }
     }
 
@@ -553,7 +553,7 @@ class KeyboardView(context: Context, private val actions: Actions) : View(contex
             val index = places.indices.minByOrNull { abs(places[it].second - x) } ?: return null
             return "emoji$index"
         }
-        val slots = if (showsEmoji && !bar.emojiBeside) bar.slots.dropLast(1) else bar.slots
+        val slots = if (showsEmoji) bar.slots.dropLast(1) else bar.slots
         val index = slots.indexOfFirst { x >= it.x && x < it.x + it.width }
         return if (index >= 0 && frame.chips.getOrNull(index) != null) "slot$index" else null
     }

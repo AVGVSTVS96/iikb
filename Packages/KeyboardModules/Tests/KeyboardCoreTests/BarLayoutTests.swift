@@ -139,9 +139,6 @@ struct BarLayoutTests {
                 #expect(
                     layout.emoji.x >= layout.minX - 0.001 && layout.emoji.x + layout.emoji.width <= layout.maxX + 0.001,
                     "\(label)")
-                if layout.emojiBeside {
-                    #expect(layout.slots[2].x + layout.slots[2].width <= layout.emoji.x + 0.001, "\(label)")
-                }
                 guard let mic = layout.mic else { continue }
                 #expect(layout.maxX + BarLayout.gap <= mic.x && mic.x + mic.width <= screen.window + 0.001, "\(label)")
                 #expect(
@@ -174,19 +171,21 @@ struct BarLayoutTests {
         }
     }
 
-    /// Where the bar has room for three suggestions and more, the word's emoji sit beside them; folded in portrait
-    /// they take the third suggestion's place.
-    @Test func wideBarsKeepTheThirdSuggestion() {
-        func beside(_ index: Int) -> Bool {
-            layouts(Self.screens[index]).first { $0.label.hasSuffix("2 tools") }!.layout.emojiBeside
+    /// On a phone the three suggestions share all the room between the buttons and the mic, however wide the bar, with
+    /// no empty stretch beside them, and the word's emoji take the third one's place (Bassim, Nov 18: "ensure the
+    /// suggestions take all available space").
+    @Test func theSuggestionsFillTheBar() {
+        for screen in Self.screens where screen.device == .phone {
+            for (_, layout, _, label) in layouts(screen) {
+                #expect(near(layout.slots[0].x, layout.minX), "\(label): from the buttons")
+                #expect(near(layout.slots[2].x + layout.slots[2].width, layout.maxX), "\(label): to the mic")
+                #expect(layout.emoji == layout.slots[2], "\(label): the emoji in the third one's place")
+            }
         }
-        #expect(!beside(0) && beside(2) && beside(3))
-        let open = layouts(Self.screens[3]).first { $0.label.hasSuffix("2 tools") }!.layout
-        #expect(open.emoji.width >= 4 * BarLayout.emojiPitch, "held open in landscape, four emoji show beside")
     }
 
-    /// Where the bar has room for the suggestions, two emoji and the writing style, the style sits before the mic with
-    /// the emoji between it and the suggestions: on the open Duo, not folded in portrait, and never unasked.
+    /// Where the bar has room for the writing style beside three suggestions `slotWidth` wide, the style sits before the
+    /// mic and the suggestions share the rest: on the open Duo, not folded in portrait, and never unasked.
     @Test func wideBarsHoldTheWritingStyle() {
         func layout(_ index: Int, style: Bool = true) -> BarLayout {
             let (metrics, _, keys, _) = layouts(Self.screens[index]).first { $0.label.hasSuffix("0 tools and More") }!
@@ -200,8 +199,9 @@ struct BarLayoutTests {
                 continue
             }
             #expect(near(style.x + style.width, bar.maxX) && near(style.width, BarLayout.styleWidth))
-            #expect(bar.emoji.x + bar.emoji.width <= style.x - BarLayout.gap + 0.001)
-            #expect(bar.emoji.width >= 2 * BarLayout.emojiPitch, "\(Self.screens[index].name): two emoji still show")
+            #expect(near(bar.slots[2].x + bar.slots[2].width, style.x - BarLayout.gap), "the suggestions run to it")
+            #expect(bar.slots.allSatisfy { $0.width >= BarLayout.slotWidth }, "\(Self.screens[index].name)")
         }
     }
+
 }

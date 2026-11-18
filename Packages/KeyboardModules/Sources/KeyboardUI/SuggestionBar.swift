@@ -104,7 +104,6 @@ public final class SuggestionBar: UIView {
     private let capsule = UIView()
     private let stack = PendingStack()
     private let notice = UILabel()
-    private var emojiBeside = false
     /// Whether the bar has the writing style's room (`BarLayout.style`).
     private var styleRoom = false
     /// The recording just cancelled, gone to dust, so the mic comes back in its place instead of shrinking out of it.
@@ -590,14 +589,14 @@ public final class SuggestionBar: UIView {
         slots.forEach { $0.isHidden = quiet || chatting }
         strip.isHidden = quiet || chatting || emoji.isEmpty
         emoji.forEach { $0.isHidden = quiet }
-        if !emoji.isEmpty, !emojiBeside { slots[slots.count - 1].isHidden = true }
+        if !emoji.isEmpty { slots[slots.count - 1].isHidden = true }
         refreshDividers()
     }
 
     /// A divider shows only between two things shown without a pill.
     private func refreshDividers() {
         func hidesDivider(_ index: Int, leading: Bool) -> Bool {
-            if index == slots.count - 1, !emojiBeside, let pick = leading ? emoji.first : emoji.last {
+            if index == slots.count - 1, let pick = leading ? emoji.first : emoji.last {
                 return pick.isHidden || pick.isHighlighted
             }
             return slots[index].isHidden || slots[index].showsPill
@@ -637,8 +636,7 @@ public final class SuggestionBar: UIView {
             let maxX = CGFloat(frame.x + frame.width).rounded(scale: scale)
             slot.frame = CGRect(x: minX, y: frame.y, width: maxX - minX, height: frame.height)
         }
-        if layout.emojiBeside != emojiBeside || (layout.style != nil) != styleRoom {
-            emojiBeside = layout.emojiBeside
+        if (layout.style != nil) != styleRoom {
             styleRoom = layout.style != nil
             refresh()
         }
@@ -647,7 +645,7 @@ public final class SuggestionBar: UIView {
         strip.frame = place
         let pitch = BarLayout.emojiPitch
         let total = pitch * CGFloat(emoji.count)
-        let left = max(emojiBeside ? place.width - total : (place.width - total) / 2, 0)
+        let left = max((place.width - total) / 2, 0)
         for (index, pick) in emoji.enumerated() {
             let minX = (left + CGFloat(index) * pitch).rounded(scale: scale)
             let glyph = CGRect(

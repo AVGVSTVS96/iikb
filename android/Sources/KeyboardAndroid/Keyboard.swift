@@ -145,7 +145,7 @@ final class Keyboard {
                 blockMaxX: width - metrics.margin.trailing - metrics.sideInset, minX: bar.minX, maxX: bar.maxX,
                 more: bar.more.map(Box.init), keysMinX: keys.first?.minX ?? 0, mic: bar.mic.map(Box.init),
                 tools: zip(tools, bar.tools).map { Tool(panel: "\($0)", box: Box($1)) },
-                slots: bar.slots.map(Box.init), emoji: Box(bar.emoji), emojiBeside: bar.emojiBeside,
+                slots: bar.slots.map(Box.init), emoji: Box(bar.emoji),
                 cancel: Box(bar.cancel), recording: Box(bar.recording), style: bar.style.map(Box.init)),
             caps: caps,
             showsSuggestions: engine.showsSuggestions,

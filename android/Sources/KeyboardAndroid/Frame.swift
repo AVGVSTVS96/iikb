@@ -76,7 +76,6 @@ struct Bar: Encodable {
     var tools: [Tool]
     var slots: [Box]
     var emoji: Box
-    var emojiBeside: Bool
     var cancel: Box
     var recording: Box
     /// The writing style's place, where the bar has room for it (`BarLayout.style`).
