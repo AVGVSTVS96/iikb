@@ -1,6 +1,6 @@
 """Real people's typing for scripts/eval, downloaded once into the folder given and written as three small files there.
 
-taps.txt       source, person, the words they meant, and their taps: Google's TSI (16 people on a Pixel 6 Pro typing the
+taps.txt       source, split, person, the words they meant, and their taps: Google's TSI (16 people on a Pixel 6 Pro typing the
                MacKenzie phrases, each tap matched to its letter) and Vertanen & Kristensson's noisy phone typing (a
                Nexus 4 and an iPhone 4, Enron mobile emails), both CC BY 4.0. Each tap is in key pitches from the q key's
                center, so it lands on iikb's grid where it landed on theirs. A word's space tap follows a slash, measured
@@ -110,7 +110,7 @@ def tsi():
                 current.append(point)
         taps.append(" ".join(current))
         if all(re.fullmatch(r"[a-z]+", word) for word in words):
-            lines.append(f"tsi\t{trial[0]}\t{' '.join(words)}\t{'|'.join(taps)}")
+            lines.append(f"tsi\t{split('tsi/' + trial[0])}\t{trial[0]}\t{' '.join(words)}\t{'|'.join(taps)}")
     return lines
 
 
@@ -145,7 +145,7 @@ def vertanen():
             for line in inputs:
                 points = [tap.split(";")[0].split(",") for tap in line.split("|") if tap]
                 taps.append(" ".join(place(float(x), float(y), center["q"], center["w"], center["a"]) for x, y, *_ in points))
-            lines.append(f"vertanen\t{person}\t{' '.join(words)}\t{'|'.join(taps)}")
+            lines.append(f"vertanen\t{split('vertanen/' + person)}\t{person}\t{' '.join(words)}\t{'|'.join(taps)}")
     return lines
 
 

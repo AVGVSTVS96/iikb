@@ -3,7 +3,7 @@
 # Here on Linux it runs in a package of KeyboardCore, the word lists and Evaluation alone, and scores iikb's two
 # keyboards; the UITextChecker baseline needs Apple's platforms, so on a Mac (scripts/ci scripts/eval) it scores that
 # too. Both score real people's typing as well (realTaps, realTypos, realAutocorrect), which scripts/realtyping.py
-# downloads into build/real the first time. Optional argument: one test (noise, biasedThumbs, aimShift, predictions, emoji), or swipe: how well swipes are
+# downloads into build/real the first time and again whenever the script changes. Optional argument: one test (noise, biasedThumbs, aimShift, predictions, emoji), or swipe: how well swipes are
 # read on swipe.futo.org's test split and, in German, French and Spanish, its swipe-5 run (SwipeEvaluation; needs
 # scripts/swipe data and languages, and SWIPE_DATA, takes minutes), which is only diffed against eval.expected's swipe
 # lines, or languages: each other language's phrases (phrases.<id>.txt) typed
@@ -29,7 +29,7 @@ if [ "${1:-}" = owner ]; then
   export OWNER_DATA=$HOME/.local/share/iikb/owner
   [ -f "$OWNER_DATA/test/text.txt" ] || python3 -I "$root/scripts/owner.py" "$OWNER_DATA"
 fi
-case "${1:-real}" in real*) [ -f "$REAL_DATA/autocorrect.txt" ] || python3 -I "$root/scripts/realtyping.py" "$REAL_DATA" ;; esac
+case "${1:-real}" in real*) [ "$REAL_DATA/taps.txt" -nt "$root/scripts/realtyping.py" ] || python3 -I "$root/scripts/realtyping.py" "$REAL_DATA" ;; esac
 if [ "${1:-}" = languages ] || [ "${1:-}" = swipe ]; then
   export LANGUAGES=$root/build/languages
   python3 - "$root/Packages/KeyboardModules/Sources/KeyboardStore/Resources/Languages/manifest.json" "$LANGUAGES" <<'PY'

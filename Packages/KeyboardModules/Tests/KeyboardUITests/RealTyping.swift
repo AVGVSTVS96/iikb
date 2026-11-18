@@ -35,32 +35,34 @@ extension Evaluation {
             return (bar.midX + offset[0] * bar.width / 2, bar.midY + offset[1] * (a.midY - q.midY))
         }
         for source in ["tsi", "vertanen"] {
-            let people = Dictionary(grouping: lines.filter { $0[0] == source }, by: { $0[1] })
-            for keyboard in Keyboard.scored where keyboard != .baseline {
-                var score = Score()
-                var words = 0
-                var wrong = 0
-                for person in people.keys.sorted() {
-                    var session = Session(keyboard, grid: grid)
-                    for line in people[person]! {
-                        session.startPhrase()
-                        let meant = line[2].split(separator: " ").map(String.init)
-                        for (word, taps) in zip(meant, line[3].split(separator: "|")) {
-                            let parts = taps.split(separator: "/", omittingEmptySubsequences: false)
-                            session.type(
-                                word, taps: parts[0].split(separator: " ").map(point),
-                                space: parts.count > 1 ? space(parts[1]) : nil)
+            for split in ["dev", "test"] {
+                let people = Dictionary(grouping: lines.filter { $0[0] == source && $0[1] == split }, by: { $0[2] })
+                for keyboard in Keyboard.scored where keyboard != .baseline {
+                    var score = Score()
+                    var words = 0
+                    var wrong = 0
+                    for person in people.keys.sorted() {
+                        var session = Session(keyboard, grid: grid)
+                        for line in people[person]! {
+                            session.startPhrase()
+                            let meant = line[3].split(separator: " ").map(String.init)
+                            for (word, taps) in zip(meant, line[4].split(separator: "|")) {
+                                let parts = taps.split(separator: "/", omittingEmptySubsequences: false)
+                                session.type(
+                                    word, taps: parts[0].split(separator: " ").map(point),
+                                    space: parts.count > 1 ? space(parts[1]) : nil)
+                            }
+                            words += meant.count
+                            wrong += Tally.distance(
+                                Self.plain(session.document.text[...]).split(separator: " ").map(String.init), meant)
                         }
-                        words += meant.count
-                        wrong += Tally.distance(
-                            Self.plain(session.document.text[...]).split(separator: " ").map(String.init), meant)
+                        score.add(session.score)
                     }
-                    score.add(session.score)
+                    let phrases = String(format: "%.1f%%", 100.0 * Double(wrong) / Double(max(words, 1)))
+                    print(
+                        "EVAL real=taps source=\(source) split=\(split) people=\(people.count) keyboard=\(keyboard.rawValue) phrasesWer=\(phrases) \(score)"
+                    )
                 }
-                let phrases = String(format: "%.1f%%", 100.0 * Double(wrong) / Double(max(words, 1)))
-                print(
-                    "EVAL real=taps source=\(source) people=\(people.count) keyboard=\(keyboard.rawValue) phrasesWer=\(phrases) \(score)"
-                )
             }
         }
     }
