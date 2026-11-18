@@ -31,6 +31,7 @@ struct GifPanelTests {
         var copies = 0
         panel.onCopied = { _ in copies += 1 }
         try tiles(panel)[0].sendActions(for: .touchUpInside)
+        try #require(await until { stub.held(.media).count == 1 })
         try tiles(panel)[1].sendActions(for: .touchUpInside)
         try #require(await until { stub.held(.media).count == 2 })
         let (first, second) = (stub.held(.media)[0], stub.held(.media)[1])
