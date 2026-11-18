@@ -154,16 +154,19 @@ extension Lexicon {
     /// Builds a lexicon from word counts, in any alphabet: its letters are the ones its words are spelled with. A word
     /// is letters and apostrophes (’ is read as '); anything else is skipped. Words are folded to lowercase, keeping a
     /// leading capital ("I", "English", "Haus") when that's the only way it's given: a word given in lowercase at all
-    /// is lowercase, so "essen" next to "Essen" stays as typed.
-    public convenience init(counts: some Sequence<(word: String, count: Double)>) {
+    /// is lowercase, so "essen" next to "Essen" stays as typed. With `letters`, it numbers them as given, so taps read for
+    /// another lexicon with those letters read the same here, and leaves out a word spelled with any other.
+    public convenience init(counts: some Sequence<(word: String, count: Double)>, letters given: [String]? = nil) {
         let entries = counts.compactMap { entry -> (word: [String], capital: Bool, count: Double)? in
             let word = Words.plain(entry.word)
             guard entry.count > 0, !word.isEmpty,
                 word.allSatisfy({ ($0.isLetter || $0 == "'") && $0.lowercased().count == 1 })
             else { return nil }
-            return (word.map { $0.lowercased() }, word.first?.isUppercase == true, entry.count)
+            let spelled = word.map { $0.lowercased() }
+            guard given.map({ Set($0).isSuperset(of: spelled) }) ?? true else { return nil }
+            return (spelled, word.first?.isUppercase == true, entry.count)
         }
-        let letters = Set(entries.flatMap(\.word)).sorted()
+        let letters = given ?? Set(entries.flatMap(\.word)).sorted()
         precondition(letters.count <= Self.mostLetters, "a lexicon holds at most \(Self.mostLetters) letters")
         let places = Dictionary(uniqueKeysWithValues: letters.enumerated().map { ($1, UInt8($0)) })
         let total = entries.reduce(0) { $0 + $1.count }

@@ -22,6 +22,8 @@ public final class Corrector {
     /// How many of the words in `memory` the lexicon doesn't know, counted once and then kept up to date.
     private var novel: Int?
     private var typedIndex: Vocabulary.TypedIndex?
+    /// The words you've typed that the lexicon lacks, as a lexicon of their own, so taps search them as they search it.
+    private var ownWords: Lexicon?
     private var rankings: [Ranking: [Candidate]] = [:]
     private var keyShares: [String: [Double]] = [:]
     private var generation = 0
@@ -62,6 +64,7 @@ public final class Corrector {
         copy.app = app
         copy.grid = grid
         copy.novel = novel
+        copy.ownWords = ownWords
         copy.rankings = rankings
         copy.keyShares = keyShares
         copy.generation = generation
@@ -76,6 +79,7 @@ public final class Corrector {
         rankings.merge(snapshot.rankings) { mine, _ in mine }
         keyShares.merge(snapshot.keyShares) { mine, _ in mine }
         if novel == nil { novel = snapshot.novel }
+        if ownWords == nil { ownWords = snapshot.ownWords }
     }
 
     /// Counts a word you kept, after the one before it.
@@ -107,7 +111,10 @@ public final class Corrector {
     public func changeMemory(_ change: (inout TypingMemory) -> Void) {
         let counts = memory.counts
         change(&memory)
-        if memory.counts != counts { novel = nil }
+        if memory.counts != counts {
+            novel = nil
+            ownWords = nil
+        }
         typedIndex = nil
         forgetRankings()
     }
@@ -121,11 +128,13 @@ public final class Corrector {
     }
 
     private func recount(_ word: String, by step: Int, since total: Int) {
+        let own = lexicon?.logProbability(of: Words.plain(word)) == nil
         if memory.total == total + step, let count = novel {
-            novel = lexicon?.logProbability(of: Words.plain(word)) == nil ? count + step : count
+            novel = own ? count + step : count
         } else if memory.total != total {
             novel = nil
         }
+        if own || memory.total != total + step { ownWords = nil }
         forgetRankings()
     }
 
@@ -399,15 +408,15 @@ extension Corrector {
         }
         let literalWord = lexicon.canonical(literal) ?? typed.text
         consider(literalWord, logLikelihood: likelihood(literalWord), isCompletion: false)
-        for word in words.familiar where word.count + 1 >= taps.count && lexicon.logProbability(of: word) == nil {
+        for result in alone ? [] : Decoder(lexicon: ownWords(lexicon)).decode(taps, budget: Decoder.wordBudget) {
             if inRun {
-                if word.count <= taps.count + 1 {
-                    consider(word, logLikelihood: likelihood(word), isCompletion: false)
+                if !result.isCompletion {
+                    consider(result.word, logLikelihood: likelihood(result.word), isCompletion: false)
                 }
                 continue
             }
-            consider(word, logLikelihood: likelihood(word), isCompletion: false)
-            consider(word, logLikelihood: likelihood(word, completing: true), isCompletion: true)
+            consider(result.word, logLikelihood: likelihood(result.word), isCompletion: false)
+            consider(result.word, logLikelihood: likelihood(result.word, completing: true), isCompletion: true)
         }
         return candidates.values.sorted { $0.logPosterior > $1.logPosterior }
     }
@@ -579,6 +588,17 @@ extension Corrector {
         let result = (labels + [" "]).map { $0.map { center + mass($0) - own } ?? -.infinity }
         keyShares[hit] = result
         return result
+    }
+
+    private func ownWords(_ lexicon: Lexicon) -> Lexicon {
+        if let ownWords { return ownWords }
+        let words = Lexicon(
+            counts: memory.familiar.filter { lexicon.logProbability(of: $0) == nil }.map {
+                (word: $0, count: Double(max(memory.count(of: $0), 1)))
+            },
+            letters: lexicon.letters)
+        ownWords = words
+        return words
     }
 
     func languageModel(_ lexicon: Lexicon) -> LanguageModel {
