@@ -53,8 +53,10 @@ flock -u 8
 trap 'gh run cancel "$id" >/dev/null 2>&1; exit 130' INT TERM
 until [ "$(listing ".[] | select(.databaseId == $id) | .status")" = completed ]; do sleep 30; done
 gh run view "$id" --log | awk -F'\t' '$2 == "check" { sub(/^[^ ]+ /, "", $3); print $3 }'
-mkdir -p shots/raw
-gh run download "$id" -n shots -D shots/raw 2>/dev/null || true
+# WHY: gh run download stops at the first file already there, which left an older run's shots under this run's names.
+got=shots/raw/.run-$id
+gh run download "$id" -n shots -D "$got" 2>/dev/null && cp -rf "$got"/. shots/raw/ || true
+rm -rf "$got"
 conclusion=$(gh run view "$id" --json conclusion --jq .conclusion)
 echo "$conclusion, $url" >&2
 [ "$conclusion" = success ]
