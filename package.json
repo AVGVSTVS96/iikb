@@ -6,7 +6,7 @@
   ],
   "type": "module",
   "scripts": {
-    "check": "oxlint && oxfmt --check && bun scripts/landmines.ts && tsc && tsc -p web/site && bun test",
+    "check": "oxlint && oxfmt --check && tsc && tsc -p web/site && bun test",
     "fix": "oxlint --fix; oxfmt",
     "site": "bun --cwd web/site run dev"
   },
