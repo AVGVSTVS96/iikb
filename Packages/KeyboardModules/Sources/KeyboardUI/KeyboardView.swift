@@ -21,8 +21,8 @@ public final class KeyboardView: UIView {
     /// How far the finger travels to move the caret a line up or down: the field's line height where its lines are
     /// known, else nil, and up and down move a sentence per row of keys.
     public var lineHeight: () -> CGFloat? = { nil }
-    /// The space bar was held into a trackpad, before the finger moves the caret.
-    public var onTrackpad: () -> Void = {}
+    /// The space bar was held into a trackpad (true), before the finger moves the caret, and let go (false).
+    public var onTrackpad: (Bool) -> Void = { _ in }
 
     private(set) var layout = KeyboardLayout(rows: [])
     private(set) var signature = ""

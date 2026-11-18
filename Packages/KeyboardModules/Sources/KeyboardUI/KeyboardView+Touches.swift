@@ -188,6 +188,7 @@ extension KeyboardView {
             break
         case .trackpad:
             setLabelsVisible(true)
+            onTrackpad(false)
         case .slide:
             if commit, key.isInput, let text = text(for: key, flicked: tracked.flicked) {
                 onEvent(.slide(text))
@@ -269,7 +270,7 @@ extension KeyboardView {
                     tracked.lastCursor = tracked.point
                     view.isPressed = false
                     self.setLabelsVisible(false)
-                    self.onTrackpad()
+                    self.onTrackpad(true)
                 } else {
                     tracked.mode = .alternates
                     view.isPressed = KeyboardStyle.current.dimsKeyUnderAccents

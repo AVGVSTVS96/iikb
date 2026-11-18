@@ -399,7 +399,9 @@ open class FullKeyboardViewController: UIInputViewController {
         keyboardView.lineHeight = { [unowned self] in
             line == nil ? fieldLines.lineHeight ?? measuredField?.lineHeight : nil
         }
-        keyboardView.onTrackpad = { [unowned self] in
+        keyboardView.onTrackpad = { [unowned self] held in
+            trackpadHeld = held
+            if !held { return renderSuggestions() }
             if line == nil {
                 fieldLines.check(app: hostApp, process: KeyboardHost.process(of: self), before: engine.text.before)
             }
@@ -1114,8 +1116,11 @@ open class FullKeyboardViewController: UIInputViewController {
 
     @objc private func hostCameBack() { hostAway = false }
 
+    /// While the space bar trackpad is held the bar keeps what it showed, as Apple's does, and ranks once it's let go.
+    private var trackpadHeld = false
+
     private func renderSuggestions() {
-        guard isShown else { return }
+        guard isShown, !trackpadHeld else { return }
         let style = engine.settings.dictationStyle(in: hostApp)
         let own = hostApp.map { engine.settings.appDictationStyles[$0] != nil } ?? false
         suggestionBar.update(
