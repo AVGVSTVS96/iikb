@@ -1,4 +1,5 @@
 import AVFoundation
+import ActivityKit
 import KeyboardStore
 import Observation
 import UIKit
@@ -8,9 +9,11 @@ import VoiceModels
 /// Voice typing, in two steps that never wait on each other: the `Microphone` records a dictation the moment you ask,
 /// and once you stop, the `VoiceModel` writes its finished `Recording` down, whatever state it was in when you started.
 /// Dictations still being written are typed in the order you said them. After you dictate the microphone stays on for
-/// as long as Keep Mic On says, so the keyboard can start the next dictation (`start`) without opening the app, which
-/// is the only place iOS lets a recording begin. Only the app turns the microphone off: the mic switch (`MicSwitch`),
-/// Control Center's iikb Mic, Keep Mic On running out, or the microphone itself going deaf or taken. The keyboard can
+/// as long as Keep Mic On says, so the keyboard can start the next dictation (`start`) without opening the app. With
+/// the microphone off, the keyboard asks through `StartDictation`, which iOS performs here in the background with the
+/// dictation session's Live Activity up — the one way a recording begins without the app in front; opening the app is
+/// the fallback. Only the app turns the microphone off: the mic switch (`MicSwitch`), Control Center's iikb Mic, the
+/// session's `EndSession`, Keep Mic On running out, or the microphone itself going deaf or taken. The keyboard can
 /// only start a dictation.
 @Observable @MainActor final class Listener {
     static let shared = Listener()
@@ -30,6 +33,8 @@ import VoiceModels
     private var micOffOnceWritten = false
     /// The mic switch turned the microphone on: it stays on until the switch turns it off, whatever Keep Mic On says.
     private var held = false
+    /// The `listening` the session's Live Activity last showed; nil while it shows nothing.
+    private var sessionListening: Bool?
     /// Another app took the microphone while it was on (an answered call): it comes back on by itself once iOS says
     /// that app is done, held by the mic switch if it was then. Nil when it doesn't come back.
     private var heldWhenTaken: Bool?
@@ -84,9 +89,12 @@ import VoiceModels
                 guard Listener.shared.microphone.isOn else { return }
                 Task { await Listener.shared.start() }
             },
+            Dictation.observe(.intentStart) { Task { await Listener.shared.start() } },
             Dictation.observe(.cancel) { Listener.shared.cancel() },
             Dictation.observe(.micOff) { Task { await Listener.shared.turnMicOff() } },
         ]
+        // A session activity an iikb that ended left up is stale: this one holds no microphone yet.
+        endSession()
         screenRecorded = Self.isScreenRecorded
         NotificationCenter.default.addObserver(
             forName: UIScreen.capturedDidChangeNotification, object: nil, queue: .main
@@ -102,7 +110,8 @@ import VoiceModels
         UIApplication.shared.connectedScenes.contains { ($0 as? UIWindowScene)?.screen.isCaptured == true }
     }
 
-    /// Returns once the microphone is recording, the one step iOS allows only in the foreground.
+    /// Returns once the microphone is recording: in front when the keyboard opened the app, or in the background
+    /// when `StartDictation` asked, the session's Live Activity up being what lets iOS start it there.
     func start() async {
         _ = await tail?.value
         guard recording == nil else { return }
@@ -118,6 +127,7 @@ import VoiceModels
             guard recording === take else { return }
             try microphone.open()
             VoiceModel.shared.micIsOn = true
+            showSession()
             take.mic = microphone.input
             microphone.record(to: Transcripts.shared.recording(of: take.id))
         } catch {
@@ -259,11 +269,11 @@ import VoiceModels
             VoiceModel.shared.micIsOn = true
         }
         held = true
+        showSession()
     }
 
     /// The mic switch, or Control Center's iikb Mic, off: what you're saying is kept, for the next keyboard to show to
-    /// type, and the microphone goes off once every dictation is written down, so the next one opens the app and starts
-    /// it afresh.
+    /// type, and the microphone goes off once every dictation is written down, so the next one starts afresh.
     func turnMicOff() async {
         held = false
         heldWhenTaken = nil
@@ -293,6 +303,7 @@ import VoiceModels
         do {
             try microphone.open()
             VoiceModel.shared.micIsOn = true
+            showSession()
             held = wasHeld
             HostApp.log.notice("the microphone came back on after another app had it")
             keepMicOn()
@@ -313,6 +324,7 @@ import VoiceModels
         guard microphone.isOn else { return }
         microphone.close()
         VoiceModel.shared.micIsOn = false
+        endSession()
         HostApp.log.notice("the microphone is off: \(why, privacy: .public)")
         Backup.syncAppAndVoiceLog()
     }
@@ -331,6 +343,37 @@ import VoiceModels
         status.writing = writing.filter(\.typed).map(\.recorded)
         status.waiting = VoiceModel.shared.waiting
         Dictation.publish(status)
+        showSession()
+    }
+
+    /// Keeps the dictation session's Live Activity showing what the microphone is doing, up while it's on:
+    /// `StartDictation` puts it up before the microphone starts and this takes it over, starting it where the
+    /// microphone came on another way (the mic switch). Down is `endSession`, with the microphone off.
+    private func showSession() {
+        guard microphone.isOn else { return }
+        let content = ActivityContent(
+            state: DictationSessionAttributes.ContentState(listening: isListening), staleDate: nil)
+        if ActivityKit.Activity<DictationSessionAttributes>.activities.first != nil {
+            guard sessionListening != isListening else { return }
+            sessionListening = isListening
+            Task {
+                await ActivityKit.Activity<DictationSessionAttributes>.activities.first?.update(content)
+            }
+        } else if (try? ActivityKit.Activity<DictationSessionAttributes>.request(
+            attributes: DictationSessionAttributes(), content: content)) != nil
+        {
+            sessionListening = isListening
+        }
+    }
+
+    /// Ends the session's activity, stale ones from an iikb that ended included.
+    private func endSession() {
+        sessionListening = nil
+        Task {
+            for activity in ActivityKit.Activity<DictationSessionAttributes>.activities {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
     }
 
     private enum Failure: LocalizedError {

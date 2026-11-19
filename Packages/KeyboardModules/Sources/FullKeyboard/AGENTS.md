@@ -32,5 +32,6 @@ Host identity is keyboard-wide context, not voice typing's alone: `KeyboardHost`
 - Typing stats count each hour under its app.
 - Dictation is written in the Writing Style picked for it, else the default (`KeyboardSettings.dictation(in:)`): the app styles it for the transcript's app, and the engine sets its capitals for `TypingEngine.app`.
 - Voice typing returns to it, and leaves for the app only when it is an app iOS can reopen, never a share sheet or another host leaving would close (`KeyboardHost.returns(to:)`, LaunchServices), and each transcript keeps the app it was typed into (`Dictation.host`), for Transcripts and Stats › Dictation.
+- With the microphone off, the one mic is a button for the app's `StartDictation` intent (`DictateButton`, laid over `MicButton` wherever it sits), so a dictation starts without opening the app, in any host; if none starts, the tap falls back to opening the app as above. With the microphone on, the mic is the plain button it always was.
 
 Counts and picks stay local; the GIF service receives no host ID. App identity cannot establish clipboard origin or a conversation. A new use goes through `FullKeyboardViewController.hostApp`, never a lookup of its own.

@@ -1,18 +1,33 @@
 #!/bin/sh
 # Runs on GitHub's Macs (scripts/ci). Generates the project and builds for the simulator, then fails if the App Intents metadata Xcode
-# made for Controls differs from Controls/Metadata.appintents, the copy the iPhone build (xtool, which can't make it)
+# made for the app, the keyboard or Controls differs from the committed copies (App/Metadata.appintents,
+# Keyboard/Metadata.appintents, Controls/Metadata.appintents) the iPhone build (xtool, which can't make it)
 # packs; the error names the copy to commit.
 set -e
 cd "$(dirname "$0")/.."
 xcodegen generate -q
 xcodebuild -project iikb.xcodeproj -scheme iikb -sdk iphonesimulator -configuration Debug \
   -derivedDataPath build -quiet build
-/usr/bin/python3 - build/Build/Products/Debug-iphonesimulator/iikb.app/PlugIns/Controls.appex/Metadata.appintents <<'PY'
+/usr/bin/python3 - build/Build/Products/Debug-iphonesimulator <<'PY'
 import json, sys
 def actions(folder):
     data = json.load(open(f"{folder}/extract.actionsdata"))
     data.pop("generator", None)
+    # Xcode lists an intent's system protocols in whatever order it
+    # visited the conformances, and the order flips between builds.
+    # The lists are sets, so compare them sorted.
+    for action in data.get("actions", {}).values():
+        for key in ("systemProtocols", "systemProtocolMetadata", "systemProtocolMetadataV2"):
+            values = action.get(key)
+            if isinstance(values, list):
+                action[key] = sorted(values, key=lambda v: json.dumps(v, sort_keys=True))
     return data
-if actions(sys.argv[1]) != actions("Controls/Metadata.appintents"):
-    sys.exit(f"Controls' App Intents changed: commit Xcode's new metadata, cp {sys.argv[1]}/* Controls/Metadata.appintents/")
+root = sys.argv[1]
+for built, committed in [
+    (f"{root}/iikb.app/Metadata.appintents", "App/Metadata.appintents"),
+    (f"{root}/iikb.app/PlugIns/Keyboard.appex/Metadata.appintents", "Keyboard/Metadata.appintents"),
+    (f"{root}/iikb.app/PlugIns/Controls.appex/Metadata.appintents", "Controls/Metadata.appintents"),
+]:
+    if actions(built) != actions(committed):
+        sys.exit(f"App Intents changed: commit Xcode's new metadata, cp {built}/* {committed}/")
 PY

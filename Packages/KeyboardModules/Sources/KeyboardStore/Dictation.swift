@@ -11,7 +11,7 @@ import notify
 public enum Dictation {
     /// What the app is doing. Recording and writing are separate: the app records a new dictation while the ones before
     /// are still being written down, and has them typed in the order you said them.
-    public struct Status: Codable, Equatable, Sendable {
+    nonisolated public struct Status: Codable, Equatable, Sendable {
         public var listening = false
         /// How long each dictation the app has recorded and is still writing down to type is, in seconds, oldest first.
         public var writing: [Double] = []
@@ -44,6 +44,9 @@ public enum Dictation {
         case finish = "com.shahidy.iikb.dictation.finish"
         /// The keyboard wants to dictate again while the app still has the microphone on.
         case start = "com.shahidy.iikb.dictation.start"
+        /// `StartDictation` (the intent iOS performs in the app, its Live Activity up) wants a dictation with the
+        /// microphone off: the one start that doesn't need the microphone already on.
+        case intentStart = "com.shahidy.iikb.dictation.intentstart"
         /// The keyboard wants the dictation being recorded thrown away: never typed, kept only in Transcripts.
         case cancel = "com.shahidy.iikb.dictation.cancel"
         /// A keyboard appeared, carrying its `keyboard` in the state, so any other still listening (one whose app
@@ -97,7 +100,7 @@ public enum Dictation {
         }
     }
 
-    private static var statusURL: URL? { AppGroup.library?.appending(path: "dictation.json") }
+    nonisolated private static var statusURL: URL? { AppGroup.library?.appending(path: "dictation.json") }
 
     private static var micURL: URL? { AppGroup.library?.appending(path: "mic.lock") }
 
@@ -162,7 +165,7 @@ public enum Dictation {
         }
     }
 
-    public static var status: Status {
+    nonisolated public static var status: Status {
         // file: dictation status, rewritten on each change
         statusURL.flatMap { try? JSONDecoder().decode(Status.self, from: Data(contentsOf: $0)) } ?? Status()
     }
@@ -248,7 +251,7 @@ public enum Dictation {
             }
     }
 
-    public static func send(_ signal: Signal) {
+    nonisolated public static func send(_ signal: Signal) {
         notify_post(signal.rawValue)
     }
 
