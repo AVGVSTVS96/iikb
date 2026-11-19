@@ -316,7 +316,7 @@ struct Transcript: Codable, Identifiable, Hashable {
         Self.sharing.async { TranscriptFeed.share(entries) }
     }
 
-    private static let sharing = DispatchQueue(label: "com.shahidy.iikb.transcripts", qos: .utility)
+    private static let sharing = DispatchQueue(label: "com.galateacorp.iikb.transcripts", qos: .utility)
 
     /// Moves a file that can't be read though nothing locks it to `transcripts-unread-<seconds>.jsonl`, as `StoredFile`
     /// does, so the backup still sends it. Whether the file can now be written.

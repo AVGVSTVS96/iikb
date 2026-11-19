@@ -49,15 +49,15 @@ struct SetMic: SetValueIntent {
 /// The app's side of these is `Dictation` (`Signal.micOff`, `micIsOn`) and `AppLink.mic` in KeyboardStore, which this
 /// extension leaves out for the English data it carries; ArchitectureTests holds the two to the same names.
 nonisolated enum Mic {
-    static let control = "com.shahidy.iikb.mic"
-    static let off = "com.shahidy.iikb.dictation.micoff"
+    static let control = "com.galateacorp.iikb.mic"
+    static let off = "com.galateacorp.iikb.dictation.micoff"
     static let link = URL(string: "iikb://mic")!
 
     /// The app holds a lock on this file while its microphone is on, which the kernel lets go of however the app ends.
     static var isOn: Bool {
         guard
             let lock = FileManager.default.containerURL(
-                forSecurityApplicationGroupIdentifier: "group.com.shahidy.iikb")?
+                forSecurityApplicationGroupIdentifier: "group.com.galateacorp.iikb")?
                 .appending(path: "Library").appending(path: "mic.lock")
         else { return false }
         let descriptor = open(lock.path, O_RDONLY)
