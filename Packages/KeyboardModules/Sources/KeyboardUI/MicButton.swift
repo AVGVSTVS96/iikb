@@ -244,21 +244,15 @@ public final class MicButton: UIControl {
         arc.add(turn, forKey: "spin")
     }
 
-    /// Drain's mic glows softly in and out while it writes.
+    /// Drain's mic glows softly in and out while it writes, inside its own edge: the bar's mic sits at the keyboard's
+    /// top and side, past which nothing a keyboard draws shows.
     private func glow(_ on: Bool) {
         guard on != (face.layer.animation(forKey: "glow") != nil) else { return }
-        guard on else {
-            face.layer.removeAnimation(forKey: "glow")
-            face.layer.shadowOpacity = 0
-            return
-        }
-        face.layer.shadowColor = theme.mic.ui.cgColor
-        face.layer.shadowPath = UIBezierPath(roundedRect: face.bounds, cornerRadius: face.layer.cornerRadius).cgPath
-        face.layer.shadowOffset = .zero
-        face.layer.shadowRadius = 10
-        let pulse = CABasicAnimation(keyPath: "shadowOpacity")
-        pulse.fromValue = 0.25
-        pulse.toValue = 0.9
+        guard on else { return face.layer.removeAnimation(forKey: "glow") }
+        let color = theme.mic.ui
+        let pulse = CABasicAnimation(keyPath: "backgroundColor")
+        pulse.fromValue = color.withAlphaComponent(corner == nil ? 0.04 : 0.7).cgColor
+        pulse.toValue = color.withAlphaComponent(corner == nil ? 0.28 : 1).cgColor
         pulse.duration = 0.55
         pulse.autoreverses = true
         pulse.repeatCount = .infinity
