@@ -345,7 +345,10 @@ final class LocalDictation {
 /// asking `getUserMedia` for the microphone: WebKit's media process does the recording, which iOS allows,
 /// where the extension itself is refused. The page sends the sound as chunks of 16-bit PCM, base64 in a
 /// message, each with its loudness; a fake HTTPS origin (`keyboard.iikb.local`, never fetched) is what makes
-/// the page a secure context `getUserMedia` will answer in.
+/// the page a secure context `getUserMedia` will answer in. The page lifts what it hears by 20 dB (`lift`, 10 times):
+/// WebKit's capture hears the same voice that much under the app's microphone (speech's 85 ms levels at -66 dBFS
+/// typically and -59 loud, against the app's -44 and -39, Nov 19 to 20), which held the bar's waveform at its floor and
+/// left the recording that quiet in Transcripts and coarse in 16 bits.
 @MainActor
 private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     enum Event {
@@ -452,6 +455,7 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
     private static let page = """
         <!doctype html><meta charset="utf-8"><script>
         let live = null;
+        const lift = 10;
         const post = (m) => webkit.messageHandlers.iikb.postMessage(m);
         const base = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
         async function builtInMicrophone() {
@@ -484,7 +488,7 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
               const pcm = new Int16Array(input.length);
               let sum = 0;
               for (let i = 0; i < input.length; i++) {
-                const s = Math.max(-1, Math.min(1, input[i]));
+                const s = Math.max(-1, Math.min(1, input[i] * lift));
                 sum += s * s;
                 pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
               }
