@@ -155,7 +155,7 @@ struct Transcript: Codable, Identifiable, Hashable {
                 add(
                     written.text, heard: written.heard, id: id, at: date, seconds: Double(samples.count) / 16_000,
                     typed: false, model: written.model, mic: nil, clean: written.clean, recovered: true)
-                Dictation.leave(.notice("A dictation cut off when iikb closed is in iikb › Transcripts"))
+                Dictation.leave(.notice("Saved to Transcripts"))
             } catch {
                 HostApp.log.error(
                     "couldn't write down \(file.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)"

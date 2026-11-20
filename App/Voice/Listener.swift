@@ -124,7 +124,9 @@ import VoiceModels
         } catch {
             recording = nil
             closeMic("it couldn't start")
-            fail("Couldn’t listen", error.localizedDescription)
+            fail(
+                "Couldn’t listen", error.localizedDescription,
+                notice: error is Failure ? "Allow the mic in Settings › Apps › iikb" : nil)
         }
     }
 
@@ -197,10 +199,8 @@ import VoiceModels
                 model: written.model, mic: take.mic, voiceProcessing: false, capture: take.capture,
                 unaimed: take.unaimed, levels: Recording.levels(samples), app: take.app, clean: written.clean)
             if take.typed, silent {
-                Dictation.leave(.notice("The microphone gave no sound: tap the mic again"))
-            } else if take.typed, written.text.isEmpty {
-                Dictation.leave(.notice("\(written.model) heard nothing: the recording is in iikb › Transcripts"))
-            } else if take.typed {
+                Dictation.leave(.notice("Mic gave no sound"))
+            } else if take.typed, !written.text.isEmpty {
                 Dictation.leave(.heard(written.text, plain: written.plain, keyboard: take.keyboard, id: take.id))
             }
             publish()
@@ -211,7 +211,8 @@ import VoiceModels
             writing.removeAll { $0 === take }
             fail(
                 "Couldn’t write it down",
-                "\(error.localizedDescription) The recording is kept, and written down when iikb next opens.")
+                "\(error.localizedDescription) The recording is kept, and written down when iikb next opens.",
+                notice: "Saved to Transcripts")
         }
         keepMicOn()
         Task { await Transcripts.shared.rewriteApple() }
@@ -318,11 +319,11 @@ import VoiceModels
         Backup.syncAppAndVoiceLog()
     }
 
-    private func fail(_ title: String, _ reason: String) {
+    private func fail(_ title: String, _ reason: String, notice: String? = nil) {
         failure = (title, reason)
         HostApp.log.error("\(title, privacy: .public): \(reason, privacy: .public)")
         Backup.syncAppAndVoiceLog()
-        Dictation.leave(.notice(reason))
+        Dictation.leave(.notice(notice ?? title))
         publish()
     }
 

@@ -144,7 +144,7 @@ final class LocalDictation {
             leave(take, nil)
         }
         pending = []
-        if kept { onNotice("Not typed here: it’s in iikb › Transcripts") }
+        if kept { onNotice("Saved to Transcripts") }
         onChange()
     }
 
@@ -220,14 +220,12 @@ final class LocalDictation {
         leave(take, written?.made)
         if let written {
             if !written.sounded {
-                onNotice("The microphone gave no sound: tap the mic again")
-            } else if written.made.text.isEmpty {
-                onNotice("Nothing heard: the recording is in iikb › Transcripts")
-            } else {
+                onNotice("Mic gave no sound")
+            } else if !written.made.text.isEmpty {
                 onWritten(written.made.text, written.plain, take.id)
             }
         } else {
-            onNotice("Couldn’t write it down here: it’ll be in iikb › Transcripts")
+            onNotice("Saved to Transcripts")
         }
         onChange()
     }

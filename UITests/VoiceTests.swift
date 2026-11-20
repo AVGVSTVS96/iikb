@@ -68,7 +68,7 @@ final class VoiceTests: XCTestCase {
 
         let notice = app.descendants(matching: .any).matching(identifier: "iikb.notice").firstMatch
         XCTAssertTrue(
-            wait { notice.exists && notice.label.hasPrefix("Not typed") },
+            wait { notice.exists && notice.label == "Saved to Transcripts" },
             "one stopped in a keyboard that has since closed says where it is")
         XCTAssertTrue((field.value as? String ?? "").hasSuffix("and again"), "and isn't typed here")
         try shot("\(shots)-elsewhere")

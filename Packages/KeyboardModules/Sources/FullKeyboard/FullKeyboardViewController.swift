@@ -1356,7 +1356,7 @@ open class FullKeyboardViewController: UIInputViewController {
     /// iikb first.
     private func openAppToDictate() {
         guard KeyboardHost.returns(to: hostApp, apps: engine.corrector?.memory.apps.map { Array($0.keys) } ?? []) else {
-            notice = "The mic is off, and opening iikb would close this. Turn it on in iikb first."
+            notice = "Turn on the mic in iikb first"
             return render()
         }
         render()
@@ -1389,7 +1389,7 @@ open class FullKeyboardViewController: UIInputViewController {
                 engine.handle(
                     .dictated(text, plain: plain, id: hostField.isPrivate ? nil : id?.uuidString), in: document)
             case .heard:
-                notice = "Not typed here: it’s in iikb › Transcripts"
+                notice = "Saved to Transcripts"
             case .notice(let notice):
                 self.notice = notice
             }
