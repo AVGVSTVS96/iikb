@@ -391,7 +391,7 @@ private struct LayoutSettings: View {
             }
             if here.largePanels {
                 ToggleRow(
-                    title: "Compact Emoji & GIFs",
+                    title: "Compact GIFs",
                     detail:
                         "One row that scrolls sideways, as in landscape, so the keyboard stays short in portrait too.",
                     isOn: model.binding(\.compactPanels))

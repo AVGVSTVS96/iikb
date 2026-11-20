@@ -1,50 +1,53 @@
 import XCTest
 
-/// The emoji panel through the real keyboard: the emoji key opens it, the keys type into its search, a tap types the emoji
-/// into the app, and back brings the bar back. With IIKB_SHOTS set, screenshots each step.
+/// The emoji keyboard through the real keyboard: the emoji key puts it in the keys' place, a category's tap shows its
+/// page, a tap types an emoji into the app and delete deletes there, its search field brings the keys up to type into
+/// it, the emoji key goes back to the pages and ABC to the letters. With IIKB_SHOTS set, screenshots each step.
 final class PanelTests: XCTestCase {
-    func testTheEmojiPanelSearchesWithTheKeysAndTypesWhatYouPick() throws {
+    func testTheEmojiKeyboardPagesSearchesAndTypesWhatYouPick() throws {
         let shots = ProcessInfo.processInfo.environment["IIKB_SHOTS"]
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = [
-            "-iikbFocus", "YES", "-iikbOrientation", orientation, "-iikbOneHanded", "off", "-iikbCompactPanels",
-            compactSetting ? "YES" : "NO", "-iikbAutoCapitalization", "YES",
-        ]
-        app.launchWithIikb()
-        for letter in "coffee at" { key(letter == " " ? "space" : String(letter), in: app).tap() }
+        let app = launchAndType("coffee at")
         try shot(shots, "main")
 
-        let tool = key("emoji", in: app)
-        XCTAssertTrue(tool.waitForExistence(timeout: 3), "the emoji key sits beside the space bar")
-        tool.tap()
+        let emojiKey = key("emoji", in: app)
+        openEmoji(in: app)
         let grid = app.collectionViews["iikb.emoji"]
-        XCTAssertTrue(grid.waitForExistence(timeout: 3), "the emoji key opens the emoji panel")
+        let letters = app.descendants(matching: .any).matching(identifier: "iikb.emoji.abc").firstMatch
+        XCTAssertTrue(grid.waitForExistence(timeout: 3), "the emoji key opens the emoji keyboard")
+        XCTAssertTrue(letters.exists, "with ABC")
+        XCTAssertFalse(key("q", in: app).isHittable, "in the keys' place")
         try shot(shots, "emoji")
-        if compact { try assertOneRowScrollsSideways(grid.cells, in: grid, app: app) }
 
-        for letter in "pizza" { key(String(letter), in: app).tap() }
-        let search = app.descendants(matching: .any).matching(identifier: "iikb.panel.search").firstMatch
-        XCTAssertTrue(wait { (search.value as? String) == "pizza" }, "the keys type into the search, not the app")
+        app.descendants(matching: .any).matching(identifier: "iikb.emoji.category.food").firstMatch.tap()
+        let grapes = app.descendants(matching: .any).matching(identifier: "iikb.emoji.🍇").firstMatch
+        XCTAssertTrue(wait { grapes.exists && grapes.isHittable }, "a category's tap shows its page from its start")
+        try shot(shots, "food")
+        grapes.tap()
         let field = app.textViews.firstMatch
-        XCTAssertEqual(field.value as? String, "Coffee at")
-        let pizza = app.descendants(matching: .any).matching(identifier: "iikb.emoji.🍕").firstMatch
-        XCTAssertTrue(pizza.waitForExistence(timeout: 3), "searching finds the emoji by name")
-        try shot(shots, "search")
+        XCTAssertTrue(wait { (field.value as? String) == "Coffee at🍇" }, "a tap types the emoji into the app")
+        app.descendants(matching: .any).matching(identifier: "iikb.emoji.delete").firstMatch.tap()
+        XCTAssertTrue(wait { (field.value as? String) == "Coffee at" }, "delete deletes in the app")
 
+        let search = searchEmoji("pizza", in: app, opening: false)
+        let pizza = app.descendants(matching: .any).matching(identifier: "iikb.emoji.🍕").firstMatch
+        XCTAssertEqual(field.value as? String, "Coffee at", "the keys type into the search, not the app")
+        XCTAssertTrue(pizza.waitForExistence(timeout: 3), "searching finds the emoji by name")
+        assertOneRow(grid.cells)
+        try shot(shots, "search")
         pizza.tap()
-        XCTAssertTrue(wait { (field.value as? String) == "Coffee at🍕" }, "a tap types the emoji into the app")
-        app.buttons["iikb.panel.back"].tap()
-        XCTAssertTrue(wait { tool.exists && !grid.exists }, "back brings the bar and the tools back")
+        XCTAssertTrue(wait { (field.value as? String) == "Coffee at🍕" }, "a found emoji types into the app")
+
+        key("emoji", in: app).tap()
+        XCTAssertTrue(
+            wait { letters.exists && (search.value as? String) == "" }, "the emoji key goes back to the pages")
+        letters.tap()
+        XCTAssertTrue(wait { emojiKey.isHittable && !grid.exists }, "ABC brings the letters back")
         try shot(shots, "after")
     }
 
     func testHoldingDeleteToEmptyTheSearchLeavesTheMessageAlone() throws {
         let app = launchAndType("coffee at")
-        openEmoji(in: app)
-        for letter in "pizza" { key(String(letter), in: app).tap() }
-        let search = app.descendants(matching: .any).matching(identifier: "iikb.panel.search").firstMatch
-        XCTAssertTrue(wait { (search.value as? String) == "pizza" })
+        let search = searchEmoji("pizza", in: app)
         key("delete", in: app).press(forDuration: 3)
         XCTAssertTrue(wait { (search.value as? String) == "" }, "holding delete empties the search")
         XCTAssertEqual(app.textViews.firstMatch.value as? String, "Coffee at", "and stops there, before the message")
@@ -52,14 +55,13 @@ final class PanelTests: XCTestCase {
 
     func testHoldingAnEmojiAtTheRightEdgeWithoutSlidingPicksIt() throws {
         let app = launchAndType("hi ")
-        openEmoji(in: app)
-        for letter in "hand" { key(String(letter), in: app).tap() }
-        let search = app.descendants(matching: .any).matching(identifier: "iikb.panel.search").firstMatch
-        XCTAssertTrue(wait { (search.value as? String) == "hand" }, "the results are hand's, not a word on the way")
+        _ = searchEmoji("hand", in: app)
         let cells = app.collectionViews["iikb.emoji"].cells
         XCTAssertTrue(cells.firstMatch.waitForExistence(timeout: 3))
-        let top = cells.firstMatch.frame.minY
-        let row = (0..<min(cells.count, 20)).map { cells.element(boundBy: $0) }.filter { $0.frame.minY == top }
+        let window = app.windows.firstMatch.frame
+        let row = (0..<min(cells.count, 20)).map { cells.element(boundBy: $0) }.filter {
+            $0.frame.maxX <= window.maxX
+        }
         let edge = try XCTUnwrap(row.max { $0.frame.maxX < $1.frame.maxX })
         let emoji = edge.label
         edge.press(forDuration: 1)
@@ -69,10 +71,6 @@ final class PanelTests: XCTestCase {
     }
 
     private var orientation: String { ProcessInfo.processInfo.environment["IIKB_ORIENTATION"] ?? "portrait" }
-    /// `IIKB_COMPACT=1` turns on Compact Emoji & GIFs.
-    private var compactSetting: Bool { ProcessInfo.processInfo.environment["IIKB_COMPACT"] == "1" }
-    /// Landscape, or the setting, shows the panels as one row.
-    private var compact: Bool { compactSetting || orientation == "landscape" }
 
     /// The menu's Theme and Stop Animation shelves pick the keyboard's look in place, a tap each, and the app's
     /// Appearance page shows what they picked. With IIKB_SHOTS set, screenshots the menu before and after, and the page.
@@ -131,7 +129,7 @@ final class PanelTests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = [
-            "-iikbFocus", "YES", "-iikbOrientation", "portrait", "-iikbOneHanded", "off", "-iikbAutoCapitalization",
+            "-iikbFocus", "YES", "-iikbOrientation", orientation, "-iikbOneHanded", "off", "-iikbAutoCapitalization",
             "YES",
         ]
         app.launchWithIikb()
@@ -148,6 +146,9 @@ final class PanelTests: XCTestCase {
         guard let prefix else { return }
         Thread.sleep(forTimeInterval: 0.8)
         try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(prefix)-\(name).png"))
+        for (index, screen) in XCUIScreen.screens.enumerated() where index > 0 {
+            try screen.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(prefix)-\(name)-\(index).png"))
+        }
     }
 
     /// The key on screen by that name: while the panel opens, iOS can still hold a copy of the letters off screen.
@@ -156,20 +157,25 @@ final class PanelTests: XCTestCase {
         return keys.allElementsBoundByIndex.first(where: \.isHittable) ?? keys.firstMatch
     }
 
-    /// The results sit in one row, and a swipe moves them sideways.
-    private func assertOneRowScrollsSideways(_ cells: XCUIElementQuery, in scroller: XCUIElement, app: XCUIApplication)
-        throws
-    {
+    /// The results sit in one row, as Apple's search shows them.
+    private func assertOneRow(_ cells: XCUIElementQuery) {
         let row = (0..<min(cells.count, 12)).map { cells.element(boundBy: $0).frame }
-        XCTAssertGreaterThan(row.count, 4)
+        XCTAssertFalse(row.isEmpty)
         XCTAssertEqual(Set(row.map(\.minY)).count, 1, "the results are one row")
-        let first = cells.element(boundBy: 0)
-        let id = first.identifier
-        let start = first.frame.minX
-        scroller.swipeLeft()
-        let moved = app.descendants(matching: .any).matching(identifier: id).firstMatch
-        XCTAssertTrue(wait { !moved.exists || moved.frame.minX < start - 40 }, "a swipe scrolls the row sideways")
-        scroller.swipeRight()
+    }
+
+    /// The emoji keyboard's search, `query` typed into it by the keys its field brings up.
+    private func searchEmoji(_ query: String, in app: XCUIApplication, opening: Bool = true) -> XCUIElement {
+        if opening { openEmoji(in: app) }
+        let letters = app.descendants(matching: .any).matching(identifier: "iikb.emoji.abc").firstMatch
+        XCTAssertTrue(wait { letters.isHittable }, "the emoji keyboard is up")
+        let search = app.descendants(matching: .any).matching(identifier: "iikb.panel.search").firstMatch
+        XCTAssertTrue(search.isHittable, "its search sits over it")
+        search.tap()
+        XCTAssertTrue(wait { self.key("space", in: app).isHittable }, "the field brings the keys up")
+        for letter in query { key(String(letter), in: app).tap() }
+        XCTAssertTrue(wait { (search.value as? String) == query }, "the keys type into the search")
+        return search
     }
 
     private func openEmoji(in app: XCUIApplication) {

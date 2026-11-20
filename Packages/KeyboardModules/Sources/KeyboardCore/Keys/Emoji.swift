@@ -42,10 +42,32 @@ public struct EmojiCatalog: Sendable {
     }
 }
 
-/// Every emoji in Apple's order, with the words that find it, for the emoji panel's grid and search.
+/// The pages of Apple's emoji keyboard, in its order: what you pick most, then Unicode's groups.
+public enum EmojiCategory: CaseIterable, Hashable, Sendable {
+    case recents, people, nature, food, activity, travel, objects, symbols, flags
+
+    /// Its heading, as Apple's keyboard names it.
+    public var title: String {
+        switch self {
+        case .recents: "Frequently Used"
+        case .people: "Smileys & People"
+        case .nature: "Animals & Nature"
+        case .food: "Food & Drink"
+        case .activity: "Activity"
+        case .travel: "Travel & Places"
+        case .objects: "Objects"
+        case .symbols: "Symbols"
+        case .flags: "Flags"
+        }
+    }
+}
+
+/// Every emoji in Apple's order, with the words that find it, for the emoji keyboard's pages and its search.
 public struct EmojiSearch: Sendable {
     /// Every emoji, Smileys & People first, as Apple's emoji keyboard orders them.
     public let all: [String]
+    /// Each category's emoji in Apple's order, recents left out.
+    private let groups: [(category: EmojiCategory, emoji: [String])]
     /// Each emoji that comes in skin tones, mapped to its five toned versions.
     public let tones: [String: [String]]
     private let bases: [String: String]
@@ -56,13 +78,21 @@ public struct EmojiSearch: Sendable {
     /// tones, then a tab, its rank by use and a tab, its name and keywords separated by "|".
     public init(text: String) {
         var all: [String] = []
+        var groups: [(category: EmojiCategory, emoji: [String])] = []
         var tones: [String: [String]] = [:]
         var ranked: [(rank: Int, emoji: String, words: [String])] = []
-        for line in text.split(separator: "\n") where !line.hasPrefix("# ") {
+        for line in text.split(separator: "\n") {
+            if line.hasPrefix("# ") {
+                if let category = EmojiCategory.allCases.first(where: { $0.title == line.dropFirst(2) }) {
+                    groups.append((category, []))
+                }
+                continue
+            }
             let fields = line.split(separator: "\t")
             let variants = fields[0].split(separator: " ").map(String.init)
             let emoji = variants[0]
             all.append(emoji)
+            if !groups.isEmpty { groups[groups.count - 1].emoji.append(emoji) }
             if variants.count > 1 { tones[emoji] = Array(variants.dropFirst()) }
             guard fields.count == 3, let rank = Int(fields[1]) else { continue }
             var words: [String] = []
@@ -74,6 +104,7 @@ public struct EmojiSearch: Sendable {
             ranked.append((rank, emoji, words))
         }
         self.all = all
+        self.groups = groups
         self.tones = tones
         bases = Dictionary(
             tones.flatMap { base, toned in ([base] + toned).map { ($0, base) } },
@@ -105,6 +136,12 @@ public struct EmojiSearch: Sendable {
 
     private func ranked(_ tier: [String], history: EmojiHistory) -> [String] {
         history.ranked(tier.map { toned($0, history: history) })
+    }
+
+    /// The emoji keyboard's pages: what you pick most, then each of Apple's categories, every emoji in its tone.
+    public func pages(history: EmojiHistory) -> [(category: EmojiCategory, emoji: [String])] {
+        [(.recents, history.frequent.map { toned($0, history: history) })]
+            + groups.map { ($0.category, $0.emoji.map { toned($0, history: history) }) }
     }
 
     /// What holding the emoji key offers above the keyboard's menu, at most `EmojiGrid.most`: the set picked in

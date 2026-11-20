@@ -48,6 +48,16 @@ public struct Toolbar: Hashable, Sendable {
         return compacted
     }
 
+    /// Apple's emoji keyboard (iPhone Duo, iOS 27.2 simulator): its search field on top, 10 under the backdrop's top,
+    /// and while you search, one row of results 41 tall under it, `fieldGap` apart.
+    public var emoji: Toolbar {
+        Toolbar(top: 10 - Self.backdropAbove, bar: bar, results: 41, field: 40, slot: slot)
+    }
+
+    /// How tall the emoji keyboard's search field and its strip are over the pages in the keys' place: half the gap
+    /// under the field is the strip's, the other half the pages', as Apple's are.
+    public var emojiStrip: Double { top + field + Self.fieldGap / 2 }
+
     /// A panel in `room`, where iOS gives the keyboard less height than it asks for (the open Duo in portrait, slightly
     /// folded): results that don't fit go to one row, which gives up whatever is still missing. iOS rounds the
     /// keyboard's height to the screen's pixels (419.68 asked on the open Duo in portrait is 419.67 given), so less than
@@ -76,4 +86,34 @@ public struct Toolbar: Hashable, Sendable {
 
     /// iPad, where iOS draws its own bar above the keyboard.
     static let pad = Toolbar(top: 0, bar: 36, results: compactResults, field: compactField, slot: 154.5)
+}
+
+/// Apple's emoji keyboard in the keys' place, measured on the iPhone Duo (iOS 27.2 simulator): its pages over a row of
+/// ABC and delete, each where the letters' outer keys reach, with the categories between them.
+public struct EmojiKeys: Hashable, Sendable {
+    public var pages: Rect
+    public var letters: Rect
+    public var categories: Rect
+    public var delete: Rect
+
+    static let keyWidth = 61.0
+    static let keyHeight = 36.0
+    /// How much lower the row's keys end than the letters' bottom row does.
+    static let lower = 8.0
+    /// Between the pages and the row's keys.
+    static let gap = 4.0
+    /// Between the row's keys and the categories.
+    static let categoriesGap = 8.0
+
+    /// The emoji keyboard `width` wide and `height` tall, its keys block from `minX` to `maxX`, where the letters'
+    /// bottom row ends `bottomInset` over its bottom. Apple's draws past where a third-party keyboard's window ends, so
+    /// the row keeps a point inside it.
+    public init(width: Double, height: Double, minX: Double, maxX: Double, bottomInset: Double) {
+        let y = min(height - bottomInset + Self.lower, height - 1) - Self.keyHeight
+        letters = Rect(x: minX, y: y, width: Self.keyWidth, height: Self.keyHeight)
+        delete = Rect(x: maxX - Self.keyWidth, y: y, width: Self.keyWidth, height: Self.keyHeight)
+        let start = minX + Self.keyWidth + Self.categoriesGap
+        categories = Rect(x: start, y: y, width: max(delete.x - Self.categoriesGap - start, 0), height: Self.keyHeight)
+        pages = Rect(x: 0, y: 0, width: width, height: max(y - Self.gap, 0))
+    }
 }

@@ -84,7 +84,7 @@
 			<key>Key</key>
 			<string>compactPanels</string>
 			<key>Title</key>
-			<string>Compact Emoji &amp; GIFs</string>
+			<string>Compact GIFs</string>
 			<key>Type</key>
 			<string>PSToggleSwitchSpecifier</string>
 		</dict>

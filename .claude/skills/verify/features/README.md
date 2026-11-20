@@ -8,7 +8,7 @@ One file per feature a user meets, each with how to reach it and the test that p
 | Every tap lands: speed, gaps between keys, first tap | [every-tap-lands.md](every-tap-lands.md) |
 | Autocorrect and the suggestion bar | [autocorrect.md](autocorrect.md) |
 | Settings shared between the app, Settings and the keyboard | [settings.md](settings.md) |
-| Emoji: the bar's emoji and the emoji key's panel | [emoji.md](emoji.md) |
+| Emoji: the bar's emoji and the emoji keyboard | [emoji.md](emoji.md) |
 | GIF search and the clipboard panels | [panels.md](panels.md) |
 | Snippets and Quicklinks: keywords, the Snippet key, their panels and the form | [snippets.md](snippets.md) |
 | Themes: Raycast's five | [themes.md](themes.md) |

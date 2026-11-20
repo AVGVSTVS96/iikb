@@ -61,6 +61,9 @@ public final class PanelView: UIView {
     /// The field may take the whole panel, as a chat's box does with photos attached while they're being picked, where
     /// the room above the keys is short.
     public var fieldFirst = false { didSet { if fieldFirst != oldValue { setNeedsLayout() } } }
+    /// The field sits on top with the results under it, as Apple's emoji keyboard has its search, the results filling
+    /// the rest: one row while the keys are up, the emoji keyboard in their place.
+    public var fieldOnTop = false { didSet { if fieldOnTop != oldValue { setNeedsLayout() } } }
     private(set) var content: PanelContent?
     private var toolbar = KeyboardMetrics.phone(width: 390).toolbar
     private let back = UIButton(type: .custom)
@@ -140,6 +143,13 @@ public final class PanelView: UIView {
     override public func layoutSubviews() {
         super.layoutSubviews()
         let width = block.maxX - block.minX
+        guard !fieldOnTop else {
+            back.isHidden = true
+            search.frame = CGRect(x: block.minX, y: toolbar.top, width: width, height: toolbar.field)
+            let below = search.frame.maxY + Toolbar.fieldGap
+            content?.frame = CGRect(x: block.minX, y: below, width: width, height: max(bounds.height - below, 0))
+            return
+        }
         let top = inKeysPlace ? Self.inset : CGFloat(toolbar.top)
         let bottom = inKeysPlace ? bounds.height - bottomInset : bounds.height
         back.isHidden = !showsBack

@@ -43,6 +43,12 @@ open class FullKeyboardViewController: UIInputViewController {
             handle(.emoji(emoji, base: base))
         }
         panel.history = { [unowned self] in engine.emojiHistory }
+        panel.onKey = { [unowned self] in handle($0) }
+        panel.onLetters = { [unowned self] in
+            feedback(.other)
+            handle(.panel(nil))
+        }
+        panel.onCategory = { [unowned self] in feedback(.other) }
         return panel
     }()
     private lazy var gifPanel: GifPanel? = Klipy.shared.map { klipy in
@@ -149,8 +155,8 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         return shelf
     }()
-    /// A panel opened from the menu fills the keys' place until you tap its field, which brings the keys up with the
-    /// panel above them (docs/design.md, "Panels"). The emoji panel opens from its key, so always with the keys.
+    /// A panel fills the keys' place until you tap its field, which brings the keys up with the panel above them
+    /// (docs/design.md, "Panels"): the emoji keyboard's search, a menu panel's.
     private var keysUp = false
     /// Where the open panel sits, so moving it lays the view out again even when no height changes, as when a panel opens
     /// from the menu in the keys' place.
@@ -169,8 +175,10 @@ open class FullKeyboardViewController: UIInputViewController {
         if Duo.isDuo(short: min(screenSize.width, screenSize.height)) { return 44 }
         return needsInputModeSwitchKey ? 0 : 91
     }
-    /// The emoji panel opens from its key, and a form needs the keys to fill it in, so both always sit above them.
-    private var panelInKeysPlace: Bool { panelOpen && !keysUp && engine.panel != .emoji && engine.panel != .form }
+    /// A form needs the keys to fill it in, so it always sits above them.
+    private var panelInKeysPlace: Bool { panelOpen && !keysUp && engine.panel != .form }
+    /// The emoji keyboard in the keys' place, its search field over it in the bar's.
+    private var emojiKeyboard: Bool { panelInKeysPlace && line == nil && engine.panel == .emoji }
     /// The photos attached to the open chat's next message, and the grid they're picked in.
     private let photos = ChatPhotos()
     /// The photo grid is up in the keys' place, the chat over it as with the keys up.
@@ -460,11 +468,14 @@ open class FullKeyboardViewController: UIInputViewController {
         let bar = line == nil ? 0 : toolbar.height
         suggestionBar.frame = CGRect(x: 0, y: max(room - toolbar.height, 0), width: width, height: toolbar.height)
         panelView.frame =
-            panelInKeysPlace
-            ? keyboardView.frame
-            : line != nil
-                ? CGRect(x: 0, y: 0, width: width, height: max(room - toolbar.height, 0))
-                : CGRect(x: 0, y: max(room - bar - toolbar.panelHeight, 0), width: width, height: toolbar.panelHeight)
+            emojiKeyboard
+            ? view.bounds
+            : panelInKeysPlace
+                ? keyboardView.frame
+                : line != nil
+                    ? CGRect(x: 0, y: 0, width: width, height: max(room - toolbar.height, 0))
+                    : CGRect(
+                        x: 0, y: max(room - bar - toolbar.panelHeight, 0), width: width, height: toolbar.panelHeight)
         if picking {
             let keys = keyboardView.frame
             photos.shown?.frame = CGRect(
@@ -805,13 +816,17 @@ open class FullKeyboardViewController: UIInputViewController {
             window: view.bounds.width, style: .current)
         let (context, layout, height) = (keys.context, keys.layout, keys.height)
         var metrics = keys.metrics
-        let wanted = metrics.toolbar.showing(engine.panel, compact: engine.settings.compactPanels)
+        let emoji = line == nil && engine.panel == .emoji
+        let wanted =
+            emoji
+            ? metrics.toolbar.emoji : metrics.toolbar.showing(engine.panel, compact: engine.settings.compactPanels)
         let inPlace = panelInKeysPlace
         let overKeys = PanelView.height(over: MessageField.withPhotos, toolbar: wanted)
         let tall = max(height + wanted.height + overKeys, Double(screenSize.height) - roomForApp - beneath)
         let ask =
             line != nil
-            ? (keysUp ? tall - height : wanted.height) : inPlace || !panelOpen ? wanted.height : wanted.panelHeight
+            ? (keysUp ? tall - height : wanted.height)
+            : inPlace ? (emoji ? wanted.emojiStrip : wanted.height) : panelOpen ? wanted.panelHeight : wanted.height
         let keysHeight = line != nil && !keysUp ? tall - ask : height
         let room = view.bounds.height
         metrics.toolbar = wanted
@@ -862,9 +877,12 @@ open class FullKeyboardViewController: UIInputViewController {
             placed = (line != nil, inPlace)
             view.setNeedsLayout()
         }
+        let emoji = line == nil && engine.panel == .emoji
+        panelView.fieldOnTop = emoji
+        emojiPanel.browsing = inPlace
         panelView.showsBack = line == nil
         panelView.bottomInset = line == nil ? PanelView.inset : CGFloat(metrics.bottomInset)
-        suggestionBar.isHidden = engine.panel != nil && !inPlace
+        suggestionBar.isHidden = engine.panel != nil && (!inPlace || emoji)
         panelView.block = block
         suggestionBar.toolbar = toolbar
         suggestionBar.maximumSlotWidth = metrics.toolbar.slot
@@ -976,15 +994,12 @@ open class FullKeyboardViewController: UIInputViewController {
         render()
     }
 
-    /// Back steps out one level: the keys down, then the panel to the menu it was opened from. The emoji panel, opened
-    /// from its key, closes.
+    /// Back steps out one level: the keys down, then the panel to the menu it was opened from. The emoji keyboard has
+    /// none, as Apple's has none: its emoji key and return lower the keys, and ABC closes it.
     private func back() {
         if engine.panel == .form { return handle(.panel(nil)) }
-        if keysUp, engine.panel != .emoji {
-            (keysUp, picking) = (false, false)
-            return render()
-        }
-        let fromMenu = engine.panel != .emoji && (line != nil || backToMenu)
+        if keysUp { return lowerKeys() }
+        let fromMenu = line != nil || backToMenu
         closePanel()
         if fromMenu {
             menuOpen = true
@@ -996,6 +1011,13 @@ open class FullKeyboardViewController: UIInputViewController {
     private func closePanel() {
         keysUp = false
         if line != nil { closeChat() } else { handle(.panel(nil)) }
+    }
+
+    /// The keys go back down, giving their place to the panel: the emoji keyboard's pages show again, its search emptied.
+    private func lowerKeys() {
+        (keysUp, picking) = (false, false)
+        if engine.panel == .emoji, line == nil { return handle(.panel(.emoji)) }
+        render()
     }
 
     /// A tap on the field of a panel in the keys' place: the keys come up to type into it.
@@ -1199,10 +1221,11 @@ open class FullKeyboardViewController: UIInputViewController {
         case .trigger(let key) where key.action == .dictate:
             return toggleVoice()
         case .trigger(let key)
-        where key.action == .return && keysUp && line == nil && engine.panel != nil && engine.panel != .emoji
-            && engine.panel != .form:
+        where key.action == .return && keysUp && line == nil && engine.panel != nil && engine.panel != .form:
+            return lowerKeys()
+        case .trigger(let key) where key.action == .emoji && line == nil:
+            if keysUp, engine.panel == .emoji { return lowerKeys() }
             keysUp = false
-            return render()
         case .type:
             TouchTrace.shared.mark("typed")
         case .oneHanded(let hand), .pick(let hand):

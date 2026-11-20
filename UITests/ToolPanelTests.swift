@@ -410,7 +410,7 @@ final class ToolPanelTests: XCTestCase {
     private var orientation: String { ProcessInfo.processInfo.environment["IIKB_ORIENTATION"] ?? "portrait" }
     /// `IIKB_OPEN=1`: the iPhone Duo is unfolded, so shots come from its inner screen, not the cover screen it leaves dark.
     private var unfolded: Bool { ProcessInfo.processInfo.environment["IIKB_OPEN"] == "1" }
-    /// `IIKB_COMPACT=1` turns on Compact Emoji & GIFs.
+    /// `IIKB_COMPACT=1` turns on Compact GIFs.
     private var compactSetting: Bool { ProcessInfo.processInfo.environment["IIKB_COMPACT"] == "1" }
     /// Landscape, or the setting, shows the panels as one row.
     private var compact: Bool { compactSetting || orientation == "landscape" }

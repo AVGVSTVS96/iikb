@@ -1,0 +1,34 @@
+#!/bin/bash
+# Runs on GitHub's Macs (scripts/ci). Apple's emoji keyboard on the iPhone Duo, folded and open, light and dark
+# (UITests/AppleEmojiShots): screenshots and the element tree of each step in shots/raw/apple-emoji/.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
+ID=$(scripts/sim ensure "iPhone Duo" iPhone-Duo)
+mkdir -p shots/raw/apple-emoji
+xcodegen generate -q
+xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
+  -derivedDataPath build/uitest -quiet
+scripts/sim boot "$ID"
+xcrun simctl install "$ID" "$APP"
+xcrun simctl spawn "$ID" defaults write .GlobalPreferences AppleKeyboards -array "en_US@sw=QWERTY;hw=Automatic" "emoji@sw=Emoji"
+xcrun simctl spawn "$ID" defaults write .GlobalPreferences AppleKeyboardsExpanded -int 1
+scripts/sim down "$ID"
+scripts/sim boot "$ID"
+while read -r screen hinge orientation; do
+  scripts/sim unfold "$ID" "$hinge"
+  scripts/sim hub "$ID" orientation "$orientation"
+  for appearance in ${APPEARANCES:-light dark}; do
+    xcrun simctl terminate "$ID" com.shahidy.iikb 2>/dev/null || true
+    xcrun simctl ui "$ID" appearance "$appearance"
+    TEST_RUNNER_IIKB_EMOJI_SHOTS="$PWD/shots/raw/apple-emoji/$screen-$appearance" \
+      xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb \
+      -destination "id=$ID" -derivedDataPath build/uitest -only-testing:AppUITests/AppleEmojiShots \
+      > build/uitest/apple-emoji.log 2>&1 || failed=1
+    grep -E "error:|XCTAssert|Test Case .*(passed|failed)" build/uitest/apple-emoji.log || true
+  done
+done <<SCREENS
+folded-portrait 0 portrait
+open-landscape 180 portrait
+SCREENS
+exit "${failed:-0}"

@@ -113,6 +113,29 @@ struct PanelTests {
         #expect(shown.suffix(2) == ["😀", "🍕"], "then every emoji not already shown, in Apple's order")
     }
 
+    @Test func theEmojiKeyboardsPagesAreYourPicksThenApplesCategoriesInTheirTones() {
+        var history = EmojiHistory()
+        history.use("🍔")
+        history.use("👍🏽", base: "👍")
+        let pages = search.pages(history: history)
+        #expect(pages.map(\.category) == [.recents, .people, .food])
+        #expect(pages[0].emoji.prefix(2) == ["👍🏽", "🍔"], "what you pick most first")
+        #expect(pages[1].emoji == ["😀", "😂", "👍🏽"], "each emoji in the tone picked for it")
+        #expect(pages[2].emoji == ["🍕", "🍔"])
+    }
+
+    @Test func theEmojiKeyboardSitsAsApplesDoesOnTheFoldedDuo() {
+        let emoji = Toolbar.phone.emoji
+        #expect(emoji.top + Toolbar.backdropAbove == 10, "the search field 10 under the backdrop's top")
+        #expect(emoji.panelHeight + Toolbar.backdropAbove == 97, "the field and a row of results while searching")
+        #expect(emoji.emojiStrip + Toolbar.backdropAbove == 53, "the field's strip over the pages")
+        let keys = EmojiKeys(width: 466, height: 277, minX: 6.8, maxX: 460.7, bottomInset: 663 - 638.7)
+        #expect(abs(keys.letters.x + keys.letters.width - 67.3) < 1, "ABC ends where Apple's does")
+        #expect(abs(keys.delete.x - 400.2) < 1)
+        #expect(abs(386 + keys.letters.y + keys.letters.height - 646.5) < 1, "8 under the letters' bottom row")
+        #expect(keys.pages.height < keys.letters.y)
+    }
+
     @Test func aSkinTonePickedForAnEmojiIsWhatThePanelShowsFromThenOn() {
         #expect(search.tones["👍"]?.count == 5)
         #expect(search.base(of: "👍🏽") == "👍")

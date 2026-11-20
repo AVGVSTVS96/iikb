@@ -52,7 +52,8 @@ final class PadShots: XCTestCase {
             button.tap()
             Thread.sleep(forTimeInterval: panel == "gif" ? 4 : 1)
             try shot(panel)
-            app.buttons["iikb.panel.back"].tap()
+            (panel == "emoji" ? app.descendants(matching: .any)["iikb.emoji.abc"] : app.buttons["iikb.panel.back"])
+                .tap()
         }
         if wanted("clipboard"), app.buttons["iikb.more"].exists {
             let shelf = app.buttons["iikb.shelf.clipboard"]

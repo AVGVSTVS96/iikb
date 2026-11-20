@@ -1,6 +1,6 @@
 #!/bin/bash
-# Runs on GitHub's Macs (scripts/ci). OPEN=1 unfolds the iPhone Duo first. The bar, the pills and the emoji panel through the real keyboard, light and dark, screenshotting
-# each step into shots/raw/look/: scripts/looktest ["iPhone Duo"] [iPhone-Duo] (RUNTIME picks the iOS; ORIENTATION=landscape; COMPACT=1 turns on Compact Emoji & GIFs)
+# Runs on GitHub's Macs (scripts/ci). OPEN=1 unfolds the iPhone Duo first. The bar, the pills and the emoji keyboard through the real keyboard, light and dark, screenshotting
+# each step into shots/raw/look/: scripts/looktest ["iPhone Duo"] [iPhone-Duo] (RUNTIME picks the iOS; ORIENTATION=landscape)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 NAME=${1:-iPhone Duo}
@@ -19,7 +19,7 @@ for appearance in ${APPEARANCES:-light dark}; do
   xcrun simctl terminate "$ID" com.shahidy.iikb 2>/dev/null || true
   xcrun simctl ui "$ID" appearance "$appearance"
   sleep 3
-  TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/look/$slug-${ORIENTATION:-portrait}${COMPACT:+-compact}-$appearance" TEST_RUNNER_IIKB_ORIENTATION="${ORIENTATION:-portrait}" TEST_RUNNER_IIKB_COMPACT="${COMPACT:-}" \
+  TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/look/$slug-${ORIENTATION:-portrait}-$appearance" TEST_RUNNER_IIKB_ORIENTATION="${ORIENTATION:-portrait}" \
     xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
     -derivedDataPath build/uitest -only-testing:AppUITests/PanelTests > build/uitest/look.log 2>&1 || failed=1
   grep -E "error:|XCTAssert|Test Case .*(passed|failed)|Executed" build/uitest/look.log || true
