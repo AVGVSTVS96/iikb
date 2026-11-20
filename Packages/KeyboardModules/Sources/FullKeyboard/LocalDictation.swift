@@ -1,7 +1,8 @@
 import AVFAudio
+import FluidAudio
 import Foundation
+import KeyboardStore
 import OSLog
-import Speech
 import UIKit
 import WebKit
 
@@ -10,8 +11,7 @@ import WebKit
 /// stop. iOS won't record in a keyboard extension (audiomxd turns it away, an extension having no entitlement
 /// to record), so a hidden web view in the keyboard captures through `getUserMedia` instead: the recording
 /// happens in WebKit's media process, under the microphone permission the app was given, and the sound comes
-/// back here as chunks of PCM, kept in a file only until Apple's `SpeechTranscriber` has written them down in
-/// the keyboard. The app's own dictation (the Parakeets, Clean, Transcripts) is untouched: this is the cold
+/// back here as chunks of PCM, kept in a file only until Parakeet has written them down in the keyboard. The app's own dictation (the Parakeets, Clean, Transcripts) is untouched: this is the cold
 /// start only, and what it can't do — the app not yet given the microphone, a capture that won't start — falls
 /// back to opening the app, as the mic's tap did before. The built-in microphone is always the one heard, as
 /// in the app until another is picked in Settings › Microphone, so what's playing keeps playing.
@@ -57,6 +57,7 @@ final class LocalDictation {
     func start() {
         guard phase == .idle else { return }
         guard AVAudioApplication.shared.recordPermission == .granted else { return onStartFailure() }
+        guard LocalParakeet.isReady else { return onStartFailure() }
         phase = .recording
         startedAt = Date()
         recordedSeconds = 0
@@ -147,7 +148,7 @@ final class LocalDictation {
         writing = Task { [weak self] in
             let heard: String?
             do {
-                heard = try await LocalSpeech.transcribe(url)
+                heard = try await LocalParakeet.transcribe(url)
             } catch {
                 Self.log.error("local transcription failed: \(Self.describe(error), privacy: .public)")
                 try? FileManager.default.removeItem(at: url)
@@ -156,7 +157,7 @@ final class LocalDictation {
                 phase = .idle
                 onChange()
                 return onFailure(
-                    (error as? LocalSpeech.Failure)?.errorDescription ?? "Dictation couldn't be written down")
+                    (error as? LocalParakeet.Failure)?.errorDescription ?? "Dictation couldn't be written down")
             }
             try? FileManager.default.removeItem(at: url)
             guard let self, !Task.isCancelled else { return }
@@ -441,57 +442,154 @@ private final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
     }
 }
 
-/// Apple's model writing a dictation down in the keyboard, as it does in the app when it's the one picked
-/// there: the same locale choice, and its assets downloaded here on first use if the app hasn't got them.
-private enum LocalSpeech {
+/// Parakeet writing a dictation down in the keyboard: the same model the app runs, loaded from the App
+/// Group's copy of its files, and hearing the recording as the app hears its own — leveled, and padded
+/// up to the shortest sound Parakeet takes. The model is loaded once and kept, loading being the slow
+/// part. Nothing here downloads: the files arrive with the app's dictations, and until they have, a tap
+/// opens the app instead (`isReady`).
+private enum LocalParakeet {
     enum Failure: LocalizedError {
-        case unsupported
+        case missing
         case unreadable
 
         var errorDescription: String? {
             switch self {
-            case .unsupported: "Apple's dictation model isn't available here. Turn on the mic in iikb to dictate."
+            case .missing: "Parakeet v3 isn't downloaded yet. Open iikb and pick it as the Voice Model."
             case .unreadable: "Dictation couldn't be written down: tap the mic again"
             }
         }
     }
 
+    /// Where Parakeet v3's files live: the App Group's FluidAudio folder, as the app keeps them
+    /// (VoiceModels' `AsrModelVersion.folder`). v3 is the pick that loads in a moment, so it is the
+    /// one a keyboard can hold.
+    static var folder: URL {
+        let own = AsrModels.defaultCacheDirectory(for: .v3)
+        guard let library = AppGroup.library else { return own }
+        return library.appending(path: "Application Support/FluidAudio/Models")
+            .appending(path: own.lastPathComponent)
+    }
+
+    /// The files are on the iPhone, so a tap here can write a dictation down.
+    static var isReady: Bool {
+        FileManager.default.fileExists(atPath: folder.path(percentEncoded: false))
+    }
+
+    private static var loaded: AsrManager?
+
+    /// The loaded Parakeet, loading it first if this keyboard hasn't: as the app loads it, again if
+    /// its encoder came up on the CPU instead of the Neural Engine, which runs ten times slower.
+    private static func manager() async throws -> AsrManager {
+        if let loaded { return loaded }
+        let manager = AsrManager(config: ASRConfig(seamGapRepairMinGapSeconds: 1.5))
+        var loads = 1
+        while true {
+            try await manager.loadModels(try await AsrModels.load(from: folder, version: .v3))
+            guard hasNeuralEngine, loads < 3, try await !manager.onNeuralEngine() else { break }
+            loads += 1
+        }
+        loaded = manager
+        return manager
+    }
+
+    #if targetEnvironment(simulator)
+        /// The simulator has no Neural Engine (VoiceModels' word for it), so a load there is never
+        /// checked against one.
+        private static let hasNeuralEngine = false
+    #else
+        private static let hasNeuralEngine = true
+    #endif
+
     /// What was said, or nil when nothing was heard.
     static func transcribe(_ url: URL) async throws -> String? {
-        guard SpeechTranscriber.isAvailable else { throw Failure.unsupported }
-        var locale: Locale?
-        if let supported = await SpeechTranscriber.supportedLocale(equivalentTo: .current) {
-            locale = supported
-        } else {
-            for identifier in Locale.preferredLanguages + ["en-US"] {
-                if let supported = await SpeechTranscriber.supportedLocale(
-                    equivalentTo: Locale(identifier: identifier))
-                {
-                    locale = supported
-                    break
-                }
-            }
-        }
-        guard let locale else { throw Failure.unsupported }
-        let transcriber = SpeechTranscriber(locale: locale, preset: .transcription)
-        if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
-            try await request.downloadAndInstall()
-        }
-        let analyzer = SpeechAnalyzer(
-            modules: [transcriber],
-            options: SpeechAnalyzer.Options(priority: .userInitiated, modelRetention: .whileInUse))
+        guard isReady else { throw Failure.missing }
+        var sound = try samples(url)
+        sound = leveled(sound)
+        let shortest = ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)
+        if sound.count < shortest { sound += repeatElement(0, count: shortest - sound.count) }
+        let heard = try await manager().hear(sound)
+        let text = heard.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+
+    /// The recording as Parakeet hears sound: 16 kHz mono, as floats, converted from the web view's WAV.
+    private static func samples(_ url: URL) throws -> [Float] {
         let file: AVAudioFile
         do {
             file = try AVAudioFile(forReading: url)
         } catch {
             throw Failure.unreadable
         }
-        try await analyzer.start(inputAudioFile: file, finishAfterFile: true)
-        var heard = ""
-        for try await result in transcriber.results where result.isFinal {
-            heard += String(result.text.characters)
+        guard
+            file.length > 0,
+            let target = AVAudioFormat(
+                commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
+            let converter = AVAudioConverter(from: file.processingFormat, to: target),
+            let input = AVAudioPCMBuffer(
+                pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)),
+            let output = AVAudioPCMBuffer(
+                pcmFormat: target,
+                frameCapacity: AVAudioFrameCount(
+                    Double(file.length) * 16_000 / file.processingFormat.sampleRate) + 1_024)
+        else { throw Failure.unreadable }
+        do {
+            try file.read(into: input)
+        } catch {
+            throw Failure.unreadable
         }
-        let text = heard.trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? nil : text
+        var failure: NSError?
+        var offered = false
+        _ = converter.convert(to: output, error: &failure) { _, status in
+            if offered {
+                status.pointee = .noDataNow
+                return nil
+            }
+            offered = true
+            status.pointee = .haveData
+            return input
+        }
+        guard failure == nil, let channel = output.floatChannelData else { throw Failure.unreadable }
+        return Array(UnsafeBufferPointer(start: channel[0], count: Int(output.frameLength)))
+    }
+
+    /// The app's leveling of a recording (VoiceCapture's `Recording.leveled`), so a quiet dictation is
+    /// heard here as it is there: gain toward the speech's level, never past the peak.
+    private static func leveled(_ samples: [Float]) -> [Float] {
+        guard let (room, speech) = levels(samples) else { return samples }
+        let peak = samples.reduce(0) { max($0, abs($1)) }
+        guard speech > 0, peak > 0 else { return samples }
+        let gain = min(0.1 / speech, room > 0 ? 0.001_78 / room : .infinity, 0.99 / peak)
+        return gain > 1 ? samples.map { $0 * gain } : samples
+    }
+
+    /// The room and the speech: the quietest tenth and the loudest twentieth of the recording's 20 ms
+    /// stretches, each the root mean square about its mean; nil when it's shorter than one.
+    private static func levels(_ samples: [Float]) -> (room: Float, speech: Float)? {
+        let frame = 320
+        guard samples.count >= frame else { return nil }
+        let all = stride(from: 0, to: samples.count - frame + 1, by: frame).map { start in
+            let slice = samples[start..<start + frame]
+            let mean = slice.reduce(0, +) / Float(frame)
+            return (slice.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Float(frame)).squareRoot()
+        }.sorted()
+        return (all[all.count / 10], all[all.count * 95 / 100])
+    }
+}
+
+extension AsrManager {
+    /// Heard as the app hears (VoiceModels' `Parakeet`): held to the Latin alphabet, which v3 otherwise
+    /// leaves for Cyrillic on short or unclear English.
+    fileprivate func hear(_ samples: [Float]) async throws -> ASRResult {
+        var state = TdtDecoderState.make(decoderLayers: decoderLayerCount)
+        return try await transcribe(samples, decoderState: &state, language: .english)
+    }
+
+    /// Whether the encoder runs on the Neural Engine, from how long it takes over a second of silence,
+    /// which it pads to its 15-second window: on the iPhone Duo about 0.1 s there, and 1.5 s on the CPU
+    /// (VoiceModels' check, the same).
+    fileprivate func onNeuralEngine() async throws -> Bool {
+        let began = ContinuousClock.now
+        _ = try await hear([Float](repeating: 0, count: ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)))
+        return ContinuousClock.now - began < .seconds(0.5)
     }
 }

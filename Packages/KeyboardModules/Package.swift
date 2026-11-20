@@ -14,6 +14,9 @@ let package = Package(
         .library(name: "KeyboardUI", targets: ["KeyboardUI"]),
         .library(name: "FullKeyboard", targets: ["FullKeyboard"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.3", traits: [])
+    ],
     targets: [
         .target(name: "KeyboardCore", exclude: ["AGENTS.md"], swiftSettings: shipped),
         .target(name: "KeyboardArbiter"),
@@ -32,7 +35,10 @@ let package = Package(
             swiftSettings: onMain),
         .target(
             name: "FullKeyboard",
-            dependencies: ["KeyboardCore", "KeyboardEnglish", "KeyboardStore", "KeyboardUI", "KeyboardArbiter"],
+            dependencies: [
+                "KeyboardCore", "KeyboardEnglish", "KeyboardStore", "KeyboardUI", "KeyboardArbiter",
+                .product(name: "FluidAudio", package: "FluidAudio"),
+            ],
             exclude: ["AGENTS.md"], resources: [.copy("Resources/Keys"), .copy("Resources/fields.json")],
             swiftSettings: onMain),
         .target(
