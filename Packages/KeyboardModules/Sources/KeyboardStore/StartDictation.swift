@@ -19,8 +19,8 @@ nonisolated public struct DictationSessionAttributes: ActivityAttributes, Sendab
     public init() {}
 }
 
-/// Asking for a dictation with the microphone off, from the keyboard's mic key (a button for this intent,
-/// `DictateButton`) or from Siri and Shortcuts: iOS performs it in iikb's process in the background
+/// Asking for a dictation with the microphone off, from Siri and Shortcuts: iOS performs it in iikb's
+/// process in the background
 /// (`openAppWhenRun` is false), where it puts the session's Live Activity up first — with an activity up, iOS
 /// lets the process start the microphone — then tells `Listener` (the `intentStart` signal) to start, and waits
 /// until the status says it's listening, so the process stays until the recording itself holds it. This only

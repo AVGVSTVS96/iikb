@@ -10,9 +10,10 @@ import VoiceModels
 /// and once you stop, the `VoiceModel` writes its finished `Recording` down, whatever state it was in when you started.
 /// Dictations still being written are typed in the order you said them. After you dictate the microphone stays on for
 /// as long as Keep Mic On says, so the keyboard can start the next dictation (`start`) without opening the app. With
-/// the microphone off, the keyboard asks through `StartDictation`, which iOS performs here in the background with the
-/// dictation session's Live Activity up — the one way a recording begins without the app in front; opening the app is
-/// the fallback. Only the app turns the microphone off: the mic switch (`MicSwitch`), Control Center's iikb Mic, the
+/// the microphone off, the keyboard records in itself (`LocalDictation`); Siri and Shortcuts ask through
+/// `StartDictation`, which iOS performs here in the background with the dictation session's Live Activity up.
+/// Opening the app is the keyboard's fallback, for a tap it couldn't hear itself. Only the app turns the
+/// microphone off: the mic switch (`MicSwitch`), Control Center's iikb Mic, the
 /// session's `EndSession`, Keep Mic On running out, or the microphone itself going deaf or taken. The keyboard can
 /// only start a dictation.
 @Observable @MainActor final class Listener {

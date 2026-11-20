@@ -222,8 +222,8 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         Task { await listen(thenOpen: fromSelf ? nil : request.host) }
     }
 
-    /// Starts listening while iikb is in front — the keyboard's fallback, when its `StartDictation` ask didn't
-    /// start one — then reopens the app you were typing in. Dictating in iikb's own field it stays put: iOS quits
+    /// Starts listening while iikb is in front — the keyboard's fallback, when it couldn't hear the tap itself
+    /// — then reopens the app you were typing in. Dictating in iikb's own field it stays put: iOS quits
     /// an app that opens itself, and the quit throws away a Parakeet still getting ready.
     private func listen(thenOpen host: String?) async {
         let asked = Date.now

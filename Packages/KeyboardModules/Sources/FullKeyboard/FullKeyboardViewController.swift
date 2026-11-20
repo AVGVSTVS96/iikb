@@ -1,9 +1,9 @@
+import AVFAudio
 import KeyboardCore
 import KeyboardEnglish
 import KeyboardStore
 import KeyboardUI
 import OSLog
-import SwiftUI
 import UIKit
 
 open class FullKeyboardViewController: UIInputViewController {
@@ -27,11 +27,9 @@ open class FullKeyboardViewController: UIInputViewController {
     private let suggestionBar = SuggestionBar()
     /// The record button in the bottom row, where Settings › Layout › Record Key puts it in the globe's place.
     private let keyMic = MicButton()
-    /// The intent button laid over the one mic while the microphone is off (`DictateButton`), following it between
-    /// the bar and the Record Key; hidden whenever the mic itself is the button to tap.
-    private lazy var dictateHost = UIHostingController(rootView: DictateButton { [weak self] in self?.intentAsked() })
-    /// The wait for the dictation the intent was asked for, after which the tap falls back to opening the app.
-    private var intentWait: Task<Void, Never>?
+    /// Dictation in the keyboard itself while the app's microphone is off (`LocalDictation`): a tap on the mic
+    /// hears and writes down what you say without the app ever coming to the front.
+    private lazy var localDictation = LocalDictation(host: view)
     /// Whether the keys' layout has the Record Key. While the keys are out of sight (a chat with the keys down, the
     /// menu, a panel in their place) the mic is the bar's, so there's always the one mic to tap.
     private var keyed = false
@@ -373,7 +371,7 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         suggestionBar.onCancel = { [unowned self] in
             feedback(.other)
-            Dictation.send(.cancel)
+            if localDictation.isActive { localDictation.cancel() } else { Dictation.send(.cancel) }
         }
         engine.defersSuggestions = true
         keyboardView.onEvent = { [unowned self] in handle($0) }
@@ -410,11 +408,24 @@ open class FullKeyboardViewController: UIInputViewController {
         }
         keyMic.addAction(UIAction { [unowned self] _ in suggestionBar.onMic() }, for: .touchUpInside)
         keyboardView.micKey = keyMic
-        addChild(dictateHost)
-        keyMic.addSubview(dictateHost.view)
-        dictateHost.didMove(toParent: self)
-        dictateHost.view.backgroundColor = .clear
-        dictateHost.view.isHidden = true
+        localDictation.onLevel = { [weak self] level, recorded in
+            guard let self else { return }
+            self.recorded = recorded
+            suggestionBar.hear(level, recorded: recorded)
+            keyMic.hear(level)
+        }
+        localDictation.onTranscript = { [weak self] text in
+            guard let self else { return }
+            engine.handle(.dictated(text, plain: text, id: nil), in: document)
+            render()
+        }
+        localDictation.onStartFailure = { [weak self] in self?.openAppToDictate() }
+        localDictation.onFailure = { [weak self] message in
+            guard let self else { return }
+            notice = message
+            render()
+        }
+        localDictation.onChange = { [weak self] in self?.render() }
         keyboardView.advance = { [unowned self] step in HostText.width(of: engine.character(crossedBy: step)) }
         keyboardView.lineHeight = { [unowned self] in
             line == nil ? fieldLines.lineHeight ?? measuredField?.lineHeight : nil
@@ -549,6 +560,7 @@ open class FullKeyboardViewController: UIInputViewController {
         leaveChat()
         engine.endSession()
         keepDictations()
+        localDictation.cancel()
         Dictation.keep(engine.takeDraft(), in: field)
         field = nil
         closePanels(in: document)
@@ -762,8 +774,8 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     private var mic: MicButton.Phase {
-        if dictation.listening { return .listening }
-        if !dictation.writing.isEmpty { return .writing }
+        if localDictation.isRecording || dictation.listening { return .listening }
+        if localDictation.isTranscribing || !dictation.writing.isEmpty { return .writing }
         return micIsOn ? .on : .off
     }
 
@@ -873,11 +885,11 @@ open class FullKeyboardViewController: UIInputViewController {
         suggestionBar.update(edits: menuShown && panel == nil ? edits : nil, theme: theme)
         placeMic()
         suggestionBar.update(
-            mic: mic, recorded: recorded, saved: dictation.writing, waitingFor: dictation.waiting,
+            mic: mic, recorded: recorded,
+            saved: localDictation.isTranscribing ? [localDictation.recordedSeconds] : dictation.writing,
+            waitingFor: dictation.waiting,
             notice: notice ?? hint, theme: theme)
         keyMic.show(mic, theme: theme)
-        dictateHost.view.isHidden = mic != .off || !hasFullAccess
-        dictateHost.view.frame = keyMic.bounds.insetBy(dx: -6, dy: -6)
         var shown = metrics
         if inPlace {
             shown.toolbar.results = PanelView.results(
@@ -1319,28 +1331,11 @@ open class FullKeyboardViewController: UIInputViewController {
         render()
     }
 
-    /// The mic was tapped with the microphone off, so its intent button is performing `StartDictation` in the app.
-    /// If no dictation starts — iOS didn't perform it from a keyboard, or the app couldn't start — the tap falls
-    /// back to `toggleVoice`, which opens the app or says the mic must be turned on in iikb first.
-    private func intentAsked() {
-        updateHost()
-        Dictation.host = hostApp
-        notice = nil
-        intentWait?.cancel()
-        intentWait = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(4))  // timer: intent answer
-            guard let self, !Task.isCancelled else { return }
-            intentWait = nil
-            guard !Dictation.micIsOn, !dictation.listening else { return }
-            toggleVoice()
-        }
-    }
-
-    /// Stops a dictation in progress, so what was heard is typed. Otherwise starts one, even while the last is still
-    /// being written: in place while the app keeps the microphone on. With it off, the mic's tap asks through
-    /// `StartDictation` first (`intentAsked`); this is its fallback, opening the app, since a keyboard can't use the
-    /// microphone itself. It opens the app only from a host it can bring you back to, never from one that leaving
-    /// would close. A chat keeps its keys as they were, up or down, while what you say lands in its box.
+    /// Stops a dictation in progress, so what was heard is typed. Otherwise starts one, even while the last is
+    /// still being written: in place while the app keeps the microphone on, and in the keyboard itself while it's
+    /// off (`LocalDictation`), the app never coming to the front. Only a tap the keyboard can't hear — the app
+    /// not yet given the microphone, a capture that won't start — opens the app, as every tap did before. A chat
+    /// keeps its keys as they were, up or down, while what you say lands in its box.
     private func toggleVoice() {
         guard hasFullAccess else {
             notice = "Voice needs Allow Full Access in Settings › Apps › iikb › Keyboards"
@@ -1349,10 +1344,23 @@ open class FullKeyboardViewController: UIInputViewController {
         updateHost()
         menuOpen = false
         Dictation.host = hostApp
+        if localDictation.isRecording { return localDictation.stop() }
+        if localDictation.isTranscribing { return }
         if dictation.listening { return Dictation.send(.finish, from: keyboard) }
         notice = nil
         micIsOn = Dictation.micIsOn
         if micIsOn { return Dictation.send(.start) }
+        if AVAudioApplication.shared.recordPermission == .granted {
+            localDictation.start()
+            return render()
+        }
+        openAppToDictate()
+    }
+
+    /// Opens the app to dictate, as the mic's tap did before the keyboard could hear for itself: only from a
+    /// host it can bring you back to, never from one that leaving would close; from one it can't, it says the
+    /// mic must be turned on in iikb first. A tap the keyboard couldn't hear lands here too.
+    private func openAppToDictate() {
         guard KeyboardHost.returns(to: hostApp, apps: engine.corrector?.memory.apps.map { Array($0.keys) } ?? []) else {
             notice = "The mic is off, and opening iikb would close this. Turn it on in iikb first."
             return render()
@@ -1381,10 +1389,6 @@ open class FullKeyboardViewController: UIInputViewController {
         dictation = status
         recorded = Dictation.level.recorded
         let notes = Dictation.notes
-        if !notes.isEmpty || dictation.listening || !dictation.writing.isEmpty || micIsOn {
-            intentWait?.cancel()
-            intentWait = nil
-        }
         for (file, note) in notes where Dictation.take(file) {
             switch note {
             case .heard(let text, let plain, let keyboard, let id) where keyboard == nil || keyboard == self.keyboard:
