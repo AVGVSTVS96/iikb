@@ -1,4 +1,4 @@
-EVAL aimShift keyboard=learning after: words=2714 raw=75.8% autocorrect=95.7% top3=95.5% next3=40.7% fixed=542 broken=1 ["cat→catc"]
+EVAL aimShift keyboard=learning after: words=2714 raw=75.8% autocorrect=95.7% top3=95.6% next3=42.6% fixed=542 broken=1 ["cat→catc"]
 EVAL aimShift keyboard=learning per 100 words to 500, then per 500 (raw/final): 68.0%/89.0% 81.0%/95.0% 83.0%/97.0% 76.0%/92.0% 71.0%/95.0% 78.0%/96.4% 75.0%/97.2% 75.6%/95.0% 75.2%/96.8%
 EVAL emoji corpus=chat words=7233 withEmoji=26.7%
 EVAL emoji corpus=phrases words=2714 withEmoji=24.6%
@@ -8,39 +8,39 @@ EVAL missedSpaces spaces=2 keyboard=decoder runs=500 withTypo=201 aSpaceReadAsSp
 EVAL missedSpaces spaces=2 untyped keyboard=decoder runs=500 withTypo=293 aSpaceReadAsSpace=0.0% allAsLetters: shown=84.6% firstAlternative=84.6%
 EVAL missedSpaces spaces=3 keyboard=decoder runs=489 withTypo=260 aSpaceReadAsSpace=60.7% allAsLetters: shown=88.0% firstAlternative=88.0%
 EVAL noise=0.0 keyboard=baseline words=2714 raw=100.0% autocorrect=99.9% top3=100.0% next3=9.5% fixed=0 broken=2 ["claus→class", "favourite→favorite"]
-EVAL noise=0.0 keyboard=decoder words=2714 raw=100.0% autocorrect=99.9% top3=100.0% next3=30.8% fixed=0 broken=2 ["ides→idea", "racketball→racket ball"]
-EVAL noise=0.0 keyboard=learning words=2714 raw=100.0% autocorrect=100.0% top3=100.0% next3=30.8% fixed=0 broken=1 ["racketball→racket ball"]
+EVAL noise=0.0 keyboard=decoder words=2714 raw=100.0% autocorrect=99.9% top3=100.0% next3=31.5% fixed=0 broken=2 ["ides→idea", "racketball→racket ball"]
+EVAL noise=0.0 keyboard=learning words=2714 raw=100.0% autocorrect=100.0% top3=100.0% next3=31.5% fixed=0 broken=1 ["racketball→racket ball"]
 EVAL noise=0.15 keyboard=baseline words=2714 raw=99.2% autocorrect=99.6% top3=99.7% next3=9.5% fixed=13 broken=2 ["claus→class", "favourite→favorite"]
-EVAL noise=0.15 keyboard=decoder words=2714 raw=99.4% autocorrect=99.7% top3=100.0% next3=30.7% fixed=12 broken=2 ["ides→idea", "racketball→racket ball"]
-EVAL noise=0.15 keyboard=learning words=2714 raw=99.7% autocorrect=99.8% top3=100.0% next3=30.7% fixed=3 broken=1 ["racketball→racket ball"]
+EVAL noise=0.15 keyboard=decoder words=2714 raw=99.4% autocorrect=99.7% top3=100.0% next3=31.4% fixed=12 broken=2 ["ides→idea", "racketball→racket ball"]
+EVAL noise=0.15 keyboard=learning words=2714 raw=99.7% autocorrect=99.8% top3=100.0% next3=31.4% fixed=3 broken=1 ["racketball→racket ball"]
 EVAL noise=0.25 keyboard=baseline words=2714 raw=72.0% autocorrect=89.3% top3=91.3% next3=8.7% fixed=472 broken=2 ["claus→class", "favourite→favorite"]
-EVAL noise=0.25 keyboard=decoder words=2714 raw=88.2% autocorrect=97.7% top3=99.3% next3=30.3% fixed=258 broken=2 ["ides→idea", "mind→kind"]
-EVAL noise=0.25 keyboard=learning words=2714 raw=88.8% autocorrect=97.3% top3=98.9% next3=30.2% fixed=235 broken=2 ["ides→idea", "mind→kind"]
+EVAL noise=0.25 keyboard=decoder words=2714 raw=88.2% autocorrect=97.6% top3=99.3% next3=30.7% fixed=257 broken=2 ["ides→idea", "mind→kind"]
+EVAL noise=0.25 keyboard=learning words=2714 raw=88.8% autocorrect=97.3% top3=99.0% next3=30.7% fixed=234 broken=2 ["ides→idea", "mind→kind"]
 EVAL noise=0.35 keyboard=baseline words=2714 raw=35.1% autocorrect=59.5% top3=62.8% next3=6.5% fixed=664 broken=1 ["claus→class"]
-EVAL noise=0.35 keyboard=decoder words=2714 raw=60.4% autocorrect=89.8% top3=96.2% next3=28.4% fixed=800 broken=3 ["prayer→prayed", "see→are", "took→tool"]
-EVAL noise=0.35 keyboard=learning words=2714 raw=60.7% autocorrect=92.3% top3=96.9% next3=29.2% fixed=860 broken=2 ["took→tool", "merger→meter"]
-EVAL owner split=dev sentences=1438 words=9285 raw=96.3% autocorrect=94.6% top3=98.3% fixed=203 broken=355: apostrophe=244 known=7 new=104
+EVAL noise=0.35 keyboard=decoder words=2714 raw=60.4% autocorrect=89.8% top3=96.3% next3=28.7% fixed=800 broken=3 ["prayer→prayed", "see→are", "took→tool"]
+EVAL noise=0.35 keyboard=learning words=2714 raw=60.7% autocorrect=92.3% top3=97.0% next3=29.7% fixed=860 broken=2 ["took→tool", "merger→meter"]
+EVAL owner split=dev sentences=1438 words=9285 raw=96.3% autocorrect=94.6% top3=98.2% fixed=203 broken=355: apostrophe=244 known=7 new=104
 EVAL owner split=test sentences=831 words=5149 raw=97.8% autocorrect=95.1% top3=98.7% fixed=53 broken=194: apostrophe=111 known=3 new=80
-EVAL people source=enron split=dev people=45 user=learned words=13494 next3=36.1% next1=22.9% letter=60.8%
-EVAL people source=enron split=dev people=45 user=new words=13494 next3=34.2% next1=21.6% letter=58.5%
-EVAL people source=enron split=test people=44 user=learned words=12806 next3=35.1% next1=22.2% letter=58.5%
-EVAL people source=enron split=test people=44 user=new words=12806 next3=32.5% next1=20.3% letter=55.3%
-EVAL people source=nus split=dev people=23 user=learned words=6525 next3=19.6% next1=11.7% letter=41.3%
-EVAL people source=nus split=dev people=23 user=new words=6525 next3=15.2% next1=9.0% letter=35.0%
-EVAL people source=nus split=test people=24 user=learned words=6951 next3=25.1% next1=15.3% letter=47.1%
-EVAL people source=nus split=test people=24 user=new words=6951 next3=19.8% next1=12.2% letter=40.5%
-EVAL predict corpus=chat user=learning words=7233 top1=22.8% top3=36.7%
+EVAL people source=enron split=dev people=45 user=learned words=13494 next3=36.2% next1=23.4% letter=60.9%
+EVAL people source=enron split=dev people=45 user=new words=13494 next3=34.3% next1=21.6% letter=58.4%
+EVAL people source=enron split=test people=44 user=learned words=12806 next3=35.5% next1=22.4% letter=58.4%
+EVAL people source=enron split=test people=44 user=new words=12806 next3=32.6% next1=20.4% letter=55.5%
+EVAL people source=nus split=dev people=23 user=learned words=6525 next3=20.2% next1=12.4% letter=42.3%
+EVAL people source=nus split=dev people=23 user=new words=6525 next3=15.6% next1=9.3% letter=35.3%
+EVAL people source=nus split=test people=24 user=learned words=6951 next3=26.2% next1=16.1% letter=47.8%
+EVAL people source=nus split=test people=24 user=new words=6951 next3=20.2% next1=12.4% letter=40.9%
+EVAL predict corpus=chat user=learning words=7233 top1=23.6% top3=37.1%
 EVAL predict corpus=chat user=new words=7233 top1=19.6% top3=31.3%
-EVAL predict corpus=phrases user=learning words=2714 top1=18.2% top3=30.8%
+EVAL predict corpus=phrases user=learning words=2714 top1=18.2% top3=31.5%
 EVAL predict corpus=phrases user=new words=2714 top1=17.6% top3=30.5%
 EVAL real=phone split=dev words=3000 asMeant: typed=8.9% phone=84.5% iikb=74.8% inIikbsBar=88.4% brokeCorrect: phone=171 iikb=12 ["plauns→plains (plane)", "merchanjsed→merchandised (mechanised)", "widelut→widely (wideout)", "w→w (we)", "anu→anu (any)", "form→form (from)", "ne→ne (me)", "fling→fling (going)"]
 EVAL real=phone split=test words=3000 asMeant: typed=9.3% phone=84.5% iikb=74.9% inIikbsBar=88.9% brokeCorrect: phone=181 iikb=5 ["recieved→recieved (received)", "put→put (out)", "ate→ate (are)", "Vill→vill (bill)", "momentz→moments (moment)", "hun→hun (him)", "lovm→lovm (lock)", "whje→whje (when)"]
-EVAL real=taps source=tsi split=dev people=6 keyboard=decoder phrasesWer=10.4% words=2555 raw=87.8% autocorrect=89.4% top3=91.7% next3=25.2% fixed=176 broken=134 ["i→in", "the→then", "i→in", "i→in", "i→in", "provided→provides", "i→in", "i→in"]
-EVAL real=taps source=tsi split=dev people=6 keyboard=learning phrasesWer=4.9% words=2555 raw=92.1% autocorrect=94.5% top3=96.2% next3=26.8% fixed=121 broken=58 ["i→in", "racketball→racket ball", "a→ab", "good→goodb", "deed→deedb", "to→tob", "are→aren", "the→theb"]
+EVAL real=taps source=tsi split=dev people=6 keyboard=decoder phrasesWer=10.4% words=2555 raw=87.8% autocorrect=89.4% top3=91.7% next3=25.1% fixed=176 broken=134 ["i→in", "the→then", "i→in", "i→in", "i→in", "provided→provides", "i→in", "i→in"]
+EVAL real=taps source=tsi split=dev people=6 keyboard=learning phrasesWer=4.9% words=2555 raw=92.1% autocorrect=94.5% top3=96.2% next3=26.7% fixed=121 broken=58 ["i→in", "racketball→racket ball", "a→ab", "good→goodb", "deed→deedb", "to→tob", "are→aren", "the→theb"]
 EVAL real=taps source=tsi split=test people=10 keyboard=decoder phrasesWer=12.1% words=4270 raw=86.3% autocorrect=88.8% top3=91.7% next3=24.8% fixed=272 broken=165 ["an→anx", "occasional→occasionalx", "to→toc", "i→in", "do→don", "did→didn", "that→thatb", "is→isn"]
 EVAL real=taps source=tsi split=test people=10 keyboard=learning phrasesWer=4.9% words=4270 raw=89.3% autocorrect=95.4% top3=97.6% next3=27.0% fixed=295 broken=36 ["an→anx", "occasional→occasionalx", "to→toc", "racketball→racket ball", "short→shortc", "that→thatx", "it→itc", "get→getx"]
-EVAL real=taps source=vertanen split=dev people=36 keyboard=decoder phrasesWer=6.4% words=4327 raw=83.2% autocorrect=94.1% top3=96.1% next3=34.8% fixed=472 broken=0 []
-EVAL real=taps source=vertanen split=dev people=36 keyboard=learning phrasesWer=5.9% words=4327 raw=85.1% autocorrect=94.6% top3=96.2% next3=34.9% fixed=412 broken=2 ["in→on", "undeliverable→un deliverable"]
+EVAL real=taps source=vertanen split=dev people=36 keyboard=decoder phrasesWer=6.4% words=4327 raw=83.2% autocorrect=94.1% top3=96.1% next3=34.9% fixed=472 broken=0 []
+EVAL real=taps source=vertanen split=dev people=36 keyboard=learning phrasesWer=5.9% words=4327 raw=85.1% autocorrect=94.6% top3=96.2% next3=35.1% fixed=412 broken=2 ["in→on", "undeliverable→un deliverable"]
 EVAL real=taps source=vertanen split=test people=26 keyboard=decoder phrasesWer=7.2% words=3115 raw=83.0% autocorrect=93.3% top3=96.1% next3=34.6% fixed=324 broken=3 ["shop→ship", "zainy→saint", "zainy→dainty"]
 EVAL real=taps source=vertanen split=test people=26 keyboard=learning phrasesWer=6.8% words=3115 raw=84.2% autocorrect=93.7% top3=95.8% next3=34.8% fixed=300 broken=3 ["zainy→zany", "undeliverable→un deliverable", "zainy→zany"]
 EVAL real=typed split=dev sentences=3000 words=23555 wer: typed=4.1% autocorrected=2.4% typos=872 fixed=55.2% inBar=72.9% broken=102 of 22612 ["matchup→ketchup", "chrebet→current", "acme→came", "brookins→brookings", "crestone→firestone", "cosworth→bosworth", "jonassaint→jonas saint", "fastow→castle"]
@@ -49,10 +49,10 @@ EVAL strayKeys keyboard=folded runs=500 withTypo=184 readAsSpace=58.0% spelledRi
 EVAL strayKeys keyboard=split runs=500 withTypo=183 readAsSpace=36.2% spelledRight: readAsSpace=57.1% meantTheKey: kept=69.2%
 EVAL thumbs keyboard=baseline per 500 words (raw/final): 68.2%/83.2% 71.4%/85.4% 68.6%/85.0% 65.4%/83.4% 70.2%/85.4% 72.8%/87.4% 68.6%/84.8% 70.2%/86.6% 69.0%/85.8% 70.2%/83.6%
 EVAL thumbs keyboard=baseline total: words=5428 raw=69.6% autocorrect=85.2% top3=87.0% next3=11.4% fixed=851 broken=6 ["treat→treatc", "is→", "claus→class", "the→thec", "favourite→favorite", "all→call"]
-EVAL thumbs keyboard=decoder per 500 words (raw/final): 81.2%/94.2% 81.8%/95.2% 84.4%/96.0% 82.6%/95.2% 84.6%/97.4% 83.6%/96.0% 82.2%/93.0% 85.4%/95.2% 83.2%/95.0% 84.0%/97.8%
-EVAL thumbs keyboard=decoder total: words=5428 raw=83.3% autocorrect=95.5% top3=97.7% next3=35.2% fixed=669 broken=5 ["ides→idea", "house→ouse", "toes→ties", "shop→ship", "it→if"]
+EVAL thumbs keyboard=decoder per 500 words (raw/final): 81.2%/94.2% 81.8%/95.2% 84.4%/96.0% 82.6%/95.2% 84.6%/97.4% 83.6%/96.0% 82.2%/92.8% 85.4%/95.2% 83.2%/95.0% 84.0%/97.8%
+EVAL thumbs keyboard=decoder total: words=5428 raw=83.3% autocorrect=95.5% top3=97.7% next3=36.3% fixed=668 broken=5 ["ides→idea", "house→ouse", "toes→ties", "shop→ship", "it→if"]
 EVAL thumbs keyboard=learning per 500 words (raw/final): 89.4%/96.8% 88.0%/97.4% 90.4%/97.4% 90.4%/97.4% 90.2%/97.6% 87.8%/97.6% 89.4%/97.4% 90.6%/98.0% 89.2%/97.6% 93.6%/99.0%
-EVAL thumbs keyboard=learning total: words=5428 raw=90.0% autocorrect=97.7% top3=98.6% next3=35.8% fixed=420 broken=4 ["house→ouse", "dine→done", "bus→busc", "racketball→racket ball"]
+EVAL thumbs keyboard=learning total: words=5428 raw=90.0% autocorrect=97.7% top3=98.7% next3=37.1% fixed=420 broken=4 ["house→ouse", "dine→done", "bus→busc", "racketball→racket ball"]
 EVAL thumbs learned centers: m=(-0.41,+0.10) b=(-0.00,+0.57) o=(-0.44,+0.09) e=(+0.00,+0.09)
 EVAL swipe swipes=48355 inLexicon=96.89%
 EVAL swipe encoder lexicon=ours top1=88.61 top3=94.32 top10=95.70

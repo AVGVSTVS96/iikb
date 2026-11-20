@@ -43,8 +43,10 @@ struct LanguageModel {
 
     /// The same for the word you'll type next, after both words before it, with what the network `expected` from the
     /// text before under your next-word counts. Corrections leave the network out: its vocabulary is the corpus's
-    /// commonest words, so it would push the rest down. Over the network your counts trust themselves N / (N + 8T):
-    /// it reads the last 16 words where they read one or two, and on Bassim's own messages that weight ranks best.
+    /// commonest words, so it would push the rest down. Over the network your counts trust themselves N / (N + 4T), after
+    /// one word and after two alike: on the dev people of `scripts/eval people`, Enron's email and NUS's texts, 2 to 4
+    /// rank best and 8 to 64 fall behind, with each person's own fine-tuned network as with the shipped one, and 3
+    /// pushes everyday words out of the bar on Bassim's own memory (scripts/gate).
     /// `previous` is "" at a sentence's start and nil when unknown; `earlier` is the word before it, read the same way.
     func predictor(after previous: String?, earlier: String?, expected: Network.Next?) -> (String) -> Double {
         { word in
@@ -55,7 +57,7 @@ struct LanguageModel {
             return Math.log(
                 probability(
                     word, after: previous, earlier: earlier, over: expected.probability(of: word, below: below),
-                    trusting: 8))
+                    trusting: 4))
         }
     }
 
