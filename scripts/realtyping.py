@@ -10,15 +10,23 @@ typed.txt      split, person, the sentence they meant, and what they typed, capi
                people on their own phones whose keyboards were seen to make no autocorrection or prediction.
 autocorrect.txt  split, the text before the word, the word typed, what the phone's own autocorrect made it, and the word
                meant: the same dataset's autocorrections on iPhones and Androids.
+people.txt     source, split, person, and one message they wrote, each person's in the order they wrote them, from people
+               who each wrote a lot: Google's Enron Personalization set (89 people's sent email, chronological, made by
+               Fowler et al. 2015 to judge how a keyboard learns its owner's words, released for benchmarking, its own
+               dev and test people kept), and the NUS SMS Corpus (Chen & Kan 2013, text messages Singaporean students
+               typed on their phones, released for research), its people who wrote 2,000 words or more.
 
 Each person is in one split: dev to tune against, test to report.
 """
 
-import csv, hashlib, io, json, os, re, sys, urllib.request, zipfile
+import csv, hashlib, html, io, json, os, re, sys, tarfile, urllib.request, zipfile
+import xml.etree.ElementTree as ElementTree
 from collections import defaultdict
 
 folder = sys.argv[1]
 TSI = "https://raw.githubusercontent.com/google-research-datasets/tap-typing-with-touch-sensing-images/main/"
+ENRON = "https://github.com/google-research-datasets/EnronPersonalizationValidation/archive/79e8a3be7b1cbe174b74c7fd75b6299107db462f.tar.gz"
+NUS = "https://github.com/kite1988/nus-sms-corpus/raw/bf0a365170d324e61e4025edf363d400f1edd1a6/smsCorpus_en_xml_2015.03.09_all.zip"
 VERTANEN = "https://zenodo.org/records/24225302/files/vertanen_noisy_typing_iui2023.zip"
 ITE = "https://zenodo.org/records/12528163/files/ite_typing_dataset.zip"
 SAMPLE = 3000
@@ -149,9 +157,14 @@ def vertanen():
     return lines
 
 
+def apostrophes(text):
+    """Every apostrophe as ', ITE's U+0091 and U+0092 included: Windows-1252's quotes read as control characters."""
+    return re.sub("[’‘`´ʼ\x91\x92]", "'", text)
+
+
 def words(text):
     """Words as typed, capitals kept, since a capital is part of what someone typed."""
-    return re.findall(r"[A-Za-z0-9']+", re.sub("[’‘`´ʼ]", "'", text))
+    return re.findall(r"[A-Za-z0-9']+", apostrophes(text))
 
 
 def ite():
@@ -185,9 +198,9 @@ def ite():
     corrected = []
     for row in csv.DictReader(open(tables["autocorrect"])):
         person = owner.get(row["TEST_SECTION_ID"])
-        context, word = row["CURRENT_INPUT"], row["TYPED_WORD"].lower()
+        context, word = apostrophes(row["CURRENT_INPUT"]), apostrophes(row["TYPED_WORD"]).lower()
         spelled = context[-len(word):]
-        phone, meant = row["AC_WORD"].lower(), row["ORIGINAL_WORD"].lower()
+        phone, meant = apostrophes(row["AC_WORD"]).lower(), apostrophes(row["ORIGINAL_WORD"]).lower()
         if not person or not re.fullmatch(r"[a-z']+", word) or not re.fullmatch(r"[a-z']+", meant):
             continue
         if not context.lower().endswith(word) or distance(word, meant) > 2:
@@ -196,6 +209,40 @@ def ite():
     sample = lambda rows: sorted(set(rows), key=lambda row: rank("\t".join(row)))
     keep = lambda rows: [r for s in ("dev", "test") for r in sample([r for r in rows if r[0] == s])[:SAMPLE]]
     return ["\t".join(r) for r in keep(typed)], ["\t".join(r) for r in keep(corrected)]
+
+
+def enron():
+    lines = []
+    with tarfile.open(fetch("enron.tar.gz", ENRON)) as archive:
+        for member in sorted(archive.getmembers(), key=lambda m: m.name):
+            found = re.search(r"/text/(dev|test)/(\w+)\.message\.text\.tsv$", member.name)
+            if not found:
+                continue
+            messages = defaultdict(list)
+            for row in archive.extractfile(member).read().decode().splitlines():
+                number, _, sentence = row.partition("\t")
+                if sentence.strip():
+                    messages[int(number)].append(" ".join(sentence.split()))
+            for number in sorted(messages):
+                lines.append(f"enron\t{found.group(1)}\t{found.group(2)}\t{' '.join(messages[number])}")
+    return lines
+
+
+def nus():
+    archive = zipfile.ZipFile(fetch("nus-sms.zip", NUS))
+    root = ElementTree.fromstring(archive.read(archive.namelist()[0]))
+    messages = defaultdict(list)
+    for message in root:
+        text = " ".join(html.unescape(message.findtext("text") or "").split())
+        person = message.findtext("source/userProfile/userID")
+        if text and person:
+            messages[person].append((int(message.get("id")), text))
+    lines = []
+    for person in sorted(messages):
+        texts = [text for _, text in sorted(messages[person])]
+        if sum(len(text.split()) for text in texts) >= 2000:
+            lines += [f"nus\t{split('nus/' + person)}\t{person}\t{text}" for text in texts]
+    return lines
 
 
 def distance(a, b):
@@ -211,7 +258,12 @@ def distance(a, b):
 
 os.makedirs(folder, exist_ok=True)
 typed, corrected = ite()
-for name, lines in [("taps.txt", tsi() + vertanen()), ("typed.txt", typed), ("autocorrect.txt", corrected)]:
+for name, lines in [
+    ("taps.txt", tsi() + vertanen()),
+    ("typed.txt", typed),
+    ("autocorrect.txt", corrected),
+    ("people.txt", enron() + nus()),
+]:
     with open(os.path.join(folder, name), "w") as out:
         out.write("\n".join(lines) + "\n")
     print(f"{name}: {len(lines)} lines")

@@ -3,7 +3,9 @@
 # Here on Linux it runs in a package of KeyboardCore, the word lists and Evaluation alone, and scores iikb's two
 # keyboards; the UITextChecker baseline needs Apple's platforms, so on a Mac (scripts/ci scripts/eval) it scores that
 # too. Both score real people's typing as well (realTaps, realTypos, realAutocorrect), which scripts/realtyping.py
-# downloads into build/real the first time and again whenever the script changes. Optional argument: one test (noise, biasedThumbs, aimShift, predictions, emoji), or swipe: how well swipes are
+# downloads into build/real the first time and again whenever the script changes, and the bar on many people's own
+# writing (people). Here each test runs in its own process, and people in one per source, split and user. Optional
+# argument: the tests whose names start with it (noise, biasedThumbs, real, people), or swipe: how well swipes are
 # read on swipe.futo.org's test split and, in German, French and Spanish, its swipe-5 run (SwipeEvaluation; needs
 # scripts/swipe data and languages, and SWIPE_DATA, takes minutes), which is only diffed against eval.expected's swipe
 # lines, or languages: each other language's phrases (phrases.<id>.txt) typed
@@ -29,7 +31,7 @@ if [ "${1:-}" = owner ]; then
   export OWNER_DATA=$HOME/.local/share/iikb/owner
   [ -f "$OWNER_DATA/test/text.txt" ] || python3 -I "$root/scripts/owner.py" "$OWNER_DATA"
 fi
-case "${1:-real}" in real*) [ "$REAL_DATA/taps.txt" -nt "$root/scripts/realtyping.py" ] || python3 -I "$root/scripts/realtyping.py" "$REAL_DATA" ;; esac
+case "${1:-real}" in real* | people) [ "$REAL_DATA/taps.txt" -nt "$root/scripts/realtyping.py" ] || python3 -I "$root/scripts/realtyping.py" "$REAL_DATA" ;; esac
 if [ "${1:-}" = languages ] || [ "${1:-}" = swipe ]; then
   export LANGUAGES=$root/build/languages
   python3 - "$root/Packages/KeyboardModules/Sources/KeyboardStore/Resources/Languages/manifest.json" "$LANGUAGES" <<'PY'
@@ -54,7 +56,7 @@ else
   mkdir -p "$pkg/Sources" "$pkg/Tests/KeyboardUITests"
   ln -sfn "$src/Sources/KeyboardCore" "$pkg/Sources/KeyboardCore"
   ln -sfn "$src/Sources/KeyboardEnglish" "$pkg/Sources/KeyboardEnglish"
-  for file in "$src"/Tests/KeyboardUITests/{Evaluation.swift,RealTyping.swift,OwnerTyping.swift,SwipeEvaluation.swift,chat.txt} "$src"/Tests/KeyboardUITests/phrases*.txt; do ln -sf "$file" "$pkg/Tests/KeyboardUITests/"; done
+  for file in "$src"/Tests/KeyboardUITests/{Evaluation.swift,RealTyping.swift,PeopleTyping.swift,OwnerTyping.swift,SwipeEvaluation.swift,chat.txt} "$src"/Tests/KeyboardUITests/phrases*.txt; do ln -sf "$file" "$pkg/Tests/KeyboardUITests/"; done
   cat > "$pkg/Package.swift" <<'SWIFT'
 // swift-tools-version: 6.2
 import PackageDescription
@@ -81,9 +83,22 @@ SWIFT
     wait
     cat "$root"/build/owner.*.txt | grep -E "error:|EVAL|✘" | tee "$out"
   else
-    swift test -c release -Xswiftc -enable-testing --filter "Evaluation${1:+/$1}" 2>&1 | grep -E "error:|EVAL|✘" | tee "$out"
+    swift build -c release -Xswiftc -enable-testing --build-tests 2>&1 | grep -E "error:" || true
+    runner=.build/release/KeyboardUITests-test-runner
+    rm -f "$root"/build/eval.part.*.txt
+    for test in $("$runner" --testing-library swift-testing --list-tests | sed -n 's|^KeyboardUITests\.Evaluation/\(.*\)()$|\1|p' | grep "^${1:-}"); do
+      if [ "$test" = people ]; then
+        for source in enron nus; do for split in dev test; do for user in new learned; do
+          PEOPLE="$source $split $user" "$runner" --testing-library swift-testing --filter 'Evaluation/people\(' > "$root/build/eval.part.people-$source-$split-$user.txt" 2>&1 &
+        done; done; done
+      else
+        "$runner" --testing-library swift-testing --filter "Evaluation/$test\\(" > "$root/build/eval.part.$test.txt" 2>&1 &
+      fi
+    done
+    wait
+    cat "$root"/build/eval.part.*.txt | grep -E "error:|EVAL|✘" | tee "$out"
   fi
-  scored='keyboard=(decoder|learning)|EVAL (emoji|predict|thumbs learned|strayKeys|real)'
+  scored='keyboard=(decoder|learning)|EVAL (emoji|predict|thumbs learned|strayKeys|real|people)'
 fi
 if [ "${1:-}" = languages ]; then
   diff -u <(grep '^EVAL language' "$root/scripts/eval.expected") <(grep '^EVAL language' "$out") && echo "EVAL languages match eval.expected"
@@ -91,6 +106,10 @@ if [ "${1:-}" = languages ]; then
 fi
 if [ "${1:-}" = owner ]; then
   diff -u <(grep '^EVAL owner' "$root/scripts/eval.expected") <(grep '^EVAL owner' "$out" | sort) && echo "EVAL owner matches eval.expected"
+  exit
+fi
+if [ "${1:-}" = people ]; then
+  diff -u <(grep '^EVAL people' "$root/scripts/eval.expected") <(grep '^EVAL people' "$out" | sort) && echo "EVAL people matches eval.expected"
   exit
 fi
 if [ "${1:-}" = swipe ]; then
