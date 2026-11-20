@@ -3,6 +3,10 @@ import PackageDescription
 
 let shipped: [SwiftSetting] = [.treatAllWarnings(as: .error)]
 let onMain: [SwiftSetting] = shipped + [.defaultIsolation(MainActor.self)]
+let voice: [SwiftSetting] =
+    onMain + [
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault"), .enableUpcomingFeature("InferIsolatedConformances"),
+    ]
 
 let package = Package(
     name: "KeyboardModules",
@@ -13,6 +17,7 @@ let package = Package(
         .library(name: "KeyboardStore", targets: ["KeyboardStore"]),
         .library(name: "KeyboardUI", targets: ["KeyboardUI"]),
         .library(name: "FullKeyboard", targets: ["FullKeyboard"]),
+        .library(name: "VoiceCore", targets: ["VoiceCore"]),
     ],
     dependencies: [
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.3", traits: [])
@@ -36,11 +41,16 @@ let package = Package(
         .target(
             name: "FullKeyboard",
             dependencies: [
-                "KeyboardCore", "KeyboardEnglish", "KeyboardStore", "KeyboardUI", "KeyboardArbiter",
-                .product(name: "FluidAudio", package: "FluidAudio"),
+                "KeyboardCore", "KeyboardEnglish", "KeyboardStore", "KeyboardUI", "KeyboardArbiter", "VoiceCore",
             ],
             exclude: ["AGENTS.md"], resources: [.copy("Resources/Keys"), .copy("Resources/fields.json")],
             swiftSettings: onMain),
+        .target(
+            name: "VoiceCore",
+            dependencies: [
+                "KeyboardCore", "KeyboardEnglish", "KeyboardStore", .product(name: "FluidAudio", package: "FluidAudio"),
+            ],
+            exclude: ["AGENTS.md"], swiftSettings: voice),
         .target(
             name: "MinimalKeyboard", dependencies: ["KeyboardCore", "KeyboardEnglish", "KeyboardUI"],
             path: "Examples/MinimalKeyboard"),

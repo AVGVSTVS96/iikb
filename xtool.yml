@@ -8,7 +8,6 @@ skipLSP: true
 resources:
   - App/Settings.bundle
   - App/PrivacyInfo.xcprivacy
-  - App/Metadata.appintents
 extensions:
   - product: Keyboard
     bundleID: com.shahidy.iikb.keyboard
@@ -16,7 +15,6 @@ extensions:
     entitlementsPath: Keyboard/Keyboard.entitlements
     resources:
       - Keyboard/PrivacyInfo.xcprivacy
-      - Keyboard/Metadata.appintents
   - product: Controls
     bundleID: com.shahidy.iikb.controls
     infoPath: Config/xtool/Controls-Info.plist

@@ -2,6 +2,7 @@ import KeyboardStore
 import Photos
 import SwiftUI
 import UIKit
+import VoiceCore
 import VoiceModels
 
 @main
@@ -13,12 +14,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         guard !VoiceProbe.asked, !RankingProbe.asked, !JudgeProbe.asked else { return true }
         let photos = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         Dictation.photosAllowed = photos == .authorized || photos == .limited
-        if VoiceModel.hasNeuralEngine { VoiceModel.shared.prepare() }
+        if Transcriber.hasNeuralEngine { VoiceModel.shared.prepare() }
         LanguageDownloads.shared.reload()
         CleanModel.shared.prepare()
-        // The listener exists from the launch, not the first screen: `StartDictation` can launch iikb in the
-        // background with no screen at all, and its `intentStart` must find it already hearing signals.
-        _ = Listener.shared
         Task {
             await Transcripts.shared.recover()
             Backup.syncApp()
@@ -222,9 +220,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         Task { await listen(thenOpen: fromSelf ? nil : request.host) }
     }
 
-    /// Starts listening while iikb is in front — the keyboard's fallback, when it couldn't hear the tap itself
-    /// — then reopens the app you were typing in. Dictating in iikb's own field it stays put: iOS quits
-    /// an app that opens itself, and the quit throws away a Parakeet still getting ready.
+    /// Starts listening while iikb is in front, for a tap the keyboard couldn't hear or write itself, then reopens the app
+    /// you were typing in. Dictating in iikb's own field it stays put: iOS quits an app that opens itself, and the quit throws
+    /// away a Parakeet still getting ready.
     private func listen(thenOpen host: String?) async {
         let asked = Date.now
         await Listener.shared.start()

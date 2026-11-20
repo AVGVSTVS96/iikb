@@ -1,18 +1,28 @@
 import FluidAudio
 import Foundation
 import KeyboardStore
-import VoiceCapture
+import OSLog
+
+nonisolated private let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
 
 /// A loaded Parakeet, hearing 16 kHz sound in English.
-nonisolated protocol Parakeet: Sendable {
+public nonisolated protocol Parakeet: Sendable {
     func hear(_ samples: [Float]) async throws -> ASRResult
 }
 
 extension AsrManager: Parakeet {
     /// Held to the Latin alphabet, which v3 otherwise leaves for Cyrillic on short or unclear English.
-    func hear(_ samples: [Float]) async throws -> ASRResult {
+    public func hear(_ samples: [Float]) async throws -> ASRResult {
         var state = TdtDecoderState.make(decoderLayers: decoderLayerCount)
         return try await transcribe(samples, decoderState: &state, language: .english)
+    }
+
+    /// Whether the encoder runs on the Neural Engine, from how long it takes over a second of silence, which it pads to
+    /// its 15-second window: on the iPhone Duo about 0.1 s there, and 1.5 s on the CPU.
+    func onNeuralEngine() async throws -> Bool {
+        let began = ContinuousClock.now
+        _ = try await hear([Float](repeating: 0, count: ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)))
+        return ContinuousClock.now - began < .seconds(0.5)
     }
 }
 
@@ -22,19 +32,56 @@ nonisolated extension ASRConfig {
     /// history and earnings calls), which in his English dictations heard words in breaths and room sound ("Mm",
     /// "Right.", "mint", "to enjoy") and nothing he'd said; from 1.5 s it still finds what 0.18.0 dropped (Nov 8,
     /// scripts/voiceloop: real 1.87% of words wrong to 1.85%, loud 41.01% to 40.99%, 0.18.0 1.85% and 41.17%).
-    static let dictation = ASRConfig(seamGapRepairMinGapSeconds: 1.5)
+    public static let dictation = ASRConfig(seamGapRepairMinGapSeconds: 1.5)
 }
 
-/// A Parakeet, and Silero's voice-activity model (FluidAudio's `VadManager`), which hears whether anyone talks.
-nonisolated struct Dictation: Sendable {
+/// A Parakeet, and Silero's voice-activity model (FluidAudio's `VadManager`), which hears whether anyone talks: what
+/// writes a dictation down in the app and in the keyboard alike.
+public nonisolated struct Transcriber: Sendable {
     let parakeet: any Parakeet
     let talking: VadManager?
 
-    /// Loads Silero's model beside `parakeet`, downloading it once (2 MB); without it, as when that first download
-    /// can't reach Hugging Face, every recording is written as Parakeet hears it, until the next load.
-    init(_ parakeet: any Parakeet) async {
+    #if targetEnvironment(simulator)
+        /// The simulator has no Neural Engine, so a Parakeet would compile on the Mac's CPU, and its UI tests stand in for
+        /// the app's voice (`scripts/voiceapp.py`).
+        public static let hasNeuralEngine = false
+    #else
+        public static let hasNeuralEngine = true
+    #endif
+
+    /// Loads Silero's model beside `parakeet`, downloading it once (2 MB) into the App Group's FluidAudio folder, where
+    /// the keyboard finds it too; without it, as when that first download can't reach Hugging Face, every recording is
+    /// written as Parakeet hears it, until the next load.
+    public init(_ parakeet: any Parakeet) async {
         self.parakeet = parakeet
-        talking = try? await VadManager()
+        if let folder = AsrModelVersion.shared {
+            talking = try? await VadManager(modelDirectory: folder)
+        } else {
+            talking = try? await VadManager()
+        }
+    }
+
+    /// The picked Parakeet from where the app downloaded it, with Silero; it fails until it's downloaded.
+    public static func load(_ model: SpeechModel) async throws -> Transcriber {
+        guard let version = model.version else { throw CocoaError(.featureUnsupported) }
+        return try await load(version, from: version.folder)
+    }
+
+    /// The Parakeet in `folder`, with Silero. iOS sometimes kills its Neural Engine compiler for memory while it compiles
+    /// the encoder, and Core ML then runs the encoder on the CPU, ten times slower, until it's loaded again: so it's
+    /// loaded again, up to three times.
+    public static func load(_ version: AsrModelVersion, from folder: URL) async throws -> Transcriber {
+        var load = 1
+        while true {
+            let parakeet = AsrManager(config: .dictation)
+            try await parakeet.loadModels(try await AsrModels.load(from: folder, version: version))
+            guard hasNeuralEngine, load < 3, try await !parakeet.onNeuralEngine() else {
+                return await Transcriber(parakeet)
+            }
+            log.error(
+                "\(version.folder.lastPathComponent, privacy: .public)'s encoder ran on the CPU after load \(load)")
+            load += 1
+        }
     }
 
     /// The recording leveled (`Recording.leveled`), a tap with next to nothing said padded up to the shortest sound
@@ -44,7 +91,7 @@ nonisolated struct Dictation: Sendable {
     /// quiet talking in a loud room, and the first piece of a real "Yeah. Yeah." there, six pieces, came to 0.52 on the
     /// Mac and under 0.5 on the Duo, which typed nothing for it. On the Neural Engine a minute of talking is written in
     /// well under a second.
-    func write(_ recording: [Float]) async throws -> String {
+    public func write(_ recording: [Float]) async throws -> String {
         var samples = Recording.leveled(recording)
         let shortest = ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)
         if samples.count < shortest { samples += repeatElement(0, count: shortest - samples.count) }
@@ -61,16 +108,16 @@ nonisolated struct Dictation: Sendable {
 nonisolated extension AsrModelVersion {
     /// Where this Parakeet's files live: the App Group's container, whose path outlives an install, where the app's own
     /// container gets a new one with each, and Core ML keys what it compiles by the path a model loads from
-    /// (VoiceModels/AGENTS.md).
-    var folder: URL {
+    /// (VoiceModels/AGENTS.md). The keyboard reads them there too.
+    public var folder: URL {
         Self.clearCompiled
         let own = AsrModels.defaultCacheDirectory(for: self)
         return Self.shared?.appending(path: "Models").appending(path: own.lastPathComponent) ?? own
     }
 
-    /// Core ML's compiles, `<bundle ID>/com.apple.e5rt.e5bundlecache/<OS build>/…` in the app's caches, emptied the first
-    /// time a new install or iOS reaches for a Parakeet, before any is loaded. Each install compiles them again beside
-    /// the last's, which nothing else removes: 1.3 GB on the Duo and 15 GB in a simulator by Nov 5.
+    /// Core ML's compiles, `<bundle ID>/com.apple.e5rt.e5bundlecache/<OS build>/…` in this process's own caches, emptied
+    /// the first time a new install or iOS reaches for a Parakeet, before any is loaded. Each install compiles them again
+    /// beside the last's, which nothing else removes: 1.3 GB on the Duo and 15 GB in a simulator by Nov 5.
     private static let clearCompiled: Void = {
         let install = "\(Bundle.main.bundlePath) \(ProcessInfo.processInfo.operatingSystemVersionString)"
         guard UserDefaults.standard.string(forKey: "compiledFor") != install else { return }
@@ -81,7 +128,7 @@ nonisolated extension AsrModelVersion {
     }()
 
     /// The App Group's FluidAudio folder. The app's own is moved there the first time, a rename.
-    private static let shared: URL? = {
+    static let shared: URL? = {
         guard let library = AppGroup.library else { return nil }
         let own = URL.applicationSupportDirectory.appending(path: "FluidAudio")
         let shared = library.appending(path: "Application Support/FluidAudio")

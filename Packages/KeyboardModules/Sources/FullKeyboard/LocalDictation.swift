@@ -1,267 +1,343 @@
 import AVFAudio
-import FluidAudio
 import Foundation
+import KeyboardCore
 import KeyboardStore
 import OSLog
 import UIKit
+import VoiceCore
 import WebKit
 
-/// Dictation recorded and written down in the keyboard itself, for a tap on the mic while the app's microphone
-/// is off: the app never comes to the front, and nothing is recorded until you tap, or after you tap again to
-/// stop. iOS won't record in a keyboard extension (audiomxd turns it away, an extension having no entitlement
-/// to record), so a hidden web view in the keyboard captures through `getUserMedia` instead: the recording
-/// happens in WebKit's media process, under the microphone permission the app was given, and the sound comes
-/// back here as chunks of PCM, kept in a file only until Parakeet has written them down in the keyboard. The app's own dictation (the Parakeets, Clean, Transcripts) is untouched: this is the cold
-/// start only, and what it can't do — the app not yet given the microphone, a capture that won't start — falls
-/// back to opening the app, as the mic's tap did before. The built-in microphone is always the one heard, as
-/// in the app until another is picked in Settings › Microphone, so what's playing keeps playing.
+/// Dictation in the keyboard itself, for a tap on the mic while the app's microphone is off, so the app never comes to
+/// the front. iOS won't record in a keyboard extension (audiomxd turns it away, an extension having no entitlement to
+/// record), so a hidden web view captures through `getUserMedia` instead, as Hex's keyboard does: the recording happens
+/// in WebKit's media process, under the microphone permission the app was given, and comes back here as chunks of PCM,
+/// kept as a `Recording` as it's heard. Once you stop, the picked model writes it down here (VoiceCore's `Transcriber`,
+/// or Apple's; Ultra, which takes minutes to load, writes as v3), in the Writing Style picked for the app, with your
+/// Vocabulary (`VocabularyFeed`). Clean's language model needs more memory than a keyboard gets, so Clean uses its
+/// rules. Every dictation, written or not, is left with its sound for the app to keep in Transcripts (`Dictation.Made`).
+/// The built-in microphone is always the one heard, so what's playing keeps playing.
 @MainActor
 final class LocalDictation {
-    enum Phase {
-        case idle
-        case recording
-        case transcribing
-    }
-
-    private(set) var phase = Phase.idle
-    var isRecording: Bool { phase == .recording }
-    var isTranscribing: Bool { phase == .transcribing }
-    var isActive: Bool { phase != .idle }
-    /// How long the dictation being written down ran, which the bar shows as it shows the app's.
-    private(set) var recordedSeconds: Double = 0
-
-    /// Your voice's loudness (a chunk's RMS) and the seconds recorded so far, as the app publishes its own.
+    /// Your voice's loudness and the seconds recorded so far, as the app publishes its own.
     var onLevel: (Float, Double) -> Void = { _, _ in }
-    /// What you said, written down: typed as the app's dictations are typed.
-    var onTranscript: (String) -> Void = { _ in }
-    /// The capture couldn't start, so the tap falls back to opening the app.
+    /// A dictation written down, to type: as your style has it, as the model wrote it, and its transcript's id.
+    var onWritten: (_ text: String, _ plain: String, _ id: UUID) -> Void = { _, _, _ in }
+    /// The keyboard can't hear or write this tap (no microphone permission yet, the model not on the iPhone, a capture
+    /// that won't start), so it opens the app instead.
     var onStartFailure: () -> Void = {}
-    /// A dictation was lost after it started; the words stand until tapped away.
-    var onFailure: (String) -> Void = { _ in }
-    /// The phase changed, so the mic's face is drawn again.
+    /// Something to tell you about a dictation.
+    var onNotice: (String) -> Void = { _ in }
+    /// What the mic shows changed.
     var onChange: () -> Void = {}
+
+    var isRecording: Bool { take != nil }
+    /// How long each dictation still being written down is, in seconds, oldest first.
+    var writing: [Double] { pending.map(\.seconds) }
+    /// What those wait for while Parakeet loads, in a few words; nil once it's loaded.
+    private(set) var waiting: String?
+
+    private final class Take {
+        let id = UUID()
+        let started = Date()
+        let app: String?
+        let style: DictationWriting
+        let sound: URL
+        var mic: String?
+        var file: Recording.File?
+        var converter: AVAudioConverter?
+        var frames = 0
+        var typed = true
+        var left = false
+
+        var seconds: Double { Double(frames) / Recording.format.sampleRate }
+
+        init(app: String?, style: DictationWriting) {
+            self.app = app
+            self.style = style
+            sound = Self.folder.appending(path: "\(id.uuidString).wav")
+            Self.live.insert(id)
+        }
+
+        /// Where the keyboard keeps a dictation's sound until the app has it.
+        static let folder = URL.temporaryDirectory.appending(path: "dictations")
+        /// The takes this keyboard is recording or writing, whose sounds aren't left behind.
+        static var live: Set<UUID> = []
+    }
 
     private let host: UIView
     private var capture: WebCapture?
-    private var sound: SoundFile?
-    /// The web view is hearing: its page said so, so a stop from here is a dictation, not a tap that missed.
-    private var hearing = false
-    private var startedAt = Date()
-    private var writing: Task<Void, Never>?
+    private var take: Take?
+    private var pending: [Take] = []
+    private var tail: Task<Void, Never>?
+    private static var transcriber: Task<Transcriber, any Error>?
+    private static var transcriberLoaded = false
     private static let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
 
     init(host: UIView) {
         self.host = host
+        Self.leaveLeftovers()
     }
 
-    func start() {
-        guard phase == .idle else { return }
-        guard AVAudioApplication.shared.recordPermission == .granted else { return onStartFailure() }
-        guard LocalParakeet.isReady else { return onStartFailure() }
-        phase = .recording
-        startedAt = Date()
-        recordedSeconds = 0
-        hearing = false
-        sound = nil
+    /// Hands the app what a keyboard iOS ended mid-dictation left, as not typed, for it to write down: the sound is
+    /// written as it's heard, so it's all there up to the end.
+    private static func leaveLeftovers() {
+        let files =
+            (try? FileManager.default.contentsOfDirectory(at: Take.folder, includingPropertiesForKeys: nil)) ?? []
+        for file in files {
+            guard let id = UUID(uuidString: file.deletingPathExtension().lastPathComponent), !Take.live.contains(id),
+                let samples = try? Recording.read(file), !samples.isEmpty
+            else {
+                try? FileManager.default.removeItem(at: file)
+                continue
+            }
+            let date = (try? file.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .now
+            Dictation.leave(
+                Dictation.Made(
+                    id: id, date: date, seconds: Double(samples.count) / Recording.format.sampleRate, typed: false,
+                    written: nil, app: nil, mic: nil),
+                sound: file)
+        }
+    }
+
+    /// The picked model can write here: Apple's, or a Parakeet once the app has downloaded v3.
+    private static var canWrite: Bool {
+        SpeechModel.picked == .apple
+            || SpeechModel.v3.folder.map { FileManager.default.fileExists(atPath: $0.path(percentEncoded: false)) }
+                == true
+    }
+
+    func start(for app: String?, style: DictationWriting) {
+        guard take == nil else { return }
+        guard AVAudioApplication.shared.recordPermission == .granted, Self.canWrite else { return onStartFailure() }
+        let take = Take(app: app, style: style)
+        self.take = take
         let capture = capture ?? WebCapture(host: host)
         self.capture = capture
-        capture.onEvent = { [weak self] event in self?.heard(event) }
+        capture.onEvent = { [weak self] event in self?.heard(event, in: take) }
         Self.preferBuiltInMicrophone()
         capture.start()
         onChange()
     }
 
-    /// Stops hearing you and writes down what was said. A tap that lands before the web view is hearing undoes
-    /// the tap instead, there being nothing yet to write down.
+    /// Stops hearing you and has what was said written down and typed. A tap before the web view hears anything
+    /// undoes the tap, there being nothing to write down.
     func stop() {
-        guard phase == .recording else { return }
-        guard hearing else { return cancel() }
+        guard let take else { return }
+        guard take.file != nil else { return drop(take) }
         capture?.stop()
     }
 
-    /// Throws the dictation away: nothing is typed, and nothing is kept.
+    /// The bar's cancel: types nothing of the dictation being recorded, which the app keeps in Transcripts.
     func cancel() {
-        let wasActive = phase != .idle
-        writing?.cancel()
-        writing = nil
-        capture?.onEvent = nil
-        capture?.detach()
-        capture = nil
-        if let sound { try? FileManager.default.removeItem(at: sound.url) }
-        sound = nil
-        hearing = false
-        phase = .idle
-        Self.releaseAudioSession()
-        if wasActive { onChange() }
+        guard let take else { return }
+        take.typed = false
+        end(take)
     }
 
-    private func heard(_ event: WebCapture.Event) {
+    /// The keyboard went away: types nothing of the dictation being recorded or any still being written, and leaves
+    /// them for the app now, since iOS may end the keyboard before they're written.
+    func cancelAll() {
+        let kept = take != nil || !pending.isEmpty
+        cancel()
+        for take in pending {
+            take.typed = false
+            leave(take, nil)
+        }
+        pending = []
+        if kept { onNotice("Not typed here: it’s in iikb › Transcripts") }
+        onChange()
+    }
+
+    private func heard(_ event: WebCapture.Event, in take: Take) {
+        guard take === self.take else { return }
         switch event {
         case .started(let rate, let device):
-            hearing = true
             let kind =
                 device.range(of: "iphone|ipad|built-in", options: [.regularExpression, .caseInsensitive]) != nil
                 ? "built-in" : "other"
-            Self.log.notice("local capture hearing at \(Int(rate)) Hz from the \(kind, privacy: .public) microphone")
-            do {
-                let url = FileManager.default.temporaryDirectory.appending(
-                    path: "local-dictation-\(UUID().uuidString).wav")
-                sound = try SoundFile(url: url, sampleRate: rate)
-            } catch {
-                fail("Dictation couldn't be recorded", detail: Self.describe(error))
-            }
+            Self.log.notice("the keyboard hears at \(Int(rate)) Hz from the \(kind, privacy: .public) microphone")
+            take.mic = device
+            take.file = Recording.File(take.sound)
+            take.converter = AVAudioFormat(
+                commonFormat: .pcmFormatInt16, sampleRate: rate, channels: 1, interleaved: true
+            ).flatMap { AVAudioConverter(from: $0, to: Recording.format) }
+            if take.file == nil || take.converter == nil { startFailed("the recording's file or converter") }
         case .samples(let data, let level):
-            sound?.append(data)
-            recordedSeconds = Date().timeIntervalSince(startedAt)
-            onLevel(level, recordedSeconds)
+            append(data, to: take)
+            onLevel(level, take.seconds)
         case .stopped:
-            finish()
-        case .failed(let message):
-            if hearing {
-                fail("Dictation stopped before it was written down", detail: message)
-            } else {
-                startFailed(message)
-            }
+            end(take)
         case .processTerminated:
-            capture?.detach()
-            capture = nil
-            fail("Dictation stopped before it was written down")
+            end(take)
+        case .failed(let message):
+            if take.file == nil { startFailed(message) } else { end(take) }
         }
     }
 
-    private func finish() {
-        guard phase == .recording, let sound else {
-            phase = .idle
-            return onChange()
+    private func append(_ data: Data, to take: Take) {
+        guard let converter = take.converter, let file = take.file,
+            let buffer = AVAudioPCMBuffer(
+                pcmFormat: converter.inputFormat, frameCapacity: AVAudioFrameCount(data.count / 2))
+        else { return }
+        buffer.frameLength = buffer.frameCapacity
+        data.withUnsafeBytes { raw in
+            guard let base = raw.baseAddress, let target = buffer.int16ChannelData?[0] else { return }
+            memcpy(target, base, Int(buffer.frameLength) * 2)
         }
-        self.sound = nil
-        hearing = false
-        Self.releaseAudioSession()
-        let url = sound.url
-        guard sound.close() > 0 else {
-            try? FileManager.default.removeItem(at: url)
-            phase = .idle
-            return onChange()
-        }
-        phase = .transcribing
-        onChange()
-        writing = Task { [weak self] in
-            let heard: String?
-            do {
-                heard = try await LocalParakeet.transcribe(url)
-            } catch {
-                Self.log.error("local transcription failed: \(Self.describe(error), privacy: .public)")
-                try? FileManager.default.removeItem(at: url)
-                guard let self, !Task.isCancelled else { return }
-                writing = nil
-                phase = .idle
-                onChange()
-                return onFailure(
-                    (error as? LocalParakeet.Failure)?.errorDescription ?? "Dictation couldn't be written down")
-            }
-            try? FileManager.default.removeItem(at: url)
-            guard let self, !Task.isCancelled else { return }
-            writing = nil
-            phase = .idle
-            onChange()
-            if let heard { onTranscript(heard) }
-        }
+        guard let converted = Recording.convert(buffer, with: converter),
+            let channel = converted.floatChannelData?[0]
+        else { return }
+        file.append(UnsafeBufferPointer(start: channel, count: Int(converted.frameLength)))
+        take.frames += Int(converted.frameLength)
     }
 
-    /// The capture never began, so nothing was lost: the tap goes on to open the app, which can ask for the
-    /// microphone and record there.
-    private func startFailed(_ message: String) {
-        Self.log.error("local capture couldn't start: \(message, privacy: .public)")
+    /// The recording is over: what was heard is written down and typed, in the order said, unless it was canceled,
+    /// which the app writes down instead.
+    private func end(_ take: Take) {
+        self.take = nil
         capture?.onEvent = nil
-        sound = nil
-        hearing = false
-        phase = .idle
+        capture?.stop()
         Self.releaseAudioSession()
+        take.file?.close()
+        guard take.frames > 0 else { return drop(take) }
+        guard take.typed else {
+            leave(take, nil)
+            return onChange()
+        }
+        pending.append(take)
         onChange()
+        let before = tail
+        tail = Task { [weak self] in
+            let written = await self?.write(take)
+            await before?.value
+            self?.deliver(take, written)
+        }
+    }
+
+    private func deliver(_ take: Take, _ written: Written?) {
+        guard !take.left else { return }
+        pending.removeAll { $0 === take }
+        leave(take, written?.made)
+        if let written {
+            if !written.sounded {
+                onNotice("The microphone gave no sound: tap the mic again")
+            } else if written.made.text.isEmpty {
+                onNotice("Nothing heard: the recording is in iikb › Transcripts")
+            } else {
+                onWritten(written.made.text, written.plain, take.id)
+            }
+        } else {
+            onNotice("Couldn’t write it down here: it’ll be in iikb › Transcripts")
+        }
+        onChange()
+    }
+
+    private struct Written {
+        var made: Dictation.Made.Written
+        /// As the voice model wrote it, with your vocabulary and no style or lists.
+        var plain: String
+        /// Some sample was past 100/32767, as the app checks its own recordings: none means the microphone was deaf.
+        var sounded: Bool
+    }
+
+    private func write(_ take: Take) async -> Written? {
+        do {
+            let samples = try Recording.read(take.sound)
+            let model = SpeechModel.picked == .apple ? SpeechModel.apple : .v3
+            let heard =
+                model == .apple ? try await AppleSpeech.write(samples) : try await loaded().write(samples)
+            let vocabulary = VocabularyFeed.read()
+            return Written(
+                made: Dictation.Made.Written(
+                    text: take.style.typed(heard, edited: nil, vocabulary: vocabulary), heard: heard,
+                    model: model.title),
+                plain: DictationWriting.plain(heard, vocabulary: vocabulary),
+                sounded: take.seconds < 1 || samples.contains { abs($0) > 100 / 32767 })
+        } catch {
+            Self.log.error(
+                "the keyboard couldn't write a dictation down: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    /// Parakeet v3, loaded once for as long as the keyboard runs: its first load after an install of a new build
+    /// compiles it for the Neural Engine, here as in the app.
+    private func loaded() async throws -> Transcriber {
+        let loading =
+            Self.transcriber
+            ?? Task { try await Transcriber.load(SpeechModel.v3) }
+        Self.transcriber = loading
+        if !Self.transcriberLoaded {
+            waiting = "Model loading…"
+            onChange()
+        }
+        defer {
+            if waiting != nil {
+                waiting = nil
+                onChange()
+            }
+        }
+        do {
+            let transcriber = try await loading.value
+            Self.transcriberLoaded = true
+            return transcriber
+        } catch {
+            Self.transcriber = nil
+            throw error
+        }
+    }
+
+    /// Hands a dictation to the app, once, with its sound: written, or for the app to write.
+    private func leave(_ take: Take, _ written: Dictation.Made.Written?) {
+        guard !take.left else { return }
+        take.left = true
+        Take.live.remove(take.id)
+        Dictation.leave(
+            Dictation.Made(
+                id: take.id, date: take.started, seconds: take.seconds, typed: take.typed && written != nil,
+                written: written, app: take.app, mic: take.mic),
+            sound: take.sound)
+    }
+
+    /// Nothing was heard: there's nothing to keep, and the web view goes, so a start still landing in it doesn't go on
+    /// hearing.
+    private func drop(_ take: Take) {
+        if self.take === take { self.take = nil }
+        capture?.onEvent = nil
+        capture?.detach()
+        capture = nil
+        Self.releaseAudioSession()
+        take.file?.close()
+        Take.live.remove(take.id)
+        try? FileManager.default.removeItem(at: take.sound)
+        onChange()
+    }
+
+    /// The capture never began, so nothing was lost: the tap goes on to open the app.
+    private func startFailed(_ message: String) {
+        Self.log.error("the keyboard's capture couldn't start: \(message, privacy: .public)")
+        if let take { drop(take) }
         onStartFailure()
     }
 
-    /// A dictation was lost after it started: `message` is what the keyboard shows; `detail` (a raw error
-    /// from WebKit or the file) goes to the log only, never into the notice you'd read.
-    private func fail(_ message: String, detail: String? = nil) {
-        Self.log.error("\(message, privacy: .public)")
-        if let detail { Self.log.error("\(detail, privacy: .public)") }
-        capture?.onEvent = nil
-        capture?.stop()
-        if let sound { try? FileManager.default.removeItem(at: sound.url) }
-        sound = nil
-        hearing = false
-        phase = .idle
-        Self.releaseAudioSession()
-        onChange()
-        onFailure(message)
-    }
-
-    /// The iPhone's own microphone, in `playAndRecord` mixing with other audio, so a car or headphones keep
-    /// playing instead of the route dropping into call audio, which pauses them and stalls the start.
+    /// The iPhone's own microphone, in `playAndRecord` mixing with other audio, so a car or headphones keep playing
+    /// instead of the route dropping into call audio, which pauses them and stalls the start.
     private static func preferBuiltInMicrophone() {
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(
-                .playAndRecord, mode: .measurement,
-                options: [.mixWithOthers, .allowBluetoothA2DP, .defaultToSpeaker])
+                .playAndRecord, mode: .measurement, options: [.mixWithOthers, .allowBluetoothA2DP, .defaultToSpeaker])
             if let builtIn = session.availableInputs?.first(where: { $0.portType == .builtInMic }) {
                 try session.setPreferredInput(builtIn)
             }
         } catch {
-            log.error("built-in microphone preference failed: \(describe(error), privacy: .public)")
+            log.error("the built-in microphone couldn't be picked: \(error.localizedDescription, privacy: .public)")
         }
     }
 
     /// Lets what the capture paused (music, navigation) go on.
     private static func releaseAudioSession() {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    }
-
-    private static func describe(_ error: Error) -> String {
-        let error = error as NSError
-        return "\(error.domain) \(error.code) \(error.localizedDescription)"
-    }
-}
-
-/// The dictation's sound as it comes from the page: 16-bit mono PCM written as a WAV, deleted once written down.
-@MainActor
-private final class SoundFile {
-    let url: URL
-    private var file: AVAudioFile?
-    private let format: AVAudioFormat
-    private var frames: AVAudioFramePosition = 0
-
-    init(url: URL, sampleRate: Double) throws {
-        self.url = url
-        guard
-            let format = AVAudioFormat(
-                commonFormat: .pcmFormatInt16, sampleRate: sampleRate, channels: 1, interleaved: true)
-        else { throw CocoaError(.featureUnsupported) }
-        self.format = format
-        // file: the dictation's sound, kept only until it's written down
-        file = try AVAudioFile(
-            forWriting: url, settings: format.settings, commonFormat: .pcmFormatInt16, interleaved: true)
-    }
-
-    func append(_ data: Data) {
-        let count = data.count / 2
-        guard count > 0,
-            let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count))
-        else { return }
-        buffer.frameLength = AVAudioFrameCount(count)
-        data.withUnsafeBytes { raw in
-            guard let base = raw.baseAddress, let target = buffer.int16ChannelData?[0] else { return }
-            memcpy(target, base, count * 2)
-        }
-        try? file?.write(from: buffer)
-        frames += AVAudioFramePosition(count)
-    }
-
-    /// Closes the file and says how much sound it holds, in frames.
-    func close() -> AVAudioFramePosition {
-        file = nil
-        return frames
     }
 }
 
@@ -284,6 +360,9 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
     private let webView: WKWebView
     private var loaded = false
     private var startWhenLoaded = false
+    /// Each start's number, which the page sends back with everything it hears, so what a stopped capture still sends
+    /// never reaches the next.
+    private var session = 0
 
     init(host: UIView) {
         let configuration = WKWebViewConfiguration()
@@ -305,7 +384,8 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
             startWhenLoaded = true
             return
         }
-        webView.evaluateJavaScript("startCapture()")
+        session += 1
+        webView.evaluateJavaScript("startCapture(\(session))")
     }
 
     func stop() {
@@ -340,13 +420,17 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
         decisionHandler(type == .microphone ? .grant : .deny)
     }
 
+    /// WebKit ended the page's process: the page loads again for the next start.
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         loaded = false
+        webView.loadHTMLString(Self.page, baseURL: URL(string: "https://keyboard.iikb.local/"))
         onEvent?(.processTerminated)
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
+        guard let body = message.body as? [String: Any], let type = body["type"] as? String,
+            body["session"] as? Int == session
+        else { return }
         switch type {
         case "started":
             onEvent?(
@@ -367,7 +451,7 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
 
     private static let page = """
         <!doctype html><meta charset="utf-8"><script>
-        let ctx, stream, source, node, running = false;
+        let live = null;
         const post = (m) => webkit.messageHandlers.iikb.postMessage(m);
         const base = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
         async function builtInMicrophone() {
@@ -375,25 +459,27 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
           const found = inputs.find((d) => /iphone|ipad|built-in/i.test(d.label));
           return found ? found.deviceId : null;
         }
-        async function startCapture() {
-          if (running) return;
-          running = true;
+        async function startCapture(session) {
+          if (live) return;
+          const capture = { session, running: true };
+          live = capture;
           try {
             let id = await builtInMicrophone();
-            stream = await navigator.mediaDevices.getUserMedia({ audio: id ? { ...base, deviceId: { exact: id } } : base });
+            capture.stream = await navigator.mediaDevices.getUserMedia({ audio: id ? { ...base, deviceId: { exact: id } } : base });
             if (!id) {
               id = await builtInMicrophone();
-              if (id && stream.getAudioTracks()[0].getSettings().deviceId !== id) {
-                stream.getTracks().forEach((t) => t.stop());
-                stream = await navigator.mediaDevices.getUserMedia({ audio: { ...base, deviceId: { exact: id } } });
+              if (id && capture.stream.getAudioTracks()[0].getSettings().deviceId !== id) {
+                capture.stream.getTracks().forEach((t) => t.stop());
+                capture.stream = await navigator.mediaDevices.getUserMedia({ audio: { ...base, deviceId: { exact: id } } });
               }
             }
-            ctx = new AudioContext();
-            await ctx.resume();
-            source = ctx.createMediaStreamSource(stream);
-            node = ctx.createScriptProcessor(4096, 1, 1);
-            node.onaudioprocess = (event) => {
-              if (!running) return;
+            if (!capture.running) return capture.stream.getTracks().forEach((t) => t.stop());
+            capture.ctx = new AudioContext();
+            await capture.ctx.resume();
+            capture.source = capture.ctx.createMediaStreamSource(capture.stream);
+            capture.node = capture.ctx.createScriptProcessor(4096, 1, 1);
+            capture.node.onaudioprocess = (event) => {
+              if (!capture.running) return;
               const input = event.inputBuffer.getChannelData(0);
               const pcm = new Int16Array(input.length);
               let sum = 0;
@@ -405,24 +491,25 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
               const bytes = new Uint8Array(pcm.buffer);
               let binary = "";
               for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-              post({ type: "pcm", data: btoa(binary), level: Math.sqrt(sum / input.length) });
+              post({ type: "pcm", session, data: btoa(binary), level: Math.sqrt(sum / input.length) });
             };
-            source.connect(node);
-            node.connect(ctx.destination);
-            post({ type: "started", rate: ctx.sampleRate, device: stream.getAudioTracks()[0].label });
+            capture.source.connect(capture.node);
+            capture.node.connect(capture.ctx.destination);
+            post({ type: "started", session, rate: capture.ctx.sampleRate, device: capture.stream.getAudioTracks()[0].label });
           } catch (error) {
-            running = false;
-            post({ type: "error", message: (error && (error.name + ": " + error.message)) || String(error) });
+            if (live === capture) live = null;
+            post({ type: "error", session, message: (error && (error.name + ": " + error.message)) || String(error) });
           }
         }
         async function stopCapture() {
-          const wasRunning = running;
-          running = false;
-          try { node && node.disconnect(); source && source.disconnect(); } catch (e) {}
-          if (stream) stream.getTracks().forEach((t) => t.stop());
-          if (ctx) { try { await ctx.close(); } catch (e) {} }
-          ctx = stream = source = node = null;
-          if (wasRunning) post({ type: "stopped" });
+          const capture = live;
+          if (!capture) return;
+          live = null;
+          capture.running = false;
+          try { capture.node && capture.node.disconnect(); capture.source && capture.source.disconnect(); } catch (e) {}
+          if (capture.stream) capture.stream.getTracks().forEach((t) => t.stop());
+          post({ type: "stopped", session: capture.session });
+          if (capture.ctx) { try { await capture.ctx.close(); } catch (e) {} }
         }
         </script>
         """
@@ -439,157 +526,5 @@ private final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         target?.userContentController(controller, didReceive: message)
-    }
-}
-
-/// Parakeet writing a dictation down in the keyboard: the same model the app runs, loaded from the App
-/// Group's copy of its files, and hearing the recording as the app hears its own — leveled, and padded
-/// up to the shortest sound Parakeet takes. The model is loaded once and kept, loading being the slow
-/// part. Nothing here downloads: the files arrive with the app's dictations, and until they have, a tap
-/// opens the app instead (`isReady`).
-private enum LocalParakeet {
-    enum Failure: LocalizedError {
-        case missing
-        case unreadable
-
-        var errorDescription: String? {
-            switch self {
-            case .missing: "Parakeet v3 isn't downloaded yet. Open iikb and pick it as the Voice Model."
-            case .unreadable: "Dictation couldn't be written down: tap the mic again"
-            }
-        }
-    }
-
-    /// Where Parakeet v3's files live: the App Group's FluidAudio folder, as the app keeps them
-    /// (VoiceModels' `AsrModelVersion.folder`). v3 is the pick that loads in a moment, so it is the
-    /// one a keyboard can hold.
-    static var folder: URL {
-        let own = AsrModels.defaultCacheDirectory(for: .v3)
-        guard let library = AppGroup.library else { return own }
-        return library.appending(path: "Application Support/FluidAudio/Models")
-            .appending(path: own.lastPathComponent)
-    }
-
-    /// The files are on the iPhone, so a tap here can write a dictation down.
-    static var isReady: Bool {
-        FileManager.default.fileExists(atPath: folder.path(percentEncoded: false))
-    }
-
-    private static var loaded: AsrManager?
-
-    /// The loaded Parakeet, loading it first if this keyboard hasn't: as the app loads it, again if
-    /// its encoder came up on the CPU instead of the Neural Engine, which runs ten times slower.
-    private static func manager() async throws -> AsrManager {
-        if let loaded { return loaded }
-        let manager = AsrManager(config: ASRConfig(seamGapRepairMinGapSeconds: 1.5))
-        var loads = 1
-        while true {
-            try await manager.loadModels(try await AsrModels.load(from: folder, version: .v3))
-            guard hasNeuralEngine, loads < 3, try await !manager.onNeuralEngine() else { break }
-            loads += 1
-        }
-        loaded = manager
-        return manager
-    }
-
-    #if targetEnvironment(simulator)
-        /// The simulator has no Neural Engine (VoiceModels' word for it), so a load there is never
-        /// checked against one.
-        private static let hasNeuralEngine = false
-    #else
-        private static let hasNeuralEngine = true
-    #endif
-
-    /// What was said, or nil when nothing was heard.
-    static func transcribe(_ url: URL) async throws -> String? {
-        guard isReady else { throw Failure.missing }
-        var sound = try samples(url)
-        sound = leveled(sound)
-        let shortest = ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)
-        if sound.count < shortest { sound += repeatElement(0, count: shortest - sound.count) }
-        let heard = try await manager().hear(sound)
-        let text = heard.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? nil : text
-    }
-
-    /// The recording as Parakeet hears sound: 16 kHz mono, as floats, converted from the web view's WAV.
-    private static func samples(_ url: URL) throws -> [Float] {
-        let file: AVAudioFile
-        do {
-            file = try AVAudioFile(forReading: url)
-        } catch {
-            throw Failure.unreadable
-        }
-        guard
-            file.length > 0,
-            let target = AVAudioFormat(
-                commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
-            let converter = AVAudioConverter(from: file.processingFormat, to: target),
-            let input = AVAudioPCMBuffer(
-                pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)),
-            let output = AVAudioPCMBuffer(
-                pcmFormat: target,
-                frameCapacity: AVAudioFrameCount(
-                    Double(file.length) * 16_000 / file.processingFormat.sampleRate) + 1_024)
-        else { throw Failure.unreadable }
-        do {
-            try file.read(into: input)
-        } catch {
-            throw Failure.unreadable
-        }
-        var failure: NSError?
-        var offered = false
-        _ = converter.convert(to: output, error: &failure) { _, status in
-            if offered {
-                status.pointee = .noDataNow
-                return nil
-            }
-            offered = true
-            status.pointee = .haveData
-            return input
-        }
-        guard failure == nil, let channel = output.floatChannelData else { throw Failure.unreadable }
-        return Array(UnsafeBufferPointer(start: channel[0], count: Int(output.frameLength)))
-    }
-
-    /// The app's leveling of a recording (VoiceCapture's `Recording.leveled`), so a quiet dictation is
-    /// heard here as it is there: gain toward the speech's level, never past the peak.
-    private static func leveled(_ samples: [Float]) -> [Float] {
-        guard let (room, speech) = levels(samples) else { return samples }
-        let peak = samples.reduce(0) { max($0, abs($1)) }
-        guard speech > 0, peak > 0 else { return samples }
-        let gain = min(0.1 / speech, room > 0 ? 0.001_78 / room : .infinity, 0.99 / peak)
-        return gain > 1 ? samples.map { $0 * gain } : samples
-    }
-
-    /// The room and the speech: the quietest tenth and the loudest twentieth of the recording's 20 ms
-    /// stretches, each the root mean square about its mean; nil when it's shorter than one.
-    private static func levels(_ samples: [Float]) -> (room: Float, speech: Float)? {
-        let frame = 320
-        guard samples.count >= frame else { return nil }
-        let all = stride(from: 0, to: samples.count - frame + 1, by: frame).map { start in
-            let slice = samples[start..<start + frame]
-            let mean = slice.reduce(0, +) / Float(frame)
-            return (slice.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Float(frame)).squareRoot()
-        }.sorted()
-        return (all[all.count / 10], all[all.count * 95 / 100])
-    }
-}
-
-extension AsrManager {
-    /// Heard as the app hears (VoiceModels' `Parakeet`): held to the Latin alphabet, which v3 otherwise
-    /// leaves for Cyrillic on short or unclear English.
-    fileprivate func hear(_ samples: [Float]) async throws -> ASRResult {
-        var state = TdtDecoderState.make(decoderLayers: decoderLayerCount)
-        return try await transcribe(samples, decoderState: &state, language: .english)
-    }
-
-    /// Whether the encoder runs on the Neural Engine, from how long it takes over a second of silence,
-    /// which it pads to its 15-second window: on the iPhone Duo about 0.1 s there, and 1.5 s on the CPU
-    /// (VoiceModels' check, the same).
-    fileprivate func onNeuralEngine() async throws -> Bool {
-        let began = ContinuousClock.now
-        _ = try await hear([Float](repeating: 0, count: ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)))
-        return ContinuousClock.now - began < .seconds(0.5)
     }
 }

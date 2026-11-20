@@ -2,16 +2,17 @@ import Foundation
 import KeyboardCore
 import notify
 
-/// Voice typing runs in the app, because a keyboard can't use the microphone: the keyboard opens the app with a
-/// `Request`, the app listens until the keyboard (or the app) says it's done, and leaves what it wrote down in the App
-/// Group for the keyboard to type. Each side tells the other through a Darwin notification. The app alone writes the
-/// `Status`, the keyboard alone its `host`; the app leaves each `Note` in a file of its own that the keyboard takes by
-/// removing it, and the keyboard leaves what each dictation became the same way for the app (`edits`), so the two never
-/// write the same file.
+/// Voice typing between the keyboard and the app. While the app has the microphone on, the keyboard asks it to start
+/// and stop, the app listens until the keyboard (or the app) says it's done, and leaves what it wrote down in the App
+/// Group for the keyboard to type; with the microphone off the keyboard records and writes a dictation down itself, and
+/// leaves it for the app to keep in Transcripts (`Made`). Each side tells the other through a Darwin notification. The
+/// app alone writes the `Status`, the keyboard alone its `host`; the app leaves each `Note` in a file of its own that the
+/// keyboard takes by removing it, and the keyboard leaves what each dictation became the same way for the app (`edits`,
+/// `made`), so the two never write the same file.
 public enum Dictation {
     /// What the app is doing. Recording and writing are separate: the app records a new dictation while the ones before
     /// are still being written down, and has them typed in the order you said them.
-    nonisolated public struct Status: Codable, Equatable, Sendable {
+    public struct Status: Codable, Equatable, Sendable {
         public var listening = false
         /// How long each dictation the app has recorded and is still writing down to type is, in seconds, oldest first.
         public var writing: [Double] = []
@@ -37,6 +38,41 @@ public enum Dictation {
         case notice(String)
     }
 
+    /// A dictation the keyboard recorded itself, with the microphone off, left with its sound for the app to keep in
+    /// Transcripts. `written` is nil when the keyboard didn't write it down (you canceled it, or the keyboard went away
+    /// first): the app writes it. `typed` is false for one you canceled or the keyboard couldn't type.
+    nonisolated public struct Made: Codable, Equatable, Sendable {
+        public struct Written: Codable, Equatable, Sendable {
+            /// As your style and vocabulary have it, as the keyboard typed it.
+            public var text: String
+            /// As the voice model wrote it.
+            public var heard: String
+            public var model: String
+
+            public init(text: String, heard: String, model: String) {
+                (self.text, self.heard, self.model) = (text, heard, model)
+            }
+        }
+
+        public var id: UUID
+        /// When you started it.
+        public var date: Date
+        public var seconds: Double
+        public var typed: Bool
+        public var written: Written?
+        /// The bundle ID of the app it was said for (`host`).
+        public var app: String?
+        /// The microphone that heard it, as WebKit names it.
+        public var mic: String?
+
+        public init(
+            id: UUID, date: Date, seconds: Double, typed: Bool, written: Written?, app: String?, mic: String?
+        ) {
+            (self.id, self.date, self.seconds, self.typed) = (id, date, seconds, typed)
+            (self.written, self.app, self.mic) = (written, app, mic)
+        }
+    }
+
     public enum Signal: String, Sendable {
         /// The app changed the status.
         case changed = "com.shahidy.iikb.dictation"
@@ -44,9 +80,6 @@ public enum Dictation {
         case finish = "com.shahidy.iikb.dictation.finish"
         /// The keyboard wants to dictate again while the app still has the microphone on.
         case start = "com.shahidy.iikb.dictation.start"
-        /// `StartDictation` (the intent iOS performs in the app, its Live Activity up) wants a dictation with the
-        /// microphone off: the one start that doesn't need the microphone already on.
-        case intentStart = "com.shahidy.iikb.dictation.intentstart"
         /// The keyboard wants the dictation being recorded thrown away: never typed, kept only in Transcripts.
         case cancel = "com.shahidy.iikb.dictation.cancel"
         /// A keyboard appeared, carrying its `keyboard` in the state, so any other still listening (one whose app
@@ -54,7 +87,7 @@ public enum Dictation {
         case appeared = "com.shahidy.iikb.dictation.appeared"
         /// How loud you are and how much has been recorded, carried in the notification's state (`level`).
         case level = "com.shahidy.iikb.dictation.level"
-        /// The keyboard left what dictations became (`edits`).
+        /// The keyboard left what dictations became (`edits`), or a dictation it made itself (`made`).
         case edited = "com.shahidy.iikb.dictation.edited"
         /// Control Center's iikb Mic was turned off: the microphone goes off as Home's switch turns it off.
         case micOff = "com.shahidy.iikb.dictation.micoff"
@@ -100,13 +133,15 @@ public enum Dictation {
         }
     }
 
-    nonisolated private static var statusURL: URL? { AppGroup.library?.appending(path: "dictation.json") }
+    private static var statusURL: URL? { AppGroup.library?.appending(path: "dictation.json") }
 
     private static var micURL: URL? { AppGroup.library?.appending(path: "mic.lock") }
 
     private static var notesURL: URL? { AppGroup.library?.appending(path: "notes") }
 
     private static var editsURL: URL? { AppGroup.library?.appending(path: "edits") }
+
+    nonisolated private static var madeURL: URL? { AppGroup.library?.appending(path: "made") }
 
     private static var hostURL: URL? { AppGroup.library?.appending(path: "dictation-host.txt") }
 
@@ -165,7 +200,7 @@ public enum Dictation {
         }
     }
 
-    nonisolated public static var status: Status {
+    public static var status: Status {
         // file: dictation status, rewritten on each change
         statusURL.flatMap { try? JSONDecoder().decode(Status.self, from: Data(contentsOf: $0)) } ?? Status()
     }
@@ -198,6 +233,25 @@ public enum Dictation {
     /// What the keyboard says dictations became, oldest first, each where `take` finds it.
     public static var edits: [(file: URL, edit: DictationDraft.Outcome)] {
         files(in: editsURL).map { ($0.file, $0.value) }
+    }
+
+    /// Leaves a dictation the keyboard made itself for the app, its sound (a `Recording`, which this moves) first.
+    public static func leave(_ made: Made, sound: URL) {
+        guard let madeURL else { return }
+        try? FileManager.default.createDirectory(at: madeURL, withIntermediateDirectories: true)
+        guard (try? FileManager.default.moveItem(at: sound, to: self.sound(of: made.id))) != nil else { return }
+        leave([made], in: madeURL)
+        send(.edited)
+    }
+
+    /// The dictations the keyboard made itself, oldest first, each where `take` finds it, its sound at `sound(of:)`.
+    nonisolated public static var made: [(file: URL, made: Made)] {
+        files(in: madeURL).map { ($0.file, $0.value) }
+    }
+
+    /// Where a dictation the keyboard made keeps its sound until the app takes it.
+    nonisolated public static func sound(of id: UUID) -> URL {
+        (madeURL ?? URL.temporaryDirectory).appending(path: "\(id.uuidString).wav")
     }
 
     /// The dictations a keyboard was following as it went away, kept in its own container with the field they're in,
@@ -233,25 +287,25 @@ public enum Dictation {
         for value in values {
             guard let data = try? JSONEncoder().encode(value) else { continue }
             let name = String(format: "%020llu-%@.json", clock_gettime_nsec_np(CLOCK_REALTIME), UUID().uuidString)
-            // file: dictation channel (notes and edits, each taken by removing it)
+            // file: dictation channel (notes, edits and made, each taken by removing it)
             try? data.write(to: folder.appending(path: name), options: .atomic)
         }
     }
 
-    private static func files<Value: Decodable>(in folder: URL?) -> [(file: URL, value: Value)] {
+    nonisolated private static func files<Value: Decodable>(in folder: URL?) -> [(file: URL, value: Value)] {
         guard let folder,
             let files = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
         else { return [] }
         return files.filter { $0.pathExtension == "json" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
             .compactMap { file in
-                // file: dictation channel (notes and edits, each taken by removing it)
+                // file: dictation channel (notes, edits and made, each taken by removing it)
                 (try? Data(contentsOf: file)).flatMap { try? JSONDecoder().decode(Value.self, from: $0) }.map {
                     (file, $0)
                 }
             }
     }
 
-    nonisolated public static func send(_ signal: Signal) {
+    public static func send(_ signal: Signal) {
         notify_post(signal.rawValue)
     }
 

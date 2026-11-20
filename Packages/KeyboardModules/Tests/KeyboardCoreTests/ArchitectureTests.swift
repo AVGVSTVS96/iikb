@@ -22,10 +22,7 @@ struct ArchitectureTests {
             "asyncAfter", "afterDelay", "Timer.", "Timer(", ".sleep(", "usleep(", "makeTimerSource", "timeoutInterval",
             "timeout:",
         ]
-        let timers = [
-            "key repeat", "long-press", "source answer", "Keep Mic On", "stop waits for quiet", "probe",
-            "intent answer",
-        ]
+        let timers = ["key repeat", "long-press", "source answer", "Keep Mic On", "stop waits for quiet", "probe"]
         let sources = ["App", "Keyboard", "web/Sources", "Packages/KeyboardModules/Sources", "Packages/Voice/Sources"]
             .flatMap(Self.files).filter { $0.pathExtension == "swift" }
         #expect(sources.count > 100)
@@ -159,10 +156,8 @@ struct ArchitectureTests {
 
     /// Controls leaves KeyboardStore out, so it spells the app's names for the microphone itself.
     @Test func controlsSpellsTheAppsMicNames() throws {
-        let control = try ["MicControl.swift", "SessionActivity.swift"].map {
-            try String(contentsOf: Self.root.appending(path: "Controls/\($0)"), encoding: .utf8)
-        }.joined()
-        let store = try ["Dictation.swift", "AppLink.swift", "StartDictation.swift"].map {
+        let control = try String(contentsOf: Self.root.appending(path: "Controls/MicControl.swift"), encoding: .utf8)
+        let store = try ["Dictation.swift", "AppLink.swift"].map {
             try String(
                 contentsOf: Self.root.appending(path: "Packages/KeyboardModules/Sources/KeyboardStore/\($0)"),
                 encoding: .utf8)
@@ -176,20 +171,7 @@ struct ArchitectureTests {
             )
             #expect(
                 control.contains(name),
-                "Controls doesn't spell \(name) as KeyboardStore does, so iikb Mic would miss the app."
-            )
-        }
-        // The session's Live Activity is shown by Controls from its own copy of the app's
-        // `DictationSessionAttributes`: the two copies are one activity only while the type and its state's shape
-        // are spelled the same, since the state crosses as JSON.
-        for name in ["struct DictationSessionAttributes", "var listening: Bool"] {
-            #expect(
-                store.contains(name),
-                "KeyboardStore no longer has \(name); spell the session's attributes the same in Controls/SessionActivity.swift and here."
-            )
-            #expect(
-                control.contains(name),
-                "Controls/SessionActivity.swift doesn't spell \(name) as KeyboardStore does, so the session's Live Activity would show nothing."
+                "Controls/MicControl.swift doesn't spell \(name) as KeyboardStore does, so iikb Mic would miss the app."
             )
         }
     }

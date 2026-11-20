@@ -334,7 +334,7 @@ nonisolated private final class Feed: @unchecked Sendable {
             }
             let source = channelZero(of: buffer)
             if recorder == nil, let source { recorder = AVAudioConverter(from: source.format, to: Recording.format) }
-            if let source, let recorder, let converted = Self.convert(source, with: recorder),
+            if let source, let recorder, let converted = Recording.convert(source, with: recorder),
                 let channel = converted.floatChannelData?[0]
             {
                 let samples = UnsafeBufferPointer(start: channel, count: Int(converted.frameLength))
@@ -386,18 +386,5 @@ nonisolated private final class Feed: @unchecked Sendable {
     private func isQuiet(_ level: Float) -> Bool {
         let sorted = loudness.sorted()
         return level * level <= sorted[sorted.count / 10] * sorted[sorted.count * 19 / 20]
-    }
-
-    private static func convert(_ buffer: AVAudioPCMBuffer, with converter: AVAudioConverter) -> AVAudioPCMBuffer? {
-        let format = converter.outputFormat
-        let capacity = AVAudioFrameCount(Double(buffer.frameLength) * format.sampleRate / buffer.format.sampleRate) + 1
-        guard let converted = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return nil }
-        nonisolated(unsafe) var fed = false
-        converter.convert(to: converted, error: nil) { _, status in
-            status.pointee = fed ? .noDataNow : .haveData
-            defer { fed = true }
-            return fed ? nil : buffer
-        }
-        return converted
     }
 }

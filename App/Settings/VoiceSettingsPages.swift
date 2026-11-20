@@ -4,6 +4,7 @@ import KeyboardStore
 import KeyboardUI
 import SwiftUI
 import VoiceCapture
+import VoiceCore
 import VoiceModels
 
 /// How iikb hears you, on one page: the model that writes it down, how long the mic stays on, and which microphone.
@@ -25,7 +26,7 @@ private struct ModelSettings: View {
             footer:
                 "Everything you say is written down on this \(ThisDevice.name) and never leaves it. What you dictate while a Parakeet gets ready is written once it’s ready, in the order you said it."
         ) {
-            ForEach([VoiceModel.Model.v3, .ultra, .apple], id: \.self) { choice in
+            ForEach([SpeechModel.v3, .ultra, .apple], id: \.self) { choice in
                 ChoiceRow(title: choice.title, detail: choice.detail, picked: choice == voice.model) {
                     voice.pick(choice)
                 } extra: {

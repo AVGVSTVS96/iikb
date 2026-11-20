@@ -78,6 +78,7 @@ public enum SettingsStore {
     private static let layoutKey = "layout"
     private static let keepMicOnKey = "keepMicOn"
     private static let microphoneKey = "microphone"
+    private static let voiceModelKey = "voiceModel"
 
     private static var group: UserDefaults { UserDefaults(suiteName: AppGroup.id) ?? .standard }
     private static var own: UserDefaults { .standard }
@@ -178,6 +179,13 @@ public enum SettingsStore {
     public static var microphone: PickedMicrophone? {
         get { (value(forKey: microphoneKey, sharing: true) as? [String: String]).flatMap(PickedMicrophone.init) }
         set { set(newValue?.stored ?? [:], forKey: microphoneKey) }
+    }
+
+    /// The voice model picked in Settings › Voice, as VoiceCore's `SpeechModel` names it: the app writes with it, and so
+    /// does the keyboard when it writes a dictation down itself.
+    public static var voiceModel: String? {
+        get { value(forKey: voiceModelKey, sharing: true) as? String }
+        set { set(newValue ?? "", forKey: voiceModelKey) }
     }
 
     public static func reset(to settings: KeyboardSettings = .initial) {

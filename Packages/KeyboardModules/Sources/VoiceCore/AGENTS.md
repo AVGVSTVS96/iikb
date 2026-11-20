@@ -1,0 +1,10 @@
+# VoiceCore
+
+What voice typing does in both the app and the keyboard, so the two write a dictation down the same way: the `Transcriber` (a Parakeet with Silero's voice-activity model, and `Transcriber.load`, which loads one from the App Group's FluidAudio folder and again when its encoder lands on the CPU), Apple's model (`AppleSpeech`), the model you pick (`SpeechModel`, kept in `SettingsStore` so the keyboard reads it), and your Writing Style with your Vocabulary on what a model heard (`DictationWriting.typed`, `plain`). On KeyboardCore, KeyboardEnglish, KeyboardStore and FluidAudio.
+
+It sits in the keyboard's package, not Voice's, because Voice is on KeyboardStore: FullKeyboard can import it only from here. The app's side (downloading, getting a model ready and letting it go, Clean's language model, the microphone) stays in VoiceModels and VoiceCapture (VoiceModels/AGENTS.md, VoiceCapture/AGENTS.md); the keyboard's (recording through a web view, writing down with the microphone off) is FullKeyboard's `LocalDictation` (FullKeyboard/AGENTS.md).
+
+- The Parakeets' files and Silero's live in the App Group's `Library/Application Support/FluidAudio`, which the app downloads into; the keyboard only reads the Parakeets, and fetches Silero's 2 MB itself only when the app hasn't yet. The backup skips it.
+- Core ML compiles a Parakeet for the Neural Engine per process and install, in that process's own caches, so the keyboard's first dictation after an install of a new build compiles v3 too (17 to 37 s on the Duo for the app), and `AsrModelVersion.folder` empties the keyboard's old compiles as it does the app's.
+- A Parakeet hears KeyboardStore's `Recording` leveled (`Recording.leveled`). The `Recording` is KeyboardStore's, not this module's, so the app's microphone (VoiceCapture) keeps it without seeing any model.
+- `Tools/VoiceBench` builds `Parakeet.swift` from here and `Recording.swift` from KeyboardStore through symlinks, with its own `AppGroup`, so the bench runs the app's own path.

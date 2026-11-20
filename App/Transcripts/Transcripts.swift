@@ -3,6 +3,7 @@ import KeyboardStore
 import Observation
 import UIKit
 import VoiceCapture
+import VoiceCore
 import VoiceModels
 
 struct Transcript: Codable, Identifiable, Hashable {
@@ -85,6 +86,7 @@ struct Transcript: Codable, Identifiable, Hashable {
     /// back as they were each time the file is, so a rewrite never drops them.
     @ObservationIgnored private var unread: [Data] = []
     @ObservationIgnored private var rewriting = false
+    @ObservationIgnored private var takingMade = false
 
     private struct Named: Decodable {
         var id: UUID
@@ -96,12 +98,12 @@ struct Transcript: Codable, Identifiable, Hashable {
 
     private init() {
         load()
-        _ = Dictation.observe(.edited) { Transcripts.shared.takeEdits() }
-        DispatchQueue.main.async { Transcripts.shared.takeEdits() }
+        _ = Dictation.observe(.edited) { Transcripts.shared.takeFromKeyboard() }
+        DispatchQueue.main.async { Transcripts.shared.takeFromKeyboard() }
         _ = NotificationCenter.default.addObserver(
             forName: UIApplication.protectedDataDidBecomeAvailableNotification, object: nil, queue: .main
         ) { _ in
-            MainActor.assumeIsolated { Transcripts.shared.takeEdits() }
+            MainActor.assumeIsolated { Transcripts.shared.takeFromKeyboard() }
         }
         guard loaded else { return }
         share()
@@ -186,6 +188,7 @@ struct Transcript: Codable, Identifiable, Hashable {
         )
         all.insert(transcript, at: all.firstIndex { $0.date < date } ?? all.endIndex)
         trim()
+        share()
         guard let line = try? JSONEncoder().encode(transcript) else { return }
         do {
             let file = try FileHandle(forWritingTo: url)  // file: append-only log (transcripts.jsonl)
@@ -198,11 +201,55 @@ struct Transcript: Codable, Identifiable, Hashable {
         }
     }
 
+    /// What the keyboard left: the dictations it made itself, then what dictations became, which may be theirs.
+    func takeFromKeyboard() {
+        Task {
+            await takeMade()
+            takeEdits()
+        }
+    }
+
+    /// Keeps each dictation the keyboard made itself with its sound, writing down one it didn't, and only then lets go
+    /// of what it left, so one the model can't write now, or that iikb ends while writing, waits for the next time.
+    /// One the keyboard leaves meanwhile is taken in the same pass.
+    private func takeMade() async {
+        guard load(), !takingMade else { return }
+        takingMade = true
+        defer { takingMade = false }
+        var tried: Set<UUID> = []
+        while let next = Dictation.made.first(where: { !tried.contains($0.made.id) }) {
+            let (file, made) = next
+            tried.insert(made.id)
+            let sound = Dictation.sound(of: made.id)
+            if !all.contains(where: { $0.id == made.id }) {
+                let samples = (try? Recording.read(sound)) ?? []
+                if let written = made.written {
+                    add(
+                        written.text, heard: written.heard, id: made.id, at: made.date, seconds: made.seconds,
+                        typed: made.typed, model: written.model, mic: made.mic, levels: Recording.levels(samples),
+                        app: made.app)
+                } else if let written = try? await VoiceModel.shared.write(samples, for: made.app) {
+                    add(
+                        written.text, heard: written.heard, id: made.id, at: made.date, seconds: made.seconds,
+                        typed: made.typed, model: written.model, mic: made.mic, levels: Recording.levels(samples),
+                        app: made.app, clean: written.clean)
+                } else {
+                    continue
+                }
+            }
+            try? FileManager.default.createDirectory(at: recordings, withIntermediateDirectories: true)
+            try? FileManager.default.moveItem(at: sound, to: recording(of: made.id))
+            _ = Dictation.take(file)
+        }
+    }
+
     /// Keeps what the keyboard says each dictation became with its transcript, and only then lets go of what it said.
-    /// What belongs to a line this build can't read waits for a build that can; what belongs to no transcript goes.
+    /// What belongs to a line this build can't read, or to a dictation the keyboard made that isn't kept yet, waits; what
+    /// belongs to no transcript goes.
     func takeEdits() {
         guard load() else { return }
         let waiting = Set(unread.compactMap { try? JSONDecoder().decode(Named.self, from: $0).id.uuidString })
+            .union(Dictation.made.map(\.made.id.uuidString))
         var taken: [URL] = []
         for (file, edit) in Dictation.edits {
             if let index = all.firstIndex(where: { $0.id.uuidString == edit.id }) {
@@ -254,7 +301,7 @@ struct Transcript: Codable, Identifiable, Hashable {
             guard
                 let written = try? await VoiceModel.shared.write(
                     Recording.read(recording(of: transcript.id)), for: transcript.app),
-                !written.model.hasPrefix(VoiceModel.Model.apple.title)
+                !written.model.hasPrefix(SpeechModel.apple.title)
             else { continue }
             replace(transcript.id, with: written.text, heard: written.heard, model: written.model, clean: written.clean)
         }

@@ -8,7 +8,6 @@ import notify
 struct Controls: WidgetBundle {
     var body: some Widget {
         MicControl()
-        SessionActivity()
     }
 }
 

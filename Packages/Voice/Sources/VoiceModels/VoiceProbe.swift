@@ -2,10 +2,11 @@ import AVFoundation
 import CoreML
 import FluidAudio
 import UIKit
+import VoiceCore
 
 /// `-iikbVoiceProbe <ultra|v3|unified|unified-fp16|clean> [-iikbVoiceProbeUnits ane|cpu|gpu]` (`scripts/voiceprobe`):
 /// times each of a Parakeet's parts loading on this iPhone (Unified's as a whole, twice), then writes
-/// `Documents/probe.wav` three times, as it is and as dictation does (`Dictation.write`), logging to
+/// `Documents/probe.wav` three times, as it is and as dictation does (`Transcriber.write`), logging to
 /// `Documents/probe.log`.
 public nonisolated enum VoiceProbe {
     public static var asked: Bool { UserDefaults.standard.string(forKey: "iikbVoiceProbe") != nil }
@@ -58,7 +59,7 @@ public nonisolated enum VoiceProbe {
         let samples = try AudioConverter().resampleAudioFile(clip)
         if name == "clean" { return removeUnified() }
         if name.hasPrefix("unified") { return try await probeUnified(name, samples) }
-        guard let version = VoiceModel.Model(rawValue: name)?.version else { return say("no Parakeet named \(name)") }
+        guard let version = SpeechModel(rawValue: name)?.version else { return say("no Parakeet named \(name)") }
         let units: MLComputeUnits =
             switch UserDefaults.standard.string(forKey: "iikbVoiceProbeUnits") {
             case "cpu": .cpuOnly
@@ -108,7 +109,7 @@ public nonisolated enum VoiceProbe {
             parakeet = loaded
             say("\(pass) load in \(seconds(since: began))")
         }
-        try await write(samples, with: parakeet!, name: name)
+        try await write(samples, with: Unified(manager: parakeet!), name: name)
     }
 
     /// `clean`: what a Unified probe downloaded.
@@ -119,7 +120,7 @@ public nonisolated enum VoiceProbe {
     }
 
     private static func write(_ samples: [Float], with parakeet: any Parakeet, name: String) async throws {
-        let dictation = await Dictation(parakeet)
+        let dictation = await Transcriber(parakeet)
         for _ in 0..<3 {
             var began = Date.now
             let text = try await parakeet.hear(samples).text
@@ -135,8 +136,11 @@ public nonisolated enum VoiceProbe {
     }
 }
 
-extension UnifiedAsrManager: Parakeet {
+/// Parakeet Unified heard as the app hears a Parakeet.
+private struct Unified: Parakeet {
+    let manager: UnifiedAsrManager
+
     func hear(_ samples: [Float]) async throws -> ASRResult {
-        try await transcribeDetailed(samples)
+        try await manager.transcribeDetailed(samples)
     }
 }

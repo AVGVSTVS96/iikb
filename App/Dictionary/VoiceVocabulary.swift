@@ -3,7 +3,8 @@ import KeyboardCore
 import KeyboardStore
 import Observation
 
-/// Your `Vocabulary`, put on every dictation before it's typed, kept in the app's own container as vocabulary.json.
+/// Your `Vocabulary`, put on every dictation before it's typed, kept in the app's own container as vocabulary.json, and
+/// copied for the keyboard's own dictations (`VocabularyFeed`).
 @Observable final class VoiceVocabulary {
     static let shared = VoiceVocabulary()
 
@@ -13,11 +14,13 @@ import Observation
 
     private init() {
         vocabulary = file.read().value ?? Vocabulary()
+        VocabularyFeed.share(vocabulary)
     }
 
     func set(_ terms: [Vocabulary.Term]) {
         vocabulary.terms = terms
         file.save(vocabulary)
+        VocabularyFeed.share(vocabulary)
         Backup.syncApp()
     }
 }

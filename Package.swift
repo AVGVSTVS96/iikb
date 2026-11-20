@@ -27,6 +27,7 @@ let package = Package(
                 .product(name: "KeyboardEnglish", package: "KeyboardModules"),
                 .product(name: "KeyboardStore", package: "KeyboardModules"),
                 .product(name: "KeyboardUI", package: "KeyboardModules"),
+                .product(name: "VoiceCore", package: "KeyboardModules"),
                 .product(name: "VoiceCapture", package: "Voice"),
                 .product(name: "VoiceModels", package: "Voice"),
             ],

@@ -21,12 +21,14 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "VoiceCapture", dependencies: [.product(name: "KeyboardStore", package: "KeyboardModules")],
+            name: "VoiceCapture",
+            dependencies: [.product(name: "KeyboardStore", package: "KeyboardModules")],
             exclude: ["AGENTS.md"], swiftSettings: settings),
         .target(
             name: "VoiceModels",
             dependencies: [
                 "VoiceCapture", "VoiceEditor", .product(name: "KeyboardStore", package: "KeyboardModules"),
+                .product(name: "VoiceCore", package: "KeyboardModules"),
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ],
             exclude: ["AGENTS.md"], swiftSettings: settings),

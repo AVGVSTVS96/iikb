@@ -1,6 +1,7 @@
 import KeyboardCore
 import KeyboardEnglish
 import KeyboardStore
+import VoiceCore
 import VoiceModels
 
 extension VoiceModel {
@@ -24,24 +25,12 @@ extension VoiceModel {
         let (heard, model) = try await write(recording)
         let (edited, cost) = await CleanModel.shared.edit(heard)
         let writing = SettingsStore.load().dictation(in: app)
+        let vocabulary = VoiceVocabulary.shared.vocabulary
         let taken = edited.map { writing.takes($0, of: heard) } ?? false
         return Written(
-            text: writing.typed(heard, edited: edited), heard: heard, plain: DictationWriting.plain(heard),
+            text: writing.typed(heard, edited: edited, vocabulary: vocabulary), heard: heard,
+            plain: DictationWriting.plain(heard, vocabulary: vocabulary),
             model: taken ? "\(model) + \(CleanModel.name)" : model, clean: cost)
-    }
-}
-
-extension DictationWriting {
-    /// What iikb types for what the voice model `heard`, given Clean's model's reply to it where there is one: as
-    /// Settings › Voice writes it, then with your vocabulary's words and the made-up words that sound like them, so a
-    /// term keeps its own spelling. The keyboard sets its capitals.
-    func typed(_ heard: String, edited: String?) -> String {
-        VoiceVocabulary.shared.vocabulary.corrected(written(heard, edited: edited), lexicon: .english)
-    }
-
-    /// What the voice model wrote, with your vocabulary's words and nothing of the style or lists.
-    static func plain(_ heard: String) -> String {
-        VoiceVocabulary.shared.vocabulary.corrected(heard, lexicon: .english)
     }
 }
 

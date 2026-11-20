@@ -1,0 +1,1 @@
+../../../../Packages/KeyboardModules/Sources/VoiceCore/Parakeet.swift

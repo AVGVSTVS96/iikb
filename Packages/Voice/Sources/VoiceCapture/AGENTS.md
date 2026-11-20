@@ -1,6 +1,6 @@
 # VoiceCapture
 
-Voice typing's microphone (`Microphone`), the `Recording` it makes, how the iPhone's microphones hear (`Capture`), and which microphone does (`MicrophoneChoices`). On KeyboardStore alone, so it can't see the models: VoiceModels is on it, and `Listener` joins the two in the app (App/Voice/AGENTS.md).
+Voice typing's microphone in the app (`Microphone`), which makes a `Recording` (KeyboardStore's, which the keyboard's own dictations make too), how the iPhone's microphones hear (`Capture`), and which microphone does (`MicrophoneChoices`). On KeyboardStore alone, so it can't see the models: VoiceModels is on it, and `Listener` joins the two in the app (App/Voice/AGENTS.md).
 
 ## The microphone
 

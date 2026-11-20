@@ -67,11 +67,11 @@ public nonisolated enum Recording {
 
     /// A recording written to disk as it's heard, so an app that ends mid-dictation (a crash, an install, a dead
     /// iPhone) leaves the sound up to then. `read` reads one whose header never got its length.
-    nonisolated final class File {
+    public nonisolated final class File {
         private let handle: FileHandle
         private var bytes = 0
 
-        init?(_ url: URL) {
+        public init?(_ url: URL) {
             try? FileManager.default.createDirectory(
                 at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             // file: recording audio, written as it's heard
@@ -82,13 +82,13 @@ public nonisolated enum Recording {
             self.handle = handle
         }
 
-        func append(_ samples: UnsafeBufferPointer<Float>) {
+        public func append(_ samples: UnsafeBufferPointer<Float>) {
             let data = Recording.pcm(samples)
             try? handle.write(contentsOf: data)
             bytes += data.count
         }
 
-        func close() {
+        public func close() {
             try? handle.seek(toOffset: 0)
             try? handle.write(contentsOf: Recording.header(bytes: bytes))
             try? handle.close()
@@ -138,6 +138,21 @@ public nonisolated enum Recording {
         nonisolated(unsafe) var fed = false
         converter.convert(to: converted, error: nil) { _, status in
             status.pointee = fed ? .endOfStream : .haveData
+            defer { fed = true }
+            return fed ? nil : buffer
+        }
+        return converted
+    }
+
+    /// One buffer of sound through `converter`, which keeps what it needs of the buffer before for the next, so a
+    /// recording converts as it's heard.
+    public static func convert(_ buffer: AVAudioPCMBuffer, with converter: AVAudioConverter) -> AVAudioPCMBuffer? {
+        let format = converter.outputFormat
+        let capacity = AVAudioFrameCount(Double(buffer.frameLength) * format.sampleRate / buffer.format.sampleRate) + 1
+        guard let converted = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return nil }
+        nonisolated(unsafe) var fed = false
+        converter.convert(to: converted, error: nil) { _, status in
+            status.pointee = fed ? .noDataNow : .haveData
             defer { fed = true }
             return fed ? nil : buffer
         }
