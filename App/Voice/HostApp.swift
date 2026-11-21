@@ -5,7 +5,7 @@ import UIKit
 /// isn't API: where it won't open the app by its bundle ID, the app's own link does, and with neither iikb stays on
 /// whatever page it was on, for you to swipe back.
 enum HostApp {
-    nonisolated static let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
+    nonisolated static let log = Logger(subsystem: "com.galateacorp.iikb", category: "voice")
 
     static func open(_ bundle: String) async -> Bool {
         if openByID(bundle) { return true }

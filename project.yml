@@ -1,6 +1,6 @@
 name: iikb
 options:
-  bundleIdPrefix: com.shahidy.iikb
+  bundleIdPrefix: com.galateacorp.iikb
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true
@@ -47,7 +47,7 @@ targets:
         product: VoiceModels
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.iikb
+        PRODUCT_BUNDLE_IDENTIFIER: com.galateacorp.iikb
         CODE_SIGN_ENTITLEMENTS: App/iikb.entitlements
         PRODUCT_NAME: iikb
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -62,7 +62,7 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         UIApplicationSupportsIndirectInputEvents: true
         CFBundleURLTypes:
-          - CFBundleURLName: com.shahidy.iikb
+          - CFBundleURLName: com.galateacorp.iikb
             CFBundleURLSchemes: [iikb]
         NSMicrophoneUsageDescription: iikb listens when you tap the mic on the keyboard, and turns what you say into text on your iPhone.
         NSPhotoLibraryUsageDescription: Chats on the iikb keyboard shows your newest photos, so you can send them in a chat.
@@ -87,7 +87,7 @@ targets:
         product: FullKeyboard
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.iikb.keyboard
+        PRODUCT_BUNDLE_IDENTIFIER: com.galateacorp.iikb.keyboard
         CODE_SIGN_ENTITLEMENTS: Keyboard/Keyboard.entitlements
         PRODUCT_NAME: Keyboard
     info:
@@ -114,7 +114,7 @@ targets:
     sources: [Controls]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.iikb.controls
+        PRODUCT_BUNDLE_IDENTIFIER: com.galateacorp.iikb.controls
         CODE_SIGN_ENTITLEMENTS: Controls/Controls.entitlements
         PRODUCT_NAME: Controls
     info:
@@ -133,7 +133,7 @@ targets:
       - target: iikb
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.iikb.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.galateacorp.iikb.uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: iikb
         SWIFT_OBJC_BRIDGING_HEADER: UITests/EventSynthesis.h
