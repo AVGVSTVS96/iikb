@@ -226,12 +226,14 @@ struct Transcript: Codable, Identifiable, Hashable {
                 if let written = made.written {
                     add(
                         written.text, heard: written.heard, id: made.id, at: made.date, seconds: made.seconds,
-                        typed: made.typed, model: written.model, mic: made.mic, levels: Recording.levels(samples),
+                        typed: made.typed, model: written.model, mic: made.mic, voiceProcessing: true,
+                        levels: Recording.levels(samples),
                         app: made.app)
                 } else if let written = try? await VoiceModel.shared.write(samples, for: made.app) {
                     add(
                         written.text, heard: written.heard, id: made.id, at: made.date, seconds: made.seconds,
-                        typed: made.typed, model: written.model, mic: made.mic, levels: Recording.levels(samples),
+                        typed: made.typed, model: written.model, mic: made.mic, voiceProcessing: true,
+                        levels: Recording.levels(samples),
                         app: made.app, clean: written.clean)
                 } else {
                     continue

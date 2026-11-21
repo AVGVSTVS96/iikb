@@ -15,7 +15,10 @@ import WebKit
 /// or Apple's; Ultra, which takes minutes to load, writes as v3), in the Writing Style picked for the app, with your
 /// Vocabulary (`VocabularyFeed`). Clean's language model needs more memory than a keyboard gets, so Clean uses its
 /// rules. Every dictation, written or not, is left with its sound for the app to keep in Transcripts (`Dictation.Made`).
-/// The built-in microphone is always the one heard, so what's playing keeps playing.
+/// WebKit records in its own process in call mode, whatever the keyboard's audio session says, so the page asks for
+/// echo cancellation: Apple's voice processing, which hears through several microphones, cuts the room's noise and sets
+/// the level, where without it one unaimed microphone heard the voice 20 dB lower and barely over a loud room. Call mode
+/// pauses what's playing. The built-in microphone is the one asked for.
 @MainActor
 final class LocalDictation {
     /// Your voice's loudness and the seconds recorded so far, as the app publishes its own.
@@ -84,8 +87,9 @@ final class LocalDictation {
         let files =
             (try? FileManager.default.contentsOfDirectory(at: Take.folder, includingPropertiesForKeys: nil)) ?? []
         for file in files {
-            guard let id = UUID(uuidString: file.deletingPathExtension().lastPathComponent), !Take.live.contains(id),
-                let samples = try? Recording.read(file), !samples.isEmpty
+            let id = UUID(uuidString: file.deletingPathExtension().lastPathComponent)
+            if let id, Take.live.contains(id) { continue }
+            guard let id, let samples = try? Recording.read(file), !samples.isEmpty
             else {
                 try? FileManager.default.removeItem(at: file)
                 continue
@@ -114,7 +118,6 @@ final class LocalDictation {
         let capture = capture ?? WebCapture(host: host)
         self.capture = capture
         capture.onEvent = { [weak self] event in self?.heard(event, in: take) }
-        Self.preferBuiltInMicrophone()
         capture.start()
         onChange()
     }
@@ -159,7 +162,7 @@ final class LocalDictation {
             take.mic = device
             take.file = Recording.File(take.sound)
             take.converter = AVAudioFormat(
-                commonFormat: .pcmFormatInt16, sampleRate: rate, channels: 1, interleaved: true
+                commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false
             ).flatMap { AVAudioConverter(from: $0, to: Recording.format) }
             if take.file == nil || take.converter == nil { startFailed("the recording's file or converter") }
         case .samples(let data, let level):
@@ -177,12 +180,12 @@ final class LocalDictation {
     private func append(_ data: Data, to take: Take) {
         guard let converter = take.converter, let file = take.file,
             let buffer = AVAudioPCMBuffer(
-                pcmFormat: converter.inputFormat, frameCapacity: AVAudioFrameCount(data.count / 2))
+                pcmFormat: converter.inputFormat, frameCapacity: AVAudioFrameCount(data.count / 4))
         else { return }
         buffer.frameLength = buffer.frameCapacity
         data.withUnsafeBytes { raw in
-            guard let base = raw.baseAddress, let target = buffer.int16ChannelData?[0] else { return }
-            memcpy(target, base, Int(buffer.frameLength) * 2)
+            guard let base = raw.baseAddress, let target = buffer.floatChannelData?[0] else { return }
+            memcpy(target, base, Int(buffer.frameLength) * 4)
         }
         guard let converted = Recording.convert(buffer, with: converter),
             let channel = converted.floatChannelData?[0]
@@ -197,7 +200,6 @@ final class LocalDictation {
         self.take = nil
         capture?.onEvent = nil
         capture?.stop()
-        Self.releaseAudioSession()
         take.file?.close()
         guard take.frames > 0 else { return drop(take) }
         guard take.typed else {
@@ -220,6 +222,8 @@ final class LocalDictation {
         leave(take, written?.made)
         if let written {
             if !written.sounded {
+                capture?.detach()
+                capture = nil
                 onNotice("Mic gave no sound")
             } else if !written.made.text.isEmpty {
                 onWritten(written.made.text, written.plain, take.id)
@@ -304,7 +308,6 @@ final class LocalDictation {
         capture?.onEvent = nil
         capture?.detach()
         capture = nil
-        Self.releaseAudioSession()
         take.file?.close()
         Take.live.remove(take.id)
         try? FileManager.default.removeItem(at: take.sound)
@@ -317,36 +320,13 @@ final class LocalDictation {
         if let take { drop(take) }
         onStartFailure()
     }
-
-    /// The iPhone's own microphone, in `playAndRecord` mixing with other audio, so a car or headphones keep playing
-    /// instead of the route dropping into call audio, which pauses them and stalls the start.
-    private static func preferBuiltInMicrophone() {
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(
-                .playAndRecord, mode: .measurement, options: [.mixWithOthers, .allowBluetoothA2DP, .defaultToSpeaker])
-            if let builtIn = session.availableInputs?.first(where: { $0.portType == .builtInMic }) {
-                try session.setPreferredInput(builtIn)
-            }
-        } catch {
-            log.error("the built-in microphone couldn't be picked: \(error.localizedDescription, privacy: .public)")
-        }
-    }
-
-    /// Lets what the capture paused (music, navigation) go on.
-    private static func releaseAudioSession() {
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    }
 }
 
 /// The hidden web view that hears you. It sits in the keyboard at 2 by 2 points, all but invisible, its page
 /// asking `getUserMedia` for the microphone: WebKit's media process does the recording, which iOS allows,
-/// where the extension itself is refused. The page sends the sound as chunks of 16-bit PCM, base64 in a
+/// where the extension itself is refused. The page sends the sound as chunks of 32-bit float samples, base64 in a
 /// message, each with its loudness; a fake HTTPS origin (`keyboard.iikb.local`, never fetched) is what makes
-/// the page a secure context `getUserMedia` will answer in. The page lifts what it hears by 20 dB (`lift`, 10 times):
-/// WebKit's capture hears the same voice that much under the app's microphone (speech's 85 ms levels at -66 dBFS
-/// typically and -59 loud, against the app's -44 and -39, Nov 19 to 20), which held the bar's waveform at its floor and
-/// left the recording that quiet in Transcripts and coarse in 16 bits.
+/// the page a secure context `getUserMedia` will answer in.
 @MainActor
 private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     enum Event {
@@ -453,9 +433,8 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
     private static let page = """
         <!doctype html><meta charset="utf-8"><script>
         let live = null;
-        const lift = 10;
         const post = (m) => webkit.messageHandlers.iikb.postMessage(m);
-        const base = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+        const base = { echoCancellation: true };
         async function builtInMicrophone() {
           const inputs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput");
           const found = inputs.find((d) => /iphone|ipad|built-in/i.test(d.label));
@@ -483,14 +462,9 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
             capture.node.onaudioprocess = (event) => {
               if (!capture.running) return;
               const input = event.inputBuffer.getChannelData(0);
-              const pcm = new Int16Array(input.length);
               let sum = 0;
-              for (let i = 0; i < input.length; i++) {
-                const s = Math.max(-1, Math.min(1, input[i] * lift));
-                sum += s * s;
-                pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-              }
-              const bytes = new Uint8Array(pcm.buffer);
+              for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
+              const bytes = new Uint8Array(Float32Array.from(input).buffer);
               let binary = "";
               for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
               post({ type: "pcm", session, data: btoa(binary), level: Math.sqrt(sum / input.length) });
