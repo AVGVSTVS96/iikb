@@ -26,8 +26,11 @@ final class FirstFrame: NSObject {
         let shown = link.targetTimestamp
         cancel()
         let made = Int((shown - made) * 1000)
-        let started = Self.started.map { Int((Date().timeIntervalSince1970 + shown - CACurrentMediaTime() - $0) * 1000) }
-        Self.log.notice("first frame \(made) ms after the keyboard was made, \(started ?? -1) ms after its process started")
+        let shownAt = Date().timeIntervalSince1970 + shown - CACurrentMediaTime()
+        let started = Self.started.map { Int((shownAt - $0) * 1000) }
+        Self.log.notice(
+            "first frame \(made) ms after the keyboard was made, \(started ?? -1) ms after its process started"
+        )
         then()
     }
 

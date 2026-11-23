@@ -731,7 +731,7 @@ open class FullKeyboardViewController: UIInputViewController {
             engine.log = nil
         }
         if line != nil {
-            // WHY: iOS takes the field from a keyboard it's about to end (the iPad, back in an app), which isn't a move.
+            // WARNING: iOS takes the field from a keyboard it's about to end (the iPad, back in an app), which isn't a move.
             guard let now = textDocumentProxy.field, now != field else { return render() }
             return closeChat()
         }
