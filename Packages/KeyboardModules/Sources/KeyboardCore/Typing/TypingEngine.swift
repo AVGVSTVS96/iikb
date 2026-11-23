@@ -44,6 +44,7 @@ public struct TypingEngine {
     var ownedWords: (words: Set<String>, lexicon: Lexicon)?
     var swiped: Swiped?
     var takenBack: TakenBack?
+    public var copied: Copied?
     /// How the field wraps its text, where the keyboard knows it (`MeasuredField`): up and down then move by line, and
     /// by sentence where it doesn't.
     public var lineLayout: (any LineLayout)?
@@ -668,6 +669,7 @@ public struct TypingEngine {
     /// The one way text changes: deletes `count` characters before the caret, then inserts `string`, in the host and
     /// in `text` alike.
     mutating func write(_ string: String, replacing count: Int = 0, in document: some TextDocument) {
+        if pasteOffer != nil { copied = nil }
         if !text.selected.isEmpty {
             history.clear()
         } else if !replaying {
