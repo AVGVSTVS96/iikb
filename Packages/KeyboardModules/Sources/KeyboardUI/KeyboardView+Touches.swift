@@ -12,6 +12,8 @@ extension KeyboardView {
         let start: CGPoint
         var point: CGPoint
         var lastCursor: CGPoint
+        var drag: TrackpadDrag?
+        var time: TimeInterval
         var hold: Timer?
         var menuFrame: CGRect?
         /// The words a slide left from delete has taken out.
@@ -29,6 +31,7 @@ extension KeyboardView {
             self.point = start
             self.lastCursor = start
             self.began = time
+            self.time = time
             self.swipeReach = swipes ? keyView.frame.width * KeyboardView.swipeDistance : .infinity
             self.path = [SwipePoint(x: start.x, y: start.y, time: 0)]
         }
@@ -77,12 +80,20 @@ extension KeyboardView {
             guard let tracked = tracked[ObjectIdentifier(touch)] else { continue }
             let point = touch.location(in: self)
             tracked.point = point
+            tracked.time = touch.timestamp
             switch tracked.mode {
             case .alternates, .menu:
                 alternates.track(point)
             case .deleteSlide:
                 slideDelete(tracked, to: point)
             case .trackpad:
+                var drag = tracked.drag ?? TrackpadDrag(x: point.x, y: point.y, time: touch.timestamp)
+                for sample in event?.coalescedTouches(for: touch) ?? [touch] {
+                    let at = sample.location(in: self)
+                    drag.move(toX: at.x, y: at.y, time: sample.timestamp)
+                }
+                tracked.drag = drag
+                let point = CGPoint(x: drag.x, y: drag.y)
                 while true {
                     let step = point.x > tracked.lastCursor.x ? 1 : -1
                     let width = advance(step)
@@ -268,6 +279,7 @@ extension KeyboardView {
                 if isSpace {
                     tracked.mode = .trackpad
                     tracked.lastCursor = tracked.point
+                    tracked.drag = TrackpadDrag(x: tracked.point.x, y: tracked.point.y, time: tracked.time)
                     view.isPressed = false
                     self.setLabelsVisible(false)
                     self.onTrackpad(true)
