@@ -105,7 +105,12 @@ public nonisolated struct Transcriber: Sendable {
     /// folder there may still be half a download, which loading would finish from Hugging Face.
     public static func isDownloaded(_ model: SpeechModel) -> Bool {
         guard let version = model.version else { return false }
-        return AsrModels.modelsExist(at: version.folder, version: version)
+        return isDownloaded(model, in: version.folder)
+    }
+
+    static func isDownloaded(_ model: SpeechModel, in folder: URL) -> Bool {
+        guard let version = model.version else { return false }
+        return AsrModels.modelsExist(at: folder, version: version)
     }
 
     /// The recording leveled (`Recording.leveled`), a tap with next to nothing said padded up to the shortest sound

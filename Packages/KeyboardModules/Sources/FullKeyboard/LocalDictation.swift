@@ -7,84 +7,46 @@ import UIKit
 import VoiceCore
 import WebKit
 
-/// Dictation in the keyboard itself, for a tap on the mic while the app's microphone is off, so the app never comes to
-/// the front. iOS won't record in a keyboard extension (audiomxd turns it away, an extension having no entitlement to
-/// record), so a hidden web view captures through `getUserMedia` instead, as Hex's keyboard does: the recording happens
-/// in WebKit's media process, under the microphone permission the app was given, and comes back here as chunks of PCM,
-/// kept as a `Recording` as it's heard. The web view is one for the keyboard's process, its page loaded as the keyboard
-/// shows (`prepare`), and hearing starts as a finger lands on the mic (`arm`), so the first word isn't lost waiting for
-/// WebKit. Once you stop, the picked model writes it down here (VoiceCore's `Transcriber`, or Apple's; Ultra, which takes
-/// minutes to load, writes as v3), in the Writing Style picked for the app, with your Vocabulary (`VocabularyFeed`).
-/// Clean's language model needs more memory than a keyboard gets, so Clean uses its rules. Every dictation, written or
-/// not, is left with its sound for the app to keep in Transcripts (`Dictation.Made`).
-/// WebKit records in its own process in call mode, whatever the keyboard's audio session says, so the page asks for
-/// echo cancellation: Apple's voice processing, which hears through several microphones, cuts the room's noise and sets
-/// the level, where without it one unaimed microphone heard the voice 20 dB lower and barely over a loud room. Call mode
-/// pauses what's playing, and WebKit never says it may play again, so the keyboard does (`resumeOthers`). The microphone
-/// picked in Settings › Microphone is the one asked for, else the built-in one.
 @MainActor
 final class LocalDictation {
-    /// Your voice's loudness and the seconds recorded so far, as the app publishes its own.
     var onLevel: (Float, Double) -> Void = { _, _ in }
-    /// A dictation written down, to type: as your style has it, as the model wrote it, and its transcript's id.
     var onWritten: (_ text: String, _ plain: String, _ id: UUID) -> Void = { _, _, _ in }
-    /// The keyboard can't hear or write this tap (no microphone permission yet, the model not on the iPhone, too little
-    /// memory left, a capture that won't start), so it opens the app instead.
     var onStartFailure: () -> Void = {}
-    /// Something to tell you about a dictation.
     var onNotice: (String) -> Void = { _ in }
-    /// What the mic shows changed.
     var onChange: () -> Void = {}
 
-    /// Recording from a tap on the mic; a finger still on it records unseen (`arm`).
-    var isRecording: Bool { take.map { !$0.armed } ?? false }
-    /// Recording, and the page has sent sound: until then the mic shows it's starting.
-    var hears: Bool { take.map { !$0.armed && $0.frames > 0 } ?? false }
-    /// How long each dictation still being written down is, in seconds, oldest first.
-    var writing: [Double] { pending.map(\.seconds) }
-    /// What those wait for while Parakeet loads, in a few words; nil once it's loaded.
-    var waiting: String? { Self.loading ? "Model loading…" : nil }
+    var isRecording: Bool { Self.state.isRecording(in: id) }
+    var hears: Bool { Self.state.hears(in: id) }
+    var writing: [Double] { Self.state.writing(in: id) }
+    var waiting: String? {
+        if case .loading = Self.state.parakeet { return "Model loading…" }
+        return nil
+    }
 
     private final class Take {
         let id = UUID()
         let started = Date()
         let app: String?
-        let field: String?
         let style: DictationWriting
         let sound: URL
-        var armed: Bool
+        var microphone: String?
         var mic: String?
         var file: Recording.File?
         var converter: AVAudioConverter?
         var frames = 0
-        /// When the page last sent sound, or the start was asked for: what `watch` measures a stall from.
-        var heard = Date()
-        /// Since when the page has said another sound took the microphone, while it has.
-        var interruptedSince: Date?
-        var watch: Task<Void, Never>?
-        var typed = true
-        /// The keyboard went away before it was typed: the next keyboard in its field types it (`Held`).
-        var held = false
-        var left = false
+        var written: Written?
 
         var seconds: Double { Double(frames) / Recording.format.sampleRate }
 
-        init(app: String?, field: String?, style: DictationWriting, armed: Bool) {
+        init(app: String?, style: DictationWriting) {
             self.app = app
-            self.field = field
             self.style = style
-            self.armed = armed
             sound = Self.folder.appending(path: "\(id.uuidString).wav")
-            Self.live.insert(id)
         }
 
-        /// Where the keyboard keeps a dictation's sound until the app has it.
         static let folder = URL.temporaryDirectory.appending(path: "dictations")
-        /// The takes this keyboard is recording or writing, whose sounds aren't left behind.
-        static var live: Set<UUID> = []
     }
 
-    /// A dictation written down after its keyboard went away, typed by the next keyboard in its field within `heldFor`.
     private struct Held: Codable {
         var id: UUID
         var text: String
@@ -93,67 +55,50 @@ final class LocalDictation {
         var at: Date
     }
 
-    private let host: UIView
-    /// The field the keyboard is in, which each dictation keeps (`Take.field`).
-    private var field: String?
-    private var take: Take?
-    private var pending: [Take] = []
-    private var tail: Task<Void, Never>?
+    private struct Keyboard {
+        weak var dictation: LocalDictation?
+    }
 
-    /// The keyboard's one web view, kept between keyboards and moved into whichever shows.
+    private let host: UIView
+    private let id: KeyboardDictation.Keyboard
+    private var field: String?
+
+    private static var state = KeyboardDictation()
+    private static var keyboards: [KeyboardDictation.Keyboard: Keyboard] = [:]
+    private static var count = 0
+    private static var takes: [KeyboardDictation.Take: Take] = [:]
     private static var capture: WebCapture?
-    /// The keyboard showing, which a dictation written after its own keyboard went away is typed in, if in its field.
-    private static weak var shown: LocalDictation?
-    /// The keyboard whose dictation the web view records, which nothing in another keyboard may stop.
-    private static weak var recorder: LocalDictation?
     private static var transcriber: Task<Transcriber, any Error>?
-    private static var loading = false
-    private static var ready = false
-    /// Parakeet's encoder ran on the CPU here, so Apple's model writes for as long as the keyboard runs.
-    private static var setAside = false
-    /// iOS warned of memory since a keyboard last showed: Parakeet isn't loaded again until one shows.
-    private static var warned = false
-    /// WebKit's capture paused another app's audio, which `released` asks to play again.
-    private static var othersPaused = false
     private static let heldFile = StoredFile<[Held]>(
         URL.applicationSupportDirectory.appending(path: "dictation-held.json"))
-    static let heldFor: TimeInterval = 30
-    /// Memory left that a first dictation needs to start, in MB: the web view, its page and WebKit's first use, with
-    /// margin (Hex's keyboard, measured in the simulator); later ones reuse the loaded page.
-    private static let startRoom = 32.0
-    private static let restartRoom = 24.0
-    /// Seconds without sound from the page after which a recording ends with what it heard, and a start that never got
-    /// the microphone is given up: iOS can suspend WebKit's capture for an alert or a call without a word.
-    private static let stall: TimeInterval = 6
-    /// Seconds a recording waits through another sound holding the microphone before it ends with what it heard: a
-    /// notification passes in about a second, a call or an alarm doesn't.
-    private static let interruption: TimeInterval = 15
-    /// Seconds a dictation may take to be written down before it's left for the app to write.
     private static let writingLimit: TimeInterval = 120
-    /// Seconds a finger may rest on the mic before what it heard goes, for a touch-up that never came.
-    private static let armedFor: TimeInterval = 3
     nonisolated private static let audio = DispatchQueue(label: "com.shahidy.iikb.keyboard.audio", qos: .userInitiated)
     nonisolated private static let log = Logger(subsystem: "com.shahidy.iikb", category: "voice")
 
-    /// A line for iikb's log and for the app's (`KeyboardVoiceLog`), which can't read the keyboard's.
     nonisolated private static func note(_ line: String, failed: Bool = false) {
         if failed { log.error("\(line, privacy: .public)") } else { log.notice("\(line, privacy: .public)") }
         KeyboardVoiceLog.write(line)
     }
 
+    private static var now: Double { Date.now.timeIntervalSinceReferenceDate }
+
     init(host: UIView) {
         self.host = host
+        Self.count += 1
+        id = Self.count
+        Self.keyboards = Self.keyboards.filter { $0.value.dictation != nil }
+        Self.keyboards[id] = Keyboard(dictation: self)
         Self.leaveLeftovers()
     }
 
-    /// Hands the app what a keyboard iOS ended mid-dictation left, as not typed, for it to write down: the sound is
-    /// written as it's heard, so it's all there up to the end.
+    private static func keyboard(_ id: KeyboardDictation.Keyboard) -> LocalDictation? { keyboards[id]?.dictation }
+
     private static func leaveLeftovers() {
         let files =
             (try? FileManager.default.contentsOfDirectory(at: Take.folder, includingPropertiesForKeys: nil)) ?? []
         for file in files {
             let id = UUID(uuidString: file.deletingPathExtension().lastPathComponent)
-            if let id, Take.live.contains(id) { continue }
+            if let id, takes.values.contains(where: { $0.id == id }) { continue }
             guard let id, let samples = try? Recording.read(file), !samples.isEmpty
             else {
                 try? FileManager.default.removeItem(at: file)
@@ -168,203 +113,212 @@ final class LocalDictation {
         }
     }
 
-    /// The picked model can write here: Apple's, or a Parakeet once the app has finished downloading v3.
     private static var canWrite: Bool {
         SpeechModel.picked == .apple || Transcriber.isDownloaded(.v3)
     }
 
-    /// The keyboard's process keeps the permission it read as it started, so one started before the app was given the
-    /// microphone reads it as not given: the app's own reading counts too.
     private static var micAllowed: Bool {
         AVAudioApplication.shared.recordPermission == .granted || Dictation.micAllowed
     }
 
-    /// iOS ends a keyboard past its memory limit, so a dictation starts only with room for it.
-    private static var hasRoom: Bool { KeyboardMemory.fits(capture == nil ? startRoom : restartRoom) }
+    private static var canStart: Bool {
+        state.canStart(micAllowed: micAllowed, canWrite: canWrite, room: .now)
+    }
 
-    private static var canStart: Bool { micAllowed && canWrite && hasRoom }
-
-    /// The keyboard shows in `field`: a dictation written after the last keyboard went away is typed here if it was said
-    /// here.
     func appeared(in field: String?) {
         self.field = field
-        Self.shown = self
-        Self.warned = false
+        Self.state.appeared(id, in: field)
         typeHeld()
     }
 
-    /// Makes the web view and loads its page before the first tap, so a tap has only the microphone left to open.
-    /// Nothing here touches the microphone, so iOS shows no orange dot until you dictate.
     func prepare() {
-        guard take == nil, Self.canStart else { return }
-        let capture = Self.capture ?? WebCapture()
-        Self.capture = capture
-        capture.onReleased = { Self.released() }
-        capture.attach(to: host)
-        Self.allowHaptics()
+        Self.run(Self.state.prepare(id, canStart: Self.canStart))
     }
 
-    /// A finger came down on the mic: hearing starts now, unseen, so the first word isn't lost while the touch becomes
-    /// a tap (`start` keeps it) or leaves (`disarm`).
     func arm(for app: String?, style: DictationWriting) {
-        guard take == nil, Self.canStart else { return }
-        begin(for: app, style: style, armed: true)
-        guard let take else { return }
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Self.armedFor))  // timer: a lost touch-up
-            guard let self, self.take === take, take.armed else { return }
-            Self.note("the keyboard dropped a touch-down capture no tap kept")
-            drop(take)
-        }
+        let effects = Self.state.arm(id, in: field, at: Self.now, canStart: Self.canStart)
+        Self.begun(app: app, style: style)
+        Self.run(effects)
     }
 
-    /// The finger left the mic without a tap: what it heard goes, with nothing written.
     func disarm() {
-        guard let take, take.armed else { return }
-        drop(take)
+        Self.run(Self.state.disarm(id))
     }
 
     func start(for app: String?, style: DictationWriting) {
-        if let take, take.armed {
-            take.armed = false
-            return onChange()
-        }
-        guard take == nil else { return }
-        guard Self.canStart else { return onStartFailure() }
-        begin(for: app, style: style, armed: false)
+        let effects = Self.state.start(id, in: field, at: Self.now, canStart: Self.canStart)
+        Self.begun(app: app, style: style)
+        Self.run(effects)
     }
 
-    /// Whether other audio plays is read before the page starts, since WebKit's capture pauses it, and so is the
-    /// microphone the app's Automatic would take, as the app's session does: a wired or USB one, else the built-in.
-    private func begin(for app: String?, style: DictationWriting, armed: Bool) {
-        let take = Take(app: app, field: field, style: style, armed: armed)
-        self.take = take
-        Self.recorder = self
-        let capture = Self.capture ?? WebCapture()
-        Self.capture = capture
-        capture.onReleased = { Self.released() }
-        capture.attach(to: host)
-        capture.onEvent = { [weak self] event in self?.heard(event, in: take) }
-        let picked = SettingsStore.microphone?.name
-        Self.note("the keyboard starts a capture\(armed ? " on touch-down" : "")")
-        Self.audio.async { [weak self] in
-            _ = Self.hapticsAllowed
-            let session = AVAudioSession.sharedInstance()
-            let othersPlaying = session.isOtherAudioPlaying
-            let microphone = picked ?? Self.automaticMicrophone(in: session)
-            Task { @MainActor in
-                guard let self, self.take === take else { return }
-                if othersPlaying { Self.othersPaused = true }
-                if picked == nil, microphone != nil { Self.note("the keyboard asks for a wired or USB microphone") }
-                capture.start(microphone: microphone)
-            }
-        }
-        take.watch = Task { [weak self] in
-            while true {
-                let wait =
-                    take.interruptedSince.map { Self.interruption - Date.now.timeIntervalSince($0) }
-                    ?? Self.stall - Date.now.timeIntervalSince(take.heard)
-                if wait <= 0 { break }
-                try? await Task.sleep(for: .seconds(wait))  // timer: a stalled dictation
-                guard !Task.isCancelled else { return }
-            }
-            guard let self, self.take === take else { return }
-            stalled(take)
-        }
-        if !armed { onChange() }
+    private static func begun(app: String?, style: DictationWriting) {
+        guard let take = state.recording?.take, takes[take] == nil else { return }
+        takes[take] = Take(app: app, style: style)
     }
 
-    /// Stops hearing you and has what was said written down and typed. A tap while the mic is still starting undoes
-    /// the tap, there being nothing to write down.
     func stop() {
-        guard let take, !take.armed else { return }
-        guard take.file != nil else { return drop(take) }
-        Self.capture?.stop()
+        Self.run(Self.state.stop(id))
     }
 
-    /// The bar's cancel: types nothing of the dictation being recorded, which the app keeps in Transcripts.
     func cancel() {
-        guard let take, !take.armed else { return }
-        take.typed = false
-        end(take)
+        Self.run(Self.state.cancel(id))
     }
 
-    /// The keyboard went away, or its app left the front: a finger still on the mic records nothing, and the dictation
-    /// being recorded stops there and is written down with those already being written. Each is typed if a keyboard
-    /// comes back to its field within `heldFor` (`appeared`), and kept in Transcripts as every dictation is.
     func keyboardWillHide() {
-        if Self.shown === self { Self.shown = nil }
-        if let take {
-            if take.armed {
-                drop(take)
-            } else {
-                take.held = true
-                end(take)
-            }
-        }
-        for take in pending { take.held = true }
-        Self.capture?.detach(from: host)
+        Self.run(Self.state.hidden(id))
     }
 
-    /// iOS is short of memory, in this keyboard or an older one still alive: Parakeet goes, at once or, while it writes,
-    /// as that writing ends, and isn't loaded again until a keyboard shows; the web view goes unless it's recording.
     func memoryWarning() {
         Self.note("the keyboard is warned of memory: \(KeyboardMemory.available >> 20) MB left")
-        Self.transcriber = nil
-        Self.ready = false
-        Self.warned = true
-        Self.letGoOfCapture()
+        Self.run(Self.state.memoryWarning())
     }
 
-    /// Lets the web view go, unless a keyboard's dictation is recording with it; whether it went.
-    @discardableResult private static func letGoOfCapture() -> Bool {
-        guard recorder?.take == nil else { return false }
-        capture?.tearDown()
-        capture = nil
-        return true
+    private static func run(_ effects: [KeyboardDictation.Effect]) {
+        for effect in effects { run(effect) }
     }
 
-    private func heard(_ event: WebCapture.Event, in take: Take) {
-        guard take === self.take else { return }
+    private static func run(_ effect: KeyboardDictation.Effect) {
+        switch effect {
+        case .attach(let id):
+            let capture = capture ?? WebCapture()
+            self.capture = capture
+            capture.onReleased = { run(state.released()) }
+            if let host = keyboard(id)?.host { capture.attach(to: host) }
+            allowHaptics()
+        case .detach(let id):
+            if let host = keyboard(id)?.host { capture?.detach(from: host) }
+        case .readAudio(let take):
+            readAudio(take)
+        case .startCapture(let take):
+            capture?.start(microphone: takes[take]?.microphone)
+        case .stopCapture:
+            capture?.stop()
+        case .watch(let take):
+            watch(take)
+        case .discard(let take):
+            guard let dropped = takes.removeValue(forKey: take) else { return }
+            dropped.file?.close()
+            try? FileManager.default.removeItem(at: dropped.sound)
+        case .write(let take):
+            guard let ended = takes[take] else { return }
+            ended.file?.close()
+            note("the keyboard's capture ended with \(String(format: "%.1f", ended.seconds)) s of sound")
+            write(ended, take)
+        case .leave(let take, let typed):
+            guard let left = takes.removeValue(forKey: take) else { return }
+            left.file?.close()
+            Dictation.leave(
+                Dictation.Made(
+                    id: left.id, date: left.started, seconds: left.seconds, typed: typed, written: left.written?.made,
+                    app: left.app, mic: left.mic),
+                sound: left.sound)
+        case .type(let take, let id):
+            guard let written = takes[take]?.written, let uuid = takes[take]?.id else { return }
+            keyboard(id)?.onWritten(written.made.text, written.plain, uuid)
+        case .hold(let take, let field):
+            guard let held = takes[take], let written = held.written else { return }
+            heldFile.save(
+                (heldFile.read().value ?? [])
+                    + [Held(id: held.id, text: written.made.text, plain: written.plain, field: field, at: .now)])
+        case .notice(let notice, let id):
+            keyboard(id)?.onNotice(text(of: notice))
+        case .openApp(let id):
+            keyboard(id)?.onStartFailure()
+        case .letGoOfCapture:
+            capture?.tearDown()
+            capture = nil
+        case .letGoOfParakeet:
+            transcriber = nil
+        case .resumeOthers:
+            resumeOthers()
+        case .changed(let id):
+            keyboard(id)?.onChange()
+        }
+    }
+
+    private static func text(of notice: KeyboardDictation.Notice) -> String {
+        switch notice {
+        case .micDidntStart: "The mic didn't start"
+        case .notWritten: "Not written: saved to Transcripts for iikb to write"
+        case .noSound: "Mic gave no sound"
+        case .noWords: "Heard no words"
+        }
+    }
+
+    private static func readAudio(_ take: KeyboardDictation.Take) {
+        let picked = SettingsStore.microphone?.name
+        capture?.onEvent = { event in heard(event, in: take) }
+        note("the keyboard starts a capture\(state.recording?.kept == false ? " on touch-down" : "")")
+        audio.async {
+            _ = hapticsAllowed
+            let session = AVAudioSession.sharedInstance()
+            let othersPlaying = session.isOtherAudioPlaying
+            let microphone = picked ?? automaticMicrophone(in: session)
+            Task { @MainActor in
+                takes[take]?.microphone = microphone
+                if picked == nil, microphone != nil { note("the keyboard asks for a wired or USB microphone") }
+                run(state.audioRead(take, othersPlaying: othersPlaying))
+            }
+        }
+    }
+
+    private static func watch(_ take: KeyboardDictation.Take) {
+        Task {
+            while let deadline = state.deadline(take) {
+                let wait = deadline - now
+                if wait > 0 {
+                    try? await Task.sleep(for: .seconds(wait))  // timer: a stalled dictation, or a lost touch-up
+                    continue
+                }
+                if let recording = state.recording {
+                    note(
+                        !recording.kept
+                            ? "the keyboard dropped a touch-down capture no tap kept"
+                            : "the keyboard's capture \(recording.interruptedSince == nil ? "went quiet" : "stayed interrupted")",
+                        failed: recording.kept)
+                }
+                run(state.due(take, at: now))
+            }
+        }
+    }
+
+    private static func heard(_ event: WebCapture.Event, in id: KeyboardDictation.Take) {
+        guard let take = takes[id], let recording = state.recording, recording.take == id else { return }
         switch event {
         case .started(let rate, let device):
             let kind =
                 device.range(of: "iphone|ipad|built-in", options: [.regularExpression, .caseInsensitive]) != nil
                 ? "built-in" : "other"
-            Self.note(
-                "the keyboard hears at \(Int(rate)) Hz from the \(kind) microphone, \(Self.since(take.started)) after the touch"
+            note(
+                "the keyboard hears at \(Int(rate)) Hz from the \(kind) microphone, \(since(take.started)) after the touch"
             )
             take.mic = device
-            take.heard = .now
             take.file = Recording.File(take.sound)
             take.converter = AVAudioFormat(
                 commonFormat: .pcmFormatInt16, sampleRate: rate, channels: 1, interleaved: true
             ).flatMap { AVAudioConverter(from: $0, to: Recording.format) }
-            if take.file == nil || take.converter == nil { startFailed("the recording's file or converter") }
-        case .samples(let data, let level):
-            let first = take.frames == 0
-            append(data, to: take)
-            take.heard = .now
-            if first { Self.note("the keyboard's first sound came \(Self.since(take.started)) after the touch") }
-            guard !take.armed else { return }
-            onLevel(level, take.seconds)
-            if first { onChange() }
-        case .interrupted(let interrupted, let state):
-            Self.note("the keyboard's capture \(interrupted ? "is interrupted" : "is back"): \(state)")
-            if interrupted {
-                take.interruptedSince = take.interruptedSince ?? .now
-            } else {
-                take.interruptedSince = nil
-                take.heard = .now
+            guard take.file != nil, take.converter != nil else {
+                note("the keyboard's capture couldn't start: no file or converter for the recording", failed: true)
+                return run(state.failed(id))
             }
+            state.opened(id, at: now)
+        case .samples(let data, let level):
+            if take.frames == 0 { note("the keyboard's first sound came \(since(take.started)) after the touch") }
+            append(data, to: take)
+            run(state.sound(id, seconds: take.seconds, at: now))
+            if recording.kept { keyboard(recording.keyboard)?.onLevel(level, take.seconds) }
+        case .interrupted(let interrupted, let described):
+            note("the keyboard's capture \(interrupted ? "is interrupted" : "is back"): \(described)")
+            state.interrupted(id, interrupted, at: now)
         case .stopped, .processTerminated:
-            end(take)
+            run(state.ended(id))
         case .failed(let message):
-            if take.file == nil { startFailed(message) } else { end(take) }
+            if !recording.opened { note("the keyboard's capture couldn't start: \(message)", failed: true) }
+            run(state.failed(id))
         }
     }
 
-    private func append(_ data: Data, to take: Take) {
+    private static func append(_ data: Data, to take: Take) {
         guard let converter = take.converter, let file = take.file,
             let buffer = AVAudioPCMBuffer(
                 pcmFormat: converter.inputFormat, frameCapacity: AVAudioFrameCount(data.count / 2))
@@ -381,107 +335,38 @@ final class LocalDictation {
         take.frames += Int(converted.frameLength)
     }
 
-    /// No sound came for `stall` seconds, or another sound held the microphone for `interruption`: a recording ends
-    /// with what it heard, and a start that never got the microphone, or a finger resting on the mic, is given up.
-    private func stalled(_ take: Take) {
-        Self.note(
-            "the keyboard's capture \(take.interruptedSince == nil ? "went quiet" : "stayed interrupted")", failed: true
-        )
-        if take.armed { return drop(take) }
-        guard take.file == nil else { return end(take) }
-        drop(take)
-        onNotice("The mic didn't start")
-    }
-
-    /// The recording is over: what was heard is written down and typed, in the order said, unless it was canceled,
-    /// which the app writes down instead.
-    private func end(_ take: Take) {
-        self.take = nil
-        take.watch?.cancel()
-        Self.note("the keyboard's capture ended with \(String(format: "%.1f", take.seconds)) s of sound")
-        Self.capture?.onEvent = nil
-        Self.capture?.stop()
-        take.file?.close()
-        guard !take.armed, take.frames > 0 else { return drop(take) }
-        guard take.typed else {
-            Self.leave(take, nil, typed: false)
-            return onChange()
-        }
-        pending.append(take)
-        onChange()
-        let before = tail
-        tail = Task { [weak self] in
-            let written = await Self.write(take, within: Self.writingLimit)
-            await before?.value
-            Self.deliver(take, written, to: self)
-        }
-    }
-
-    /// Types a dictation written down, or holds it for the next keyboard in its field when its own went away, and
-    /// leaves it for the app either way. `owner` is the keyboard it was said in, nil once that's gone.
-    private static func deliver(_ take: Take, _ written: Written?, to owner: LocalDictation?) {
-        guard !take.left else { return }
-        owner?.pending.removeAll { $0 === take }
-        defer { owner?.onChange() }
-        guard let written else {
-            leave(take, nil, typed: false)
-            owner?.onNotice("Not written: saved to Transcripts for iikb to write")
-            return
-        }
-        guard written.sounded else {
-            leave(take, written.made, typed: false)
-            letGoOfCapture()
-            owner?.onNotice("Mic gave no sound")
-            return
-        }
-        guard !written.made.text.isEmpty else {
-            leave(take, written.made, typed: false)
-            owner?.onNotice("Heard no words")
-            return
-        }
-        var typed = true
-        if let owner, !take.held {
-            owner.onWritten(written.made.text, written.plain, take.id)
-        } else if let field = take.field {
-            typed = hold(Held(id: take.id, text: written.made.text, plain: written.plain, field: field, at: .now))
-        } else {
-            typed = false
-        }
-        leave(take, written.made, typed: typed)
-    }
-
-    /// Types `held` in the keyboard showing if it's in its field, true then; else keeps it for `appeared`.
-    private static func hold(_ held: Held) -> Bool {
-        if let shown, shown.field == held.field {
-            shown.onWritten(held.text, held.plain, held.id)
-            return true
-        }
-        heldFile.save((heldFile.read().value ?? []) + [held])
-        return false
-    }
-
-    /// Types what was held for this field, keeps what was held for another until `heldFor` passes, and says when one
-    /// passed untyped, which Transcripts has.
     private func typeHeld() {
         guard let all = Self.heldFile.read().value, !all.isEmpty else { return }
-        let fresh = all.filter { Date.now.timeIntervalSince($0.at) <= Self.heldFor }
-        let here = fresh.filter { $0.field == field }
-        let kept = fresh.filter { $0.field != field }
+        let next = KeyboardDictation.held(
+            all.map { (field: $0.field, at: $0.at.timeIntervalSinceReferenceDate) }, in: field, at: Self.now)
+        let kept = next.kept.map { all[$0] }
         if kept.isEmpty { Self.heldFile.remove() } else { Self.heldFile.save(kept) }
-        for held in here { onWritten(held.text, held.plain, held.id) }
-        if fresh.count < all.count { onNotice("Saved to Transcripts") }
+        for held in next.here.map({ all[$0] }) { onWritten(held.text, held.plain, held.id) }
+        if next.expired { onNotice("Saved to Transcripts") }
     }
 
     private struct Written: Sendable {
         var made: Dictation.Made.Written
-        /// As the voice model wrote it, with your vocabulary and no style or lists.
         var plain: String
-        /// Some sample was past 100/32767, as the app checks its own recordings: none means the microphone was deaf.
         var sounded: Bool
     }
 
-    /// `write`, or nil once `seconds` pass without it: Apple's assets and Core ML can hang, and nothing after this
-    /// dictation may wait on it for good.
+    private static func write(_ take: Take, _ id: KeyboardDictation.Take) {
+        Task {
+            let written = await write(take, within: writingLimit)
+            take.written = written
+            let outcome: KeyboardDictation.Outcome =
+                if let written {
+                    !written.sounded ? .silent : written.made.text.isEmpty ? .noWords : .words
+                } else {
+                    .unwritten
+                }
+            let owners = Set(state.writing.map(\.keyboard) + [state.shown?.keyboard].compactMap { $0 })
+            for gone in owners where keyboard(gone) == nil { run(state.hidden(gone)) }
+            run(state.written(id, outcome))
+        }
+    }
+
     private static func write(_ take: Take, within seconds: TimeInterval) async -> Written? {
         let race = Race()
         return await withCheckedContinuation { continuation in
@@ -507,8 +392,6 @@ final class LocalDictation {
         }
     }
 
-    /// Written by Parakeet where it's picked and fits (`ParakeetRoom`), else, or when it fails or hears no words, by
-    /// Apple's model; nil when neither could write it, for the app to.
     private static func write(_ take: Take) async -> Written? {
         let samples: [Float]
         do {
@@ -543,133 +426,67 @@ final class LocalDictation {
                 text: take.style.typed(written.heard, edited: nil, vocabulary: vocabulary), heard: written.heard,
                 model: written.model.title),
             plain: DictationWriting.plain(written.heard, vocabulary: vocabulary),
-            sounded: take.seconds < 1 || samples.contains { abs($0) > 100 / 32767 })
+            sounded: KeyboardDictation.sounded(samples, sampleRate: Recording.format.sampleRate))
     }
 
-    /// Parakeet v3, to write `seconds` of sound with where it's picked and fits beside the keyboard (`ParakeetRoom`),
-    /// loaded if need be and the room checked again after; nil for Apple's model.
     private static func parakeet(for seconds: Double) async -> Transcriber? {
-        let room = ParakeetRoom.now
-        let model = room.model(
-            picked: SpeechModel.picked, seconds: seconds, loaded: ready && transcriber != nil, setAside: setAside,
-            warned: warned)
-        guard model == .v3 else {
+        let room = KeyboardDictation.Room.now
+        guard state.model(picked: SpeechModel.picked != .apple, seconds: seconds, room: room) == .parakeet else {
             if SpeechModel.picked != .apple { note("the keyboard writes with Apple's model: \(room.described)") }
             return nil
         }
+        let load = state.loadParakeet()
+        let task = transcriber ?? Task { try await Transcriber.load(SpeechModel.v3, in: .keyboard) }
+        transcriber = task
+        changed()
+        defer { changed() }
         do {
-            let parakeet = try await loaded()
-            let after = ParakeetRoom.now
+            let parakeet = try await task.value
+            let kept = state.finishedLoading(load)
+            let after = KeyboardDictation.Room.now
             guard after.writes(seconds) else {
                 note("Parakeet loaded without room to write, so it goes: \(after.described)")
-                transcriber = nil
-                ready = false
+                if kept { run(state.parakeetWontFit()) }
                 return nil
             }
             return parakeet
         } catch is Transcriber.OffNeuralEngine {
-            setAside = true
-            note("Parakeet's encoder ran on the CPU, so the keyboard sets it aside: \(ParakeetRoom.now.described)")
+            state.failedLoading(load, onCPU: true)
+            note(
+                "Parakeet's encoder ran on the CPU, so the keyboard sets it aside: \(KeyboardDictation.Room.now.described)"
+            )
         } catch {
+            state.failedLoading(load, onCPU: false)
             note("Parakeet didn't load in the keyboard: \(error.localizedDescription)", failed: true)
         }
+        if transcriber == task { transcriber = nil }
         return nil
     }
 
-    /// Parakeet v3, loaded once for as long as the keyboard runs, until iOS is short of memory: its first load after an
-    /// install of a new build compiles it for the Neural Engine, here as in the app.
-    private static func loaded() async throws -> Transcriber {
-        let load = transcriber ?? Task { try await Transcriber.load(SpeechModel.v3, in: .keyboard) }
-        transcriber = load
-        if !ready {
-            loading = true
-            shown?.onChange()
-        }
-        defer {
-            if loading {
-                loading = false
-                shown?.onChange()
-            }
-        }
-        do {
-            let loaded = try await load.value
-            if transcriber == load { ready = true }
-            return loaded
-        } catch {
-            if transcriber == load { transcriber = nil }
-            throw error
-        }
+    private static func changed() {
+        if let shown = state.shown { keyboard(shown.keyboard)?.onChange() }
     }
 
-    /// Hands a dictation to the app, once, with its sound: written, or for the app to write.
-    private static func leave(_ take: Take, _ written: Dictation.Made.Written?, typed: Bool) {
-        guard !take.left else { return }
-        take.left = true
-        Take.live.remove(take.id)
-        Dictation.leave(
-            Dictation.Made(
-                id: take.id, date: take.started, seconds: take.seconds, typed: typed, written: written, app: take.app,
-                mic: take.mic),
-            sound: take.sound)
-    }
-
-    /// Nothing was heard, or a finger left the mic: there's nothing to keep. The page throws away a start still waiting
-    /// for the microphone.
-    private func drop(_ take: Take) {
-        if self.take === take { self.take = nil }
-        take.watch?.cancel()
-        Self.capture?.stop()
-        take.file?.close()
-        Take.live.remove(take.id)
-        try? FileManager.default.removeItem(at: take.sound)
-        onChange()
-    }
-
-    /// The capture never began, so nothing was lost: a tap goes on to open the app, and a finger still on the mic
-    /// tries again as it lifts.
-    private func startFailed(_ message: String) {
-        Self.note("the keyboard's capture couldn't start: \(message)", failed: true)
-        guard let take else { return }
-        drop(take)
-        if !take.armed { onStartFailure() }
-    }
-
-    /// iOS turns haptics off while a process's audio session records, which WebKit's capture makes this keyboard's.
     nonisolated private static let hapticsAllowed: Void = {
         try? AVAudioSession.sharedInstance().setAllowHapticsAndSystemSoundsDuringRecording(true)
     }()
 
-    /// The audio session's calls wait on the audio server, which held every key on the main thread.
     private static func allowHaptics() {
         audio.async { _ = hapticsAllowed }
     }
 
-    /// How long since `start`, for the log.
     private static func since(_ start: Date) -> String { "\(Int(Date.now.timeIntervalSince(start) * 1000)) ms" }
 
-    /// The microphone iOS takes in a recording session that allows no Bluetooth one, as the app's Automatic does, when
-    /// it isn't the built-in one: listing them needs that category, which changes nothing until a session is active.
     nonisolated private static func automaticMicrophone(in session: AVAudioSession) -> String? {
         if session.category != .playAndRecord { try? session.setCategory(.playAndRecord, options: [.mixWithOthers]) }
         return automaticMicrophone(of: (session.availableInputs ?? []).map { (port: $0.portType, name: $0.portName) })
     }
 
-    /// A wired headset's microphone, else a USB one, by name; nil for the built-in one. Never Bluetooth or CarPlay.
     nonisolated static func automaticMicrophone(of inputs: [(port: AVAudioSession.Port, name: String)]) -> String? {
         [AVAudioSession.Port.headsetMic, .usbAudio].lazy.compactMap { port in inputs.first { $0.port == port }?.name }
             .first
     }
 
-    /// WebKit let the microphone go: audio its capture paused is asked to play again, unless another capture began.
-    private static func released() {
-        guard othersPaused, capture?.isCapturing != true else { return }
-        othersPaused = false
-        resumeOthers()
-    }
-
-    /// WebKit's capture session doesn't mix, pausing other apps' video and music, and ends without telling them they
-    /// may play again. With nothing else playing, the keyboard's own session goes active and off again with
-    /// `notifyOthersOnDeactivation`, for players that resume on `shouldResume` (Hex's `InterruptedAudio`).
     nonisolated private static func resumeOthers() {
         audio.async {
             let session = AVAudioSession.sharedInstance()
@@ -683,6 +500,10 @@ final class LocalDictation {
             }
         }
     }
+}
+
+extension KeyboardDictation.Room {
+    static var now: Self { Self(limit: KeyboardMemory.limit, available: KeyboardMemory.available) }
 }
 
 /// The hidden web view that hears you. It sits in the keyboard at 2 by 2 points, all but invisible, its page
