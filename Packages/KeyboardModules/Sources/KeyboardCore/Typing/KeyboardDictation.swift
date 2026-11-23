@@ -48,6 +48,8 @@ public struct KeyboardDictation: Sendable {
 
     public enum Model: Equatable, Sendable { case parakeet, apple }
 
+    public enum Writer: Equatable, Sendable { case parakeet, apple, app }
+
     public enum Effect: Equatable, Sendable {
         case attach(Keyboard)
         case detach(Keyboard)
@@ -357,22 +359,31 @@ public struct KeyboardDictation: Sendable {
         return effects
     }
 
-    public var parakeetLoaded: Bool {
-        if case .loaded = parakeet { return true }
-        return false
+    public func writer(picked: Model, seconds: Double, room: Room) -> Writer {
+        switch picked {
+        case .apple: .apple
+        case .parakeet: parakeetWrites(seconds, room: room) ? .parakeet : .app
+        }
     }
 
-    public func model(picked parakeetPicked: Bool, seconds: Double, room: Room) -> Model {
-        guard parakeetPicked, parakeetLoaded, room.writes(seconds) else { return .apple }
-        return .parakeet
+    private func parakeetWrites(_ seconds: Double, room: Room) -> Bool {
+        switch parakeet {
+        case .loaded: room.writes(seconds)
+        case .loading: room.fitsKeyboard
+        case .unloaded: !warned && room.loads && room.writes(seconds)
+        case .setAside: false
+        }
     }
 
-    public mutating func preload(picked parakeetPicked: Bool, downloaded: Bool, dictatedBefore: Bool, room: Room)
-        -> [Effect]
-    {
-        guard parakeetPicked, downloaded, dictatedBefore, parakeet == .unloaded, !warned, recording == nil,
-            room.fitsKeyboard, room.fits(Room.toLoad + Room.toRestart)
+    public mutating func preload(picked: Model, downloaded: Bool, dictatedBefore: Bool, room: Room) -> [Effect] {
+        guard picked == .parakeet, downloaded, dictatedBefore, !warned, recording == nil, room.fitsKeyboard,
+            room.fits(Room.toLoad + Room.toRestart)
         else { return [] }
+        return loadParakeet()
+    }
+
+    public mutating func loadParakeet() -> [Effect] {
+        guard parakeet == .unloaded else { return [] }
         loadCount += 1
         parakeet = .loading(loadCount)
         return [.loadParakeet(loadCount)]

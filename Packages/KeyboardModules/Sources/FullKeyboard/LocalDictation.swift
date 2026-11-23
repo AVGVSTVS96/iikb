@@ -18,6 +18,10 @@ final class LocalDictation {
     var isRecording: Bool { Self.state.isRecording(in: id) }
     var hears: Bool { Self.state.hears(in: id) }
     var writing: [Double] { Self.state.writing(in: id) }
+    var waiting: String? {
+        if case .loading = Self.state.parakeet { return "Model loading…" }
+        return nil
+    }
 
     private final class Take {
         let id = UUID()
@@ -110,7 +114,11 @@ final class LocalDictation {
     }
 
     private static var canWrite: Bool {
-        SpeechModel.picked == .apple || Transcriber.isDownloaded(.v3)
+        picked == .apple || Transcriber.isDownloaded(.v3)
+    }
+
+    private static var picked: KeyboardDictation.Model {
+        SpeechModel.picked == .apple ? .apple : .parakeet
     }
 
     private static var micAllowed: Bool {
@@ -137,7 +145,7 @@ final class LocalDictation {
     private static func preload() {
         run(
             state.preload(
-                picked: SpeechModel.picked != .apple, downloaded: Transcriber.isDownloaded(.v3),
+                picked: picked, downloaded: Transcriber.isDownloaded(.v3),
                 dictatedBefore: UserDefaults.standard.bool(forKey: dictatedKey), room: .now))
     }
 
@@ -442,25 +450,31 @@ final class LocalDictation {
             return nil
         }
         let vocabulary = VocabularyFeed.read()
-        var written: (heard: String, model: SpeechModel)?
-        if let parakeet = await parakeet(for: take.seconds) {
+        let written: (heard: String, model: SpeechModel)
+        let room = KeyboardDictation.Room.now
+        switch state.writer(picked: picked, seconds: take.seconds, room: room) {
+        case .apple:
+            do {
+                written = (
+                    try await AppleSpeech.write(samples, vocabulary: vocabulary.terms.map(\.term), installs: false),
+                    .apple
+                )
+            } catch {
+                note("Apple's model couldn't write in the keyboard: \(error.localizedDescription)", failed: true)
+                return nil
+            }
+        case .parakeet:
+            guard let parakeet = await parakeet(for: take.seconds) else { return nil }
             do {
                 written = (try await parakeet.write(samples), .v3)
             } catch {
                 note("Parakeet couldn't write in the keyboard: \(error.localizedDescription)", failed: true)
+                return nil
             }
+        case .app:
+            note("Parakeet can't write here, so the keyboard leaves it for the app: \(room.described)")
+            return nil
         }
-        if written?.heard.isEmpty != false {
-            if written != nil { note("Parakeet heard no words in the keyboard, so Apple's model writes it") }
-            do {
-                let heard = try await AppleSpeech.write(
-                    samples, vocabulary: vocabulary.terms.map(\.term), installs: false)
-                if !heard.isEmpty || written == nil { written = (heard, .apple) }
-            } catch {
-                note("Apple's model couldn't write in the keyboard: \(error.localizedDescription)", failed: true)
-            }
-        }
-        guard let written else { return nil }
         note("\(written.model.title) wrote \(String(format: "%.1f", take.seconds)) s in the keyboard")
         return Written(
             made: Dictation.Made.Written(
@@ -471,16 +485,23 @@ final class LocalDictation {
     }
 
     private static func parakeet(for seconds: Double) async -> Transcriber? {
-        let room = KeyboardDictation.Room.now
-        let picked = SpeechModel.picked != .apple
-        guard state.model(picked: picked, seconds: seconds, room: room) == .parakeet, let transcriber else {
-            if picked {
-                let loading = if case .loading = state.parakeet { " while Parakeet loads" } else { "" }
-                note("the keyboard writes with Apple's model\(loading): \(room.described)")
-            }
+        run(state.loadParakeet())
+        changed()
+        defer { changed() }
+        guard let transcriber, let parakeet = try? await transcriber.value else {
+            note("Parakeet didn't load, so the keyboard leaves it for the app")
             return nil
         }
-        return try? await transcriber.value
+        let room = KeyboardDictation.Room.now
+        guard room.writes(seconds) else {
+            note("Parakeet loaded without room to write, so the keyboard leaves it for the app: \(room.described)")
+            return nil
+        }
+        return parakeet
+    }
+
+    private static func changed() {
+        for id in Set(state.writing.map(\.keyboard)) { keyboard(id)?.onChange() }
     }
 
     nonisolated private static let hapticsAllowed: Void = {

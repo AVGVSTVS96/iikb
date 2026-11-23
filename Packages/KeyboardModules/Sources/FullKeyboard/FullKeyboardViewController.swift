@@ -958,7 +958,7 @@ open class FullKeyboardViewController: UIInputViewController {
         placeMic()
         suggestionBar.update(
             mic: mic, recorded: recorded,
-            saved: dictation.writing + localDictation.writing, waitingFor: dictation.waiting,
+            saved: dictation.writing + localDictation.writing, waitingFor: dictation.waiting ?? localDictation.waiting,
             notice: notice ?? hint, theme: theme)
         keyMic.show(mic, theme: theme)
         var shown = metrics

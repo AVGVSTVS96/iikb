@@ -91,6 +91,7 @@ Each rule with what enforces it. When an agent repeats a mistake, fix it at the 
 | The keyboard's height comes from Auto Layout content, never a plain height constraint (KeyboardUI) | judgment: nothing enforces it |
 | Only `VoiceEditor` links llama.cpp, and it imports nothing of iOS, so the bench and the gate run the app's own files (VoiceEditor) | Packages/Voice/Package.swift; `scripts/clean` builds it on Linux |
 | Clean's model goes on typing `scripts/clean.txt`, whatever weights ship (scripts) | `scripts/phone` runs `scripts/clean` |
+| With a Parakeet picked, Apple's model never writes a dictation, in the keyboard as in the app: what Parakeet can't write in the keyboard is left in Transcripts for the app's Parakeet (FullKeyboard) | `KeyboardDictation.writer`, `KeyboardDictationTests`; judgment for the app's `VoiceModel.write` |
 | Recording never waits for a model: the `Microphone` knows nothing of `VoiceModel` (App/Voice) | Packages/Voice/Package.swift: VoiceModels is on VoiceCapture, so VoiceCapture can't import it |
 | Never a Bluetooth microphone unless one is picked in Settings › Microphone (VoiceCapture) | judgment: nothing enforces it |
 | A page opened from another in its tab has one Back, in the Duo's side bar with the tabs on every screen (App) | `backInSideBar(_:)`, `BackTests` |
