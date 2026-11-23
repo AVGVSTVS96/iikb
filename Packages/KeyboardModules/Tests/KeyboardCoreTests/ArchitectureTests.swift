@@ -22,7 +22,10 @@ struct ArchitectureTests {
             "asyncAfter", "afterDelay", "Timer.", "Timer(", ".sleep(", "usleep(", "makeTimerSource", "timeoutInterval",
             "timeout:",
         ]
-        let timers = ["key repeat", "long-press", "source answer", "Keep Mic On", "stop waits for quiet", "probe"]
+        let timers = [
+            "key repeat", "long-press", "source answer", "Keep Mic On", "stop waits for quiet", "probe",
+            "a stalled dictation",
+        ]
         let sources = ["App", "Keyboard", "web/Sources", "Packages/KeyboardModules/Sources", "Packages/Voice/Sources"]
             .flatMap(Self.files).filter { $0.pathExtension == "swift" }
         #expect(sources.count > 100)

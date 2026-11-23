@@ -345,6 +345,8 @@ open class FullKeyboardViewController: UIInputViewController {
             feedback(.other)
             toggleVoice()
         }
+        suggestionBar.onMicDown = { [unowned self] in armVoice() }
+        suggestionBar.onMicCancel = { [unowned self] in localDictation.disarm() }
         suggestionBar.onTool = { [unowned self] in open($0, backToMenu: hasMore) }
         suggestionBar.onSplit = { [unowned self] in
             feedback(.other)
@@ -414,6 +416,9 @@ open class FullKeyboardViewController: UIInputViewController {
             placeMic()
         }
         keyMic.addAction(UIAction { [unowned self] _ in suggestionBar.onMic() }, for: .touchUpInside)
+        keyMic.addAction(UIAction { [unowned self] _ in suggestionBar.onMicDown() }, for: .touchDown)
+        keyMic.addAction(
+            UIAction { [unowned self] _ in suggestionBar.onMicCancel() }, for: [.touchUpOutside, .touchCancel])
         keyboardView.micKey = keyMic
         localDictation.onLevel = { [weak self] level, recorded in
             guard let self else { return }
@@ -546,12 +551,18 @@ open class FullKeyboardViewController: UIInputViewController {
         }
     }
 
+    override open func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        localDictation.memoryWarning()
+    }
+
     override open func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         updateHost()
         syncWithDocument()
         fieldLines.check(app: hostApp, process: KeyboardHost.process(of: self), before: engine.text.before)
         if hapticsEnabled { haptics.start() }
+        if hasFullAccess, !Dictation.micIsOn { localDictation.prepare() }
         stopSystemGesturesDelayingTouches()
         TouchTrace.shared.watch(view.window)
         Task { [weak self] in
@@ -570,7 +581,7 @@ open class FullKeyboardViewController: UIInputViewController {
         leaveChat()
         engine.endSession()
         keepDictations()
-        localDictation.cancelAll()
+        localDictation.keyboardWillHide()
         Dictation.keep(engine.takeDraft(), in: field)
         field = nil
         closePanels(in: document)
@@ -695,6 +706,7 @@ open class FullKeyboardViewController: UIInputViewController {
         if textDocumentProxy.field != field {
             field = textDocumentProxy.field
             engine.leaveField()
+            localDictation.appeared(in: field)
             if let kept = Dictation.takeDraft() {
                 if let field, kept.field == field {
                     engine.resume(kept.draft)
@@ -1164,9 +1176,17 @@ open class FullKeyboardViewController: UIInputViewController {
     private var appeared = false
     private var hostAway = false
 
-    @objc private func hostLeft() { hostAway = true }
+    @objc private func hostLeft() {
+        hostAway = true
+        localDictation.keyboardWillHide()
+    }
 
-    @objc private func hostCameBack() { hostAway = false }
+    @objc private func hostCameBack() {
+        hostAway = false
+        guard appeared else { return }
+        localDictation.appeared(in: field)
+        if hasFullAccess, !Dictation.micIsOn { localDictation.prepare() }
+    }
 
     /// While the space bar trackpad is held the bar keeps what it showed, as Apple's does, and ranks once it's let go.
     private var trackpadHeld = false
@@ -1369,9 +1389,20 @@ open class FullKeyboardViewController: UIInputViewController {
         if dictation.listening { return Dictation.send(.finish, from: keyboard) }
         notice = nil
         micIsOn = Dictation.micIsOn
-        if micIsOn { return Dictation.send(.start) }
+        if micIsOn {
+            localDictation.disarm()
+            return Dictation.send(.start)
+        }
         localDictation.start(for: hostApp, style: engine.settings.dictation(in: hostApp))
         render()
+    }
+
+    /// A finger came down on the mic: the keyboard starts hearing for a dictation it would make itself, so the first
+    /// word isn't lost while the touch becomes a tap.
+    private func armVoice() {
+        guard hasFullAccess, !localDictation.isRecording, !dictation.listening, !Dictation.micIsOn else { return }
+        updateHost()
+        localDictation.arm(for: hostApp, style: engine.settings.dictation(in: hostApp))
     }
 
     /// Opens the app to dictate, for a tap the keyboard couldn't hear or write itself: only from a host it can bring

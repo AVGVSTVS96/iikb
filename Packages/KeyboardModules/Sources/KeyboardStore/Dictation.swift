@@ -147,6 +147,8 @@ public enum Dictation {
 
     private static var photosURL: URL? { AppGroup.library?.appending(path: "photos-allowed") }
 
+    private static var micAllowedURL: URL? { AppGroup.library?.appending(path: "mic-allowed") }
+
     /// The app holds this lock while its microphone is on. The kernel lets go of it when the app ends however it ends,
     /// so the lock, unlike a status the app writes, can't outlive the app.
     public static func lockMic() -> Int32? {
@@ -197,6 +199,21 @@ public enum Dictation {
             guard let photosURL else { return }
             // file: photos channel (iOS's answer to the app)
             if newValue { try? Data().write(to: photosURL) } else { try? FileManager.default.removeItem(at: photosURL) }
+        }
+    }
+
+    /// Whether iOS let iikb use the microphone when the app last asked. Only the app writes it. A keyboard keeps the
+    /// answer it read as it started, so one started before the app was given the microphone reads this one too.
+    public static var micAllowed: Bool {
+        // file: microphone channel (iOS's answer to the app)
+        get { micAllowedURL.map { FileManager.default.fileExists(atPath: $0.path) } ?? false }
+        set {
+            guard let micAllowedURL else { return }
+            if newValue {
+                try? Data().write(to: micAllowedURL)  // file: microphone channel (iOS's answer to the app)
+            } else {
+                try? FileManager.default.removeItem(at: micAllowedURL)
+            }
         }
     }
 

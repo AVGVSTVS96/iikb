@@ -175,7 +175,8 @@ public enum SettingsStore {
         set { set(newValue, forKey: keepMicOnKey) }
     }
 
-    /// The microphone picked to dictate with, nil to leave it to iikb's automatic choice. Only the app reads it.
+    /// The microphone picked to dictate with, nil to leave it to iikb's automatic choice. The keyboard asks WebKit for it
+    /// by name when it dictates itself.
     public static var microphone: PickedMicrophone? {
         get { (value(forKey: microphoneKey, sharing: true) as? [String: String]).flatMap(PickedMicrophone.init) }
         set { set(newValue?.stored ?? [:], forKey: microphoneKey) }

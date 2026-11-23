@@ -115,7 +115,8 @@ import VoiceModels
         recording = take
         publish()
         do {
-            guard await AVAudioApplication.requestRecordPermission() else { throw Failure.microphone }
+            Dictation.micAllowed = await AVAudioApplication.requestRecordPermission()
+            guard Dictation.micAllowed else { throw Failure.microphone }
             guard recording === take else { return }
             try microphone.open()
             VoiceModel.shared.micIsOn = true
@@ -256,7 +257,8 @@ import VoiceModels
         micOff?.cancel()
         micOffOnceWritten = false
         if !microphone.isOn {
-            guard await AVAudioApplication.requestRecordPermission() else { throw Failure.microphone }
+            Dictation.micAllowed = await AVAudioApplication.requestRecordPermission()
+            guard Dictation.micAllowed else { throw Failure.microphone }
             try microphone.open()
             VoiceModel.shared.micIsOn = true
         }

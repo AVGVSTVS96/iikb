@@ -36,6 +36,10 @@ public final class SuggestionBar: UIView {
     public var onSelect: (Suggestion) -> Void = { _ in }
     public var onEmoji: (String) -> Void = { _ in }
     public var onMic: () -> Void = {}
+    /// A finger came down on the mic, before it's a tap.
+    public var onMicDown: () -> Void = {}
+    /// That finger left the mic without a tap.
+    public var onMicCancel: () -> Void = {}
     public var onCancel: () -> Void = {}
     public var onNotice: () -> Void = {}
     public var onTool: (Panel) -> Void = { _ in }
@@ -175,6 +179,8 @@ public final class SuggestionBar: UIView {
         }
         addSubview(stylePicker)
         mic.addAction(UIAction { [unowned self] _ in onMic() }, for: .touchUpInside)
+        mic.addAction(UIAction { [unowned self] _ in onMicDown() }, for: .touchDown)
+        mic.addAction(UIAction { [unowned self] _ in onMicCancel() }, for: [.touchUpOutside, .touchCancel])
         cancel.addAction(
             UIAction { [unowned self] _ in
                 dissolve()
