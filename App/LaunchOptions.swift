@@ -113,7 +113,7 @@ enum LaunchOptions {
 
     /// `-iikbLanguage sv`, `-iikbOneHanded left` and `-iikbCompactPanels YES`, `-iikbAutoCapitalization YES`, `-iikbAutoCorrection YES`,
     /// `-iikbMicKey YES`, `-iikbPredictiveText NO`, `-iikbNumberHints YES` or Custom Keys' switches (`-iikbActionsInBar YES`,
-    /// `-iikbPeriodKey YES`) set those settings for a test.
+    /// `-iikbPeriodKey YES`) or `-iikbSessionLog YES` set those settings for a test.
     static func applySettings() {
         if let hand = defaults.string(forKey: "iikbOneHanded").flatMap(OneHanded.init) { SettingsStore.set(hand) }
         if let language = defaults.string(forKey: "iikbLanguage") {
@@ -128,7 +128,7 @@ enum LaunchOptions {
             ("iikbPredictiveText", \.predictiveText), ("iikbNumberHints", \.numberHints),
             ("iikbActionsInBar", \.actionsInBar),
             ("iikbPeriodKey", \.periodKey), ("iikbSnippetKey", \.snippetKey),
-            ("iikbDictationButton", \.dictationButton), ("iikbSplit", \.split),
+            ("iikbDictationButton", \.dictationButton), ("iikbSplit", \.split), ("iikbSessionLog", \.sessionLog),
         ]
         for (key, path) in toggles where defaults.object(forKey: key) != nil {
             SettingsStore.set(defaults.bool(forKey: key), for: path)

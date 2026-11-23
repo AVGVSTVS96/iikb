@@ -248,6 +248,7 @@ open class FullKeyboardViewController: UIInputViewController {
     /// The languages the corrector's words are, and the list each came from, which `useLanguages` keeps to those picked.
     private var typing: String?
     private var typingLog = TypingLog()
+    private let sessionName = SessionLogs.name()
     private let memoryStore = MemoryStore()
     private lazy var toolbarHeightConstraint = toolbarView.heightAnchor.constraint(equalToConstant: 0)
     private lazy var keyboardHeightConstraint = keyboardView.heightAnchor.constraint(equalToConstant: 0)
@@ -293,6 +294,9 @@ open class FullKeyboardViewController: UIInputViewController {
 
     override open func viewDidLoad() {
         super.viewDidLoad()
+        if hasFullAccess, SettingsStore.load(sharing: true).sessionLog {
+            engine.log = SessionLog(build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "")
+        }
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(hostLeft), name: .NSExtensionHostDidEnterBackground, object: nil)
         center.addObserver(self, selector: #selector(hostCameBack), name: .NSExtensionHostDidBecomeActive, object: nil)
@@ -603,6 +607,7 @@ open class FullKeyboardViewController: UIInputViewController {
         TouchTrace.shared.flush()
         saveMemory()
         saveTyping()
+        keepLog()
         MemoryStore.save(engine.emojiHistory)
         if hasFullAccess { MemoryStore.queue.async { Backup.sync(Backup.keyboard + Backup.group) } }
         observers.forEach(Dictation.stopObserving)
@@ -611,6 +616,7 @@ open class FullKeyboardViewController: UIInputViewController {
 
     private func loadSettings() {
         engine.settings = SettingsStore.load(sharing: hasFullAccess)
+        if !engine.settings.sessionLog { engine.log = nil }
         engine.region = .current
         engine.snippets = SnippetStore.snippets(sharing: hasFullAccess)
         quicklinks = SnippetStore.quicklinks(sharing: hasFullAccess)
@@ -708,6 +714,10 @@ open class FullKeyboardViewController: UIInputViewController {
         let proxy = textDocumentProxy
         hostField = HostField(
             isPrivate: proxy.isPrivate, appearance: proxy.keyboardAppearance, selected: proxy.selectedText ?? "")
+        if hostField.isPrivate, engine.log != nil {
+            keepLog()
+            engine.log = nil
+        }
         if line != nil {
             // WHY: iOS takes the field from a keyboard it's about to end (the iPad, back in an app), which isn't a move.
             guard let now = textDocumentProxy.field, now != field else { return render() }
@@ -752,6 +762,7 @@ open class FullKeyboardViewController: UIInputViewController {
         if report == .changed, engine.text.isEmpty {
             saveMemory()
             saveTyping()
+            keepLog()
             keepDictations()
         }
         TouchTrace.shared.record(report, host: textDocumentProxy.documentContextBeforeInput?.count ?? 0, known: known)
@@ -759,6 +770,12 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     /// When the keyboard goes away and when a message is sent, so what was learned outlives the keyboard being ended.
+    private func keepLog() {
+        guard let log = engine.log else { return }
+        let name = sessionName
+        MemoryStore.queue.async { SessionLogs.save(log, as: name) }
+    }
+
     private func saveMemory() {
         if let memory = engine.corrector?.memory { memoryStore.save(memory, sharing: hasFullAccess) }
     }

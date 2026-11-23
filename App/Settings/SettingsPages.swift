@@ -256,6 +256,7 @@ struct PrivacyPage: View {
                 }
                 .task { backup = await Backup.sendApp() }
             }
+            TypingLogBox()
             Box(
                 footer:
                     "iikb forgets the words it learned across apps and within each app, and where your thumbs land on each key. Your Dictionary stays."

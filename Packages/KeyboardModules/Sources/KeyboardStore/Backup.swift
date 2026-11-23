@@ -73,9 +73,10 @@ nonisolated public enum Backup {
         AppGroup.library.map { [("group/Library", $0)] } ?? []
     }
 
-    /// Parakeet's models, the personal network and the languages' words, which download again, and what iOS may clear.
+    /// Parakeet's models, the personal network and the languages' words, which download again, what iOS may clear, and the
+    /// typing log, which leaves the iPhone only when it's shared.
     /// A file marked as left out of backups (`Download`'s) is left out too.
-    private static let skipped: Set<String> = ["FluidAudio", "Personal", "Languages", "Caches"]
+    private static let skipped: Set<String> = ["FluidAudio", "Personal", "Languages", "Caches", "SessionLogs"]
 
     /// Sends what changed in the background, letting the app or keyboard finish even as it goes away. `skip` names files
     /// not to send yet, by their name on the server.

@@ -7,8 +7,9 @@ and the server never deletes one. The TestFlight build never backs up: Xcode Clo
 ## What goes
 
 Everything but what downloads again or iOS may clear: Parakeet's and Clean's models, the languages' words, the personal
-network and `Caches`. `scripts/backup` still takes the languages' words and the personal network. On the server, files go
-under the names `scripts/backup` gives them:
+network and `Caches`. The typing log (`Library/SessionLogs`) never goes; it leaves the iPhone only when you share a
+session. `scripts/backup` still takes the languages' words and the personal network. On the server, files go under the
+names `scripts/backup` gives them:
 
 | On the server | On the iPhone | What it holds |
 |---|---|---|

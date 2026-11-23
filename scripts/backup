@@ -47,6 +47,7 @@ fi
 copy appDataContainer "$id.keyboard" "Library/Application Support" keyboard/support
 copy appDataContainer "$id.keyboard" Library/Preferences keyboard/Preferences
 copy appGroupDataContainer "group.$id" Library group/Library
+rm -rf "$out/group/Library/SessionLogs"
 rm -f "$out/list.json"
 echo "$out"
 MAC
