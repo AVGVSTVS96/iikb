@@ -21,6 +21,7 @@ iikb's saved data, in the App Group the app and the keyboard extension share and
 - `LinkIcons`: a copied link's site icon, fetched once per site from the site itself (only its name leaves the device, never the link) into the group's `Library/Caches/site-icons`, for the app and the keyboard.
 - `Recording`: a dictation's sound as iikb keeps it, 16 kHz mono as a 16-bit WAV, written as it's heard by the app's microphone and the keyboard's own dictations alike, leveled before a Parakeet hears it (`Recording.leveled`), and sent as Messages or Voice Memos keep theirs (`Recording.export`).
 - `TranscriptFeed`: what you dictated, copied by the app to the group's `Library/Caches` each time its transcripts change, for the keyboard's Transcripts panel, with the keyboard's own dictations the app hasn't taken yet (`Dictation.made`); the backup leaves it out, since the app's own file is the one kept.
+- `KeyboardVoiceLog`: what the keyboard's own dictations did, its last 300 lines a day back at most, in the group's `Library/Application Support`, which the backup carries and the app adds to its voice log (`VoiceLog`).
 - `VocabularyFeed`: your Vocabulary, copied by the app to the group's `Library/Caches` as it starts and each time it changes, for the dictations the keyboard writes down itself; the backup leaves it out too.
 - `TypingStats`: the hours the keyboard appends to the group's `Library/typing.jsonl` each time it closes or a message goes, with a Darwin notification.
 - `PersonalNetwork`, with `Network.current`.
