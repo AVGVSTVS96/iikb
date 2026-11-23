@@ -57,6 +57,8 @@ final class LocalDictation {
         var frames = 0
         /// When the page last sent sound, or the start was asked for: what `watch` measures a stall from.
         var heard = Date()
+        /// Since when the page has said another sound took the microphone, while it has.
+        var interruptedSince: Date?
         var watch: Task<Void, Never>?
         var typed = true
         /// The keyboard went away before it was typed: the next keyboard in its field types it (`Held`).
@@ -115,6 +117,9 @@ final class LocalDictation {
     /// Seconds without sound from the page after which a recording ends with what it heard, and a start that never got
     /// the microphone is given up: iOS can suspend WebKit's capture for an alert or a call without a word.
     private static let stall: TimeInterval = 6
+    /// Seconds a recording waits through another sound holding the microphone before it ends with what it heard: a
+    /// notification passes in about a second, a call or an alarm doesn't.
+    private static let interruption: TimeInterval = 15
     /// Seconds a dictation may take to be written down before it's left for the app to write.
     private static let writingLimit: TimeInterval = 120
     nonisolated private static let audio = DispatchQueue(label: "com.shahidy.iikb.keyboard.audio", qos: .userInitiated)
@@ -223,7 +228,9 @@ final class LocalDictation {
         }
         take.watch = Task { [weak self] in
             while true {
-                let wait = Self.stall - Date.now.timeIntervalSince(take.heard)
+                let wait =
+                    take.interruptedSince.map { Self.interruption - Date.now.timeIntervalSince($0) }
+                    ?? Self.stall - Date.now.timeIntervalSince(take.heard)
                 if wait <= 0 { break }
                 try? await Task.sleep(for: .seconds(wait))  // timer: a stalled dictation
                 guard !Task.isCancelled else { return }
@@ -295,6 +302,15 @@ final class LocalDictation {
             append(data, to: take)
             take.heard = .now
             if !take.armed { onLevel(level, take.seconds) }
+        case .interrupted(let interrupted, let state):
+            Self.log.notice(
+                "the keyboard's capture \(interrupted ? "is interrupted" : "is back"): \(state, privacy: .public)")
+            if interrupted {
+                take.interruptedSince = take.interruptedSince ?? .now
+            } else {
+                take.interruptedSince = nil
+                take.heard = .now
+            }
         case .stopped, .processTerminated:
             end(take)
         case .failed(let message):
@@ -319,10 +335,12 @@ final class LocalDictation {
         take.frames += Int(converted.frameLength)
     }
 
-    /// No sound came for `stall` seconds: a recording ends with what it heard, and a start that never got the
-    /// microphone, or a finger resting on the mic, is given up.
+    /// No sound came for `stall` seconds, or another sound held the microphone for `interruption`: a recording ends
+    /// with what it heard, and a start that never got the microphone, or a finger resting on the mic, is given up.
     private func stalled(_ take: Take) {
-        Self.log.error("the keyboard's capture went quiet for \(Int(Self.stall)) s")
+        Self.log.error(
+            "the keyboard's capture \(take.interruptedSince == nil ? "went quiet" : "stayed interrupted", privacy: .public)"
+        )
         if take.armed { return drop(take) }
         guard take.file == nil else { return end(take) }
         drop(take)
@@ -576,6 +594,9 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
     enum Event {
         case started(sampleRate: Double, device: String)
         case samples(Data, level: Float)
+        /// iOS gave the audio session to another sound (a notification, an alarm, a call), or it's back, with what the
+        /// page says of its context and track.
+        case interrupted(Bool, String)
         case stopped
         case failed(String)
         case processTerminated
@@ -688,6 +709,11 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
         case "pcm":
             guard let encoded = body["data"] as? String, let data = Data(base64Encoded: encoded) else { return }
             onEvent?(.samples(data, level: Float((body["level"] as? Double) ?? 0)))
+        case "state":
+            onEvent?(
+                .interrupted(
+                    (body["interrupted"] as? Bool) ?? false,
+                    "context \((body["context"] as? String) ?? "?"), track \((body["track"] as? String) ?? "?")"))
         case "stopped":
             isCapturing = false
             onEvent?(.stopped)
@@ -703,6 +729,56 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
         <!doctype html><meta charset="utf-8"><script>
         let live = null;
         const post = (m) => webkit.messageHandlers.iikb.postMessage(m);
+        const track = (capture) => capture.stream && capture.stream.getAudioTracks()[0];
+        function report(capture) {
+          const t = track(capture);
+          const state = !t || t.readyState === "ended" ? "ended" : t.muted ? "muted" : "live";
+          const interrupted = capture.ctx.state !== "running" || state !== "live";
+          if (interrupted === capture.interrupted) return;
+          capture.interrupted = interrupted;
+          post({ type: "state", session: capture.session, interrupted, context: capture.ctx.state, track: state });
+        }
+        function listen(capture, t) {
+          const now = (f) => () => { if (t === track(capture)) f(); };
+          t.onmute = now(() => { capture.mutedAt = Date.now(); report(capture); });
+          t.onunmute = now(() => report(capture));
+          t.onended = now(() => report(capture));
+        }
+        function heal(capture) {
+          if (live !== capture) return;
+          report(capture);
+          if (capture.ctx.state !== "running") {
+            if (capture.ctx.state !== "closed") capture.ctx.resume().catch(() => {});
+            return;
+          }
+          const t = track(capture);
+          const ended = !t || t.readyState === "ended";
+          if (!ended && !(t.muted && Date.now() - capture.mutedAt >= 3000)) return;
+          if (capture.reopening || Date.now() < capture.nextReopen) return;
+          reopen(capture);
+        }
+        async function reopen(capture) {
+          capture.reopening = true;
+          try {
+            const s = await navigator.mediaDevices.getUserMedia(capture.constraints);
+            if (live !== capture) return s.getTracks().forEach((t) => t.stop());
+            const old = capture.stream;
+            try { capture.source.disconnect(); } catch (e) {}
+            capture.stream = s;
+            capture.source = capture.ctx.createMediaStreamSource(s);
+            capture.source.connect(capture.node);
+            listen(capture, track(capture));
+            capture.mutedAt = Date.now();
+            if (!track(capture).muted) capture.backoff = 1000;
+            old.getTracks().forEach((t) => t.stop());
+            report(capture);
+          } catch (e) {
+          } finally {
+            capture.reopening = false;
+            capture.nextReopen = Date.now() + capture.backoff;
+            capture.backoff = Math.min(8000, capture.backoff * 2);
+          }
+        }
         const base = { channelCount: 1, echoCancellation: true };
         async function chosenMicrophone(label) {
           const inputs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput");
@@ -733,10 +809,6 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
               }
             }
             capture.ctx = new AudioContext();
-            capture.ctx.onstatechange = () => {
-              const state = capture.ctx.state;
-              if (!stale() && state !== "running" && state !== "closed") capture.ctx.resume().catch(() => {});
-            };
             await capture.ctx.resume();
             if (stale()) return release();
             capture.source = capture.ctx.createMediaStreamSource(capture.stream);
@@ -758,6 +830,10 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
             };
             capture.source.connect(capture.node);
             capture.node.connect(capture.ctx.destination);
+            Object.assign(capture, { constraints: { audio: id ? { ...base, deviceId: { ideal: id } } : base }, interrupted: false, mutedAt: Date.now(), backoff: 1000, nextReopen: 0 });
+            listen(capture, track(capture));
+            capture.ctx.onstatechange = () => report(capture);
+            capture.heal = setInterval(() => heal(capture), 250);
             post({ type: "started", session, rate: capture.ctx.sampleRate, device: capture.stream.getAudioTracks()[0].label });
           } catch (error) {
             if (stale()) return release();
@@ -770,6 +846,7 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
           const capture = live;
           if (!capture) return;
           live = null;
+          if (capture.heal) clearInterval(capture.heal);
           try { capture.node && capture.node.disconnect(); capture.source && capture.source.disconnect(); } catch (e) {}
           if (capture.stream) capture.stream.getTracks().forEach((t) => t.stop());
           post({ type: "stopped", session: capture.session });
