@@ -40,21 +40,23 @@ extension InputTraits {
     public init(_ proxy: UITextDocumentProxy) {
         let kind = InputKind(proxy.keyboardType ?? .default)
         let returnKind = ReturnKind(proxy.returnKeyType ?? .default)
-        let content: UITextContentType? = proxy.textContentType ?? nil
+        let type: UITextContentType? = proxy.textContentType ?? nil
+        let autocorrection = proxy.autocorrectionType ?? .default
+        let content = InputContent(
+            type.map(InputContent.init) ?? .other, kind: kind, setsAutocorrection: autocorrection != .default)
         self.init(
             kind: kind,
-            content: content.map(InputContent.init) ?? .other,
+            content: content,
             returnKind: kind == .webSearch && returnKind == .default ? .go : returnKind,
             autocapitalization: Autocapitalization(proxy.autocapitalizationType ?? .sentences),
             smartPunctuation: proxy.smartQuotesType != .no,
             returnRequiresText: proxy.enablesReturnKeyAutomatically ?? false,
-            autocorrection: proxy.autocorrectionType != .no && !(content.map(Self.literalContent.contains) ?? false)
+            autocorrection: autocorrection != .no && !(type.map(Self.literalContent.contains) ?? false)
         )
     }
 
     private static let literalContent: Set<UITextContentType> = [
-        .URL, .emailAddress, .username, .password, .newPassword, .oneTimeCode, .telephoneNumber, .postalCode,
-        .creditCardNumber,
+        .URL, .emailAddress, .username, .password, .newPassword, .telephoneNumber, .postalCode, .creditCardNumber,
     ]
 }
 

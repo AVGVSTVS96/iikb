@@ -9,6 +9,11 @@ public enum InputKind: String, Codable, Sendable {
 /// What the field says it holds (`textContentType`), beside the keyboard it asks for.
 public enum InputContent: String, Codable, Sendable {
     case other, emailAddress, url, username, telephoneNumber, oneTimeCode, postalCode, creditCardNumber
+
+    public init(_ said: InputContent, kind: InputKind, setsAutocorrection: Bool) {
+        let code = [.number, .decimal].contains(kind) || setsAutocorrection
+        self = said == .oneTimeCode && !code ? .other : said
+    }
 }
 
 public enum ReturnKind: Hashable, Sendable {
@@ -74,7 +79,7 @@ public struct InputTraits: Hashable, Sendable {
     public var allowsCorrection: Bool {
         switch kind {
         case .email, .url, .number, .decimal: false
-        default: autocorrection
+        default: autocorrection && content != .oneTimeCode
         }
     }
 }

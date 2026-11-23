@@ -1,6 +1,7 @@
 import Foundation
 import KeyboardCore
 import KeyboardStore
+import KeyboardUI
 import UIKit
 
 /// Sends each source the field you're typing in and keeps the hint it answers with. The request is encoded and sent
@@ -100,6 +101,7 @@ extension UITextDocumentProxy {
     /// Fields whose text never goes to a source. iOS already swaps in its own keyboard for secure fields.
     var isPrivate: Bool {
         guard let content = textContentType ?? nil else { return false }
-        return [.password, .newPassword, .oneTimeCode, .creditCardNumber, .creditCardSecurityCode].contains(content)
+        return [.password, .newPassword, .creditCardNumber, .creditCardSecurityCode].contains(content)
+            || InputTraits(self).content == .oneTimeCode
     }
 }
