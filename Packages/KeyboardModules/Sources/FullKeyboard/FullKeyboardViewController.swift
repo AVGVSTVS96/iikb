@@ -359,6 +359,7 @@ open class FullKeyboardViewController: UIInputViewController {
             handle(.split($0))
         }
         suggestionBar.onEdit = { [unowned self] in edit($0) }
+        suggestionBar.onPaste = { [unowned self] in edit(.paste) }
         suggestionBar.onStyle = { [unowned self] in pickStyle($0.map { DictationStyle.allCases[$0] }) }
         suggestionBar.onChat = { [unowned self] index in
             guard chats.list.indices.contains(index) else { return }
@@ -527,7 +528,13 @@ open class FullKeyboardViewController: UIInputViewController {
         engine.emojiHistory.app = hostApp
         loadSettings()
         clicks.refresh()
-        if hasFullAccess { clipboard.catchUp() }
+        if hasFullAccess {
+            clipboard.catchUp { [weak self] changed, kept in
+                guard let self, changed, UIPasteboard.general.hasStrings else { return }
+                engine.copied = Copied(text: kept?.content.preview)
+                render()
+            }
+        }
         syncWithDocument()
         if observers.isEmpty {
             observers = [SettingsStore.observe { [weak self] in self?.settingsChanged() }]
@@ -947,6 +954,7 @@ open class FullKeyboardViewController: UIInputViewController {
         suggestionBar.update(more: (line == nil || !keysUp) && leading, on: menuShown || inPlace)
         suggestionBar.update(offered: updateOffered && !narrow)
         suggestionBar.update(edits: menuShown && panel == nil ? edits : nil, theme: theme)
+        suggestionBar.update(paste: menuShown ? nil : engine.pasteOffer, theme: theme)
         placeMic()
         suggestionBar.update(
             mic: mic, recorded: recorded,

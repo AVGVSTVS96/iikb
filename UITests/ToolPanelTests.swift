@@ -127,6 +127,36 @@ final class ToolPanelTests: XCTestCase {
         try shot("clipboard-pinned")
     }
 
+    func testAnEmptyFieldOffersWhatWasJustCopied() throws {
+        UIPasteboard.general.string = "Back at 6, the side door"
+        var app = launch()
+        var offer = app.descendants(matching: .any)["iikb.paste"]
+        XCTAssertTrue(offer.waitForExistence(timeout: 10), "an empty field offers what was just copied")
+        if offer.label == "Paste" {
+            try shot("paste-refused")
+            open(.clipboard, in: app)
+            let message = app.buttons["iikb.clipboard.message"]
+            XCTAssertTrue(message.waitForExistence(timeout: 5))
+            message.tap()
+            try allowPasteFromOtherApps()
+            UIPasteboard.general.string = "Back at 7, the side door"
+            app = launch()
+            offer = app.descendants(matching: .any)["iikb.paste"]
+            XCTAssertTrue(offer.waitForExistence(timeout: 10))
+        }
+        let copied = UIPasteboard.general.string ?? ""
+        XCTAssertEqual(offer.label, "Paste \(copied.prefix(100))", "it shows what it pastes")
+        try shot("paste")
+        offer.tap()
+        let field = app.textViews.firstMatch
+        XCTAssertTrue(wait { (field.value as? String) == copied }, "a tap pastes it")
+        XCTAssertFalse(offer.exists, "it goes once it's pasted")
+        for _ in copied { key("delete", in: app).tap() }
+        XCTAssertTrue(wait { (field.value as? String)?.contains("side door") != true })
+        XCTAssertFalse(offer.exists, "and doesn't come back for that copy")
+        try shot("paste-after")
+    }
+
     func testThePreviewOfAHeldClipShowsAllOfIt() throws {
         UIPasteboard.general.string =
             "Meet at Sightglass on 7th, 4pm? Bring the deck and both printouts, and ask Sam about Thursday."

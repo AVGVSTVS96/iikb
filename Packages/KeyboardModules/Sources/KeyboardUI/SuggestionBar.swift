@@ -48,6 +48,7 @@ public final class SuggestionBar: UIView {
     /// The Split/Full button was tapped: whether the keys should split.
     public var onSplit: (Bool) -> Void = { _ in }
     public var onEdit: (Edit) -> Void = { _ in }
+    public var onPaste: () -> Void = {}
     /// A chat's pill was tapped, by its index.
     public var onChat: (Int) -> Void = { _ in }
     /// A writing style was picked in the bar, by its index, or nil to follow the default again.
@@ -103,6 +104,8 @@ public final class SuggestionBar: UIView {
     private var glassDark: Bool?
     /// The edits while the menu is out, nil while they're tucked into the More button.
     private var edits: Edits?
+    private let pasteOffer = PasteOffer()
+    private var copied: Copied?
     /// Something the More button opened is out in the keys' place, the menu or a panel from it.
     private var moreOn = false
     private let editButtons: [(edit: Edit, button: EditPill)] = Edit.allCases.map { edit in
@@ -142,6 +145,8 @@ public final class SuggestionBar: UIView {
             addSubview(slot)
         }
         dividers.forEach(addSubview)
+        pasteOffer.addAction(UIAction { [unowned self] _ in onPaste() }, for: .touchUpInside)
+        addSubview(pasteOffer)
         for (edit, button) in editButtons {
             button.addAction(UIAction { [unowned self] _ in onEdit(edit) }, for: .touchUpInside)
             addSubview(button)
@@ -328,6 +333,13 @@ public final class SuggestionBar: UIView {
             setNeedsLayout()
         }
         chatTabs.show(names ?? [], open: open, fresh: fresh, theme: theme)
+        refresh()
+    }
+
+    public func update(paste copied: Copied?, theme: KeyboardTheme) {
+        if let copied { pasteOffer.configure(copied, theme: theme) }
+        guard copied != self.copied else { return }
+        self.copied = copied
         refresh()
     }
 
@@ -619,8 +631,10 @@ public final class SuggestionBar: UIView {
         let chatting = chatNames != nil
         chatTabs.isHidden = !chatting
         stylePicker.isHidden = quiet || chatting || edits != nil || styleNames == nil || !styleRoom
-        slots.forEach { $0.isHidden = quiet || chatting }
-        strip.isHidden = quiet || chatting || emoji.isEmpty
+        let pastes = copied != nil && !quiet && !chatting && edits == nil
+        pasteOffer.isHidden = !pastes
+        slots.forEach { $0.isHidden = quiet || chatting || pastes }
+        strip.isHidden = quiet || chatting || pastes || emoji.isEmpty
         emoji.forEach { $0.isHidden = quiet }
         if !emoji.isEmpty { slots[slots.count - 1].isHidden = true }
         refreshDividers()
@@ -673,6 +687,7 @@ public final class SuggestionBar: UIView {
             let maxX = CGFloat(frame.x + frame.width).rounded(scale: scale)
             slot.frame = CGRect(x: minX, y: frame.y, width: maxX - minX, height: frame.height)
         }
+        pasteOffer.frame = slots[0].frame.union(slots[slots.count - 1].frame)
         if (layout.style != nil) != styleRoom {
             styleRoom = layout.style != nil
             refresh()

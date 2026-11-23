@@ -63,10 +63,17 @@ public final class ClipboardStore {
         return unread >= 2 || (unread == 1 && history.items.isEmpty)
     }
 
-    /// Keeps what's on the clipboard if it changed since the keyboard last looked.
-    public func catchUp(_ pasteboard: UIPasteboard = .general, now: Date = .now) {
+    /// Keeps what's on the clipboard if it changed since the keyboard last looked, then says whether it had, with what it
+    /// kept of it.
+    public func catchUp(
+        _ pasteboard: UIPasteboard = .general, now: Date = .now,
+        then changed: @escaping @MainActor (_ changed: Bool, _ kept: ClipboardHistory.Item?) -> Void = { _, _ in }
+    ) {
         let time = now.timeIntervalSince1970
-        update { saved, disk in disk.keep(pasteboard, at: time, in: &saved) }
+        let found: @MainActor (Bool) -> Void = { [weak self] in
+            changed($0, self?.history.items.first { $0.found == time })
+        }
+        update(then: found) { saved, disk in disk.keep(pasteboard, at: time, in: &saved) }
     }
 
     /// Something the keyboard put on the clipboard itself, which it doesn't keep.
@@ -191,10 +198,11 @@ public final class ClipboardStore {
             }
             DispatchQueue.main.async {
                 MainActor.assumeIsolated { [weak self] in
+                    if let self {
+                        saved = latest
+                        onChange()
+                    }
                     done(edited)
-                    guard let self else { return }
-                    saved = latest
-                    onChange()
                 }
             }
         }
