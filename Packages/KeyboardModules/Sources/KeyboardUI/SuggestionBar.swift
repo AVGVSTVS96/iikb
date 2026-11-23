@@ -250,7 +250,7 @@ public final class SuggestionBar: UIView {
             x: self.mic.center.x - self.mic.bounds.width / 2, y: self.mic.center.y - self.mic.bounds.height / 2,
             width: self.mic.bounds.width, height: self.mic.bounds.height)
         if mic == .listening { heard = recorded }
-        if mic == .listening || mic == .writing { stylePicker.fold() }
+        if mic == .starting || mic == .listening || mic == .writing { stylePicker.fold() }
         if mic == .listening { cancel.isHidden = false }
         self.mic.show(mic, theme: theme)
         cancel.paint(theme)

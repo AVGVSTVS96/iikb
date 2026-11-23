@@ -2,12 +2,12 @@ import KeyboardCore
 import UIKit
 
 /// The bar's mic: a round button of the bar's Liquid Glass, as More is, its glyph in the label's color, with a green dot while
-/// the app keeps the microphone on. While it listens it turns record red and grows into a capsule over the suggestions, which holds the
+/// the app keeps the microphone on. A spinner takes the glyph's place while the microphone starts, until it sends sound. While it listens it turns record red and grows into a capsule over the suggestions, which holds the
 /// recording, with a white stop where the mic was and a soft red halo that swells as you talk; while the
 /// app writes a dictation down a spinner, or what its `stopAnimation` shows, takes the glyph's place, and a tap still starts the next one. Tap to start or
 /// stop; only the app turns the microphone off.
 public final class MicButton: UIControl {
-    public enum Phase { case off, on, listening, writing }
+    public enum Phase { case off, on, starting, listening, writing }
 
     /// The face's corner radius, where it takes a key's shape; otherwise round.
     var corner: CGFloat? {
@@ -98,6 +98,7 @@ public final class MicButton: UIControl {
         accessibilityValue =
             switch phase {
             case .on: "Mic On"
+            case .starting: "Starting"
             case .writing: "Writing"
             case .off, .listening: nil
             }
@@ -107,11 +108,13 @@ public final class MicButton: UIControl {
             draining = nil
         }
         if old == .listening, phase != .listening, corner != nil, window != nil { release() }
-        if phase == .writing { spinner.startAnimating() }
+        if phase == .writing || phase == .starting { spinner.startAnimating() }
         spin(phase == .writing && stopAnimation == .squeeze)
         glow(phase == .writing && stopAnimation == .drain)
         if old == .writing, phase == .on || phase == .off, stopAnimation == .squeeze, window != nil { written() }
-        let done: (Bool) -> Void = { _ in if self.phase != .writing { self.spinner.stopAnimating() } }
+        let done: (Bool) -> Void = { _ in
+            if self.phase != .writing, self.phase != .starting { self.spinner.stopAnimating() }
+        }
         guard phase != old, window != nil else {
             refresh()
             return done(true)
@@ -224,11 +227,12 @@ public final class MicButton: UIControl {
         dot.alpha = phase == .on ? 1 : 0
         dot.transform = phase == .on ? .identity : CGAffineTransform(scaleX: 0.5, y: 0.5)
         spinner.color = ink
-        spinner.alpha = phase == .writing && stopAnimation != .squeeze ? 1 : 0
+        spinner.alpha = phase == .starting || phase == .writing && stopAnimation != .squeeze ? 1 : 0
         arc.strokeColor = ink.cgColor
         check.tintColor = ink
         ring.alpha = phase == .writing && stopAnimation == .squeeze ? 1 : 0
-        spinner.transform = CGAffineTransform(scaleX: phase == .writing ? 0.75 : 0.5, y: phase == .writing ? 0.75 : 0.5)
+        let spinning = phase == .writing || phase == .starting
+        spinner.transform = CGAffineTransform(scaleX: spinning ? 0.75 : 0.5, y: spinning ? 0.75 : 0.5)
         layoutHalo()
     }
 

@@ -24,7 +24,7 @@ struct ArchitectureTests {
         ]
         let timers = [
             "key repeat", "long-press", "source answer", "Keep Mic On", "stop waits for quiet", "probe",
-            "a stalled dictation",
+            "a stalled dictation", "a lost touch-up",
         ]
         let sources = ["App", "Keyboard", "web/Sources", "Packages/KeyboardModules/Sources", "Packages/Voice/Sources"]
             .flatMap(Self.files).filter { $0.pathExtension == "swift" }

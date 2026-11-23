@@ -796,7 +796,8 @@ open class FullKeyboardViewController: UIInputViewController {
     }
 
     private var mic: MicButton.Phase {
-        if localDictation.isRecording || dictation.listening { return .listening }
+        if localDictation.isRecording { return localDictation.hears ? .listening : .starting }
+        if dictation.listening { return .listening }
         if !localDictation.writing.isEmpty || !dictation.writing.isEmpty { return .writing }
         return micIsOn ? .on : .off
     }

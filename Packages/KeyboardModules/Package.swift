@@ -59,7 +59,8 @@ let package = Package(
         .executableTarget(name: "SwipeBuilder", dependencies: ["KeyboardCore"], path: "Tools/SwipeBuilder"),
         .testTarget(name: "KeyboardCoreTests", dependencies: ["KeyboardCore"], exclude: ["Languages"]),
         .testTarget(
-            name: "KeyboardUITests", dependencies: ["KeyboardEnglish", "KeyboardStore", "KeyboardUI", "FullKeyboard"],
+            name: "KeyboardUITests",
+            dependencies: ["KeyboardEnglish", "KeyboardStore", "KeyboardUI", "FullKeyboard", "VoiceCore"],
             resources: [
                 .copy("phrases.txt"), .copy("phrases.es.txt"), .copy("phrases.fr.txt"), .copy("phrases.de.txt"),
                 .copy("phrases.pt.txt"), .copy("phrases.it.txt"), .copy("phrases.sv.txt"), .copy("chat.txt"),
