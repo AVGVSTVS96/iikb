@@ -56,12 +56,6 @@ public struct Snippet: Codable, Hashable, Sendable, Identifiable {
             ($0.keyword.count, $0.keyword.lowercased()) < ($1.keyword.count, $1.keyword.lowercased())
         }
     }
-
-    /// Whether a keyword may start right after `character`: at the text's start, after a space, a line break or an
-    /// opener, never inside a word.
-    static func startsWord(after character: Character?) -> Bool {
-        character.map { $0.isWhitespace || Words.openers.contains($0) } ?? true
-    }
 }
 
 /// A link you keep, typed by a tap in the keyboard's Quicklinks panel or opened from it, as Raycast's are. Its link is a

@@ -70,6 +70,10 @@ struct SwipeTypingTests {
         engine.documentChanged(quote)
         engine.handle(.swipe(path("hello")), in: quote)
         #expect(quote.text == "(hello")
+        let card = TestDocument("Look \u{FFFC}")
+        engine.documentChanged(card)
+        engine.handle(.swipe(path("hello")), in: card)
+        #expect(card.text == "Look \u{FFFC}hello", "a link's card or a picture puts U+FFFC in the text")
     }
 
     @Test func aWordInProgressEndsBeforeTheSwipe() {

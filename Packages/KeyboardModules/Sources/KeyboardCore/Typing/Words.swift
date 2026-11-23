@@ -1,6 +1,11 @@
 enum Words {
     static let apostrophes: Set<Character> = ["'", "’", "‘"]
     static let openers: Set<Character> = ["(", "[", "{", "\"", "“", "'", "‘", "„", "‚", "«", "‹", "¿", "¡"]
+    static let attachment: Character = "\u{FFFC}"
+
+    static func startsWord(after character: Character?) -> Bool {
+        character.map { $0.isWhitespace || openers.contains($0) || $0 == attachment } ?? true
+    }
 
     static func isWordCharacter(_ character: Character) -> Bool {
         character.isLetter || character.isNumber || apostrophes.contains(character)

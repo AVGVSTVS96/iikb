@@ -39,6 +39,7 @@ struct DictationTests {
         #expect(dictate("I left.", into: "and then ") == "and then I left.")
         #expect(dictate("Claude did it.", into: "so ") == "so Claude did it.")
         #expect(dictate("OK, done.", into: "so ") == "so OK, done.")
+        #expect(dictate("Look at this.", into: "\u{FFFC}") == "\u{FFFC}Look at this.", "no space after a link's card")
     }
 
     @Test func aDictationBeforeMoreOfTheSentenceLosesItsPeriodAndKeepsASpace() {

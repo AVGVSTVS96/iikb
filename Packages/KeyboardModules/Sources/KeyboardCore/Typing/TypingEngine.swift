@@ -219,7 +219,7 @@ public struct TypingEngine {
             tally.characters += 1
         case .snippetPrefix(let prefix):
             commitWord(in: document)
-            let typed = (Snippet.startsWord(after: text.before.last) ? "" : " ") + prefix
+            let typed = (Words.startsWord(after: text.before.last) ? "" : " ") + prefix
             write(typed, in: document)
             tally.characters += typed.count
             _ = expands(.immediately, trailing: "", in: document)
@@ -790,7 +790,7 @@ extension TypingEngine {
     /// The quote `language` types for " or ': one that opens at the start of the text, after a space or an opener, and
     /// otherwise one that closes.
     static func smartQuote(_ text: String, after before: String?, in language: Language) -> String {
-        let opens = before?.last.map { $0.isWhitespace || Words.openers.contains($0) } ?? true
+        let opens = Words.startsWord(after: before?.last)
         switch text {
         case "'": return language.quotes[opens ? 2 : 3]
         case "\"": return language.quotes[opens ? 0 : 1]
@@ -833,7 +833,7 @@ extension TypingEngine {
             }
             if !wordEnders.contains(String(next)), !closers.contains(next) { fitted += " " }
         }
-        let joins = before.last.map { !$0.isWhitespace && !Words.openers.contains($0) } ?? false
+        let joins = !Words.startsWord(after: before.last)
         return (joins ? " " : "") + fitted
     }
 

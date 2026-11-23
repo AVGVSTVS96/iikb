@@ -18,9 +18,7 @@ extension TypingEngine {
         lastSpace = nil
         revert = nil
         commitWord(in: document)
-        let joins =
-            text.before.last.map { !$0.isWhitespace && !Words.openers.contains($0) } ?? false
-            && !corrector.elides(text.before)
+        let joins = !Words.startsWord(after: text.before.last) && !corrector.elides(text.before)
         let continues = corrector.continuation(after: text.before + (joins ? " " : ""))
         let starting = corrector.continuation(after: "")
         var seen: Set<String> = []

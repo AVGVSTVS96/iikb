@@ -9,7 +9,7 @@ extension TypingEngine {
             let length = snippet.keyword.count
             guard length > 0, text.owned >= length, before.count >= length else { continue }
             let typed = before.suffix(length)
-            guard snippet.isKeyword(typed), Snippet.startsWord(after: before[..<typed.startIndex].last) else {
+            guard snippet.isKeyword(typed), Words.startsWord(after: before[..<typed.startIndex].last) else {
                 continue
             }
             return (snippet, String(typed))
@@ -22,7 +22,7 @@ extension TypingEngine {
         let prefix = settings.snippetPrefix
         guard !prefix.isEmpty, !snippets.isEmpty else { return nil }
         let before = text.before
-        let start = before.lastIndex { Snippet.startsWord(after: $0) }.map(before.index(after:)) ?? before.startIndex
+        let start = before.lastIndex { Words.startsWord(after: $0) }.map(before.index(after:)) ?? before.startIndex
         let typed = before[start...]
         return typed.hasPrefix(prefix) ? typed : nil
     }
