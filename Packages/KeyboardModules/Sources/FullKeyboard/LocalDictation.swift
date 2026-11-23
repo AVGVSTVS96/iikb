@@ -460,7 +460,10 @@ final class LocalDictation {
                     .apple
                 )
             } catch {
-                note("Apple's model couldn't write in the keyboard: \(error.localizedDescription)", failed: true)
+                let unavailable = AppleSpeech.transcriberAvailable ? "" : " (SpeechTranscriber isn't available)"
+                note(
+                    "Apple's model couldn't write in the keyboard: \(error.localizedDescription)\(unavailable)",
+                    failed: true)
                 return nil
             }
         case .parakeet:

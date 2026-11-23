@@ -15,7 +15,7 @@ public nonisolated enum AppleSpeech {
         let (module, heard) = try await transcriber()
         defer { heard.cancel() }
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
-            throw Unsupported()
+            throw Unconvertible()
         }
         guard let sound = Recording.converted(recording, to: format) else { throw Unconvertible() }
         if !installs {
@@ -68,8 +68,12 @@ public nonisolated enum AppleSpeech {
     }
 
     private struct Unsupported: LocalizedError {
-        var errorDescription: String? { "Apple's model doesn't support this language." }
+        var language =
+            Locale.current.localizedString(forIdentifier: Locale.current.identifier) ?? Locale.current.identifier
+        var errorDescription: String? { "Apple's model can't write \(language) on this device." }
     }
+
+    public static var transcriberAvailable: Bool { SpeechTranscriber.isAvailable }
 
     private struct NotInstalled: LocalizedError {
         var errorDescription: String? { "Apple's model isn't downloaded yet." }

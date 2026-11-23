@@ -1,0 +1,48 @@
+#!/bin/bash
+# Runs on GitHub's Macs (scripts/ci). The keyboard's own capture, with the app's microphone off: a macOS voice is played
+# into BlackHole, a loopback the Mac's default input is set to, which the simulator hears as its microphone, and the test
+# taps the mic and sees it start, hear, count and stop. Nothing writes it down there: in the simulator's keyboard
+# Apple's model has no language (SpeechTranscriber unavailable, DictationTranscriber without en_US, where the test's own
+# process has both), and Parakeet has no Neural Engine. The keyboard's voice log follows the run. Shots of the mic
+# starting and recording in shots/raw/keyboardvoice/: scripts/keyboardvoicetest ["iPhone Duo"] [iPhone-Duo]. The
+# simulator boots with all its services.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+NAME=${1:-iPhone Duo}
+TYPE=${2:-iPhone-Duo}
+export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
+brew install --quiet --cask blackhole-2ch
+sudo killall coreaudiod
+swiftc -O scripts/loopback.swift -o build/loopback
+until build/loopback "BlackHole"; do sleep 1; done
+ID=$(scripts/sim ensure "$NAME" "$TYPE")
+slug=$(echo "$NAME" | tr 'A-Z ' 'a-z-')
+mkdir -p shots/raw/keyboardvoice build/noslim
+printf '#!/bin/sh\nexit 0\n' > build/noslim/simslim && chmod +x build/noslim/simslim
+command -v simslim >/dev/null && simslim off "$ID" >/dev/null 2>&1 || true
+export PATH=$PWD/build/noslim:$PATH
+xcodegen generate -q
+xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
+  -derivedDataPath build/uitest -quiet
+scripts/sim boot "$ID"
+group=$(xcrun simctl get_app_container "$ID" com.shahidy.iikb group.com.shahidy.iikb)
+mkdir -p "$group/Library/Preferences"
+touch "$group/Library/mic-allowed"
+plutil -create xml1 "$group/Library/Preferences/group.com.shahidy.iikb.plist" 2>/dev/null || true
+plutil -replace voiceModel -string apple "$group/Library/Preferences/group.com.shahidy.iikb.plist"
+for bundle in com.shahidy.iikb com.shahidy.iikb.keyboard; do xcrun simctl privacy "$ID" grant microphone "$bundle" || true; done
+scripts/sim down "$ID"
+scripts/sim ready "$ID" iikb
+(while true; do say -a BlackHole -v Samantha "Meet me at the station at noon tomorrow"; done) &
+voice=$!
+trap 'kill $voice 2>/dev/null || true' EXIT
+for appearance in light dark; do
+  xcrun simctl ui "$ID" appearance "$appearance"
+  TEST_RUNNER_IIKB_SHOTS="$PWD/shots/raw/keyboardvoice/$slug-$appearance" \
+    xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
+    -derivedDataPath build/uitest -only-testing:AppUITests/KeyboardDictationTests > build/uitest/keyboardvoice.log 2>&1 || failed=1
+  grep -E "error:|XCTAssert|XCTFail|Test Case .*(passed|failed|skipped)|Executed|Test skipped" build/uitest/keyboardvoice.log || true
+done
+xcrun simctl spawn "$ID" log show --last 10m --style compact --predicate 'subsystem == "com.shahidy.iikb" AND category == "voice"' | tail -40 || true
+[ -n "${KEEP:-}" ] || xcrun simctl shutdown "$ID"
+exit "${failed:-0}"
