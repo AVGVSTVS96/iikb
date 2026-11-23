@@ -3,16 +3,21 @@ import XCTest
 /// The text tools through the real keyboard, for scripts/texttoolshots: a calculation's answer in the bar typed in its
 /// place, then Text Styles and Change Case from the menu, on the selection and then on the whole message. Each step is
 /// left as `<prefix>-<name>.hold` for the script to shoot from outside, since `XCUIScreen` shoots the Duo's open screen
-/// black.
+/// black. Each launch is a test of its own: together they ran past the 5 minutes a test gets on GitHub's Macs.
 final class TextToolsShots: XCTestCase {
     private var prefix = ""
     private var app = XCUIApplication()
     private var field: XCUIElement { app.textViews.firstMatch }
 
+    private var cases: XCUIElement { app.buttons["iikb.shelf.changeCase"] }
+
+    override func setUp() {
+        prefix = ProcessInfo.processInfo.environment["IIKB_SHOTS"] ?? NSTemporaryDirectory() + "texttools"
+        continueAfterFailure = false
+    }
+
     func testTheBarsCalculatorAndTheTextTools() throws {
         let environment = ProcessInfo.processInfo.environment
-        prefix = environment["IIKB_SHOTS"] ?? NSTemporaryDirectory() + "texttools"
-        continueAfterFailure = false
         app.launchArguments = [
             "-iikbFocus", "YES", "-iikbOrientation", environment["IIKB_ORIENTATION"] ?? "portrait", "-iikbText",
             "Dinner for four was 84 ",
@@ -32,7 +37,6 @@ final class TextToolsShots: XCTestCase {
         let more = app.buttons["iikb.more"]
         more.tap()
         let styles = app.buttons["iikb.shelf.textStyles"]
-        let cases = app.buttons["iikb.shelf.changeCase"]
         XCTAssertTrue(styles.waitForExistence(timeout: 5), "the menu has a Text Styles shelf")
         open(styles)
         shoot("styles")
@@ -50,8 +54,9 @@ final class TextToolsShots: XCTestCase {
         pick("Title Case", in: "changeCase")
         XCTAssertTrue(wait { self.value == "𝐷𝑖𝑛𝑛𝑒𝑟 𝑓𝑜𝑟 𝐹𝑜𝑢𝑟 𝑊𝑎𝑠 21 " }, "cases keep the style")
         shoot("cased")
+    }
 
-        app.terminate()
+    func testChangeCaseChangesOnlyTheSelection() {
         let original = "say hello to everyone"
         app.launchArguments = ["-iikbFocus", "YES", "-iikbText", original]
         app.launchWithIikb()
@@ -64,8 +69,9 @@ final class TextToolsShots: XCTestCase {
         XCTAssertNotEqual(value, original.uppercased(), "only the selection")
         XCTAssertEqual(value?.lowercased(), original, "and nothing else")
         shoot("selection")
+    }
 
-        app.terminate()
+    func testChangeCaseCountsEmojiAndStyledLettersWhole() {
         let wide = "😀 hi 𝐛𝐨𝐥𝐝 end"
         app.launchArguments = ["-iikbFocus", "YES", "-iikbText", wide]
         app.launchWithIikb()
@@ -80,8 +86,9 @@ final class TextToolsShots: XCTestCase {
         key("x").tap()
         XCTAssertEqual(value.map { String($0.dropLast()) }, "😀 HI 𝐁𝐎𝐋𝐃 END", "the caret ends after it")
         XCTAssertEqual(value?.last?.lowercased(), "x", "where the key types")
+    }
 
-        app.terminate()
+    func testChangeCaseChangesEveryLine() throws {
         app.launchArguments = ["-iikbFocus", "YES", "-iikbText", "one"]
         app.launchWithIikb()
         Thread.sleep(forTimeInterval: 1)
