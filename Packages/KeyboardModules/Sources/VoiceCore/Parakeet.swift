@@ -33,6 +33,10 @@ nonisolated extension ASRConfig {
     /// "Right.", "mint", "to enjoy") and nothing he'd said; from 1.5 s it still finds what 0.18.0 dropped (Nov 8,
     /// scripts/voiceloop: real 1.87% of words wrong to 1.85%, loud 41.01% to 40.99%, 0.18.0 1.85% and 41.17%).
     public static let dictation = ASRConfig(seamGapRepairMinGapSeconds: 1.5)
+
+    /// `dictation` one window at a time, as Hex's keyboard writes: FluidAudio's four at once hold four windows' work in
+    /// memory together, which a keyboard's limit has no room for.
+    public static let keyboard = ASRConfig(parallelChunkConcurrency: 1, seamGapRepairMinGapSeconds: 1.5)
 }
 
 /// A Parakeet, and Silero's voice-activity model (FluidAudio's `VadManager`), which hears whether anyone talks: what
@@ -61,27 +65,47 @@ public nonisolated struct Transcriber: Sendable {
         }
     }
 
+    /// The process a Parakeet loads in: the app's, or a keyboard's, whose memory limit has no room for the encoder's
+    /// CPU copy (about 425 MB of weights) or for four windows written at once.
+    public enum Process: Sendable { case app, keyboard }
+
+    /// The keyboard's Parakeet wasn't loaded: its encoder ran on the CPU, so it was let go.
+    public struct OffNeuralEngine: Error {}
+
     /// The picked Parakeet from where the app downloaded it, with Silero; it fails until it's downloaded.
-    public static func load(_ model: SpeechModel) async throws -> Transcriber {
+    public static func load(_ model: SpeechModel, in process: Process = .app) async throws -> Transcriber {
         guard let version = model.version else { throw CocoaError(.featureUnsupported) }
-        return try await load(version, from: version.folder)
+        return try await load(version, from: version.folder, in: process)
     }
 
     /// The Parakeet in `folder`, with Silero. iOS sometimes kills its Neural Engine compiler for memory while it compiles
-    /// the encoder, and Core ML then runs the encoder on the CPU, ten times slower, until it's loaded again: so it's
-    /// loaded again, up to three times.
-    public static func load(_ version: AsrModelVersion, from folder: URL) async throws -> Transcriber {
+    /// the encoder, and Core ML then runs the encoder on the CPU, ten times slower, until it's loaded again: so the app
+    /// loads it again, up to three times, and a keyboard lets it go and throws `OffNeuralEngine`.
+    public static func load(_ version: AsrModelVersion, from folder: URL, in process: Process = .app) async throws
+        -> Transcriber
+    {
         var load = 1
         while true {
-            let parakeet = AsrManager(config: .dictation)
+            let parakeet = AsrManager(config: process == .keyboard ? .keyboard : .dictation)
             try await parakeet.loadModels(try await AsrModels.load(from: folder, version: version))
-            guard hasNeuralEngine, load < 3, try await !parakeet.onNeuralEngine() else {
+            guard hasNeuralEngine, process == .keyboard || load < 3, try await !parakeet.onNeuralEngine() else {
                 return await Transcriber(parakeet)
             }
             log.error(
                 "\(version.folder.lastPathComponent, privacy: .public)'s encoder ran on the CPU after load \(load)")
+            if process == .keyboard {
+                await parakeet.cleanup()
+                throw OffNeuralEngine()
+            }
             load += 1
         }
+    }
+
+    /// Whether the app has finished downloading this Parakeet: FluidAudio downloads into its folder file by file, so a
+    /// folder there may still be half a download, which loading would finish from Hugging Face.
+    public static func isDownloaded(_ model: SpeechModel) -> Bool {
+        guard let version = model.version else { return false }
+        return AsrModels.modelsExist(at: version.folder, version: version)
     }
 
     /// The recording leveled (`Recording.leveled`), a tap with next to nothing said padded up to the shortest sound
