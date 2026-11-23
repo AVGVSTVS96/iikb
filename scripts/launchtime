@@ -1,0 +1,25 @@
+#!/bin/bash
+# Runs on GitHub's Macs (scripts/ci) after scripts/build. Brings iikb's keyboard up over the app's field RUNS times (10)
+# from a keyboard process started anew, with Full Access, and prints how long each took to its keys' first frame, as the
+# keyboard logs it (FullKeyboard's FirstFrame), and the median.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+ID=$(scripts/sim ensure "${NAME:-iPhone 17}" "${TYPE:-iPhone-17}")
+scripts/sim boot "$ID"
+scripts/sim allow "$ID"
+scripts/sim use "$ID" iikb
+since=$(date "+%Y-%m-%d %H:%M:%S")
+for run in $(seq "${RUNS:-10}"); do
+  xcrun simctl terminate "$ID" com.shahidy.iikb 2>/dev/null || true
+  while pkill -f "$ID.*Keyboard.appex/Keyboard"; do sleep 0.2; done
+  xcrun simctl launch "$ID" com.shahidy.iikb -iikbFocus YES -iikbOrientation portrait >/dev/null
+  until [ "$(xcrun simctl spawn "$ID" log show --start "$since" --style compact \
+    --predicate 'subsystem == "com.shahidy.iikb" AND category == "launch"' 2>/dev/null | grep -c "first frame")" -ge "$run" ]; do
+    sleep 0.5
+  done
+done
+xcrun simctl spawn "$ID" log show --start "$since" --style compact \
+  --predicate 'subsystem == "com.shahidy.iikb" AND category == "launch"' | grep -o "first frame.*" | tee /tmp/launchtime
+for field in 3 10; do
+  sort -n -k$field /tmp/launchtime | awk -v f=$field '{ v[NR] = $f } END { print "median", v[int((NR + 1) / 2)], "ms", (f == 3 ? "after the keyboard was made" : "after its process started") }'
+done

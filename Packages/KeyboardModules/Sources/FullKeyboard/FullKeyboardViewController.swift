@@ -255,6 +255,7 @@ open class FullKeyboardViewController: UIInputViewController {
     private lazy var keysMinimumConstraint = keyboardView.heightAnchor.constraint(greaterThanOrEqualToConstant: 0)
     private var deleteRepeat: DeleteRepeat?
     private let haptics = KeyHaptics()
+    private let firstFrame = FirstFrame()
     private var layoutContext = LayoutContext(device: .phone, layer: .letters)
     private var globeLeftKey = false
     private var clicks = KeyClicks()
@@ -575,10 +576,14 @@ open class FullKeyboardViewController: UIInputViewController {
         updateHost()
         syncWithDocument()
         fieldLines.check(app: hostApp, process: KeyboardHost.process(of: self), before: engine.text.before)
-        if hapticsEnabled { haptics.start() }
-        if hasFullAccess, !Dictation.micIsOn { localDictation.prepare() }
+        firstFrame.next { [unowned self] in drewFirstFrame() }
         stopSystemGesturesDelayingTouches()
         TouchTrace.shared.watch(view.window)
+    }
+
+    private func drewFirstFrame() {
+        if hapticsEnabled { haptics.start() }
+        if hasFullAccess, !Dictation.micIsOn { localDictation.prepare() }
         Task { [weak self] in
             guard let lexicon = await self?.requestSupplementaryLexicon() else { return }
             self?.engine.corrector?.learn(lexicon)
@@ -603,6 +608,7 @@ open class FullKeyboardViewController: UIInputViewController {
         menuView.isHidden = true
         keysUp = false
         haptics.stop()
+        firstFrame.cancel()
         TouchTrace.shared.flush()
         saveMemory()
         saveTyping()
