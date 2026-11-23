@@ -1,6 +1,6 @@
 /// Change Case's cases, as Raycast's (docs/design.md, "Change Case"). Styled letters keep their style (`TextStyle`),
 /// but for snake_case and camelCase, which name things in code.
-public enum LetterCase: CaseIterable, Hashable, Sendable {
+public enum LetterCase: Codable, CaseIterable, Hashable, Sendable {
     case upper, lower, sentence, title, snake, camel
 
     /// Each name is written in its case.

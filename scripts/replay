@@ -1,0 +1,15 @@
+#!/bin/bash
+# Replays a typing session exported from the app (Settings › Privacy & Data › Typing Log) through this checkout's
+# engine, here on Linux, and says whether every step writes and offers what the log says it did, or prints the first
+# step that doesn't, with the field and the steps before it. With a name, it cuts steps <from> to <to> (all of them by
+# default) into Packages/KeyboardModules/Tests/KeyboardCoreTests/Sessions/<name>.json, a case every scripts/coretest
+# replays, as this checkout types it, with no learned words, names or replacements. A case is committed, so cut it only
+# from a session of made-up words typed for it.
+# A session typed with the personal network replays with REPLAY_NETWORK=<its file>.
+# Usage: scripts/replay <session.json> [<name> [<from> [<to>]]]
+set -euo pipefail
+usage="usage: scripts/replay <session.json> [<name> [<from> [<to>]]]"
+export REPLAY
+REPLAY=$(realpath "${1:?$usage}")
+[ -z "${2:-}" ] || export REPLAY_CASE=$2 REPLAY_FROM=${3:-} REPLAY_TO=${4:-}
+exec "$(dirname "$0")/coretest" --filter replaysAnExportedSession

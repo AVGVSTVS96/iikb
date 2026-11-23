@@ -57,7 +57,7 @@ let package = Package(
         .executableTarget(name: "LexiconBuilder", dependencies: ["KeyboardCore"], path: "Tools/LexiconBuilder"),
         .executableTarget(name: "NetworkBuilder", dependencies: ["KeyboardCore"], path: "Tools/NetworkBuilder"),
         .executableTarget(name: "SwipeBuilder", dependencies: ["KeyboardCore"], path: "Tools/SwipeBuilder"),
-        .testTarget(name: "KeyboardCoreTests", dependencies: ["KeyboardCore"], exclude: ["Languages"]),
+        .testTarget(name: "KeyboardCoreTests", dependencies: ["KeyboardCore"], exclude: ["Languages", "Sessions"]),
         .testTarget(
             name: "KeyboardUITests",
             dependencies: ["KeyboardEnglish", "KeyboardStore", "KeyboardUI", "FullKeyboard", "VoiceCore"],

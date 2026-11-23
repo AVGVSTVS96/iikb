@@ -1,6 +1,6 @@
 /// Where the device is set to be, which Apple's keyboard follows for its currency key and the web address endings its
 /// period offers. The platform reads it (iOS's `Locale`); a part it can't tell is nil, and the keys are then the US's.
-public struct Region: Hashable, Sendable {
+public struct Region: Codable, Hashable, Sendable {
     /// Its ISO 3166 code, as GB or SE.
     public var code: String?
     /// Its currency's ISO 4217 code, as GBP.

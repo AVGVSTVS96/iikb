@@ -1,4 +1,4 @@
-public struct Rect: Hashable, Sendable {
+public struct Rect: Codable, Hashable, Sendable {
     public var x, y, width, height: Double
 
     public init(x: Double, y: Double, width: Double, height: Double) {
@@ -18,7 +18,7 @@ public struct Rect: Hashable, Sendable {
     }
 }
 
-public struct GridMetrics: Hashable, Sendable {
+public struct GridMetrics: Codable, Hashable, Sendable {
     public var columns, sideInset, keyGap, rowGap, keyHeight, numberRowHeight, topInset, bottomRowCut: Double
     public var margin: Margin
 
@@ -42,7 +42,7 @@ public struct GridMetrics: Hashable, Sendable {
     }
 }
 
-public struct Margin: Hashable, Sendable {
+public struct Margin: Codable, Hashable, Sendable {
     public var leading, trailing: Double
 
     public init(leading: Double = 0, trailing: Double = 0) {
@@ -64,10 +64,12 @@ public struct KeyGrid: Sendable {
     /// A space bar that a field's own keys are cut out of (Instagram's @ and #), with the stretch of the row it and they
     /// fill: the bar as it is in every other field, which is where a thumb that means the space goes.
     private var bars: [(frame: Rect, stretch: Rect)] = []
+    private var layout = KeyboardLayout(rows: [])
 
     public init() {}
 
     public init(_ layout: KeyboardLayout, width: Double, metrics: GridMetrics, signature: String = "") {
+        self.layout = layout
         self.metrics = metrics
         self.signature = signature
         self.width = width
@@ -226,6 +228,27 @@ public struct KeyGrid: Sendable {
         let maxX = cells.map { $0.x + $0.width }.max() ?? 1
         let maxY = cells.map { $0.y + $0.height }.max() ?? 1
         return Rect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+}
+
+extension KeyGrid: Codable {
+    private enum CodingKeys: String, CodingKey { case layout, width, metrics, signature }
+
+    public init(from decoder: any Swift.Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            try container.decode(KeyboardLayout.self, forKey: .layout),
+            width: try container.decode(Double.self, forKey: .width),
+            metrics: try container.decode(GridMetrics.self, forKey: .metrics),
+            signature: try container.decode(String.self, forKey: .signature))
+    }
+
+    public func encode(to encoder: any Swift.Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(layout, forKey: .layout)
+        try container.encode(width, forKey: .width)
+        try container.encode(metrics, forKey: .metrics)
+        try container.encode(signature, forKey: .signature)
     }
 }
 

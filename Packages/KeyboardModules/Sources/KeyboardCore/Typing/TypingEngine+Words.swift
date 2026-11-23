@@ -106,6 +106,8 @@ extension TypingEngine {
     /// kept and drops the taps of the word in progress.
     public mutating func use(_ grid: KeyGrid) {
         guard let corrector, layer == .letters, !grid.isSame(as: corrector.grid) else { return }
+        let logged = begins(.grid(grid))
+        defer { if logged { ends() } }
         if grid.signature != corrector.grid.signature {
             learnPending()
             typing = WordTaps()
@@ -139,6 +141,8 @@ extension TypingEngine {
 
     /// A suggestion takes the place of the word the bar is for, and the caret ends after it and one space.
     public mutating func accept(_ suggestion: Suggestion, in document: some TextDocument) {
+        let logged = begins(.pick(suggestion))
+        defer { if logged { ends() } }
         attach(document)
         if suggestion.kind == .snippet { return accept(snippet: suggestion.text, in: document) }
         if case .answer(let replacing) = suggestion.kind {
@@ -181,6 +185,8 @@ extension TypingEngine {
 
     /// An emoji from the suggestion bar: it takes the place of the word the bar is for, or follows the word just typed.
     public mutating func accept(emoji: String, in document: some TextDocument) {
+        let logged = begins(.pickEmoji(emoji))
+        defer { if logged { ends() } }
         attach(document)
         let (word, tail) = suggested
         guard text.before[..<word.startIndex] == suggestionsBefore else { return }
@@ -254,6 +260,7 @@ extension TypingEngine {
     public func suggestionJob() -> SuggestionJob? {
         guard suggestionsAreStale, let corrector, corrector.lexicon != nil else { return nil }
         var copy = self
+        copy.log = nil
         copy.corrector = corrector.snapshot()
         return SuggestionJob(engine: copy)
     }
@@ -263,6 +270,8 @@ extension TypingEngine {
     public mutating func finish(_ job: SuggestionJob) {
         if let snapshot = job.engine.corrector { corrector?.adopt(snapshot) }
         guard job.engine.revision == revision else { return }
+        let logged = begins(.ranked)
+        defer { if logged { ends() } }
         suggestions = job.engine.suggestions
         emojiSuggestions = job.engine.emojiSuggestions
         suggestionsBefore = job.engine.suggestionsBefore

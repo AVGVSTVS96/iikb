@@ -1,8 +1,13 @@
 public final class Corrector {
     public let source: any CandidateSource
     public let network: Network?
-    public var replacements: [String: String] = [:]
-    public var names: [String: String] = [:]
+    public var replacements: [String: String] = [:] {
+        didSet { version += 1 }
+    }
+    public var names: [String: String] = [:] {
+        didSet { version += 1 }
+    }
+    public private(set) var version = 0
     /// What you've taught it, changed only through `record`, `forget` and `changeMemory`, which change it in place: a
     /// property observer here would copy all of it on every change.
     public private(set) var memory = TypingMemory()
@@ -110,6 +115,7 @@ public final class Corrector {
     /// Any other change to what's learned, or a memory in its place.
     public func changeMemory(_ change: (inout TypingMemory) -> Void) {
         let counts = memory.counts
+        version += 1
         change(&memory)
         if memory.counts != counts {
             novel = nil
@@ -157,6 +163,7 @@ public final class Corrector {
 
     public func learn(_ samples: [TapSample]) {
         memory.touches.learn(samples, on: grid)
+        version += 1
         forgetRankings()
     }
 

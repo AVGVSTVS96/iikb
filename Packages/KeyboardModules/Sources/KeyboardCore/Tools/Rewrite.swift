@@ -1,5 +1,5 @@
 /// What Text Styles and Change Case do to the text they act on (`TypingEngine.rewriting`).
-public enum Rewrite: Hashable, Sendable {
+public enum Rewrite: Codable, Hashable, Sendable {
     case style(TextStyle)
     case letterCase(LetterCase)
 

@@ -1,8 +1,8 @@
-public enum KeyboardLayer: Hashable, Sendable, CaseIterable {
+public enum KeyboardLayer: Codable, Hashable, Sendable, CaseIterable {
     case letters, numbers, symbols
 }
 
-public enum KeyAction: Hashable, Sendable {
+public enum KeyAction: Codable, Hashable, Sendable {
     case character(String)
     case space
     case delete
@@ -28,7 +28,7 @@ public enum KeyAction: Hashable, Sendable {
     case snippetPrefix(String)
 }
 
-public enum KeyWidth: Hashable, Sendable {
+public enum KeyWidth: Codable, Hashable, Sendable {
     case input
     case pitch(Double)
     case fill
@@ -42,7 +42,7 @@ public enum KeyWidth: Hashable, Sendable {
     }
 }
 
-public struct Key: Hashable, Sendable {
+public struct Key: Codable, Hashable, Sendable {
     public var action: KeyAction
     public var width: KeyWidth
     public var alternates: [String]
@@ -91,7 +91,7 @@ public struct Key: Hashable, Sendable {
     }
 }
 
-public enum RowItem: Hashable, Sendable {
+public enum RowItem: Codable, Hashable, Sendable {
     case key(Key)
     case spacer(KeyWidth)
 
@@ -103,7 +103,7 @@ public enum RowItem: Hashable, Sendable {
     }
 }
 
-public struct KeyboardLayout: Hashable, Sendable {
+public struct KeyboardLayout: Codable, Hashable, Sendable {
     public var rows: [[RowItem]]
     /// How many of the top rows are short ones, 0.8 of a key: the number row.
     public var shortRows: Int

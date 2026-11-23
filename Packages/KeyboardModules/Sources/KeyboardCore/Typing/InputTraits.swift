@@ -1,4 +1,4 @@
-public enum Autocapitalization: Sendable {
+public enum Autocapitalization: Codable, Sendable {
     case none, words, sentences, allCharacters
 }
 
@@ -16,7 +16,7 @@ public enum InputContent: String, Codable, Sendable {
     }
 }
 
-public enum ReturnKind: Hashable, Sendable {
+public enum ReturnKind: Codable, Hashable, Sendable {
     case `default`, go, google, join, next, route, search, send, yahoo, done, emergencyCall, `continue`
 
     public var symbol: String? {
@@ -49,7 +49,7 @@ public enum ReturnKind: Hashable, Sendable {
     }
 }
 
-public struct InputTraits: Hashable, Sendable {
+public struct InputTraits: Codable, Hashable, Sendable {
     public var kind: InputKind
     public var content: InputContent
     public var returnKind: ReturnKind

@@ -1,4 +1,4 @@
-public struct Tap: Hashable, Sendable {
+public struct Tap: Codable, Hashable, Sendable {
     public var x: Double
     public var y: Double
     public var key: String

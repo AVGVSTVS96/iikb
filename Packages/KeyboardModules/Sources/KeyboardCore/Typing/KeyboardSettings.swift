@@ -1,4 +1,4 @@
-public struct KeyboardSettings: Hashable, Sendable {
+public struct KeyboardSettings: Codable, Hashable, Sendable {
     /// The languages being typed, in the order picked, each once and never none: a word of any of them is a word. The
     /// keys are laid out for the first until `layout` picks another's.
     public var languages = [Language.english] {
@@ -15,6 +15,7 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var smartPunctuation = true
     public var periodShortcut = true
     public var predictiveText = true
+    public var sessionLog = false
     /// Swiping over the letters types a word.
     public var slideToType = true
     public var characterPreview = CharacterPreview.attached

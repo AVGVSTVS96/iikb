@@ -1,0 +1,2858 @@
+{
+  "build" : "made up",
+  "steps" : [
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "before" : "",
+          "selected" : ""
+        }
+      ],
+      "setup" : {
+        "catalog" : true,
+        "defers" : true,
+        "emoji" : {
+          "scores" : {
+
+          },
+          "tones" : {
+
+          },
+          "weight" : 1
+        },
+        "region" : {
+
+        },
+        "settings" : {
+          "actions" : [
+            "gif",
+            "transcripts",
+            "clipboard"
+          ],
+          "actionsInBar" : false,
+          "appDictationStyles" : {
+
+          },
+          "aroundSpace" : [
+            "emoji",
+            "space",
+            "period",
+            "snippet"
+          ],
+          "autoCapitalization" : true,
+          "autoCorrection" : true,
+          "capsLock" : true,
+          "characterPreview" : "attached",
+          "clipboardLength" : "characters",
+          "compactPanels" : false,
+          "currency" : "automatic",
+          "customEmoji" : [
+
+          ],
+          "dictationButton" : true,
+          "dictationEditing" : "asSaid",
+          "dictationLists" : "numbered",
+          "dictationStyle" : "casual",
+          "emojiGrid" : "recents",
+          "emojiKey" : true,
+          "globeKey" : "spacer",
+          "haptics" : "standard",
+          "keyRoundness" : "standard",
+          "keySpacing" : "standard",
+          "languages" : [
+            "en"
+          ],
+          "leadingButton" : "menu",
+          "micKey" : false,
+          "numberHints" : false,
+          "numberRow" : false,
+          "oneHanded" : "off",
+          "periodKey" : false,
+          "periodShortcut" : true,
+          "predictiveText" : true,
+          "sessionLog" : false,
+          "slideToType" : true,
+          "smartPunctuation" : true,
+          "snippetExpansion" : "immediately",
+          "snippetKey" : false,
+          "snippetPrefix" : "!",
+          "sound" : true,
+          "split" : false,
+          "stopAnimation" : "squeeze",
+          "theme" : "standard",
+          "themeAppearance" : "automatic"
+        },
+        "snippets" : [
+
+        ],
+        "swipe" : true
+      },
+      "words" : {
+        "grid" : {
+          "layout" : {
+            "extraColumns" : 0,
+            "rows" : [
+              [
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "q"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "w"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "e"
+                        }
+                      },
+                      "alternates" : [
+                        "ë",
+                        "é",
+                        "e",
+                        "è",
+                        "ê",
+                        "ě",
+                        "ẽ",
+                        "ē",
+                        "ė",
+                        "ę"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "r"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "t"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "y"
+                        }
+                      },
+                      "alternates" : [
+                        "y",
+                        "ÿ"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "u"
+                        }
+                      },
+                      "alternates" : [
+                        "û",
+                        "ü",
+                        "ù",
+                        "ú",
+                        "u",
+                        "ū"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "i"
+                        }
+                      },
+                      "alternates" : [
+                        "î",
+                        "ï",
+                        "í",
+                        "i",
+                        "ī",
+                        "į",
+                        "ì"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "o"
+                        }
+                      },
+                      "alternates" : [
+                        "ô",
+                        "ö",
+                        "ò",
+                        "ó",
+                        "o",
+                        "œ",
+                        "ø",
+                        "ō",
+                        "õ"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "p"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "spacer" : {
+                    "_0" : {
+                      "fill" : {
+
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "a"
+                        }
+                      },
+                      "alternates" : [
+                        "à",
+                        "á",
+                        "â",
+                        "ä",
+                        "a",
+                        "æ",
+                        "ã",
+                        "å",
+                        "ā"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "s"
+                        }
+                      },
+                      "alternates" : [
+                        "s",
+                        "ß",
+                        "ś",
+                        "š"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "d"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "f"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "g"
+                        }
+                      },
+                      "alternates" : [
+                        "g",
+                        "ğ",
+                        "ġ"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "h"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "j"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "k"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "l"
+                        }
+                      },
+                      "alternates" : [
+                        "l",
+                        "ł"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "spacer" : {
+                    "_0" : {
+                      "fill" : {
+
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "shift" : {
+
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "pitch" : {
+                          "_0" : 1.3
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "spacer" : {
+                    "_0" : {
+                      "fill" : {
+
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "z"
+                        }
+                      },
+                      "alternates" : [
+                        "z",
+                        "ž",
+                        "ź",
+                        "ż"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "x"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "c"
+                        }
+                      },
+                      "alternates" : [
+                        "c",
+                        "ç",
+                        "ć",
+                        "č"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "v"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "b"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "n"
+                        }
+                      },
+                      "alternates" : [
+                        "n",
+                        "ñ",
+                        "ń"
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "character" : {
+                          "_0" : "m"
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "input" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "spacer" : {
+                    "_0" : {
+                      "fill" : {
+
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "delete" : {
+
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "pitch" : {
+                          "_0" : 1.3
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "layer" : {
+                          "_0" : {
+                            "numbers" : {
+
+                            }
+                          }
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "pitch" : {
+                          "_0" : 1.25
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "space" : {
+
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "fill" : {
+
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "key" : {
+                    "_0" : {
+                      "accentsLetterBefore" : false,
+                      "action" : {
+                        "return" : {
+
+                        }
+                      },
+                      "alternates" : [
+
+                      ],
+                      "isDeadKey" : false,
+                      "isPair" : false,
+                      "width" : {
+                        "pitch" : {
+                          "_0" : 2.5
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            ],
+            "shortRows" : 0
+          },
+          "metrics" : {
+            "bottomRowCut" : 0,
+            "columns" : 10,
+            "keyGap" : 0,
+            "keyHeight" : 1,
+            "margin" : {
+              "leading" : 0,
+              "trailing" : 0
+            },
+            "numberRowHeight" : 1,
+            "rowGap" : 0,
+            "sideInset" : 0,
+            "topInset" : 0
+          },
+          "signature" : "standard",
+          "width" : 10
+        },
+        "lexicon" : {
+          "personal" : false,
+          "size" : 2422328
+        },
+        "memory" : {
+          "counts" : {
+
+          },
+          "following" : {
+
+          },
+          "kept" : [
+
+          ],
+          "keysAfterSpace" : 0,
+          "spacesAfterSpace" : 0,
+          "total" : 0,
+          "touches" : {
+            "layouts" : {
+
+            },
+            "recent" : {
+
+            }
+          }
+        },
+        "names" : {
+
+        },
+        "network" : {
+          "personal" : false,
+          "size" : 7939740
+        },
+        "replacements" : {
+
+        }
+      }
+    },
+    {
+      "input" : {
+        "app" : {
+          "_0" : "com.example.chat"
+        }
+      }
+    },
+    {
+      "input" : {
+        "traits" : {
+          "_0" : {
+            "autocapitalization" : {
+              "sentences" : {
+
+              }
+            },
+            "autocorrection" : true,
+            "content" : "other",
+            "kind" : "text",
+            "returnKind" : {
+              "send" : {
+
+              }
+            },
+            "returnRequiresText" : false,
+            "smartPunctuation" : true
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "",
+          "selected" : ""
+        }
+      ]
+    },
+    {
+      "bar" : {
+        "emoji" : [
+
+        ],
+        "words" : [
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "I"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "I’m"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "The"
+          }
+        ]
+      },
+      "input" : {
+        "ranked" : {
+
+        }
+      }
+    },
+    {
+      "input" : {
+        "grid" : {
+          "_0" : {
+            "layout" : {
+              "extraColumns" : 0,
+              "rows" : [
+                [
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "q"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "w"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "e"
+                          }
+                        },
+                        "alternates" : [
+                          "ë",
+                          "é",
+                          "e",
+                          "è",
+                          "ê",
+                          "ě",
+                          "ẽ",
+                          "ē",
+                          "ė",
+                          "ę"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "r"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "t"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "y"
+                          }
+                        },
+                        "alternates" : [
+                          "y",
+                          "ÿ"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "u"
+                          }
+                        },
+                        "alternates" : [
+                          "û",
+                          "ü",
+                          "ù",
+                          "ú",
+                          "u",
+                          "ū"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "i"
+                          }
+                        },
+                        "alternates" : [
+                          "î",
+                          "ï",
+                          "í",
+                          "i",
+                          "ī",
+                          "į",
+                          "ì"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "o"
+                          }
+                        },
+                        "alternates" : [
+                          "ô",
+                          "ö",
+                          "ò",
+                          "ó",
+                          "o",
+                          "œ",
+                          "ø",
+                          "ō",
+                          "õ"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "p"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  }
+                ],
+                [
+                  {
+                    "spacer" : {
+                      "_0" : {
+                        "fill" : {
+
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "a"
+                          }
+                        },
+                        "alternates" : [
+                          "à",
+                          "á",
+                          "â",
+                          "ä",
+                          "a",
+                          "æ",
+                          "ã",
+                          "å",
+                          "ā"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "s"
+                          }
+                        },
+                        "alternates" : [
+                          "s",
+                          "ß",
+                          "ś",
+                          "š"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "d"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "f"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "g"
+                          }
+                        },
+                        "alternates" : [
+                          "g",
+                          "ğ",
+                          "ġ"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "h"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "j"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "k"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "l"
+                          }
+                        },
+                        "alternates" : [
+                          "l",
+                          "ł"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "spacer" : {
+                      "_0" : {
+                        "fill" : {
+
+                        }
+                      }
+                    }
+                  }
+                ],
+                [
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "shift" : {
+
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "pitch" : {
+                            "_0" : 1.3
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "spacer" : {
+                      "_0" : {
+                        "fill" : {
+
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "z"
+                          }
+                        },
+                        "alternates" : [
+                          "z",
+                          "ž",
+                          "ź",
+                          "ż"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "x"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "c"
+                          }
+                        },
+                        "alternates" : [
+                          "c",
+                          "ç",
+                          "ć",
+                          "č"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "v"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "b"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "n"
+                          }
+                        },
+                        "alternates" : [
+                          "n",
+                          "ñ",
+                          "ń"
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "character" : {
+                            "_0" : "m"
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "input" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "spacer" : {
+                      "_0" : {
+                        "fill" : {
+
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "delete" : {
+
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "pitch" : {
+                            "_0" : 1.3
+                          }
+                        }
+                      }
+                    }
+                  }
+                ],
+                [
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "layer" : {
+                            "_0" : {
+                              "numbers" : {
+
+                              }
+                            }
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "pitch" : {
+                            "_0" : 1.25
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "space" : {
+
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "fill" : {
+
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "key" : {
+                      "_0" : {
+                        "accentsLetterBefore" : false,
+                        "action" : {
+                          "return" : {
+
+                          }
+                        },
+                        "alternates" : [
+
+                        ],
+                        "isDeadKey" : false,
+                        "isPair" : false,
+                        "width" : {
+                          "pitch" : {
+                            "_0" : 2.5
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              ],
+              "shortRows" : 0
+            },
+            "metrics" : {
+              "bottomRowCut" : 0,
+              "columns" : 10,
+              "keyGap" : 6,
+              "keyHeight" : 43,
+              "margin" : {
+                "leading" : 0,
+                "trailing" : 0
+              },
+              "numberRowHeight" : 0,
+              "rowGap" : 11,
+              "sideInset" : 6.5,
+              "topInset" : 7
+            },
+            "signature" : "phone-portrait-letters",
+            "width" : 390
+          }
+        }
+      }
+    },
+    {
+      "edits" : [
+        {
+          "insert" : {
+            "_0" : "H"
+          }
+        }
+      ],
+      "input" : {
+        "event" : {
+          "_0" : {
+            "type" : {
+              "_0" : {
+                "accentsLetterBefore" : false,
+                "action" : {
+                  "character" : {
+                    "_0" : "h"
+                  }
+                },
+                "alternates" : [
+
+                ],
+                "isDeadKey" : false,
+                "isPair" : false,
+                "width" : {
+                  "input" : {
+
+                  }
+                }
+              },
+              "_1" : {
+                "key" : "h",
+                "x" : 230.30000000000004,
+                "y" : 84.5
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "H",
+          "selected" : ""
+        }
+      ]
+    },
+    {
+      "bar" : {
+        "emoji" : [
+
+        ],
+        "words" : [
+          {
+            "kind" : {
+              "literal" : {
+
+              }
+            },
+            "text" : "H"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "How"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "He"
+          }
+        ]
+      },
+      "input" : {
+        "ranked" : {
+
+        }
+      }
+    },
+    {
+      "edits" : [
+        {
+          "insert" : {
+            "_0" : "e"
+          }
+        }
+      ],
+      "input" : {
+        "event" : {
+          "_0" : {
+            "type" : {
+              "_0" : {
+                "accentsLetterBefore" : false,
+                "action" : {
+                  "character" : {
+                    "_0" : "e"
+                  }
+                },
+                "alternates" : [
+                  "ë",
+                  "é",
+                  "e",
+                  "è",
+                  "ê",
+                  "ě",
+                  "ẽ",
+                  "ē",
+                  "ė",
+                  "ę"
+                ],
+                "isDeadKey" : false,
+                "isPair" : false,
+                "width" : {
+                  "input" : {
+
+                  }
+                }
+              },
+              "_1" : {
+                "key" : "e",
+                "x" : 101.75,
+                "y" : 24.5
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "He",
+          "selected" : ""
+        }
+      ]
+    },
+    {
+      "bar" : {
+        "emoji" : [
+
+        ],
+        "words" : [
+          {
+            "kind" : {
+              "literal" : {
+
+              }
+            },
+            "text" : "He"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "Hey"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "He’s"
+          }
+        ]
+      },
+      "input" : {
+        "ranked" : {
+
+        }
+      }
+    },
+    {
+      "edits" : [
+        {
+          "insert" : {
+            "_0" : "l"
+          }
+        }
+      ],
+      "input" : {
+        "event" : {
+          "_0" : {
+            "type" : {
+              "_0" : {
+                "accentsLetterBefore" : false,
+                "action" : {
+                  "character" : {
+                    "_0" : "l"
+                  }
+                },
+                "alternates" : [
+                  "l",
+                  "ł"
+                ],
+                "isDeadKey" : false,
+                "isPair" : false,
+                "width" : {
+                  "input" : {
+
+                  }
+                }
+              },
+              "_1" : {
+                "key" : "l",
+                "x" : 352.20000000000005,
+                "y" : 85.5
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "Hel",
+          "selected" : ""
+        }
+      ]
+    },
+    {
+      "bar" : {
+        "emoji" : [
+
+        ],
+        "words" : [
+          {
+            "kind" : {
+              "literal" : {
+
+              }
+            },
+            "text" : "Hel"
+          },
+          {
+            "kind" : {
+              "correction" : {
+
+              }
+            },
+            "text" : "Help"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "Hello"
+          }
+        ]
+      },
+      "input" : {
+        "ranked" : {
+
+        }
+      }
+    },
+    {
+      "edits" : [
+        {
+          "insert" : {
+            "_0" : "o"
+          }
+        }
+      ],
+      "input" : {
+        "event" : {
+          "_0" : {
+            "type" : {
+              "_0" : {
+                "accentsLetterBefore" : false,
+                "action" : {
+                  "character" : {
+                    "_0" : "o"
+                  }
+                },
+                "alternates" : [
+                  "ô",
+                  "ö",
+                  "ò",
+                  "ó",
+                  "o",
+                  "œ",
+                  "ø",
+                  "ō",
+                  "õ"
+                ],
+                "isDeadKey" : false,
+                "isPair" : false,
+                "width" : {
+                  "input" : {
+
+                  }
+                }
+              },
+              "_1" : {
+                "key" : "o",
+                "x" : 327.55,
+                "y" : 26
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "Helo",
+          "selected" : ""
+        }
+      ]
+    },
+    {
+      "bar" : {
+        "emoji" : [
+
+        ],
+        "words" : [
+          {
+            "kind" : {
+              "literal" : {
+
+              }
+            },
+            "text" : "Helo"
+          },
+          {
+            "kind" : {
+              "correction" : {
+
+              }
+            },
+            "text" : "Hello"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "Help"
+          }
+        ]
+      },
+      "input" : {
+        "ranked" : {
+
+        }
+      }
+    },
+    {
+      "edits" : [
+        {
+          "delete" : {
+            "_0" : 4
+          }
+        },
+        {
+          "insert" : {
+            "_0" : "Hello"
+          }
+        },
+        {
+          "insert" : {
+            "_0" : " "
+          }
+        }
+      ],
+      "input" : {
+        "event" : {
+          "_0" : {
+            "type" : {
+              "_0" : {
+                "accentsLetterBefore" : false,
+                "action" : {
+                  "space" : {
+
+                  }
+                },
+                "alternates" : [
+
+                ],
+                "isDeadKey" : false,
+                "isPair" : false,
+                "width" : {
+                  "fill" : {
+
+                  }
+                }
+              },
+              "_1" : {
+                "key" : " ",
+                "x" : 171.5625,
+                "y" : 195.5
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "Hello ",
+          "selected" : ""
+        }
+      ]
+    },
+    {
+      "bar" : {
+        "emoji" : [
+          "👋",
+          "🫂"
+        ],
+        "words" : [
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "there"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "world"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "my"
+          }
+        ]
+      },
+      "input" : {
+        "ranked" : {
+
+        }
+      }
+    },
+    {
+      "edits" : [
+        {
+          "insert" : {
+            "_0" : "t"
+          }
+        }
+      ],
+      "input" : {
+        "event" : {
+          "_0" : {
+            "type" : {
+              "_0" : {
+                "accentsLetterBefore" : false,
+                "action" : {
+                  "character" : {
+                    "_0" : "t"
+                  }
+                },
+                "alternates" : [
+
+                ],
+                "isDeadKey" : false,
+                "isPair" : false,
+                "width" : {
+                  "input" : {
+
+                  }
+                }
+              },
+              "_1" : {
+                "key" : "t",
+                "x" : 172.85,
+                "y" : 30.5
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "Hello t",
+          "selected" : ""
+        }
+      ]
+    },
+    {
+      "bar" : {
+        "emoji" : [
+
+        ],
+        "words" : [
+          {
+            "kind" : {
+              "literal" : {
+
+              }
+            },
+            "text" : "t"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "there"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "to"
+          }
+        ]
+      },
+      "input" : {
+        "ranked" : {
+
+        }
+      }
+    },
+    {
+      "edits" : [
+        {
+          "insert" : {
+            "_0" : "h"
+          }
+        }
+      ],
+      "input" : {
+        "event" : {
+          "_0" : {
+            "type" : {
+              "_0" : {
+                "accentsLetterBefore" : false,
+                "action" : {
+                  "character" : {
+                    "_0" : "h"
+                  }
+                },
+                "alternates" : [
+
+                ],
+                "isDeadKey" : false,
+                "isPair" : false,
+                "width" : {
+                  "input" : {
+
+                  }
+                }
+              },
+              "_1" : {
+                "key" : "h",
+                "x" : 235.80000000000004,
+                "y" : 78.5
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "Hello th",
+          "selected" : ""
+        }
+      ]
+    },
+    {
+      "bar" : {
+        "emoji" : [
+
+        ],
+        "words" : [
+          {
+            "kind" : {
+              "literal" : {
+
+              }
+            },
+            "text" : "th"
+          },
+          {
+            "kind" : {
+              "correction" : {
+
+              }
+            },
+            "text" : "the"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "there"
+          }
+        ]
+      },
+      "input" : {
+        "ranked" : {
+
+        }
+      }
+    },
+    {
+      "edits" : [
+        {
+          "insert" : {
+            "_0" : "s"
+          }
+        }
+      ],
+      "input" : {
+        "event" : {
+          "_0" : {
+            "type" : {
+              "_0" : {
+                "accentsLetterBefore" : false,
+                "action" : {
+                  "character" : {
+                    "_0" : "s"
+                  }
+                },
+                "alternates" : [
+                  "s",
+                  "ß",
+                  "ś",
+                  "š"
+                ],
+                "isDeadKey" : false,
+                "isPair" : false,
+                "width" : {
+                  "input" : {
+
+                  }
+                }
+              },
+              "_1" : {
+                "key" : "s",
+                "x" : 84.1,
+                "y" : 85.5
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "Hello ths",
+          "selected" : ""
+        }
+      ]
+    },
+    {
+      "bar" : {
+        "emoji" : [
+
+        ],
+        "words" : [
+          {
+            "kind" : {
+              "literal" : {
+
+              }
+            },
+            "text" : "ths"
+          },
+          {
+            "kind" : {
+              "correction" : {
+
+              }
+            },
+            "text" : "this"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "the"
+          }
+        ]
+      },
+      "input" : {
+        "ranked" : {
+
+        }
+      }
+    },
+    {
+      "edits" : [
+        {
+          "insert" : {
+            "_0" : "r"
+          }
+        }
+      ],
+      "input" : {
+        "event" : {
+          "_0" : {
+            "type" : {
+              "_0" : {
+                "accentsLetterBefore" : false,
+                "action" : {
+                  "character" : {
+                    "_0" : "r"
+                  }
+                },
+                "alternates" : [
+
+                ],
+                "isDeadKey" : false,
+                "isPair" : false,
+                "width" : {
+                  "input" : {
+
+                  }
+                }
+              },
+              "_1" : {
+                "key" : "r",
+                "x" : 136.04999999999998,
+                "y" : 26
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "Hello thsr",
+          "selected" : ""
+        }
+      ]
+    },
+    {
+      "bar" : {
+        "emoji" : [
+
+        ],
+        "words" : [
+          {
+            "kind" : {
+              "literal" : {
+
+              }
+            },
+            "text" : "thsr"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "there"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "there’s"
+          }
+        ]
+      },
+      "input" : {
+        "ranked" : {
+
+        }
+      }
+    },
+    {
+      "edits" : [
+        {
+          "insert" : {
+            "_0" : "e"
+          }
+        }
+      ],
+      "input" : {
+        "event" : {
+          "_0" : {
+            "type" : {
+              "_0" : {
+                "accentsLetterBefore" : false,
+                "action" : {
+                  "character" : {
+                    "_0" : "e"
+                  }
+                },
+                "alternates" : [
+                  "ë",
+                  "é",
+                  "e",
+                  "è",
+                  "ê",
+                  "ě",
+                  "ẽ",
+                  "ē",
+                  "ė",
+                  "ę"
+                ],
+                "isDeadKey" : false,
+                "isPair" : false,
+                "width" : {
+                  "input" : {
+
+                  }
+                }
+              },
+              "_1" : {
+                "key" : "e",
+                "x" : 99.75,
+                "y" : 33.5
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "Hello thsre",
+          "selected" : ""
+        }
+      ]
+    },
+    {
+      "bar" : {
+        "emoji" : [
+
+        ],
+        "words" : [
+          {
+            "kind" : {
+              "literal" : {
+
+              }
+            },
+            "text" : "thsre"
+          },
+          {
+            "kind" : {
+              "correction" : {
+
+              }
+            },
+            "text" : "there"
+          },
+          {
+            "kind" : {
+              "candidate" : {
+
+              }
+            },
+            "text" : "there’s"
+          }
+        ]
+      },
+      "input" : {
+        "ranked" : {
+
+        }
+      }
+    },
+    {
+      "edits" : [
+        {
+          "delete" : {
+            "_0" : 5
+          }
+        },
+        {
+          "insert" : {
+            "_0" : "there"
+          }
+        },
+        {
+          "insert" : {
+            "_0" : " "
+          }
+        }
+      ],
+      "input" : {
+        "event" : {
+          "_0" : {
+            "type" : {
+              "_0" : {
+                "accentsLetterBefore" : false,
+                "action" : {
+                  "space" : {
+
+                  }
+                },
+                "alternates" : [
+
+                ],
+                "isDeadKey" : false,
+                "isPair" : false,
+                "width" : {
+                  "fill" : {
+
+                  }
+                }
+              },
+              "_1" : {
+                "key" : " ",
+                "x" : 168.0625,
+                "y" : 192.5
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input" : {
+        "host" : {
+
+        }
+      },
+      "reads" : [
+        {
+          "after" : "",
+          "before" : "Hello there ",
+          "selected" : ""
+        }
+      ]
+    }
+  ]
+}

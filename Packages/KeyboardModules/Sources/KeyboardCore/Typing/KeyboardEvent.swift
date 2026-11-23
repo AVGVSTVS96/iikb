@@ -1,4 +1,4 @@
-public enum KeyboardEvent: Hashable, Sendable {
+public enum KeyboardEvent: Codable, Hashable, Sendable {
     case down(Key, tapCount: Int)
     case up(Key)
     case type(Key, Tap)

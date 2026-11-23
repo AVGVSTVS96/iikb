@@ -87,6 +87,7 @@ public struct TypingEngine {
     var revert: Revert?
     /// What Text Styles or Change Case last wrote, which the next one rewrites while the text is still as it left it.
     var rewritten: Rewritten?
+    public var log: SessionLog?
 
     private enum ShiftHold { case pressed, typedWhileHeld }
     enum LastSpace { case typed, picked }
@@ -98,6 +99,8 @@ public struct TypingEngine {
 
     public mutating func update(_ traits: InputTraits) {
         guard traits != self.traits else { return }
+        let logged = begins(.traits(traits))
+        defer { if logged { ends() } }
         if traits.kind != self.traits.kind { layer = Self.initialLayer(for: traits.kind) }
         self.traits = traits
         if text.isKnown { refreshShift() }
@@ -105,6 +108,8 @@ public struct TypingEngine {
     }
 
     public mutating func perform(_ action: KeyAction, in document: some TextDocument, tap: Tap? = nil) {
+        let logged = begins(.action(action, tap: tap))
+        defer { if logged { ends() } }
         attach(document)
         switch action {
         case .shift:
@@ -255,6 +260,8 @@ public struct TypingEngine {
     /// Finishes the word being typed as a space would, correcting it if it needs to be, without typing anything: what a
     /// message's send button does before it takes the text.
     public mutating func finishWord(in document: some TextDocument) {
+        let logged = begins(.finishWord)
+        defer { if logged { ends() } }
         attach(document)
         guard panel == nil else { return }
         commitWord(in: document)
@@ -276,6 +283,8 @@ public struct TypingEngine {
     /// Returns false for events the engine ignores, like a letter's touch down: those change nothing to redraw.
     @discardableResult
     public mutating func handle(_ event: KeyboardEvent, in document: some TextDocument) -> Bool {
+        let logged = begins(.event(event))
+        defer { if logged { ends() } }
         switch event {
         case .down(let key, let tapCount):
             switch key.action {
@@ -391,6 +400,8 @@ public struct TypingEngine {
     }
 
     public mutating func deleteWord(in document: some TextDocument) {
+        let logged = begins(.deleteWord)
+        defer { if logged { ends() } }
         if fill != nil || panel != nil && !query.isEmpty {
             query = String(query.dropLast(Self.wordLength(before: query)))
             if let at = fill?.at { fill?.values[at] = query }
@@ -489,6 +500,7 @@ public struct TypingEngine {
     mutating func moveCaret(by offset: Int, in document: some TextDocument) {
         history.clear()
         document.moveCursor(by: offset)
+        log?.note(.move(offset))
         text.moveCursor(by: offset)
         draft?.moveCursor(by: offset)
     }
@@ -576,6 +588,8 @@ public struct TypingEngine {
     /// Learns from the last words you kept, the one in progress too. Call when the keyboard goes away.
     public mutating func endSession() {
         guard !sessionEnded else { return }
+        let logged = begins(.endSession)
+        defer { if logged { ends() } }
         keepWord(in: text)
         typing = WordTaps()
         sessionEnded = true
@@ -584,6 +598,8 @@ public struct TypingEngine {
     /// Finish learning in the old app before adopting another host’s field and language. An app named where none was is
     /// the host the keyboard was already typing in, named late (FullKeyboard's `KeyboardHost`), so its typing goes on.
     public mutating func changeApp(_ app: String?) {
+        let logged = begins(.app(app))
+        defer { if logged { ends() } }
         self.app = app
         guard corrector?.app != app else { return }
         if corrector?.app != nil {
@@ -602,6 +618,8 @@ public struct TypingEngine {
     /// sent, so its last words were kept, the one in progress too.
     @discardableResult
     public mutating func documentChanged(_ document: some TextDocument) -> TextState.Report {
+        let logged = begins(.host)
+        defer { if logged { ends() } }
         let known = text
         let report = reconcile(document)
         if report == .changed {
@@ -652,11 +670,13 @@ public struct TypingEngine {
         beforeReturn = nil
         if count > 0 {
             document.deleteBackward(count)
+            log?.note(.delete(count))
             text.deleteBackward(count)
             draft?.deleteBackward(count)
         }
         if !string.isEmpty {
             document.insert(string)
+            log?.note(.insert(string))
             text.insert(string)
             draft?.insert(string)
         }
@@ -674,13 +694,12 @@ public struct TypingEngine {
     @discardableResult
     private mutating func reconcile(_ document: some TextDocument) -> TextState.Report {
         let known = text
-        let report = text.reconcile(
-            before: document.textBeforeInput, after: document.textAfterInput, selected: document.selectedText)
+        let window = SessionLog.Window(document)
+        log?.note(read: window)
+        let report = text.reconcile(before: window.before, after: window.after, selected: window.selected)
         guard draft != nil else { return report }
-        if [document.textBeforeInput, document.selectedText, document.textAfterInput].contains(where: {
-            !($0 ?? "").isEmpty
-        }) {
-            draft?.see(before: document.textBeforeInput?.count ?? 0, after: document.textAfterInput?.count ?? 0)
+        if [window.before, window.selected, window.after].contains(where: { !($0 ?? "").isEmpty }) {
+            draft?.see(before: window.before?.count ?? 0, after: window.after?.count ?? 0)
         }
         guard report != .behind else { return report }
         if report == .changed, text.isEmpty {
@@ -699,6 +718,8 @@ public struct TypingEngine {
 
     /// The keyboard is in another field now: what the dictations typed into the last one became is what they are.
     public mutating func leaveField() {
+        let logged = begins(.leaveField)
+        defer { if logged { ends() } }
         finishDraft(sent: false)
     }
 
