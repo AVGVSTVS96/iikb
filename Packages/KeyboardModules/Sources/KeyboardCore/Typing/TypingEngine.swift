@@ -69,7 +69,8 @@ public struct TypingEngine {
     private var dictations: [DictationDraft.Outcome] = []
 
     /// The space just before the caret, if the keyboard just put it there: one you typed, or one a pick from the bar
-    /// added after its word, which punctuation typed next goes before, as on Apple's keyboard.
+    /// added after its word, which punctuation typed next goes before and a space typed next stands for, as on Apple's
+    /// keyboard.
     var lastSpace: LastSpace?
     /// The accent an accent key just typed (`Key.isDeadKey`), which the letter typed next takes on, as Apple's do.
     private var accent: String?
@@ -187,7 +188,10 @@ public struct TypingEngine {
             if shiftHold != nil { shiftHold = .typedWhileHeld }
             _ = expands(.immediately, trailing: "", in: document)
         case .space:
-            if wasSpace, let tap, joinBack(space: tap, in: document) {
+            if picked, text.before.last == " ", text.owned >= 1 {
+                lastSpace = .typed
+                break
+            } else if wasSpace, let tap, joinBack(space: tap, in: document) {
                 lastSpace = .typed
             } else if wasSpace, settings.periodShortcut, traits.smartPunctuation, text.owned >= 1,
                 Self.endsSentenceable(text.before)

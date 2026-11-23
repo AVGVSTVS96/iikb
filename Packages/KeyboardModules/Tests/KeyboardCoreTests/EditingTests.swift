@@ -59,6 +59,30 @@ struct EditingTests {
         #expect(document.text == "Go home. Ok")
     }
 
+    @Test func aSpaceAfterAPickStandsForItsSpaceAndASecondEndsTheSentence() throws {
+        var engine = engine()
+        let document = TestDocument()
+        engine.documentChanged(document)
+        type("go hom", into: &engine, document)
+        engine.accept(try #require(engine.suggestions.first { $0.text == "home" }), in: document)
+        type(" ", into: &engine, document)
+        #expect(document.text == "Go home ", "Apple's keyboard swallows it")
+        type(" ", into: &engine, document)
+        #expect(document.text == "Go home. ")
+        type(" ", into: &engine, document)
+        #expect(document.text == "Go home.  ")
+    }
+
+    @Test func aSpaceAfterAPickAndALetterIsTyped() throws {
+        var engine = engine()
+        let document = TestDocument()
+        engine.documentChanged(document)
+        type("go hom", into: &engine, document)
+        engine.accept(try #require(engine.suggestions.first { $0.text == "home" }), in: document)
+        type("a ", into: &engine, document)
+        #expect(document.text == "Go home a ")
+    }
+
     @Test func punctuationAfterATypedSpaceKeepsIt() {
         var engine = engine()
         let document = TestDocument()
