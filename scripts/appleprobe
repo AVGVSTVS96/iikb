@@ -1,0 +1,24 @@
+#!/bin/bash
+# Runs on GitHub's Macs (scripts/ci). Measures Apple's keyboard on the iPhone Duo where iikb's typing follows it
+# (UITests/AppleTypingProbe): a space after a pick, a swipe after deleting its word and the bar after a copy, into
+# shots/raw/apple-probe/ (ONLY=<test> runs one).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export APP=build/uitest/Build/Products/Debug-iphonesimulator/iikb.app
+ID=$(scripts/sim ensure "iPhone Duo" iPhone-Duo)
+mkdir -p shots/raw/apple-probe
+xcodegen generate -q
+xcodebuild build-for-testing -project iikb.xcodeproj -scheme iikb -destination "id=$ID" -derivedDataPath build/uitest -quiet
+scripts/sim boot "$ID"
+scripts/sim use "$ID" system
+for key in KeyboardAutocorrection KeyboardAutocapitalization; do xcrun simctl spawn "$ID" defaults write com.apple.Preferences "$key" -bool NO; done
+xcrun simctl spawn "$ID" defaults write com.apple.Preferences KeyboardPrediction -bool YES
+xcrun simctl spawn "$ID" defaults write com.apple.Preferences KeyboardContinuousPathEnabled -bool YES
+scripts/sim down "$ID"
+scripts/sim boot "$ID"
+TEST_RUNNER_IIKB_PROBE_OUT="$PWD/shots/raw/apple-probe/probe" \
+  xcodebuild test-without-building -collect-test-diagnostics never -project iikb.xcodeproj -scheme iikb -destination "id=$ID" \
+  -derivedDataPath build/uitest -only-testing:"AppUITests/AppleTypingProbe${ONLY:+/$ONLY}" > build/uitest/apple-probe.log 2>&1 || failed=1
+grep -E "error:|XCTAssert|Test Case .*(passed|failed)" build/uitest/apple-probe.log || true
+cat shots/raw/apple-probe/*.txt 2>/dev/null || true
+exit "${failed:-0}"

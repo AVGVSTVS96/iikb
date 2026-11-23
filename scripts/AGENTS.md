@@ -43,6 +43,7 @@ scripts/lexicon es                              # a downloadable language's buil
 scripts/languages                               # publish build/languages/ as a GitHub release and write KeyboardStore's Resources/Languages/manifest.json beside the licenses
 scripts/personal record.jsonl [en.network [out]] # fine-tune en.network on your typing (the server does it when the record changes)
 scripts/network                                 # retrain en.network (downloads ~20 GB, about three hours on the Mac's GPU)
+scripts/ci scripts/appleprobe                   # Apple's keyboard on the iPhone Duo where iikb's typing follows it: a space after a pick, a swipe after deleting its word, the bar after a copy (UITests/AppleTypingProbe), into shots/raw/apple-probe/ (ONLY=<test> runs one)
 scripts/ci scripts/applebar in.txt out.txt      # Apple's own suggestion bar before each word and after its first two letters, typed through the system keyboard in the simulator, for head-to-heads
 python3 scripts/barmatch.py apple.txt iikb.txt   # the suggestion bar's measure: how many of Apple's bar words iikb's bar shows on the same text, how often the bars are the same, and where each has the word typed next
 scripts/barbench [record.jsonl [en.network]]     # the bar on your own typing it never learned from: the record's last 10% of lines, the ones scripts/personal holds out, after learning from the rest, over the shipped network and yours (next word in the bar, first, and after its first letter; about 4 min)
