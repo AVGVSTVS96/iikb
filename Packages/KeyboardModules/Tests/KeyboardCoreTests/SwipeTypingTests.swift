@@ -165,6 +165,31 @@ struct SwipeTypingTests {
         #expect(document.text == "")
     }
 
+    @Test func aSwipeRightAfterItsWordWasDeletedTypesTheNextReading() throws {
+        var (engine, document) = engine()
+        engine.perform(.character("a"), in: document)
+        engine.perform(.space, in: document)
+        engine.handle(.swipe(path("hello")), in: document)
+        #expect(document.text == "a hello")
+        let next = try #require(engine.suggestions.first).text
+        engine.perform(.delete, in: document)
+        engine.handle(.swipe(path("hello")), in: document)
+        #expect(document.text == "a \(next)", "the bar's first reading, not the word just deleted")
+        engine.perform(.delete, in: document)
+        engine.handle(.swipe(path("hello")), in: document)
+        #expect(document.text != "a hello" && document.text != "a \(next)", "every word taken back there counts")
+    }
+
+    @Test func aSwipeAfterAnythingElseTypesItsFirstReadingAgain() {
+        var (engine, document) = engine()
+        engine.handle(.swipe(path("hello")), in: document)
+        engine.perform(.delete, in: document)
+        engine.perform(.character("a"), in: document)
+        engine.perform(.delete, in: document)
+        engine.handle(.swipe(path("hello")), in: document)
+        #expect(document.text == "hello", "a letter typed between forgets what was taken back")
+    }
+
     @Test func deleteLeavesASpaceYouTyped() {
         var (engine, document) = engine()
         engine.perform(.character("a"), in: document)

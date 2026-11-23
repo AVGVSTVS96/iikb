@@ -1,9 +1,17 @@
 /// The word a swipe just typed, which delete takes out whole and the bar offers alternatives to, for as long as the text
 /// before the caret is as the swipe left it.
 struct Swiped: Hashable {
+    var word: String
     var length: Int
     var end: String
     var alternatives: [Suggestion]
+
+    static func key(_ word: String) -> String { Words.plain(word).lowercased() }
+}
+
+struct TakenBack: Hashable {
+    var end: String
+    var words: Set<String>
 }
 
 extension TypingEngine {
@@ -22,7 +30,7 @@ extension TypingEngine {
         let continues = corrector.continuation(after: text.before + (joins ? " " : ""))
         let starting = corrector.continuation(after: "")
         var seen: Set<String> = []
-        let words =
+        let ranked =
             decoded
             .map { (word: corrector.spelling(of: $0.word), swipe: $0.score) }
             .map {
@@ -33,13 +41,17 @@ extension TypingEngine {
             }
             .filter { seen.insert($0.word.lowercased()).inserted }
             .sorted { $0.score > $1.score }
+        let taken = takenBack.flatMap { $0.end == text.before ? $0.words : nil } ?? []
+        let words =
+            (ranked.filter { !taken.contains(Swiped.key($0.word)) }
+            + ranked.filter { taken.contains(Swiped.key($0.word)) })
             .prefix(4)
             .map { written(cased($0.word)) }
         guard let best = words.first else { return false }
         write((joins ? " " : "") + best, in: document)
         tally.characters += best.count + (joins ? 1 : 0)
         swiped = Swiped(
-            length: best.count + (joins ? 1 : 0), end: text.before,
+            word: Swiped.key(best), length: best.count + (joins ? 1 : 0), end: text.before,
             alternatives: words.dropFirst().map { Suggestion($0, .candidate) })
         refreshShift()
         suggestionsChanged()

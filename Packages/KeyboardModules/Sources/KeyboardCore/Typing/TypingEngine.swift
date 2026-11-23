@@ -43,6 +43,7 @@ public struct TypingEngine {
     public var swipeModel: Swipe?
     var ownedWords: (words: Set<String>, lexicon: Lexicon)?
     var swiped: Swiped?
+    var takenBack: TakenBack?
     /// How the field wraps its text, where the keyboard knows it (`MeasuredField`): up and down then move by line, and
     /// by sentence where it doesn't.
     public var lineLayout: (any LineLayout)?
@@ -140,6 +141,8 @@ public struct TypingEngine {
         let wasSpace = lastSpace == .typed
         let picked = lastSpace == .picked
         let revert = self.revert
+        let takenBack = self.takenBack
+        self.takenBack = nil
         let accent = self.accent.flatMap { text.owned >= 1 && text.before.hasSuffix($0) ? $0 : nil }
         lastSpace = nil
         self.revert = nil
@@ -229,6 +232,8 @@ public struct TypingEngine {
             tally.deletes += 1
             if let swiped = swipedWord {
                 write("", replacing: swiped.length, in: document)
+                let earlier = takenBack.flatMap { $0.end == text.before ? $0.words : nil } ?? []
+                self.takenBack = TakenBack(end: text.before, words: earlier.union([swiped.word]))
                 break
             }
             let offersRevert = revert?.isCommitted(before: text.before) == true
