@@ -92,8 +92,7 @@ struct CustomKeysTests {
                 }
                 let besideSpace: Set<KeyAction> = [.emoji, .character("."), .snippetPrefix("!")]
                 let kept = row.map(\.key.action).filter(besideSpace.contains)
-                let room = mic || globe != .hidden ? 2 : 3
-                #expect(kept.count == min((emoji ? 1 : 0) + (period && layer == .letters ? 2 : 0), room))
+                #expect(kept.count == min((emoji ? 1 : 0) + (period && layer == .letters ? 2 : 0), 2))
                 #expect(kept.contains(.emoji) == emoji, "the emoji key is the last left out")
             }
         }

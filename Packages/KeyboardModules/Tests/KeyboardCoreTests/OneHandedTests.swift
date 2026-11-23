@@ -67,7 +67,10 @@ struct OneHandedTests {
             let context = LayoutContext(
                 device: .phone, layer: .numbers, showsGlobe: true, isLandscape: screen.isLandscape,
                 isOpen: screen.isOpen)
-            #expect(context.menu.suffix(2) == [.nextKeyboard, .settings], "\(screen.name)")
+            #expect(
+                context.menu.suffix(2)
+                    == (context.listsKeyboards ? [.split(true), .settings] : [.nextKeyboard, .settings]),
+                "\(screen.name)")
             #expect(context.menu.contains(context.menuPick), "\(screen.name): the layout in use is there, picked")
         }
         var engine = TypingEngine()

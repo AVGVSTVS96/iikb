@@ -32,6 +32,29 @@ struct LayoutTests {
                 == KeyboardMetrics.for(.phone, width: 402, height: 874))
     }
 
+    @Test func theOpenDuoInLandscapeOpensTheListOfKeyboards() {
+        var settings = KeyboardSettings()
+        let on = { (width: Double, height: Double) in
+            LayoutContext(
+                device: .phone, layer: .letters, showsGlobe: true, screen: Size(width: width, height: height),
+                settings: settings)
+        }
+        for globe in GlobeKey.allCases {
+            settings.globeKey = globe
+            let open = on(951, 669)
+            #expect(
+                Layouts.layout(for: open).rows.last!.first == .key(Key(.nextKeyboard, width: .pitch(0.93))), "\(globe)")
+            #expect(!open.moreMenu.contains(.nextKeyboard) && !open.menu.contains(.nextKeyboard), "\(globe)")
+            #expect(!open.globeSendsLift(leftKey: false) && open.globeSendsLift(leftKey: true), "\(globe)")
+            for (width, height) in [(669.0, 951.0), (466.0, 678.0), (678.0, 466.0), (402.0, 874.0)] {
+                #expect(on(width, height).globeSendsLift(leftKey: false), "\(globe) \(width)×\(height)")
+            }
+        }
+        #expect(LayoutContext(device: .pad, layer: .letters, showsGlobe: true).globeSendsLift(leftKey: false))
+        settings.micKey = true
+        #expect(on(951, 669).moreMenu.contains(.nextKeyboard), "the record button holds the globe's place")
+    }
+
     /// Where iOS wants a way to the next keyboard, an iPhone's globe sits left of 123, away from the emoji key: as a
     /// spacer by default, with Next Keyboard in the menu, or switching keyboards, out of the menu; hidden, only the menu
     /// offers it.

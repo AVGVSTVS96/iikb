@@ -72,8 +72,9 @@ public struct LayoutContext: Hashable, Sendable {
         self.isSplit = isSplit
         self.showsEmoji = showsEmoji && device == .phone
         self.showsMicKey = showsMicKey && device == .phone
-        self.showsGlobeKey = showsGlobeKey && showsGlobe && device == .phone && !self.showsMicKey
-        self.globeIsSpacer = globeIsSpacer && self.showsGlobeKey
+        let listsKeyboards = self.isOpen && isLandscape
+        self.showsGlobeKey = (showsGlobeKey || listsKeyboards) && showsGlobe && device == .phone && !self.showsMicKey
+        self.globeIsSpacer = globeIsSpacer && self.showsGlobeKey && !listsKeyboards
         self.showsNumberRow = showsNumberRow && device == .phone && layer == .letters
         self.leadingButton = device == .phone ? leadingButton : .menu
         if !allowsOneHanded { self.oneHanded = .off }
@@ -112,6 +113,11 @@ public struct LayoutContext: Hashable, Sendable {
 
     /// Like Apple's, only the open Duo in landscape splits its keys.
     public var allowsSplit: Bool { isOpen && isLandscape }
+
+    // WARNING: where Apple's keyboard may be split, iOS 27.2's switch to the next keyboard can end the host app; its list can't: https://github.com/anomalyco/hex/commit/10d64004d17a91d15bab2563a8804f12ad20d9ba
+    public var listsKeyboards: Bool { allowsSplit }
+
+    public func globeSendsLift(leftKey: Bool) -> Bool { leftKey || !listsKeyboards }
 
     /// The keys in the bottom row whose hold opens the layer menu: the layer key, Bassim's way in, and the emoji key,
     /// whose hold opens Apple's menu with the same layouts (Left and Right folded, Full and Split open). The globe's

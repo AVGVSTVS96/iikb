@@ -254,6 +254,8 @@ open class FullKeyboardViewController: UIInputViewController {
     private lazy var keysMinimumConstraint = keyboardView.heightAnchor.constraint(greaterThanOrEqualToConstant: 0)
     private var deleteRepeat: DeleteRepeat?
     private let haptics = KeyHaptics()
+    private var layoutContext = LayoutContext(device: .phone, layer: .letters)
+    private var globeLeftKey = false
     private var clicks = KeyClicks()
     private let clipboard = ClipboardStore(backup: ClipboardStore.own)
     private let sources = Sources()
@@ -453,12 +455,21 @@ open class FullKeyboardViewController: UIInputViewController {
             if engine.handle(.cursor(offset: offset), in: document) { render() }
         }
         keyboardView.globeTarget = { [unowned self] control in
-            control.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
+            control.addTarget(self, action: #selector(globeTouch(_:with:)), for: .allTouchEvents)
         }
         registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _) in self.render() }
         if hasFullAccess { sources.reload() }
         if hasFullAccess { chats.reload() }
         syncWithDocument()
+    }
+
+    @objc private func globeTouch(_ control: UIControl, with event: UIEvent) {
+        if let touch = event.touches(for: control)?.first {
+            if touch.phase == .began { globeLeftKey = false }
+            if !control.bounds.contains(touch.location(in: control)) { globeLeftKey = true }
+            if touch.phase == .ended, !layoutContext.globeSendsLift(leftKey: globeLeftKey) { return }
+        }
+        handleInputModeList(from: control, with: event)
     }
 
     override open func viewWillLayoutSubviews() {
@@ -828,6 +839,7 @@ open class FullKeyboardViewController: UIInputViewController {
             engine.layout(on: device, screen: screen, showsGlobe: showsGlobe), screen: screen,
             window: view.bounds.width, style: .current)
         let (context, layout, height) = (keys.context, keys.layout, keys.height)
+        layoutContext = context
         var metrics = keys.metrics
         let emoji = line == nil && engine.panel == .emoji
         let wanted =
