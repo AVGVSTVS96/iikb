@@ -237,6 +237,29 @@ VARIANTS
   [ -n "${KEEP:-}" ] || down "$id"
 }
 
+# Screenshots each keyboard on the iPhone 17 where the system's appearance isn't the field's:
+# shots/raw/appearance/<tag>-<case>-<keyboard>.png. dark-field is a field asking for a dark keyboard in light, light-field
+# one asking for a light keyboard in dark; round-trip opens Settings, turns the system dark, comes back to the field
+# (round-trip-dark) and turns it light again (round-trip-light), when a host sends no new keyboard appearance.
+appearance() {
+  local tag=$1 id keyboard out=shots/raw/appearance; shift
+  id=$(ensure "iPhone 17" iPhone-17)
+  boot "$id"
+  for keyboard in ${KEYBOARDS:-system iikb}; do
+    shoot "$id" "$keyboard" light "$out/$tag-dark-field-$keyboard.png" -iikbKeyboardAppearance 1
+    shoot "$id" "$keyboard" dark "$out/$tag-light-field-$keyboard.png" -iikbKeyboardAppearance 2
+    shoot "$id" "$keyboard" light "$out/$tag-round-trip-start-$keyboard.png"
+    xcrun simctl launch "$id" com.apple.Preferences >/dev/null
+    screenshot "$id" "$out/$tag-round-trip-away-$keyboard.png"
+    xcrun simctl ui "$id" appearance dark
+    xcrun simctl launch "$id" "$BUNDLE" >/dev/null
+    screenshot "$id" "$out/$tag-round-trip-dark-$keyboard.png"
+    xcrun simctl ui "$id" appearance light
+    screenshot "$id" "$out/$tag-round-trip-light-$keyboard.png"
+  done
+  [ -n "${KEEP:-}" ] || down "$id"
+}
+
 # Sends Device Hub's events to a booted iPhone Duo (scripts/devicehub.c): hub ID hinge 180, hub ID orientation portrait.
 hub() {
   local helper=build/devicehub

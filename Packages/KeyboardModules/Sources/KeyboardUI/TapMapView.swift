@@ -102,7 +102,7 @@ public final class TapMapView: UIView {
         if abs(bounds.height - size.height * scale) > 0.5 { invalidateIntrinsicContentSize() }
     }
 
-    private var theme: KeyboardTheme { KeyboardTheme.current(for: traitCollection, appearance: nil) }
+    private var theme: KeyboardTheme { KeyboardTheme.current(for: traitCollection) }
 
     private func refresh(animated: Bool) {
         keyboard.update(

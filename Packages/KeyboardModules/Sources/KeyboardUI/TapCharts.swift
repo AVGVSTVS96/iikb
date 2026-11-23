@@ -106,7 +106,7 @@ public final class TapCloseUpView: UIView {
         setNeedsDisplay()
     }
 
-    private var theme: KeyboardTheme { KeyboardTheme.current(for: traitCollection, appearance: nil) }
+    private var theme: KeyboardTheme { KeyboardTheme.current(for: traitCollection) }
 
     /// The part of the keyboard to show: the key with a good share of its neighbors, and every mark of its taps.
     private func region(of aim: Aim) -> CGRect {
@@ -289,7 +289,7 @@ public final class TapPullView: UIView {
     override public func draw(_ rect: CGRect) {
         guard size.width > 0 else { return }
         let scale = bounds.width / size.width
-        let theme = KeyboardTheme.current(for: traitCollection, appearance: nil)
+        let theme = KeyboardTheme.current(for: traitCollection)
         TapMapPalette.backdrop.setFill()
         UIBezierPath(roundedRect: bounds, cornerRadius: 16).fill()
         for (key, frame) in keys {

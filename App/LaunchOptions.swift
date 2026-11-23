@@ -178,6 +178,9 @@ enum LaunchOptions {
     static func configure(_ field: UITextView) {
         if let value = integer("FullKeyboardType").flatMap(UIKeyboardType.init) { field.keyboardType = value }
         if let value = integer("iikbReturnKey").flatMap(UIReturnKeyType.init) { field.returnKeyType = value }
+        if let value = integer("iikbKeyboardAppearance").flatMap(UIKeyboardAppearance.init) {
+            field.keyboardAppearance = value
+        }
         if let text = defaults.string(forKey: "iikbText") { field.text = text }
         if defaults.bool(forKey: "iikbSends") { sends(field) }
     }

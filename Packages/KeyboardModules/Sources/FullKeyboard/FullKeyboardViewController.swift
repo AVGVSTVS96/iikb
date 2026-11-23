@@ -276,7 +276,6 @@ open class FullKeyboardViewController: UIInputViewController {
     private var hostField = HostField()
     private struct HostField {
         var isPrivate = false
-        var appearance: UIKeyboardAppearance?
         var selected = ""
     }
 
@@ -713,7 +712,7 @@ open class FullKeyboardViewController: UIInputViewController {
     private func syncWithDocument() {
         let proxy = textDocumentProxy
         hostField = HostField(
-            isPrivate: proxy.isPrivate, appearance: proxy.keyboardAppearance, selected: proxy.selectedText ?? "")
+            isPrivate: proxy.isPrivate, selected: proxy.selectedText ?? "")
         if hostField.isPrivate, engine.log != nil {
             keepLog()
             engine.log = nil
@@ -1012,7 +1011,7 @@ open class FullKeyboardViewController: UIInputViewController {
             maxX: width - CGFloat(metrics.margin.trailing + metrics.sideInset)
         )
         menuView.show(settings: context.menu.isEmpty, theme: theme, metrics: metrics, block: block)
-        let dark = hostField.appearance == .dark || traitCollection.userInterfaceStyle == .dark
+        let dark = traitCollection.userInterfaceStyle == .dark
         menuView.show(look: engine.settings, dark: dark, theme: theme)
     }
 
@@ -1195,7 +1194,7 @@ open class FullKeyboardViewController: UIInputViewController {
 
     private var theme: KeyboardTheme {
         KeyboardTheme.current(
-            for: traitCollection, appearance: hostField.appearance, settings: engine.settings)
+            for: traitCollection, settings: engine.settings)
     }
 
     private var ranking = false

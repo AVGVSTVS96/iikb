@@ -12,15 +12,14 @@ extension KeyboardTheme {
     package static let lightCurrent = KeyboardTheme.light(.current)
     static let darkCurrent = KeyboardTheme.dark(.current)
 
-    static func current(for traits: UITraitCollection, appearance: UIKeyboardAppearance?) -> KeyboardTheme {
-        appearance == .dark || traits.userInterfaceStyle == .dark ? darkCurrent : lightCurrent
+    static func current(for traits: UITraitCollection) -> KeyboardTheme {
+        traits.userInterfaceStyle == .dark ? darkCurrent : lightCurrent
     }
 
-    public static func current(
-        for traits: UITraitCollection, appearance: UIKeyboardAppearance?, settings: KeyboardSettings
-    ) -> KeyboardTheme {
-        let dark = appearance == .dark || traits.userInterfaceStyle == .dark
-        return named(settings.theme, appearance: settings.themeAppearance, dark: dark, style: .current)
+    public static func current(for traits: UITraitCollection, settings: KeyboardSettings) -> KeyboardTheme {
+        named(
+            settings.theme, appearance: settings.themeAppearance, dark: traits.userInterfaceStyle == .dark,
+            style: .current)
     }
 }
 
