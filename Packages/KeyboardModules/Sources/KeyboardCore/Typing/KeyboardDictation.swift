@@ -39,7 +39,12 @@ public struct KeyboardDictation: Sendable {
 
     public enum Notice: Equatable, Sendable { case micDidntStart, notWritten, noSound, noWords }
 
-    public enum Parakeet: Equatable, Sendable { case unloaded, loading(Int), loaded(Int), setAside }
+    public enum Parakeet: Equatable, Sendable {
+        case unloaded
+        case loading(Int)
+        case loaded(Int)
+        case setAside
+    }
 
     public enum Model: Equatable, Sendable { case parakeet, apple }
 
@@ -58,6 +63,7 @@ public struct KeyboardDictation: Sendable {
         case notice(Notice, Keyboard)
         case openApp(Keyboard)
         case letGoOfCapture
+        case loadParakeet(Int)
         case letGoOfParakeet
         case resumeOthers
         case changed(Keyboard)
@@ -351,21 +357,22 @@ public struct KeyboardDictation: Sendable {
     }
 
     public func model(picked parakeetPicked: Bool, seconds: Double, room: Room) -> Model {
-        guard parakeetPicked, parakeet != .setAside, parakeetLoaded || !warned && room.loads, room.writes(seconds)
-        else { return .apple }
+        guard parakeetPicked, parakeetLoaded, room.writes(seconds) else { return .apple }
         return .parakeet
     }
 
-    public mutating func loadParakeet() -> Int {
-        if case .loading(let load) = parakeet { return load }
-        if case .loaded(let load) = parakeet { return load }
+    public mutating func preload(picked parakeetPicked: Bool, downloaded: Bool, dictatedBefore: Bool, room: Room)
+        -> [Effect]
+    {
+        guard parakeetPicked, downloaded, dictatedBefore, parakeet == .unloaded, !warned, recording == nil,
+            room.fitsKeyboard, room.fits(Room.toLoad + Room.toRestart)
+        else { return [] }
         loadCount += 1
         parakeet = .loading(loadCount)
-        return loadCount
+        return [.loadParakeet(loadCount)]
     }
 
     public mutating func finishedLoading(_ load: Int) -> Bool {
-        if parakeet == .loaded(load) { return true }
         guard parakeet == .loading(load) else { return false }
         parakeet = .loaded(load)
         return true
@@ -374,16 +381,9 @@ public struct KeyboardDictation: Sendable {
     public mutating func failedLoading(_ load: Int, onCPU: Bool) {
         if onCPU {
             parakeet = .setAside
-            return
+        } else if parakeet == .loading(load) {
+            parakeet = .unloaded
         }
-        guard parakeet == .loading(load) else { return }
-        parakeet = .unloaded
-    }
-
-    public mutating func parakeetWontFit() -> [Effect] {
-        guard parakeetLoaded else { return [] }
-        parakeet = .unloaded
-        return [.letGoOfParakeet]
     }
 
     public static func held(_ fields: [(field: String, at: Double)], in field: String?, at now: Double)

@@ -94,7 +94,8 @@ struct KeyboardDictationTests {
         #expect(dictation.ended(take) == [.stopCapture, .write(take), .changed(Self.a)])
         #expect(dictation.writing(in: Self.a) == [2])
         #expect(dictation.isLive(take))
-        #expect(dictation.written(take, .words) == [.type(take, in: Self.a), .leave(take, typed: true), .changed(Self.a)])
+        #expect(
+            dictation.written(take, .words) == [.type(take, in: Self.a), .leave(take, typed: true), .changed(Self.a)])
         #expect(!dictation.isLive(take))
     }
 
@@ -123,7 +124,9 @@ struct KeyboardDictationTests {
             let take = dictation.recording!.take
             _ = dictation.ended(take)
             #expect(
-                dictation.written(take, outcome) == [.leave(take, typed: false), .notice(notice, Self.a), .changed(Self.a)])
+                dictation.written(take, outcome) == [
+                    .leave(take, typed: false), .notice(notice, Self.a), .changed(Self.a),
+                ])
         }
     }
 
@@ -215,7 +218,9 @@ struct KeyboardDictationTests {
         _ = dictation.start(Self.a, in: "field", at: 0, canStart: true)
         let take = dictation.recording!.take
         #expect(
-            dictation.due(take, at: 6) == [.stopCapture, .discard(take), .changed(Self.a), .notice(.micDidntStart, Self.a)])
+            dictation.due(take, at: 6) == [
+                .stopCapture, .discard(take), .changed(Self.a), .notice(.micDidntStart, Self.a),
+            ])
     }
 
     @Test func anInterruptionWaitsLongerThanQuiet() {
@@ -258,26 +263,89 @@ struct KeyboardDictationTests {
         #expect(!dictation.hasCapture)
     }
 
-    @Test func aMemoryWarningWhileWritingLetsParakeetGoAndKeepsTheWriting() {
+    static func preload(_ dictation: inout KeyboardDictation, room: KeyboardDictation.Room = roomy) -> Int? {
+        let effects = dictation.preload(picked: true, downloaded: true, dictatedBefore: true, room: room)
+        guard case .loadParakeet(let load) = effects.first else { return nil }
+        return load
+    }
+
+    static func loaded() -> KeyboardDictation {
+        var dictation = KeyboardDictation()
+        let load = preload(&dictation)!
+        _ = dictation.finishedLoading(load)
+        return dictation
+    }
+
+    @Test func parakeetLoadsAheadOnceYouveDictatedInTheKeyboard() {
+        var dictation = KeyboardDictation()
+        #expect(dictation.preload(picked: false, downloaded: true, dictatedBefore: true, room: Self.roomy).isEmpty)
+        #expect(dictation.preload(picked: true, downloaded: false, dictatedBefore: true, room: Self.roomy).isEmpty)
+        #expect(dictation.preload(picked: true, downloaded: true, dictatedBefore: false, room: Self.roomy).isEmpty)
+        let load = Self.preload(&dictation)
+        #expect(load != nil)
+        #expect(dictation.parakeet == .loading(load!))
+        #expect(Self.preload(&dictation) == nil)
+        let kept = dictation.finishedLoading(load!)
+        #expect(kept)
+        #expect(Self.preload(&dictation) == nil)
+    }
+
+    @Test func parakeetLoadsAheadOnlyWithRoomForTheLoadAndADictationBesideIt() {
+        var tight = KeyboardDictation()
+        #expect(Self.preload(&tight, room: Self.room(limit: 177, left: 83)) == nil)
+        #expect(Self.preload(&tight, room: Self.room(limit: 130, left: 100)) == nil)
+        #expect(Self.preload(&tight, room: Self.room(limit: 177, left: 84)) != nil)
+        var unmeasured = KeyboardDictation()
+        #expect(Self.preload(&unmeasured, room: .init(limit: 0, available: 0)) != nil)
+    }
+
+    @Test func parakeetNeverStartsLoadingDuringARecording() {
         var dictation = Self.recording()
+        #expect(Self.preload(&dictation) == nil)
         let take = dictation.recording!.take
         _ = dictation.ended(take)
-        let load = dictation.loadParakeet()
-        let kept = dictation.finishedLoading(load)
-        #expect(kept)
+        #expect(Self.preload(&dictation) != nil)
+    }
+
+    @Test func appleWritesWhileParakeetLoads() {
+        var dictation = KeyboardDictation()
+        let load = Self.preload(&dictation)!
+        #expect(dictation.model(picked: true, seconds: 5, room: Self.roomy) == .apple)
+        _ = dictation.finishedLoading(load)
+        #expect(dictation.model(picked: true, seconds: 5, room: Self.roomy) == .parakeet)
+    }
+
+    @Test func aMemoryWarningWhileWritingLetsParakeetGoAndKeepsTheWriting() {
+        var dictation = Self.loaded()
+        _ = dictation.start(Self.a, in: "field", at: 0, canStart: true)
+        let take = dictation.recording!.take
+        dictation.opened(take, at: 0)
+        _ = dictation.sound(take, seconds: 2, at: 1)
+        _ = dictation.ended(take)
         #expect(dictation.memoryWarning() == [.letGoOfCapture, .letGoOfParakeet])
         #expect(dictation.parakeet == .unloaded)
         #expect(dictation.writing(in: Self.a) == [2])
         #expect(dictation.written(take, .words).contains(.type(take, in: Self.a)))
         #expect(dictation.model(picked: true, seconds: 2, room: Self.roomy) == .apple)
+        #expect(Self.preload(&dictation) == nil)
         dictation.appeared(Self.a, in: "field")
-        #expect(dictation.model(picked: true, seconds: 2, room: Self.roomy) == .parakeet)
+        #expect(Self.preload(&dictation) != nil)
+    }
+
+    @Test func aMemoryWarningWhileRecordingKeepsTheRecording() {
+        var dictation = Self.loaded()
+        _ = dictation.start(Self.a, in: "field", at: 0, canStart: true)
+        let take = dictation.recording!.take
+        dictation.opened(take, at: 0)
+        _ = dictation.sound(take, seconds: 2, at: 1)
+        #expect(dictation.memoryWarning() == [.letGoOfParakeet])
+        #expect(dictation.recording?.phase == .recording)
+        #expect(dictation.hasCapture)
     }
 
     @Test func aLoadAMemoryWarningOvertookIsntKept() {
         var dictation = KeyboardDictation()
-        let load = dictation.loadParakeet()
-        #expect(dictation.loadParakeet() == load)
+        let load = Self.preload(&dictation)!
         #expect(dictation.memoryWarning() == [.letGoOfParakeet])
         let kept = dictation.finishedLoading(load)
         #expect(!kept)
@@ -296,35 +364,28 @@ struct KeyboardDictationTests {
         #expect(!Self.room(limit: 177, left: 33).writes(20))
     }
 
-    @Test func appleWritesWhatParakeetCantLoadForOrWrite() {
-        let dictation = KeyboardDictation()
-        #expect(dictation.model(picked: true, seconds: 10, room: Self.room(limit: 177, left: 80)) == .parakeet)
-        #expect(dictation.model(picked: false, seconds: 10, room: Self.roomy) == .apple)
-        #expect(dictation.model(picked: true, seconds: 10, room: Self.room(limit: 177, left: 40)) == .apple)
-        var loaded = KeyboardDictation()
-        let load = loaded.loadParakeet()
-        let kept = loaded.finishedLoading(load)
-        #expect(kept)
+    @Test func appleWritesWhatParakeetHasNoRoomFor() {
+        let loaded = Self.loaded()
         #expect(loaded.model(picked: true, seconds: 10, room: Self.room(limit: 177, left: 40)) == .parakeet)
         #expect(loaded.model(picked: true, seconds: 40, room: Self.room(limit: 177, left: 40)) == .apple)
-        #expect(loaded.parakeetWontFit() == [.letGoOfParakeet])
-        #expect(loaded.parakeet == .unloaded)
+        #expect(loaded.model(picked: false, seconds: 10, room: Self.roomy) == .apple)
+        #expect(KeyboardDictation().model(picked: true, seconds: 10, room: Self.roomy) == .apple)
     }
 
     @Test func anEncoderOnTheCPUSetsParakeetAsideForGood() {
         var dictation = KeyboardDictation()
-        let load = dictation.loadParakeet()
+        let load = Self.preload(&dictation)!
         dictation.failedLoading(load, onCPU: true)
         #expect(dictation.parakeet == .setAside)
         #expect(dictation.model(picked: true, seconds: 2, room: Self.roomy) == .apple)
         dictation.appeared(Self.a, in: "field")
         #expect(dictation.memoryWarning().isEmpty)
-        #expect(dictation.model(picked: true, seconds: 2, room: Self.roomy) == .apple)
+        #expect(Self.preload(&dictation) == nil)
 
         var failed = KeyboardDictation()
-        failed.failedLoading(failed.loadParakeet(), onCPU: false)
+        failed.failedLoading(Self.preload(&failed)!, onCPU: false)
         #expect(failed.parakeet == .unloaded)
-        #expect(failed.model(picked: true, seconds: 2, room: Self.roomy) == .parakeet)
+        #expect(Self.preload(&failed) != nil)
     }
 
     @Test func aDictationOutlivingItsKeyboardIsTypedInTheNextInItsField() {
@@ -332,7 +393,8 @@ struct KeyboardDictationTests {
         let take = dictation.recording!.take
         #expect(dictation.hidden(Self.a) == [.stopCapture, .write(take), .changed(Self.a), .detach(Self.a)])
         dictation.appeared(Self.b, in: "field")
-        #expect(dictation.written(take, .words) == [.type(take, in: Self.b), .leave(take, typed: true), .changed(Self.a)])
+        #expect(
+            dictation.written(take, .words) == [.type(take, in: Self.b), .leave(take, typed: true), .changed(Self.a)])
     }
 
     @Test func aDictationOutlivingItsKeyboardIsHeldForItsField() {
@@ -341,7 +403,8 @@ struct KeyboardDictationTests {
         _ = dictation.ended(take)
         _ = dictation.hidden(Self.a)
         dictation.appeared(Self.b, in: "elsewhere")
-        #expect(dictation.written(take, .words) == [.hold(take, in: "field"), .leave(take, typed: false), .changed(Self.a)])
+        #expect(
+            dictation.written(take, .words) == [.hold(take, in: "field"), .leave(take, typed: false), .changed(Self.a)])
     }
 
     @Test func aFingerOnTheMicAsTheKeyboardHidesRecordsNothing() {
@@ -360,11 +423,13 @@ struct KeyboardDictationTests {
         let take = dictation.recording!.take
         #expect(
             effects == [
-                .stopCapture, .write(left), .changed(Self.a), .attach(Self.b), .readAudio(take), .watch(take), .changed(Self.b),
+                .stopCapture, .write(left), .changed(Self.a), .attach(Self.b), .readAudio(take), .watch(take),
+                .changed(Self.b),
             ])
         #expect(dictation.recording?.keyboard == Self.b)
         #expect(dictation.due(left, at: 100).isEmpty)
-        #expect(dictation.written(left, .words) == [.type(left, in: Self.b), .leave(left, typed: true), .changed(Self.a)])
+        #expect(
+            dictation.written(left, .words) == [.type(left, in: Self.b), .leave(left, typed: true), .changed(Self.a)])
     }
 
     @Test func aCutOffTakeWaitsForItsFieldThenGoesToTranscripts() {

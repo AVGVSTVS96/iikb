@@ -18,10 +18,6 @@ final class LocalDictation {
     var isRecording: Bool { Self.state.isRecording(in: id) }
     var hears: Bool { Self.state.hears(in: id) }
     var writing: [Double] { Self.state.writing(in: id) }
-    var waiting: String? {
-        if case .loading = Self.state.parakeet { return "Model loading…" }
-        return nil
-    }
 
     private final class Take {
         let id = UUID()
@@ -133,6 +129,44 @@ final class LocalDictation {
 
     func prepare() {
         Self.run(Self.state.prepare(id, canStart: Self.canStart))
+        Self.preload()
+    }
+
+    private static let dictatedKey = "dictatedInKeyboard"
+
+    private static func preload() {
+        run(
+            state.preload(
+                picked: SpeechModel.picked != .apple, downloaded: Transcriber.isDownloaded(.v3),
+                dictatedBefore: UserDefaults.standard.bool(forKey: dictatedKey), room: .now))
+    }
+
+    private static func load(_ load: Int) {
+        let began = Date.now
+        note("the keyboard loads Parakeet ahead: \(KeyboardDictation.Room.now.described)")
+        let task = Task { try await Transcriber.load(SpeechModel.v3, in: .keyboard) }
+        transcriber = task
+        Task {
+            do {
+                _ = try await task.value
+                guard state.finishedLoading(load) else {
+                    if transcriber == task { transcriber = nil }
+                    return
+                }
+                note(
+                    "Parakeet loaded in the keyboard in \(since(began)): \(KeyboardDictation.Room.now.described)")
+            } catch is Transcriber.OffNeuralEngine {
+                state.failedLoading(load, onCPU: true)
+                if transcriber == task { transcriber = nil }
+                note(
+                    "Parakeet's encoder ran on the CPU, so the keyboard sets it aside: \(KeyboardDictation.Room.now.described)"
+                )
+            } catch {
+                state.failedLoading(load, onCPU: false)
+                if transcriber == task { transcriber = nil }
+                note("Parakeet didn't load in the keyboard: \(error.localizedDescription)", failed: true)
+            }
+        }
     }
 
     func arm(for app: String?, style: DictationWriting) {
@@ -202,6 +236,7 @@ final class LocalDictation {
         case .write(let take):
             guard let ended = takes[take] else { return }
             ended.file?.close()
+            UserDefaults.standard.set(true, forKey: dictatedKey)
             note("the keyboard's capture ended with \(String(format: "%.1f", ended.seconds)) s of sound")
             write(ended, take)
         case .leave(let take, let typed):
@@ -227,6 +262,8 @@ final class LocalDictation {
         case .letGoOfCapture:
             capture?.tearDown()
             capture = nil
+        case .loadParakeet(let number):
+            load(number)
         case .letGoOfParakeet:
             transcriber = nil
         case .resumeOthers:
@@ -364,6 +401,7 @@ final class LocalDictation {
             let owners = Set(state.writing.map(\.keyboard) + [state.shown?.keyboard].compactMap { $0 })
             for gone in owners where keyboard(gone) == nil { run(state.hidden(gone)) }
             run(state.written(id, outcome))
+            preload()
         }
     }
 
@@ -431,40 +469,15 @@ final class LocalDictation {
 
     private static func parakeet(for seconds: Double) async -> Transcriber? {
         let room = KeyboardDictation.Room.now
-        guard state.model(picked: SpeechModel.picked != .apple, seconds: seconds, room: room) == .parakeet else {
-            if SpeechModel.picked != .apple { note("the keyboard writes with Apple's model: \(room.described)") }
+        let picked = SpeechModel.picked != .apple
+        guard state.model(picked: picked, seconds: seconds, room: room) == .parakeet, let transcriber else {
+            if picked {
+                let loading = if case .loading = state.parakeet { " while Parakeet loads" } else { "" }
+                note("the keyboard writes with Apple's model\(loading): \(room.described)")
+            }
             return nil
         }
-        let load = state.loadParakeet()
-        let task = transcriber ?? Task { try await Transcriber.load(SpeechModel.v3, in: .keyboard) }
-        transcriber = task
-        changed()
-        defer { changed() }
-        do {
-            let parakeet = try await task.value
-            let kept = state.finishedLoading(load)
-            let after = KeyboardDictation.Room.now
-            guard after.writes(seconds) else {
-                note("Parakeet loaded without room to write, so it goes: \(after.described)")
-                if kept { run(state.parakeetWontFit()) }
-                return nil
-            }
-            return parakeet
-        } catch is Transcriber.OffNeuralEngine {
-            state.failedLoading(load, onCPU: true)
-            note(
-                "Parakeet's encoder ran on the CPU, so the keyboard sets it aside: \(KeyboardDictation.Room.now.described)"
-            )
-        } catch {
-            state.failedLoading(load, onCPU: false)
-            note("Parakeet didn't load in the keyboard: \(error.localizedDescription)", failed: true)
-        }
-        if transcriber == task { transcriber = nil }
-        return nil
-    }
-
-    private static func changed() {
-        if let shown = state.shown { keyboard(shown.keyboard)?.onChange() }
+        return try? await transcriber.value
     }
 
     nonisolated private static let hapticsAllowed: Void = {
