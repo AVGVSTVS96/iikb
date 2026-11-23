@@ -67,7 +67,10 @@ public nonisolated struct Transcriber: Sendable {
 
     /// The process a Parakeet loads in: the app's, or a keyboard's, whose memory limit has no room for the encoder's
     /// CPU copy (about 425 MB of weights) or for four windows written at once.
-    public enum Process: Sendable { case app, keyboard }
+    public enum Process: Sendable {
+        case app
+        case keyboard(neuralMemory: @Sendable () -> Int)
+    }
 
     /// The keyboard's Parakeet wasn't loaded: its encoder ran on the CPU, so it was let go.
     public struct OffNeuralEngine: Error {}
@@ -84,21 +87,33 @@ public nonisolated struct Transcriber: Sendable {
     public static func load(_ version: AsrModelVersion, from folder: URL, in process: Process = .app) async throws
         -> Transcriber
     {
+        let neuralMemory: (@Sendable () -> Int)? = if case .keyboard(let neural) = process { neural } else { nil }
         var load = 1
         while true {
-            let parakeet = AsrManager(config: process == .keyboard ? .keyboard : .dictation)
+            let parakeet = AsrManager(config: neuralMemory == nil ? .dictation : .keyboard)
+            let neuralBefore = neuralMemory?() ?? 0
             try await parakeet.loadModels(try await AsrModels.load(from: folder, version: version))
-            guard hasNeuralEngine, process == .keyboard || load < 3, try await !parakeet.onNeuralEngine() else {
-                return await Transcriber(parakeet)
+            guard hasNeuralEngine, neuralMemory != nil || load < 3 else { return await Transcriber(parakeet) }
+            let onEngine: Bool
+            if let known = onNeuralEngine(neuralBefore: neuralBefore, neuralAfter: neuralMemory?() ?? 0) {
+                onEngine = known
+            } else {
+                onEngine = try await parakeet.onNeuralEngine()
             }
+            if onEngine { return await Transcriber(parakeet) }
             log.error(
                 "\(version.folder.lastPathComponent, privacy: .public)'s encoder ran on the CPU after load \(load)")
-            if process == .keyboard {
+            if neuralMemory != nil {
                 await parakeet.cleanup()
                 throw OffNeuralEngine()
             }
             load += 1
         }
+    }
+
+    static func onNeuralEngine(neuralBefore: Int, neuralAfter: Int) -> Bool? {
+        guard neuralAfter > 0 else { return nil }
+        return neuralAfter - neuralBefore >= 100 * 1_048_576
     }
 
     /// Whether the app has finished downloading this Parakeet: FluidAudio downloads into its folder file by file, so a

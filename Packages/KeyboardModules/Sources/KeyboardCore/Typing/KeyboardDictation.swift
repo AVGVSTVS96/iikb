@@ -37,7 +37,7 @@ public struct KeyboardDictation: Sendable {
 
     public enum Outcome: Equatable, Sendable { case unwritten, silent, noWords, words }
 
-    public enum Notice: Equatable, Sendable { case micDidntStart, notWritten, noSound, noWords }
+    public enum Notice: Equatable, Sendable { case micDidntStart, notWritten, noSound, noWords, longest }
 
     public enum Parakeet: Equatable, Sendable {
         case unloaded
@@ -103,6 +103,7 @@ public struct KeyboardDictation: Sendable {
     public static let quiet = 6.0
     public static let interruption = 15.0
     public static let heldFor = 30.0
+    public static let longest = 90.0
 
     public private(set) var recording: Recording?
     public private(set) var writing: [Writing] = []
@@ -232,7 +233,12 @@ public struct KeyboardDictation: Sendable {
         guard let recording, recording.take == take else { return [] }
         self.recording?.seconds = seconds
         self.recording?.heard = now
-        return recording.seconds == 0 && recording.kept ? [.changed(recording.keyboard)] : []
+        var effects: [Effect] = recording.seconds == 0 && recording.kept ? [.changed(recording.keyboard)] : []
+        if recording.kept, !recording.stopping, seconds >= Self.longest {
+            self.recording?.stopping = true
+            effects += [.stopCapture, .notice(.longest, recording.keyboard)]
+        }
+        return effects
     }
 
     public mutating func interrupted(_ take: Take, _ interrupted: Bool, at now: Double) {

@@ -17,4 +17,11 @@ struct TranscriberTests {
         #expect(!Transcriber.isDownloaded(.v3, in: folder))
         #expect(!Transcriber.isDownloaded(.apple, in: folder))
     }
+
+    @Test func theEncodersPlaceIsReadFromTheNeuralEnginesMemoryWhereIOSCountsIt() {
+        let megabyte = 1_048_576
+        #expect(Transcriber.onNeuralEngine(neuralBefore: 0, neuralAfter: 0) == nil)
+        #expect(Transcriber.onNeuralEngine(neuralBefore: 0, neuralAfter: 240 * megabyte) == true)
+        #expect(Transcriber.onNeuralEngine(neuralBefore: 5 * megabyte, neuralAfter: 20 * megabyte) == false)
+    }
 }

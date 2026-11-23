@@ -11,7 +11,13 @@ nonisolated enum KeyboardMemory {
     static var available: Int { Int(os_proc_available_memory()) }
 
     /// The keyboard's footprint, what iOS counts toward its limit.
-    static var footprint: Int {
+    static var footprint: Int { info.map { Int($0.phys_footprint) } ?? 0 }
+
+    static var neural: Int {
+        info.map { Int($0.ledger_tag_neural_nofootprint + $0.ledger_tag_neural_nofootprint_compressed) } ?? 0
+    }
+
+    private static var info: task_vm_info_data_t? {
         var info = task_vm_info_data_t()
         var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
         let result = withUnsafeMutablePointer(to: &info) {
@@ -19,7 +25,7 @@ nonisolated enum KeyboardMemory {
                 task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
             }
         }
-        return result == KERN_SUCCESS ? Int(info.phys_footprint) : 0
+        return result == KERN_SUCCESS ? info : nil
     }
 
     /// The keyboard's limit, its footprint and what's left, 0 where iOS doesn't say.

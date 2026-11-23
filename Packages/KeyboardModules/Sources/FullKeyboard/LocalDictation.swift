@@ -144,7 +144,9 @@ final class LocalDictation {
     private static func load(_ load: Int) {
         let began = Date.now
         note("the keyboard loads Parakeet ahead: \(KeyboardDictation.Room.now.described)")
-        let task = Task { try await Transcriber.load(SpeechModel.v3, in: .keyboard) }
+        let task = Task {
+            try await Transcriber.load(SpeechModel.v3, in: .keyboard(neuralMemory: { KeyboardMemory.neural }))
+        }
         transcriber = task
         Task {
             do {
@@ -279,6 +281,7 @@ final class LocalDictation {
         case .notWritten: "Not written: saved to Transcripts for iikb to write"
         case .noSound: "Mic gave no sound"
         case .noWords: "Heard no words"
+        case .longest: "Stopped at 90 s"
         }
     }
 

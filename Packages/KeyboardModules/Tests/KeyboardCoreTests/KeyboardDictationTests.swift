@@ -432,6 +432,16 @@ struct KeyboardDictationTests {
             dictation.written(left, .words) == [.type(left, in: Self.b), .leave(left, typed: true), .changed(Self.a)])
     }
 
+    @Test func aRecordingStopsAt90SecondsAndIsWritten() {
+        var dictation = Self.recording(seconds: 89.9)
+        let take = dictation.recording!.take
+        #expect(dictation.sound(take, seconds: 90, at: 91) == [.stopCapture, .notice(.longest, Self.a)])
+        #expect(dictation.recording?.phase == .stopping)
+        #expect(dictation.sound(take, seconds: 90.2, at: 91.2).isEmpty)
+        #expect(dictation.ended(take) == [.stopCapture, .write(take), .changed(Self.a)])
+        #expect(dictation.writing(in: Self.a) == [90.2])
+    }
+
     @Test func aCutOffTakeWaitsForItsFieldThenGoesToTranscripts() {
         let held = [(field: "a", at: 100.0), (field: "b", at: 100.0), (field: "a", at: 60.0)]
         let next = KeyboardDictation.held(held, in: "a", at: 125)
