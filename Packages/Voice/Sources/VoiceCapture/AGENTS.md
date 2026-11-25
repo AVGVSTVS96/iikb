@@ -17,6 +17,6 @@ It's resilient, not lossy:
 - The reset swaps in a new engine even with the microphone off, and a start that fails tries once more on a new engine.
 - A failed `open` leaves the audio session inactive.
 - The recording takes channel 0 of each buffer, the signal the meter reads.
-- A finished recording of a second or more with no sample past 100/32767, or no sound at all, means the input went deaf, so `Listener` turns the microphone off, the mic switch or not (the next tap opens the app), and the keyboard is told to tap the mic again.
+- A finished recording of a second or more whose every sample is zero means the input went deaf (a whisper can peak under 100/32767 and still be written, Nov 20 and 25), so `Listener` turns the microphone off, the mic switch or not (the next tap opens the app), and the keyboard is told to tap the mic again.
 - The microphone stops and starts again by choice only while iikb is in front (`Microphone.inFront`): from the background iOS refuses the new start, and on Nov 6 his microphone went off after each dictation that switched the way it hears. Each `restart` says why (`// restart:`), and a probe ends with `Probe.end`, which leaves iikb running while the microphone is on; coretest's `ArchitectureTests` holds both.
 - A dictation being written holds a background task in `Listener`, with an expiration handler, from its stop to its last word.

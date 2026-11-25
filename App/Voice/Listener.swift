@@ -41,9 +41,6 @@ import VoiceModels
     /// The last recording held no sound at all, so the microphone's input is taken to be dead: it goes off once nothing
     /// is being recorded or written, and the next dictation opens it fresh.
     private var deaf = false
-    /// Every one of 628 real dictations had a sample past 200 of 32767; a recording of a second or more with none past
-    /// 100, or with no sound at all, is the input gone deaf.
-    private static let silence: Float = 100 / 32767
     /// Why the last dictation couldn't be made or written down, for the app's `DictationBar` until you dismiss it or
     /// dictate again.
     private var failure: (title: String, reason: String)?
@@ -189,7 +186,7 @@ import VoiceModels
     /// One that can't be written now is written the next time the app opens, since its recording is still on disk.
     private func deliver(_ take: Take, _ samples: [Float]) async {
         let seconds = Double(samples.count) / Recording.format.sampleRate
-        let sounded = samples.contains { abs($0) > Self.silence }
+        let sounded = samples.contains { $0 != 0 }
         let silent = take.stopped.timeIntervalSince(take.started) >= 1 && !sounded
         deaf = silent
         do {
@@ -199,10 +196,10 @@ import VoiceModels
                 written.text, heard: written.heard, id: take.id, at: take.started, seconds: seconds, typed: take.typed,
                 model: written.model, mic: take.mic, voiceProcessing: false, capture: take.capture,
                 unaimed: take.unaimed, levels: Recording.levels(samples), app: take.app, clean: written.clean)
-            if take.typed, silent {
-                Dictation.leave(.notice("Mic gave no sound"))
-            } else if take.typed, !written.text.isEmpty {
+            if take.typed, !written.text.isEmpty {
                 Dictation.leave(.heard(written.text, plain: written.plain, keyboard: take.keyboard, id: take.id))
+            } else if take.typed, silent {
+                Dictation.leave(.notice("Mic gave no sound"))
             }
             publish()
             HostApp.log.notice(

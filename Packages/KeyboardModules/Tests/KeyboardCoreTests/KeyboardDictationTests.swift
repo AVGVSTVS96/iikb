@@ -484,9 +484,10 @@ struct KeyboardDictationTests {
         #expect(later.here.isEmpty && later.kept.isEmpty && later.expired)
     }
 
-    @Test func soundIsCheckedOnlyPastASecond() {
+    @Test func onlyAMicrophoneSendingZerosGaveNoSound() {
         #expect(KeyboardDictation.sounded([Float](repeating: 0, count: 8000), sampleRate: 16000))
-        #expect(!KeyboardDictation.sounded([Float](repeating: 0.001, count: 16000), sampleRate: 16000))
-        #expect(KeyboardDictation.sounded([Float](repeating: 0.01, count: 16000), sampleRate: 16000))
+        #expect(!KeyboardDictation.sounded([Float](repeating: 0, count: 16000), sampleRate: 16000))
+        let whisper = (0..<16000).map { $0 % 2 == 0 ? Float(30) / 32767 : 0 }
+        #expect(KeyboardDictation.sounded(whisper, sampleRate: 16000))
     }
 }

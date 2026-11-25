@@ -405,7 +405,7 @@ final class LocalDictation {
             take.written = written
             let outcome: KeyboardDictation.Outcome =
                 if let written {
-                    !written.sounded ? .silent : written.made.text.isEmpty ? .noWords : .words
+                    !written.made.text.isEmpty ? .words : written.sounded ? .noWords : .silent
                 } else {
                     .unwritten
                 }

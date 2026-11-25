@@ -412,6 +412,6 @@ public struct KeyboardDictation: Sendable {
     }
 
     public static func sounded(_ samples: [Float], sampleRate: Double) -> Bool {
-        Double(samples.count) < sampleRate || samples.contains { abs($0) > 100 / 32767 }
+        Double(samples.count) < sampleRate || samples.contains { $0 != 0 }
     }
 }
