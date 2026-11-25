@@ -742,7 +742,7 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
             capture.backoff = Math.min(8000, capture.backoff * 2);
           }
         }
-        const base = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+        const base = { channelCount: 1, echoCancellation: true };
         async function chosenMicrophone(label) {
           const inputs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput");
           const found = (label && inputs.find((d) => d.label === label)) || inputs.find((d) => /iphone|ipad|built-in/i.test(d.label));
