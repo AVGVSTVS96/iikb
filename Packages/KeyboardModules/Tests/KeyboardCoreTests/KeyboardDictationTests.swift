@@ -22,7 +22,7 @@ struct KeyboardDictationTests {
         let take = dictation.recording!.take
         _ = dictation.audioRead(take, othersPlaying: false)
         dictation.opened(take, at: 0.5)
-        _ = dictation.sound(take, seconds: seconds, at: 1)
+        _ = dictation.sound(take, seconds: seconds, level: 0.1, at: 1)
         return dictation
     }
 
@@ -50,7 +50,7 @@ struct KeyboardDictationTests {
         let resting = dictation.recording!.take
         _ = dictation.audioRead(resting, othersPlaying: false)
         dictation.opened(resting, at: 10.5)
-        _ = dictation.sound(resting, seconds: 1, at: 11)
+        _ = dictation.sound(resting, seconds: 1, level: 0.1, at: 11)
         #expect(dictation.deadline(resting) == 13)
         #expect(dictation.due(resting, at: 12.9).isEmpty)
         #expect(dictation.due(resting, at: 13) == [.stopCapture, .discard(resting), .changed(Self.a)])
@@ -64,24 +64,24 @@ struct KeyboardDictationTests {
         dictation.opened(take, at: 0.4)
         #expect(!dictation.hears(in: Self.a))
         #expect(dictation.recording?.phase == .starting)
-        #expect(dictation.sound(take, seconds: 0.25, at: 0.6) == [.changed(Self.a)])
+        #expect(dictation.sound(take, seconds: 0.25, level: 0.1, at: 0.6) == [.changed(Self.a)])
         #expect(dictation.hears(in: Self.a))
         #expect(dictation.recording?.phase == .recording)
-        #expect(dictation.sound(take, seconds: 0.5, at: 0.8).isEmpty)
+        #expect(dictation.sound(take, seconds: 0.5, level: 0.1, at: 0.8).isEmpty)
     }
 
     @Test func aTapWhileStartingUndoesTheStart() {
         var dictation = KeyboardDictation()
         _ = dictation.start(Self.a, in: "field", at: 0, canStart: true)
         let take = dictation.recording!.take
-        #expect(dictation.stop(Self.a) == [.stopCapture, .discard(take), .changed(Self.a)])
+        #expect(dictation.stop(Self.a, at: 2) == [.stopCapture, .discard(take), .changed(Self.a)])
         #expect(dictation.recording == nil)
         #expect(dictation.writing.isEmpty)
 
         _ = dictation.start(Self.a, in: "field", at: 1, canStart: true)
         let opened = dictation.recording!.take
         dictation.opened(opened, at: 1.2)
-        #expect(dictation.stop(Self.a) == [.stopCapture, .changed(Self.a)])
+        #expect(dictation.stop(Self.a, at: 2) == [.stopCapture, .changed(Self.a)])
         #expect(dictation.recording?.phase == .stopping)
         #expect(dictation.ended(opened) == [.stopCapture, .discard(opened), .changed(Self.a)])
         #expect(dictation.writing.isEmpty)
@@ -90,7 +90,7 @@ struct KeyboardDictationTests {
     @Test func aStopWritesWhatWasHeardAndTypesIt() {
         var dictation = Self.recording()
         let take = dictation.recording!.take
-        _ = dictation.stop(Self.a)
+        _ = dictation.stop(Self.a, at: 2)
         #expect(dictation.ended(take) == [.stopCapture, .write(take), .changed(Self.a)])
         #expect(dictation.writing(in: Self.a) == [2])
         #expect(dictation.isLive(take))
@@ -106,7 +106,7 @@ struct KeyboardDictationTests {
         _ = dictation.start(Self.a, in: "field", at: 5, canStart: true)
         let second = dictation.recording!.take
         dictation.opened(second, at: 5)
-        _ = dictation.sound(second, seconds: 1, at: 6)
+        _ = dictation.sound(second, seconds: 1, level: 0.1, at: 6)
         _ = dictation.ended(second)
         #expect(dictation.written(second, .words).isEmpty)
         #expect(
@@ -183,7 +183,7 @@ struct KeyboardDictationTests {
         #expect(dictation.audioRead(take, othersPlaying: true) == [.startCapture(take)])
         #expect(dictation.othersPaused)
         #expect(dictation.released().isEmpty)
-        _ = dictation.stop(Self.a)
+        _ = dictation.stop(Self.a, at: 2)
         _ = dictation.ended(take)
         #expect(dictation.released() == [.resumeOthers])
         #expect(dictation.released().isEmpty)
@@ -352,7 +352,7 @@ struct KeyboardDictationTests {
         _ = dictation.start(Self.a, in: "field", at: 0, canStart: true)
         let take = dictation.recording!.take
         dictation.opened(take, at: 0)
-        _ = dictation.sound(take, seconds: 2, at: 1)
+        _ = dictation.sound(take, seconds: 2, level: 0.1, at: 1)
         _ = dictation.ended(take)
         #expect(dictation.memoryWarning() == [.letGoOfCapture, .letGoOfParakeet])
         #expect(dictation.parakeet == .unloaded)
@@ -369,7 +369,7 @@ struct KeyboardDictationTests {
         _ = dictation.start(Self.a, in: "field", at: 0, canStart: true)
         let take = dictation.recording!.take
         dictation.opened(take, at: 0)
-        _ = dictation.sound(take, seconds: 2, at: 1)
+        _ = dictation.sound(take, seconds: 2, level: 0.1, at: 1)
         #expect(dictation.memoryWarning() == [.letGoOfParakeet])
         #expect(dictation.recording?.phase == .recording)
         #expect(dictation.hasCapture)
@@ -467,9 +467,9 @@ struct KeyboardDictationTests {
     @Test func aRecordingStopsAt90SecondsAndIsWritten() {
         var dictation = Self.recording(seconds: 89.9)
         let take = dictation.recording!.take
-        #expect(dictation.sound(take, seconds: 90, at: 91) == [.stopCapture, .notice(.longest, Self.a)])
+        #expect(dictation.sound(take, seconds: 90, level: 0.1, at: 91) == [.stopCapture, .notice(.longest, Self.a)])
         #expect(dictation.recording?.phase == .stopping)
-        #expect(dictation.sound(take, seconds: 90.2, at: 91.2).isEmpty)
+        #expect(dictation.sound(take, seconds: 90.2, level: 0.1, at: 91.2).isEmpty)
         #expect(dictation.ended(take) == [.stopCapture, .write(take), .changed(Self.a)])
         #expect(dictation.writing(in: Self.a) == [90.2])
     }
@@ -489,5 +489,44 @@ struct KeyboardDictationTests {
         #expect(!KeyboardDictation.sounded([Float](repeating: 0, count: 16000), sampleRate: 16000))
         let whisper = (0..<16000).map { $0 % 2 == 0 ? Float(30) / 32767 : 0 }
         #expect(KeyboardDictation.sounded(whisper, sampleRate: 16000))
+    }
+
+    static func speaking() -> (KeyboardDictation, KeyboardDictation.Take) {
+        var dictation = KeyboardDictation()
+        _ = dictation.start(a, in: "field", at: 0, canStart: true)
+        let take = dictation.recording!.take
+        dictation.opened(take, at: 0)
+        for chunk in 1...20 {
+            _ = dictation.sound(
+                take, seconds: Double(chunk) / 10, level: chunk <= 5 ? 0.001 : 0.1, at: Double(chunk) / 10)
+        }
+        return (dictation, take)
+    }
+
+    @Test func aStopHearsOnUntilYoureQuiet() {
+        var (dictation, take) = Self.speaking()
+        #expect(dictation.stop(Self.a, at: 2) == [.changed(Self.a)])
+        #expect(!dictation.isRecording(in: Self.a))
+        #expect(dictation.writing(in: Self.a) == [2])
+        #expect(dictation.sound(take, seconds: 2.1, level: 0.1, at: 2.1).isEmpty)
+        #expect(dictation.sound(take, seconds: 2.2, level: 0.001, at: 2.2).isEmpty)
+        #expect(dictation.sound(take, seconds: 2.3, level: 0.001, at: 2.3).isEmpty)
+        #expect(dictation.sound(take, seconds: 2.4, level: 0.001, at: 2.4) == [.stopCapture])
+        #expect(dictation.sound(take, seconds: 2.5, level: 0.001, at: 2.5).isEmpty)
+        #expect(dictation.ended(take) == [.stopCapture, .write(take), .changed(Self.a)])
+        #expect(dictation.writing(in: Self.a) == [2.5])
+    }
+
+    @Test func aStopAfterAPauseStopsAtOnce() {
+        var (dictation, take) = Self.speaking()
+        for chunk in 21...23 { _ = dictation.sound(take, seconds: Double(chunk) / 10, level: 0.001, at: 2) }
+        #expect(dictation.stop(Self.a, at: 2.3) == [.stopCapture, .changed(Self.a)])
+    }
+
+    @Test func aStopInALoudRoomHearsOnASecondAtMost() {
+        var (dictation, take) = Self.speaking()
+        _ = dictation.stop(Self.a, at: 2)
+        #expect(dictation.sound(take, seconds: 2.5, level: 0.1, at: 2.9).isEmpty)
+        #expect(dictation.sound(take, seconds: 2.6, level: 0.1, at: 3) == [.stopCapture])
     }
 }

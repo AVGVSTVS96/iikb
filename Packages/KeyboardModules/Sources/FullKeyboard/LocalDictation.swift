@@ -201,7 +201,7 @@ final class LocalDictation {
     }
 
     func stop() {
-        Self.run(Self.state.stop(id))
+        Self.run(Self.state.stop(id, at: Self.now))
     }
 
     func cancel() {
@@ -353,8 +353,8 @@ final class LocalDictation {
         case .samples(let data, let level):
             if take.frames == 0 { note("the keyboard's first sound came \(since(take.started)) after the touch") }
             append(data, to: take)
-            run(state.sound(id, seconds: take.seconds, at: now))
-            if recording.kept { keyboard(recording.keyboard)?.onLevel(level, take.seconds) }
+            run(state.sound(id, seconds: take.seconds, level: level, at: now))
+            if recording.kept, !recording.stopping { keyboard(recording.keyboard)?.onLevel(level, take.seconds) }
         case .interrupted(let interrupted, let described):
             note("the keyboard's capture \(interrupted ? "is interrupted" : "is back"): \(described)")
             state.interrupted(id, interrupted, at: now)

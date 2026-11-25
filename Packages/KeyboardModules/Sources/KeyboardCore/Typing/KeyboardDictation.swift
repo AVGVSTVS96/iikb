@@ -17,6 +17,13 @@ public struct KeyboardDictation: Sendable {
         public fileprivate(set) var stopping = false
         public fileprivate(set) var canceled = false
         public fileprivate(set) var held = false
+        fileprivate var tail: Double?
+        fileprivate var levels: [Float] = []
+        fileprivate var quietSince: Double?
+
+        fileprivate var quietLongEnough: Bool {
+            quietSince.map { seconds - $0 >= KeyboardDictation.quietEnds } ?? false
+        }
 
         public var phase: Phase {
             if !kept { return .armed }
@@ -106,6 +113,8 @@ public struct KeyboardDictation: Sendable {
     public static let interruption = 15.0
     public static let heldFor = 30.0
     public static let longest = 90.0
+    public static let tailFor = 1.0
+    public static let quietEnds = 0.25
 
     public private(set) var recording: Recording?
     public private(set) var writing: [Writing] = []
@@ -121,7 +130,7 @@ public struct KeyboardDictation: Sendable {
     public init() {}
 
     public func isRecording(in keyboard: Keyboard) -> Bool {
-        recording.map { $0.keyboard == keyboard && $0.kept } ?? false
+        recording.map { $0.keyboard == keyboard && $0.kept && !$0.stopping } ?? false
     }
 
     public func hears(in keyboard: Keyboard) -> Bool {
@@ -129,7 +138,8 @@ public struct KeyboardDictation: Sendable {
     }
 
     public func writing(in keyboard: Keyboard) -> [Double] {
-        writing.filter { $0.keyboard == keyboard }.map(\.seconds)
+        let stopped = recording.flatMap { $0.keyboard == keyboard && $0.stopping ? $0.seconds : nil }
+        return writing.filter { $0.keyboard == keyboard }.map(\.seconds) + [stopped].compactMap { $0 }
     }
 
     public func isLive(_ take: Take) -> Bool {
@@ -193,11 +203,13 @@ public struct KeyboardDictation: Sendable {
         return drop(recording.take)
     }
 
-    public mutating func stop(_ keyboard: Keyboard) -> [Effect] {
+    public mutating func stop(_ keyboard: Keyboard, at now: Double) -> [Effect] {
         guard let recording, recording.keyboard == keyboard, recording.kept, !recording.stopping else { return [] }
         guard recording.opened else { return drop(recording.take) }
         self.recording?.stopping = true
-        return [.stopCapture, .changed(keyboard)]
+        guard recording.seconds > 0, !recording.quietLongEnough else { return [.stopCapture, .changed(keyboard)] }
+        self.recording?.tail = now + Self.tailFor
+        return [.changed(keyboard)]
     }
 
     public mutating func cancel(_ keyboard: Keyboard) -> [Effect] {
@@ -231,11 +243,18 @@ public struct KeyboardDictation: Sendable {
         recording?.heard = now
     }
 
-    public mutating func sound(_ take: Take, seconds: Double, at now: Double) -> [Effect] {
+    public mutating func sound(_ take: Take, seconds: Double, level: Float, at now: Double) -> [Effect] {
         guard let recording, recording.take == take else { return [] }
         self.recording?.seconds = seconds
         self.recording?.heard = now
+        self.recording?.levels.append(level)
+        let quiet = Self.isQuiet(level, in: recording.levels + [level])
+        self.recording?.quietSince = quiet ? recording.quietSince ?? recording.seconds : nil
         var effects: [Effect] = recording.seconds == 0 && recording.kept ? [.changed(recording.keyboard)] : []
+        if let tail = recording.tail, now >= tail || self.recording?.quietLongEnough == true {
+            self.recording?.tail = nil
+            effects.append(.stopCapture)
+        }
         if recording.kept, !recording.stopping, seconds >= Self.longest {
             self.recording?.stopping = true
             effects += [.stopCapture, .notice(.longest, recording.keyboard)]
@@ -409,6 +428,11 @@ public struct KeyboardDictation: Sendable {
         let fresh = fields.indices.filter { now - fields[$0].at <= heldFor }
         let here = fresh.filter { fields[$0].field == field }
         return (here, fresh.filter { fields[$0].field != field }, fresh.count < fields.count)
+    }
+
+    private static func isQuiet(_ level: Float, in levels: [Float]) -> Bool {
+        let sorted = levels.sorted()
+        return level * level <= sorted[sorted.count / 10] * sorted[sorted.count * 19 / 20]
     }
 
     public static func sounded(_ samples: [Float], sampleRate: Double) -> Bool {
