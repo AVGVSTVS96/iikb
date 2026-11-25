@@ -128,9 +128,8 @@ final class ToolPanelTests: XCTestCase {
     }
 
     func testAnEmptyFieldOffersWhatWasJustCopied() throws {
-        UIPasteboard.general.string = "Back at 6, the side door"
         var app = launch()
-        var offer = app.descendants(matching: .any)["iikb.paste"]
+        var offer = copyThenBringKeysBack("Back at 6, the side door", in: app)
         XCTAssertTrue(offer.waitForExistence(timeout: 10), "an empty field offers what was just copied")
         if offer.label == "Paste" {
             try shot("paste-refused")
@@ -139,9 +138,8 @@ final class ToolPanelTests: XCTestCase {
             XCTAssertTrue(message.waitForExistence(timeout: 5))
             message.tap()
             try allowPasteFromOtherApps()
-            UIPasteboard.general.string = "Back at 7, the side door"
             app = launch()
-            offer = app.descendants(matching: .any)["iikb.paste"]
+            offer = copyThenBringKeysBack("Back at 7, the side door", in: app)
             XCTAssertTrue(offer.waitForExistence(timeout: 10))
         }
         let copied = UIPasteboard.general.string ?? ""
@@ -420,6 +418,15 @@ final class ToolPanelTests: XCTestCase {
         let head = app.buttons["iikb.shelf.\(shelf.rawValue)"]
         XCTAssertTrue(head.waitForExistence(timeout: 3), "the menu has the \(shelf.rawValue) shelf")
         head.tap()
+    }
+
+    private func copyThenBringKeysBack(_ text: String, in app: XCUIApplication) -> XCUIElement {
+        UIPasteboard.general.string = text
+        app.buttons["home-done"].tap()
+        XCTAssertTrue(key("space", in: app).waitForNonExistence(timeout: 5), "Done puts the keys away")
+        app.textViews.firstMatch.tap()
+        XCTAssertTrue(app.showsIikb(relaunching: false), "the field brings iikb's keys back")
+        return app.descendants(matching: .any)["iikb.paste"]
     }
 
     /// A tap on a panel's search brings the keys up to type into it.
