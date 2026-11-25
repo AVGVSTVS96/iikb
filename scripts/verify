@@ -2,7 +2,7 @@
 # Runs on a Mac. Everything a batch of changes needs, at once, on one simulator, the iPhone Duo folded unless named:
 # one build of the app and every test, KeyboardUI's package tests, every UI test with Full Access on the simulator and
 # shots/demo's made-up transcripts in the app (each test capped at 5 minutes, as GitHub's Macs need, a failure retried
-# once, and what iikb logged in the simulator kept beside the test log) but the four that need another setup, the voice
+# once, and what iikb logged in the simulator kept beside the test log) but the five that need another setup, the voice
 # test with scripts/voiceapp.py standing in for the app, the update test with a newer build on the install link, and the
 # screenshot tests again in dark, into shots/raw/verify/. PARTS names the parts to run (package typing panels rest dark
 # voice update), so a push to main runs them side by side on four Macs.
@@ -57,9 +57,10 @@ uitest() {
 messages=AppUITests/ToolPanelTests/testAHeldGifDragsIntoTheMessage
 typing=(TypingTests FirstTapTests SwipeTests FastTypingTests SuggestionTests OneHandedTests)
 panels=(PanelTests ToolPanelTests)
-# The real iPhone's chats (scripts/chatdevice), Control Center with its widget services (scripts/controltest), and a
-# recording said by a macOS voice (scripts/sharetest); the voice and update tests are parts of their own.
-apart=(VoiceTests UpdateTests ChatBoxDeviceTests MicControlTests RecordingShareTests)
+# The real iPhone's chats (scripts/chatdevice), Control Center with its widget services (scripts/controltest), a
+# recording said by a macOS voice (scripts/sharetest), and the keyboard's own capture hearing one (scripts/keyboardvoicetest);
+# the voice and update tests are parts of their own.
+apart=(VoiceTests UpdateTests ChatBoxDeviceTests MicControlTests RecordingShareTests KeyboardDictationTests)
 only() { printf -- '-only-testing:AppUITests/%s ' "$@"; }
 skip() { printf -- '-skip-testing:AppUITests/%s ' "$@"; }
 appearance() {
