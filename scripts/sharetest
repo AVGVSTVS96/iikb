@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs on GitHub's Macs (scripts/ci). A transcript's recording sent from its menu in the list and from its page, light and dark, shots in
+# Runs on GitHub's Macs (scripts/ci). A transcript's recording sent from its menu in the list and from its page, and played there, light and dark, shots in
 # shots/raw/share/: scripts/sharetest ["iPhone Duo"] [iPhone-Duo]. The transcript and its sound are made up here.
 set -euo pipefail
 cd "$(dirname "$0")/.."

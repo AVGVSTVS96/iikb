@@ -1,6 +1,6 @@
 import XCTest
 
-/// A transcript's recording sent on, from its menu in the list and from its page: run by scripts/sharetest, which puts
+/// A transcript's recording sent on, from its menu in the list and from its page, and played to its end there: run by scripts/sharetest, which puts
 /// a transcript and its sound in the app first, and screenshots each step to IIKB_SHOTS.
 final class RecordingShareTests: XCTestCase {
     func testARecordingIsSentFromTheListAndFromItsPage() throws {
@@ -33,6 +33,10 @@ final class RecordingShareTests: XCTestCase {
         XCTAssertTrue(page.waitForExistence(timeout: 5))
         XCTAssertTrue(iikb.buttons["Share Recording"].exists)
         try shot("page")
+        iikb.buttons["Play Recording"].tap()
+        XCTAssertTrue(iikb.buttons["Stop"].waitForExistence(timeout: 5))
+        try shot("playing")
+        XCTAssertTrue(iikb.buttons["Play Recording"].waitForExistence(timeout: 15))
         page.tap()
         sleep(3)
         try shot("send-in-messages")

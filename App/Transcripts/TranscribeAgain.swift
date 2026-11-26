@@ -4,7 +4,7 @@ import VoiceCapture
 import VoiceModels
 
 /// What's done with a transcript, right under its text: its words copied or shared, and, when iikb kept its sound, that
-/// sent on in a new message in Messages' own audio format or as a voice memo through the share sheet.
+/// played back, or sent on in a new message in Messages' own audio format or as a voice memo through the share sheet.
 struct TranscriptActions: View {
     let transcript: Transcript
     @State private var failure: String?
@@ -27,12 +27,29 @@ struct TranscriptActions: View {
                     .buttonStyle(.plain)
                 }
                 if kept {
+                    let playing = RecordingPlayer.shared.playing == transcript.id
+                    ActionRow(
+                        title: playing ? "Stop" : "Play Recording", symbol: playing ? "stop.fill" : "play.fill"
+                    ) { play() }
                     ActionRow(title: "Send in Messages", symbol: "message") { send(as: .message) }
                     ActionRow(title: "Share Recording", symbol: "square.and.arrow.up") { send(as: .memo) }
                 }
                 if let failure { Text(failure).foregroundStyle(.red).row() }
             }
+            .onDisappear(perform: stop)
+            .onChange(of: transcript.id) { old, _ in stop(old) }
         }
+    }
+
+    private func stop() { stop(transcript.id) }
+
+    private func stop(_ id: Transcript.ID) {
+        if RecordingPlayer.shared.playing == id { RecordingPlayer.shared.stop() }
+    }
+
+    private func play() {
+        failure = nil
+        do { try RecordingPlayer.shared.toggle(transcript.id) } catch { failure = error.localizedDescription }
     }
 
     private func send(as kind: Recording.Export) {
