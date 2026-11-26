@@ -5,6 +5,7 @@ real: Bassim's own dictations (scripts/voicecorpus.py), against what each finall
 build of their day typed, left as it was, so real's words wrong is mostly how far the bench strays from that build and
 the iPhone's is his edit rate: neither is an error rate. `edit: edited` is the part a final can vouch for.
 labelled: those he labelled by ear (scripts/voicelabel), against what he said: words wrong as an error rate.
+truth: his clearest dictations, judged against what he said from his edits, Dictionary and context: an error rate too.
 loud: quiet ones of his mixed into his loud rooms, speech as said and 6, 12 and 18 dB quieter (a whisper).
 read: his dictations of heldout/read.txt's blind script, against what each line should type.
 spoken: scripts/voicespoken.txt's made-up sentences said by macOS voices, normal and whispered, in a quiet room and in
@@ -77,11 +78,11 @@ def digest(*parts):
 
 
 def real():
-    """The real, loud, taps, labelled and read sets, built again whenever the backup, his labels, the script he reads
+    """The real, loud, taps, labelled, truth and read sets, built again whenever the backup, his labels or judged set, the script he reads
     or the builder has changed since."""
     built = DATA / "taps/context.jsonl"
     sources = [BACKUP / "mirror/app/transcripts.jsonl", BACKUP / "mirror/app/vocabulary.json", BACKUP.parent / "record.jsonl",
-               corpus.HELDOUT / "labels.jsonl", corpus.HELDOUT / "read.txt", ROOT / "scripts/voicecorpus.py"]
+               corpus.HELDOUT / "labels.jsonl", corpus.HELDOUT / "truth.jsonl", corpus.HELDOUT / "read.txt", ROOT / "scripts/voicecorpus.py"]
     if not built.exists() or max(p.stat().st_mtime for p in sources if p.exists()) > built.stat().st_mtime:
         subprocess.run([sys.executable, ROOT / "scripts/voicecorpus.py"], check=True)
 
@@ -447,10 +448,10 @@ def main():
     stage("real and loud sets")
     spoken()
     stage("spoken set")
-    sets = ["real", "taps", "loud", "spoken"] + [n for n in ("labelled", "read") if (DATA / n / "clips.jsonl").exists()]
+    sets = ["real", "taps", "loud", "spoken"] + [n for n in ("labelled", "truth", "read") if (DATA / n / "clips.jsonl").exists()]
     heard = parakeet(sets, "--cached" in sys.argv)
     stage("parakeet")
-    texts = set(heard.values()) | {c["heard"] for n in ("real", "labelled") if n in sets for c in rows(DATA / n / "context.jsonl")}
+    texts = set(heard.values()) | {c["heard"] for n in ("real", "labelled", "truth") if n in sets for c in rows(DATA / n / "context.jsonl")}
     replies = {text: row.get("edited") for text, row in stages.edited({t: t for t in texts}, DATA / "cache").items()}
     stage("Clean's model")
     tool = stages.text_stage()
@@ -474,7 +475,7 @@ def main():
         knobs = "as on the iPhone then" if name != "spoken" else ", ".join(DEFAULTS)
         read[name] = clips, references, context, knobs
         runs[name] = dict(bench=pool.submit(typed, tool, folder, {id: heard[name, id] for id in clips}, state, replies))
-        if name in ("real", "labelled"):
+        if name in ("real", "labelled", "truth"):
             runs[name]["replay"] = pool.submit(typed, tool, folder, {id: context[id]["heard"] for id in clips}, state,
                                                replies)
     print(f"his dictations replayed with the iPhone's memory, Dictionary and settings as each was said; said before the"
@@ -487,7 +488,7 @@ def main():
         ways = {way: texts for way, (texts, _) in done.items()}
         taken[name] = done["bench"][1], len(clips)
         phone = {r["id"]: r["text"] for r in rows(folder / "typed.jsonl") if r["id"] in clips}
-        if name in ("real", "labelled", "read"):
+        if name in ("real", "labelled", "truth", "read"):
             ways["phone"] = phone
         final = {id: said(phone[id]) if name == "real" or clips[id].get("reference") == "final" else None for id in clips}
         terms = {t["term"].lower() for t in json.load((folder / "vocabulary.json").open())["terms"]}
@@ -503,10 +504,11 @@ def main():
                 print(f"    {clips[id]['seconds']:>5.1f} s  {ways['bench'][id][:70]!r}")
         else:
             groups = {"real": ["length", "room", "capture", "final", "edit"], "loud": ["speech", "reference", "edit"],
-                      "spoken": ["condition", "voice", "topic", "field", "name"], "labelled": ["length", "room", "final"],
+                      "spoken": ["condition", "voice", "topic", "field", "name"], "labelled": ["length", "room", "final"], "truth": ["verdict", "length"],
                       "read": ["room"]}[name]
             title = {"real": "real, against his finals: words he went on to change, not errors (edit: edited is the part a final vouches for)",
                      "labelled": "labelled, against what he said: words wrong",
+                     "truth": "truth, judged against what he said: words wrong (verdict: what the iPhone typed then)",
                      "spoken": "spoken, made-up sentences in formats.txt's forms: format coverage, not accuracy"}.get(name, name)
             numbers[name] = table(f"{title} ({knobs})", references, ways, diffs, clips, groups)
         changed(name, ways["bench"], wrong, clips)
@@ -553,6 +555,8 @@ def main():
           f" taps typed as words {taps_set['typing']} of {taps_set['clips']}")
     if "labelled" in numbers:
         print(f"words wrong against what he said: labelled {numbers['labelled']['bench']:.2f}% (the iPhone {numbers['labelled']['phone']:.2f}%)")
+    if "truth" in numbers:
+        print(f"words wrong against what he said: truth {numbers['truth']['bench']:.2f}% (the iPhone {numbers['truth']['phone']:.2f}%)")
     if "read" in numbers:
         print(f"words wrong reading heldout/read.txt: {numbers['read']['bench']:.2f}% (the iPhone {numbers['read']['phone']:.2f}%)")
     print(f"words apart from his finals, as typed: real {real_set['bench']:.2f}% (the iPhone {real_set['phone']:.2f}%, his edits),"

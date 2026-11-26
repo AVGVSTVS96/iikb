@@ -26,6 +26,10 @@ change that writes words there (filler such as "Yeah." or "Thank you.") shows. I
 labelled: the dictations he labelled by ear (scripts/voicelabel, `heldout/labels.jsonl` beside the backup), each
 against what he said: the one set that scores words wrong rather than words he went on to change.
 
+truth: his clearest dictations (quiet, unclipped, a field kept, a final), each judged against what he said from his
+edits, his Dictionary and the text around it, never another speech model (`heldout/truth.jsonl`: the reference and
+whether iikb typed it `right` or `wrong`), so words wrong there is an error rate without waiting on labels by ear.
+
 `voicecorpus.py quieter <corpus> <percent>` makes the corpus's clips as said that much quieter in the same room, for
 scripts/voicebench.
 
@@ -361,6 +365,13 @@ def labelled():
     print(f"labelled: {len(clips)} dictations he labelled by ear")
 
 
+def truth():
+    path = HELDOUT / "truth.jsonl"
+    judged = {r["id"]: r for r in map(json.loads, open(path))} if path.exists() else {}
+    clips = heard_set("truth", lambda t: (judged[t["id"]]["text"], {"verdict": judged[t["id"]]["verdict"]}) if t["id"] in judged else None)
+    print(f"truth: {len(clips)} dictations judged against what he said, {sum(c['verdict'] == 'wrong' for c in clips)} that iikb typed wrong")
+
+
 def reading():
     """Each dictation since heldout/read.txt was written that's one of its `say | typed` lines (its words line up with
     that line's, said or typed, at least 0.6 of the way) against what that line should type."""
@@ -388,4 +399,5 @@ elif __name__ == "__main__":
     loud(*real())
     taps()
     labelled()
+    truth()
     reading()
