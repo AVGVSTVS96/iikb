@@ -11,7 +11,7 @@ nonisolated enum VoiceLog {
         guard Backup.isBuiltIn, let store = try? OSLogStore(scope: .currentProcessIdentifier),
             let entries = try? store.getEntries(
                 at: store.position(date: .now.addingTimeInterval(-86_400)),
-                matching: NSPredicate(format: "subsystem == 'com.shahidy.iikb' AND category == 'voice'"))
+                matching: NSPredicate(format: "subsystem == 'com.galateacorp.iikb' AND category == 'voice'"))
         else { return }
         let day = Date.now.addingTimeInterval(-86_400)
         let own = entries.compactMap { $0 as? OSLogEntryLog }.map { (at: $0.date, text: $0.composedMessage) }

@@ -31,7 +31,7 @@ import UIKit
 
     func refresh() {
         isAdded = (UserDefaults.standard.array(forKey: "AppleKeyboards") as? [String] ?? []).contains(
-            "com.shahidy.iikb.keyboard")
+            "com.galateacorp.iikb.keyboard")
         #if APP_STORE
             // TCC isn't API: the keyboard can write the shared clipboard history only with Full Access.
             fullAccess = ClipboardStore().started
