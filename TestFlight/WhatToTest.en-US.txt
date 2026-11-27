@@ -1,5 +1,7 @@
-- Snippets and Quicklinks: make them in iikb's Settings › Snippets and › Quicklinks, then type a snippet's keyword in any app and watch it expand. Try one with {cursor} or an argument, which the keyboard asks for before it types.
-- From the keyboard: open the menu for the Snippets and Quicklinks shelves, or tap the plus in the Snippets panel to keep the text you typed or selected as a new snippet. On iPhone, Custom Keys can add a Snippet key to the bottom row.
-- Calculator: type "84 / 4", "20% of 80" or "10 km in mi" and the bar shows the answer; tap it to type it in place.
-- Text Styles and Change Case, in the menu: turn your text bold, script or monospace, or into UPPERCASE, Title Case or snake_case. Tap another style and it replaces the last.
-- Space bar trackpad: the caret now steps over emoji and styled letters whole, and the suggestions hold still until you let go.
+- Dictation with the mic off: turn off the mic switch at the top of Home, then tap the mic in the keyboard. It dictates by itself, without opening iikb, with your Writing Style and Dictionary, and lands in Transcripts. Try a whisper, a wired or USB mic, a notification mid-sentence, and stopping right as you finish.
+- Transcripts: play a dictation's recording from its transcript.
+- Emoji: the emoji key opens an emoji keyboard like Apple's, in the keys' place, with categories, ABC and delete.
+- The bar: after you copy text, it offers to paste it into an empty field. Custom Keys › Actions › Show in Bar puts your actions at the bar's left, in place of the action row. On iPhone Duo open in landscape, a bar button splits or joins the keys.
+- Typing: a word typed a letter short is corrected, like "informatio" to "information", and a letter hit for the space between two words becomes the space. Swipe again right after deleting a swiped word for the next guess.
+- Space bar trackpad: slide faster and the caret goes further.
+- Typing Log, in Privacy & Data: off by default. Turn it on to keep typing sessions and share one that went wrong.
