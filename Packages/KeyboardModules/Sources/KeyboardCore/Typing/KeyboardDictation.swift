@@ -18,11 +18,16 @@ public struct KeyboardDictation: Sendable {
         public fileprivate(set) var canceled = false
         public fileprivate(set) var held = false
         fileprivate var tail: Double?
+        fileprivate var stoppedAt: Double?
         fileprivate var levels: [Float] = []
         fileprivate var quietSince: Double?
 
         fileprivate var quietLongEnough: Bool {
             quietSince.map { seconds - $0 >= KeyboardDictation.quietEnds } ?? false
+        }
+
+        fileprivate var heardPastStop: Bool {
+            stoppedAt.map { seconds - $0 >= KeyboardDictation.heardAfterStop } ?? false
         }
 
         public var phase: Phase {
@@ -115,6 +120,7 @@ public struct KeyboardDictation: Sendable {
     public static let longest = 90.0
     public static let tailFor = 1.0
     public static let quietEnds = 0.25
+    public static let heardAfterStop = 0.1
 
     public private(set) var recording: Recording?
     public private(set) var writing: [Writing] = []
@@ -207,8 +213,9 @@ public struct KeyboardDictation: Sendable {
         guard let recording, recording.keyboard == keyboard, recording.kept, !recording.stopping else { return [] }
         guard recording.opened else { return drop(recording.take) }
         self.recording?.stopping = true
-        guard recording.seconds > 0, !recording.quietLongEnough else { return [.stopCapture, .changed(keyboard)] }
+        guard recording.seconds > 0 else { return [.stopCapture, .changed(keyboard)] }
         self.recording?.tail = now + Self.tailFor
+        self.recording?.stoppedAt = recording.seconds
         return [.changed(keyboard)]
     }
 
@@ -251,7 +258,9 @@ public struct KeyboardDictation: Sendable {
         let quiet = Self.isQuiet(level, in: recording.levels + [level])
         self.recording?.quietSince = quiet ? recording.quietSince ?? recording.seconds : nil
         var effects: [Effect] = recording.seconds == 0 && recording.kept ? [.changed(recording.keyboard)] : []
-        if let tail = recording.tail, now >= tail || self.recording?.quietLongEnough == true {
+        if let tail = recording.tail,
+            now >= tail || (self.recording?.quietLongEnough == true && self.recording?.heardPastStop == true)
+        {
             self.recording?.tail = nil
             effects.append(.stopCapture)
         }
