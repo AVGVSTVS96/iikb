@@ -777,7 +777,7 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
             capture.source = capture.ctx.createMediaStreamSource(capture.stream);
             capture.node = capture.ctx.createScriptProcessor(4096, 1, 1);
             capture.node.onaudioprocess = (event) => {
-              if (stale()) return;
+              if (stale() && !capture.flushed) return;
               const input = event.inputBuffer.getChannelData(0);
               const pcm = new Int16Array(input.length);
               let sum = 0;
@@ -790,6 +790,7 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
               let binary = "";
               for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
               post({ type: "pcm", session, data: btoa(binary), level: Math.sqrt(sum / input.length) });
+              if (capture.flushed) capture.flushed();
             };
             capture.source.connect(capture.node);
             capture.node.connect(capture.ctx.destination);
@@ -810,6 +811,12 @@ private final class WebCapture: NSObject, WKNavigationDelegate, WKUIDelegate, WK
           if (!capture) return;
           live = null;
           if (capture.heal) clearInterval(capture.heal);
+          if (capture.node && capture.ctx && capture.ctx.state === "running") {
+            await new Promise((resolve) => {
+              const timer = setTimeout(() => capture.flushed && capture.flushed(), 250);
+              capture.flushed = () => { clearTimeout(timer); capture.flushed = null; resolve(); };
+            });
+          }
           try { capture.node && capture.node.disconnect(); capture.source && capture.source.disconnect(); } catch (e) {}
           if (capture.stream) capture.stream.getTracks().forEach((t) => t.stop());
           post({ type: "stopped", session: capture.session });

@@ -517,10 +517,24 @@ struct KeyboardDictationTests {
         #expect(dictation.writing(in: Self.a) == [2.5])
     }
 
-    @Test func aStopAfterAPauseStopsAtOnce() {
+    @Test func aStopAfterAPauseWaitsForSoundFromAfterTheTap() {
         var (dictation, take) = Self.speaking()
         for chunk in 21...23 { _ = dictation.sound(take, seconds: Double(chunk) / 10, level: 0.001, at: 2) }
-        #expect(dictation.stop(Self.a, at: 2.3) == [.stopCapture, .changed(Self.a)])
+        #expect(dictation.stop(Self.a, at: 2.3) == [.changed(Self.a)])
+        #expect(dictation.sound(take, seconds: 2.35, level: 0.001, at: 2.35).isEmpty)
+        #expect(dictation.sound(take, seconds: 2.45, level: 0.001, at: 2.45) == [.stopCapture])
+    }
+
+    @Test func aWordStillOnItsWayAtTheTapIsKept() {
+        var (dictation, take) = Self.speaking()
+        for chunk in 21...23 { _ = dictation.sound(take, seconds: Double(chunk) / 10, level: 0.001, at: 2) }
+        _ = dictation.stop(Self.a, at: 2.3)
+        #expect(dictation.sound(take, seconds: 2.4, level: 0.1, at: 2.4).isEmpty)
+        #expect(dictation.sound(take, seconds: 2.5, level: 0.001, at: 2.5).isEmpty)
+        #expect(dictation.sound(take, seconds: 2.6, level: 0.001, at: 2.6).isEmpty)
+        #expect(dictation.sound(take, seconds: 2.7, level: 0.001, at: 2.7) == [.stopCapture])
+        #expect(dictation.ended(take) == [.stopCapture, .write(take), .changed(Self.a)])
+        #expect(dictation.writing(in: Self.a) == [2.7])
     }
 
     @Test func aStopInALoudRoomHearsOnASecondAtMost() {
